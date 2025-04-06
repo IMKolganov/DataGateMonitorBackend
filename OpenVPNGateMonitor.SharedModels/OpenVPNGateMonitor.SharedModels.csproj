@@ -5,6 +5,13 @@
         <ImplicitUsings>enable</ImplicitUsings>
         <Nullable>enable</Nullable>
         <LangVersion>13</LangVersion>
+        <GeneratePackageOnBuild>true</GeneratePackageOnBuild>
+        <Title>DashBoard OpenVpn Gate Moniotor SharedModels</Title>
+        <RepositoryUrl>https://github.com/IMKolganov/OpenVPNGateMonitor</RepositoryUrl>
+        <Copyright>OpenVPNGateMonitor</Copyright>
+        <PackageProjectUrl>https://github.com/IMKolganov/OpenVPNGateMonitor</PackageProjectUrl>
+        <RepositoryType>git</RepositoryType>
+        <PackageTags>#OpenVPNGateMonitor #OpenVpn #GateMonitor #Dashboard</PackageTags>
     </PropertyGroup>
 
     <ItemGroup>

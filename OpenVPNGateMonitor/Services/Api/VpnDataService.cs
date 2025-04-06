@@ -141,7 +141,13 @@ public class VpnDataService : IVpnDataService
             .FirstOrDefaultAsync(cancellationToken) ?? throw new InvalidOperationException("OpenVPN Server not found");
     }
 
-
+    public async Task<List<OpenVpnServer>> GetAllServers(CancellationToken cancellationToken)
+    {
+        return await _unitOfWork.GetQuery<OpenVpnServer>()
+            .AsQueryable()
+            .OrderByDescending(x=>x.Id).ToListAsync(cancellationToken);
+    }
+    
     public async Task<OpenVpnServer> AddOpenVpnServer(OpenVpnServer openVpnServer, CancellationToken cancellationToken)
     {
         var openVpnServerRepository = _unitOfWork.GetRepository<OpenVpnServer>();

@@ -13,6 +13,7 @@ public interface IVpnDataService
     Task<List<OpenVpnServerWithStatus>> GetAllOpenVpnServersWithStatus(CancellationToken cancellationToken);
     Task<OpenVpnServerWithStatus> GetOpenVpnServerWithStatus(int vpnServerId, CancellationToken cancellationToken);
     Task<OpenVpnServer> GetOpenVpnServer(int vpnServerId, CancellationToken cancellationToken);
+    Task<List<OpenVpnServer>> GetAllServers(CancellationToken cancellationToken);
     Task<OpenVpnServer> AddOpenVpnServer(OpenVpnServer openVpnServer, CancellationToken cancellationToken);
     Task<OpenVpnServer> UpdateOpenVpnServer(OpenVpnServer openVpnServer, CancellationToken cancellationToken);
     Task<bool> DeleteOpenVpnServer(int vpnServerId, CancellationToken cancellationToken);

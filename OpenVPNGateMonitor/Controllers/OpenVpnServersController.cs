@@ -59,6 +59,13 @@ public class OpenVpnServersController(
         return Ok(ApiResponse<OpenVpnServerWithStatusResponse>.SuccessResponse(serverInfo.Adapt<OpenVpnServerWithStatusResponse>()));
     }
 
+    [HttpGet("GetAllServers")]
+    public async Task<IActionResult> GetAllServers(CancellationToken cancellationToken)
+    {
+        var serversList = await vpnDataService.GetAllServers(cancellationToken);
+
+        return Ok(ApiResponse<List<OpenVpnServerResponse>>.SuccessResponse(serversList.Adapt<List<OpenVpnServerResponse>>()));
+    }
     
     [HttpGet("GetServer/{vpnServerId:int}")]
     public async Task<IActionResult> GetServer(
