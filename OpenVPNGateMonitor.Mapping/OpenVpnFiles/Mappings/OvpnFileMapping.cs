@@ -3,13 +3,16 @@ using OpenVPNGateMonitor.Models;
 using OpenVPNGateMonitor.Models.Helpers.Services;
 using OpenVPNGateMonitor.SharedModels.OpenVpnFiles.Requests;
 using OpenVPNGateMonitor.SharedModels.OpenVpnFiles.Responses;
+using OpenVPNGateMonitor.SharedModels.OpenVpnFiles.Responses.Dto;
 
-namespace OpenVPNGateMonitor.SharedModels.OpenVpnFiles.Mappings;
+namespace OpenVPNGateMonitor.Mapping.OpenVpnFiles.Mappings;
 
 public class OvpnFileMapping : IRegister
 {
     public void Register(TypeAdapterConfig config)
     {
+        TypeAdapterConfig<IssuedOvpnFile, IssuedOvpnFileDto>.NewConfig();
+
         config.NewConfig<OvpnFileResult, DownloadOvpnFileResponse>()
             .MapWith(src => new DownloadOvpnFileResponse
             {

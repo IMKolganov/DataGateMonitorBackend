@@ -6,7 +6,7 @@ using OpenVPNGateMonitor.Models.Helpers.Services;
 using OpenVPNGateMonitor.SharedModels.OpenVpnServerCerts.Requests;
 using OpenVPNGateMonitor.SharedModels.OpenVpnServerCerts.Responses;
 
-namespace OpenVPNGateMonitor.SharedModels.OpenVpnServerCerts.Mappings;
+namespace OpenVPNGateMonitor.Mapping.OpenVpnServerCerts.Mappings;
 
 public class VpnServerCertificateMapping : IRegister
 {

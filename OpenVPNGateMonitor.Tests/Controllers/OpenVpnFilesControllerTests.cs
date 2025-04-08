@@ -8,6 +8,7 @@ using OpenVPNGateMonitor.Models.Helpers.Services;
 using OpenVPNGateMonitor.Services.Api.Interfaces;
 using OpenVPNGateMonitor.SharedModels.OpenVpnFiles.Requests;
 using OpenVPNGateMonitor.SharedModels.OpenVpnFiles.Responses;
+using OpenVPNGateMonitor.SharedModels.OpenVpnFiles.Responses.Dto;
 using OpenVPNGateMonitor.SharedModels.Responses;
 
 namespace OpenVPNGateMonitor.Tests.Controllers;
@@ -135,7 +136,7 @@ public class OpenVpnFilesControllerTests
         var fileResponse = new AddOvpnFileResponse
         {
             OvpnFile = new FileInfo("dummy.ovpn"),
-            IssuedOvpnFile = new IssuedOvpnFile
+            IssuedOvpnFile = new IssuedOvpnFileDto
             {
                 Id = 1,
                 CommonName = "client",
