@@ -1,4 +1,4 @@
-﻿using OpenVPNGateMonitor.Models.Enums;
+﻿using OpenVPNGateMonitor.SharedModels.OpenVpnServers.Responses.Enums;
 
 namespace OpenVPNGateMonitor.SharedModels.OpenVpnServers.Responses;
 

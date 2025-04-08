@@ -1,6 +1,7 @@
 ﻿using Mapster;
 using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Mvc;
+using OpenVPNGateMonitor.Models.Enums;
 using OpenVPNGateMonitor.Models.Helpers.Services;
 using OpenVPNGateMonitor.Services.Api.Interfaces;
 using OpenVPNGateMonitor.SharedModels.OpenVpnServerCerts.Requests;
@@ -34,7 +35,7 @@ public class OpenVpnServerCertsController(ILogger<OpenVpnServerCertsController> 
         CancellationToken cancellationToken = default)
     {
         var certificates = await certVpnService.GetAllVpnServerCertificatesByStatus(
-            request.VpnServerId, request.CertificateStatus, cancellationToken);
+            request.VpnServerId, (CertificateStatus)request.CertificateStatus, cancellationToken);
         return Ok(ApiResponse<List<VpnServerCertificateResponse>>.SuccessResponse(
             certificates.Adapt<List<VpnServerCertificateResponse>>()));
     }

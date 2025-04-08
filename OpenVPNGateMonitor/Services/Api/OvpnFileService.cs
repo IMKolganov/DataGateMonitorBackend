@@ -1,10 +1,12 @@
-﻿using Microsoft.EntityFrameworkCore;
+﻿using Mapster;
+using Microsoft.EntityFrameworkCore;
 using OpenVPNGateMonitor.DataBase.UnitOfWork;
 using OpenVPNGateMonitor.Models;
 using OpenVPNGateMonitor.Models.Helpers.Services;
 using OpenVPNGateMonitor.Services.Api.Interfaces;
 using OpenVPNGateMonitor.Services.EasyRsaServices.Interfaces;
 using OpenVPNGateMonitor.SharedModels.OpenVpnFiles.Responses;
+using OpenVPNGateMonitor.SharedModels.OpenVpnFiles.Responses.Dto;
 
 namespace OpenVPNGateMonitor.Services.Api;
 
@@ -110,7 +112,8 @@ public class OvpnFileService : IOvpnFileService
             IsRevoked = false
         };
         await SaveInfoInDataBase(issuedOvpnFile, cancellationToken);
-        return new AddOvpnFileResponse { OvpnFile = fileInfo, IssuedOvpnFile  = issuedOvpnFile };
+        var issuedOvpnFileDto = issuedOvpnFile.Adapt<IssuedOvpnFileDto>();
+        return new AddOvpnFileResponse { OvpnFile = fileInfo, IssuedOvpnFile = issuedOvpnFileDto };
     }
 
     public async Task<IssuedOvpnFile?> RevokeOvpnFile(int vpnServerId, string commonName,

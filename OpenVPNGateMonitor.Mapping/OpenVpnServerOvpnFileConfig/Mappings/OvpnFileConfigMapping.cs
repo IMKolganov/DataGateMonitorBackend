@@ -2,7 +2,7 @@
 using OpenVPNGateMonitor.SharedModels.OpenVpnServerOvpnFileConfig.Requests;
 using OpenVPNGateMonitor.SharedModels.OpenVpnServerOvpnFileConfig.Responses;
 
-namespace OpenVPNGateMonitor.SharedModels.OpenVpnServerOvpnFileConfig.Mappings;
+namespace OpenVPNGateMonitor.Mapping.OpenVpnServerOvpnFileConfig.Mappings;
 
 public class OvpnFileConfigMapping : IRegister
 {

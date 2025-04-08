@@ -1,12 +1,11 @@
 ﻿using Mapster;
 using OpenVPNGateMonitor.Models;
-using OpenVPNGateMonitor.Models.Enums;
 using OpenVPNGateMonitor.Models.Helpers.Background;
 using OpenVPNGateMonitor.Models.Helpers.Services;
 using OpenVPNGateMonitor.SharedModels.OpenVpnServers.Requests;
 using OpenVPNGateMonitor.SharedModels.OpenVpnServers.Responses;
 
-namespace OpenVPNGateMonitor.SharedModels.OpenVpnServers.Mappings;
+namespace OpenVPNGateMonitor.Mapping.OpenVpnServers.Mappings;
 
 public class VpnServerMapping : IRegister
 {
