@@ -3,7 +3,7 @@ using OpenVPNGateMonitor.Models;
 using OpenVPNGateMonitor.SharedModels.Applications.Requests;
 using OpenVPNGateMonitor.SharedModels.Applications.Responses;
 
-namespace OpenVPNGateMonitor.SharedModels.Applications.Mappings;
+namespace OpenVPNGateMonitor.Mapping.Applications.Mappings;
 
 public class ApplicationMapping : IRegister
 {

@@ -1,11 +1,12 @@
 ﻿using Mapster;
 using MapsterMapper;
-using OpenVPNGateMonitor.SharedModels.Applications.Mappings;
-using OpenVPNGateMonitor.SharedModels.Auth.Mappings;
-using OpenVPNGateMonitor.SharedModels.OpenVpnFiles.Mappings;
-using OpenVPNGateMonitor.SharedModels.OpenVpnServerCerts.Mappings;
-using OpenVPNGateMonitor.SharedModels.OpenVpnServerOvpnFileConfig.Mappings;
-using OpenVPNGateMonitor.SharedModels.OpenVpnServers.Mappings;
+using OpenVPNGateMonitor.Mapping.Applications.Mappings;
+using OpenVPNGateMonitor.Mapping.Auth.Mappings;
+using OpenVPNGateMonitor.Mapping.OpenVpnFiles.Mappings;
+using OpenVPNGateMonitor.Mapping.OpenVpnServerCerts.Mappings;
+using OpenVPNGateMonitor.Mapping.OpenVpnServerOvpnFileConfig.Mappings;
+using OpenVPNGateMonitor.Mapping.OpenVpnServers.Mappings;
+
 
 namespace OpenVPNGateMonitor.Configurations;
 

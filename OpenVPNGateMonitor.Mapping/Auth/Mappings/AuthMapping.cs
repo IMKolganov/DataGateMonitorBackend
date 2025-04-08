@@ -2,7 +2,7 @@
 using OpenVPNGateMonitor.Models;
 using OpenVPNGateMonitor.SharedModels.Auth.Responses;
 
-namespace OpenVPNGateMonitor.SharedModels.Auth.Mappings;
+namespace OpenVPNGateMonitor.Mapping.Auth.Mappings;
 
 public class AuthMapping : IRegister
 {
