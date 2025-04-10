@@ -6,16 +6,27 @@
         <Nullable>enable</Nullable>
         <LangVersion>13</LangVersion>
         <GeneratePackageOnBuild>true</GeneratePackageOnBuild>
+        <PackageId>OpenVPNGateMonitor.SharedModels</PackageId>
+        <Authors>imkolganov</Authors>
+        <Description>Shared models for accessing OpenVPNGateMonitor API</Description>
         <Title>DashBoard OpenVpn Gate Moniotor SharedModels</Title>
         <RepositoryUrl>https://github.com/IMKolganov/OpenVPNGateMonitor</RepositoryUrl>
         <Copyright>OpenVPNGateMonitor</Copyright>
         <PackageProjectUrl>https://github.com/IMKolganov/OpenVPNGateMonitor</PackageProjectUrl>
         <RepositoryType>git</RepositoryType>
         <PackageTags>#OpenVPNGateMonitor #OpenVpn #GateMonitor #Dashboard</PackageTags>
-        <Version>1.0.1</Version>
-        <AssemblyVersion>1.0.1</AssemblyVersion>
-        <FileVersion>1.0.1</FileVersion>
+        <Version>1.0.3</Version>
+        <AssemblyVersion>1.0.3</AssemblyVersion>
+        <FileVersion>1.0.3</FileVersion>
+        <PackageReadmeFile>README.md</PackageReadmeFile>
+        <PackageLicenseExpression>MIT</PackageLicenseExpression>
     </PropertyGroup>
+
+    <ItemGroup>
+        <None Include="README.md" Pack="true" PackagePath="">
+          <CopyToOutputDirectory>Always</CopyToOutputDirectory>
+        </None>
+    </ItemGroup>
 
     <ItemGroup>
       <Folder Include="Auth\Requests\" />
