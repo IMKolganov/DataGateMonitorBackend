@@ -47,11 +47,19 @@ public class OvpnFileService : IOvpnFileService
     public async Task<AddOvpnFileResponse> AddOvpnFile(string externalId, string commonName, int vpnServerId, 
         CancellationToken cancellationToken, string issuedTo = "openVpnClient")
     {
-       var openVpnServerCertConfig = await _unitOfWork.GetQuery<OpenVpnServerCertConfig>()
+        if (await _unitOfWork
+                .GetQuery<IssuedOvpnFile>()
                 .AsQueryable()
-                .Where(x => x.VpnServerId == vpnServerId)
-                .FirstOrDefaultAsync(cancellationToken) ?? 
-            throw new InvalidOperationException("OpenVpnServerCertConfig not found");
+                .AnyAsync(x => x.CommonName == commonName, cancellationToken))
+        {
+            throw new Exception($"Ovpn File with {commonName} already exists");
+        }
+        
+        var openVpnServerCertConfig = await _unitOfWork.GetQuery<OpenVpnServerCertConfig>()
+                                                  .AsQueryable()
+                                                  .Where(x => x.VpnServerId == vpnServerId)
+                                                  .FirstOrDefaultAsync(cancellationToken) ?? 
+                                              throw new InvalidOperationException("OpenVpnServerCertConfig not found");
        var openVpnServerOvpnFileConfig = await _unitOfWork.GetQuery<OpenVpnServerOvpnFileConfig>()
                                              .AsQueryable()
                                              .Where(x => x.VpnServerId == vpnServerId)
