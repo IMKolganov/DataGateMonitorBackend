@@ -10,8 +10,8 @@ public class EasyRsaService : IEasyRsaService
     private readonly ILogger<IEasyRsaService> _logger;
     private readonly IEasyRsaParseDbService _easyRsaParseDbService;
     private readonly IEasyRsaExecCommandService _easyRsaExecCommandService;
-    public EasyRsaService(ILogger<IEasyRsaService> logger, IConfiguration configuration, 
-        IEasyRsaParseDbService easyRsaParseDbService, IEasyRsaExecCommandService easyRsaExecCommandService)
+    public EasyRsaService(ILogger<IEasyRsaService> logger, IEasyRsaParseDbService easyRsaParseDbService, 
+        IEasyRsaExecCommandService easyRsaExecCommandService)
     {
         _logger = logger ?? throw new ArgumentNullException(nameof(logger));
         _easyRsaParseDbService = easyRsaParseDbService;

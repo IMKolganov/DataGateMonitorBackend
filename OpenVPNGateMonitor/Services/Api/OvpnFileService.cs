@@ -44,84 +44,106 @@ public class OvpnFileService : IOvpnFileService
             .ToListAsync(cancellationToken);
     }
 
-    public async Task<AddOvpnFileResponse> AddOvpnFile(string externalId, string commonName, int vpnServerId, 
-        CancellationToken cancellationToken, string issuedTo = "openVpnClient")
+    public async Task<AddOvpnFileResponse> AddOvpnFile(
+        string externalId,
+        string commonName,
+        int vpnServerId,
+        CancellationToken cancellationToken,
+        string issuedTo = "openVpnClient")
     {
         if (await _unitOfWork
                 .GetQuery<IssuedOvpnFile>()
                 .AsQueryable()
                 .AnyAsync(x => x.CommonName == commonName, cancellationToken))
         {
-            throw new Exception($"Ovpn File with {commonName} already exists");
+            throw new InvalidOperationException($"OVPN file with CommonName '{commonName}' already exists.");
         }
-        
-        var openVpnServerCertConfig = await _unitOfWork.GetQuery<OpenVpnServerCertConfig>()
-                                                  .AsQueryable()
-                                                  .Where(x => x.VpnServerId == vpnServerId)
-                                                  .FirstOrDefaultAsync(cancellationToken) ?? 
-                                              throw new InvalidOperationException("OpenVpnServerCertConfig not found");
-       var openVpnServerOvpnFileConfig = await _unitOfWork.GetQuery<OpenVpnServerOvpnFileConfig>()
-                                             .AsQueryable()
-                                             .Where(x => x.VpnServerId == vpnServerId)
-                                             .FirstOrDefaultAsync(cancellationToken) 
-                                         ?? throw new InvalidOperationException($"OpenVPN server configuration " +
-                                             $"is missing for server ID {vpnServerId}. " +
-                                             $"Please configure OpenVpnServerOvpnFileConfig " +
-                                             $"before generating OVPN files.");
+
+        var certConfig = await _unitOfWork.GetQuery<OpenVpnServerCertConfig>()
+                             .AsQueryable()
+                             .FirstOrDefaultAsync(x => x.VpnServerId == vpnServerId, cancellationToken)
+                         ?? throw new InvalidOperationException(
+                             "OpenVpnServerCertConfig not found for given VpnServerId.");
+
+        var fileConfig = await _unitOfWork.GetQuery<OpenVpnServerOvpnFileConfig>()
+                             .AsQueryable()
+                             .FirstOrDefaultAsync(x => x.VpnServerId == vpnServerId, cancellationToken)
+                         ?? throw new InvalidOperationException(
+                             $"OVPN server config missing for server ID {vpnServerId}. " +
+                             $"Please configure OpenVpnServerOvpnFileConfig first.");
 
         _logger.LogInformation("Step 1: Building client certificate...");
-        var certificateResult = await _certVpnService.AddServerCertificate(vpnServerId, 
-            commonName, cancellationToken);
-        
-        _logger.LogInformation("Step 2: Defining paths to certificates and keys...");
-        var caCertContent = _easyRsaService.ReadPemContent(openVpnServerCertConfig.CaCertPath);
-        
-        var clientCertContent = _easyRsaService.ReadPemContent(certificateResult.CertificatePath);
-        var clientKeyContent = await File.ReadAllTextAsync(certificateResult.KeyPath, cancellationToken);
+        var certResult = await _certVpnService.AddServerCertificate(vpnServerId, commonName, cancellationToken);
 
-        _logger.LogInformation("Step 3: Generating .ovpn configuration file...");
+        _logger.LogInformation("Step 2: Reading certificate and key content...");
+        var caCertContent =
+            _easyRsaService.ReadPemContent(certConfig.CaCertPath ??
+                                           throw new InvalidOperationException("CaCertPath is null."));
+        var clientCertContent = _easyRsaService.ReadPemContent(certResult.CertificatePath ??
+                                                               throw new InvalidOperationException(
+                                                                   "CertificatePath is null."));
+        var clientKeyContent =
+            await File.ReadAllTextAsync(certResult.KeyPath ?? throw new InvalidOperationException("KeyPath is null."),
+                cancellationToken);
+
+        _logger.LogInformation("Step 3: Generating .ovpn file...");
         var ovpnContent = GenerateOvpnFile(
-            openVpnServerOvpnFileConfig.ConfigTemplate,
-            openVpnServerOvpnFileConfig.VpnServerIp,
-            openVpnServerOvpnFileConfig.VpnServerPort,
+            fileConfig.ConfigTemplate,
+            fileConfig.VpnServerIp,
+            fileConfig.VpnServerPort,
             caCertContent,
             clientCertContent,
             clientKeyContent,
-            openVpnServerCertConfig.TlsAuthKey);
-        
+            certConfig.TlsAuthKey);
+
         _logger.LogInformation("Step 4: Writing .ovpn file...");
-        
-        if (!Directory.Exists(openVpnServerCertConfig.OvpnFileDir))
+
+        var targetDir = certConfig.OvpnFileDir ?? throw new InvalidOperationException("OvpnFileDir is null.");
+        if (!Directory.Exists(targetDir))
         {
-            Directory.CreateDirectory(openVpnServerCertConfig.OvpnFileDir);
+            Directory.CreateDirectory(targetDir);
         }
-        var ovpnFilePath = Path.Combine(openVpnServerCertConfig.OvpnFileDir, $"{commonName}.ovpn");
+
+        var ovpnFilePath = Path.Combine(targetDir, $"{commonName}.ovpn");
         await File.WriteAllTextAsync(ovpnFilePath, ovpnContent, cancellationToken);
 
-        _logger.LogInformation($"Client configuration file created: {ovpnFilePath}");
-        var fileInfo = new FileInfo(ovpnFilePath);
-        
-        _logger.LogInformation("Step 5: Save in database...");
+        _logger.LogInformation("Client configuration file created: {Path}", ovpnFilePath);
 
-        var issuedOvpnFile = new IssuedOvpnFile()
+        var fileInfo = new FileInfo(Path.GetFullPath(ovpnFilePath));
+        if (!fileInfo.Exists)
+        {
+            throw new FileNotFoundException("OVPN file was not created as expected.", fileInfo.FullName);
+        }
+
+        _logger.LogInformation("Step 5: Saving metadata in database...");
+        var issuedOvpnFile = new IssuedOvpnFile
         {
             VpnServerId = vpnServerId,
             ExternalId = externalId,
             CommonName = commonName,
-            CertId = certificateResult.CertId,
+            CertId = certResult.CertId,
             FileName = fileInfo.Name,
             FilePath = fileInfo.FullName,
             IssuedAt = DateTime.UtcNow,
             IssuedTo = issuedTo,
-            CertFilePath = certificateResult.CertificatePath,
-            KeyFilePath = certificateResult.KeyPath,
-            ReqFilePath = certificateResult.RequestPath,
-            PemFilePath = certificateResult.PemPath,
+            CertFilePath = certResult.CertificatePath,
+            KeyFilePath = certResult.KeyPath,
+            ReqFilePath = certResult.RequestPath,
+            PemFilePath = certResult.PemPath,
             IsRevoked = false
         };
+
         await SaveInfoInDataBase(issuedOvpnFile, cancellationToken);
         var issuedOvpnFileDto = issuedOvpnFile.Adapt<IssuedOvpnFileDto>();
-        return new AddOvpnFileResponse { OvpnFile = fileInfo, IssuedOvpnFile = issuedOvpnFileDto };
+
+        return new AddOvpnFileResponse
+        {
+            FileName = fileInfo.Name,
+            FullPath = fileInfo.FullName,
+            FileSizeBytes = fileInfo.Length,
+            CreatedAtUtc = fileInfo.CreationTimeUtc,
+            IssuedOvpnFile = issuedOvpnFileDto
+        };
     }
 
     public async Task<IssuedOvpnFile?> RevokeOvpnFile(int vpnServerId, string commonName,
