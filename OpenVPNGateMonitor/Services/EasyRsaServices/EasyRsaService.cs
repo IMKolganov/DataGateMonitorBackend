@@ -37,42 +37,71 @@ public class EasyRsaService : IEasyRsaService
 // # ==============================================================================
 
     #endregion
+
     public CertificateBuildResult BuildCertificate(OpenVpnServerCertConfig openVpnServerCertConfig,
         string baseFileName = "client1")
     {
-        var command = $"cd {openVpnServerCertConfig.EasyRsaPath} && ./easyrsa --batch build-client-full {baseFileName} nopass";
+        _logger.LogInformation($"Starting certificate build for: {baseFileName}");
+        var reqPath = Path.Combine(openVpnServerCertConfig.PkiPath, "reqs", $"{baseFileName}.req");
+        var issuedPath = Path.Combine(openVpnServerCertConfig.PkiPath, "issued", $"{baseFileName}.crt");
+        var keyPath = Path.Combine(openVpnServerCertConfig.PkiPath, "private", $"{baseFileName}.key");
+
+        _logger.LogInformation($"Expected paths:\nREQ: {reqPath}\nCRT: {issuedPath}\nKEY: {keyPath}");
+
+        if (File.Exists(reqPath))
+        {
+            _logger.LogWarning($"WARNING: Request file already exists before EasyRSA run: {reqPath}");
+        }
+
+        var command =
+            $"cd {openVpnServerCertConfig.EasyRsaPath} && ./easyrsa --batch build-client-full {baseFileName} nopass";
+        _logger.LogInformation($"Executing EasyRSA command: {command}");
+
         var (output, error, exitCode) = _easyRsaExecCommandService.RunCommand(command);
 
         if (exitCode != 0)
         {
+            if (File.Exists(reqPath))
+            {
+                _logger.LogWarning($"Request file exists after failed EasyRSA run: {reqPath}");
+            }
+
+            _logger.LogError($"EasyRSA output:\n{output}");
+            _logger.LogError($"EasyRSA error:\n{error}");
             throw new Exception($"Error while building certificate: {error}. Output: {output}");
         }
+
         _logger.LogInformation($"Certificate generated successfully:\n{output}");
 
-        var certPath = Path.Combine(openVpnServerCertConfig.PkiPath, "issued", $"{baseFileName}.crt");//todo: maybe move issued
         var certificateInfoInIndexFile = GetAllCertificateInfoInIndexFile(openVpnServerCertConfig.PkiPath)
-            .Where(x=> x.Status == CertificateStatus.Active && x.CommonName == baseFileName).ToList();
+            .Where(x => x.Status == CertificateStatus.Active && x.CommonName == baseFileName).ToList();
+
         if (certificateInfoInIndexFile.Count <= 0)
         {
-            throw new Exception($"Error certificate is not found in CA {certPath}");
+            throw new Exception($"Error certificate is not found in CA {issuedPath}");
         }
-        if (!certificateInfoInIndexFile.FirstOrDefault()!.SerialNumber.Contains(CheckCertInOpenssl(certPath)))
-        {
-            throw new Exception($"Certificate serial number " +
-                                $"{certificateInfoInIndexFile.FirstOrDefault()!.SerialNumber} is invalid.");
-        }
-        var pemSerialPath = Path.Combine(openVpnServerCertConfig.PkiPath, "certs_by_serial", //todo: maybe move certs_by_serial
-            $"{certificateInfoInIndexFile.FirstOrDefault()!.SerialNumber}.pem");
 
-        _logger.LogInformation($"Certificate path: {pemSerialPath}");
+        var certInfo = certificateInfoInIndexFile.First();
+        var serialFromOpenSsl = CheckCertInOpenssl(issuedPath);
+
+        if (!certInfo.SerialNumber.Contains(serialFromOpenSsl))
+        {
+            throw new Exception($"Certificate serial number {certInfo.SerialNumber} is invalid.");
+        }
+
+        var pemSerialPath = Path.Combine(openVpnServerCertConfig.PkiPath, "certs_by_serial",
+            $"{certInfo.SerialNumber}.pem");
+
+        _logger.LogInformation($"Certificate PEM path: {pemSerialPath}");
+
         return new CertificateBuildResult
         {
             VpnServerId = openVpnServerCertConfig.VpnServerId,
-            CertificatePath = certPath,
-            KeyPath = Path.Combine(openVpnServerCertConfig.PkiPath, "private", $"{baseFileName}.key"),//todo: maybe move private
-            RequestPath = Path.Combine(openVpnServerCertConfig.PkiPath, "reqs", $"{baseFileName}.req"),//todo: maybe move reqs
+            CertificatePath = issuedPath,
+            KeyPath = keyPath,
+            RequestPath = reqPath,
             PemPath = pemSerialPath,
-            CertId = certificateInfoInIndexFile.FirstOrDefault()!.SerialNumber
+            CertId = certInfo.SerialNumber
         };
     }
 
