@@ -29,7 +29,7 @@ public class EasyRsaServiceTests
     };
 
     private EasyRsaService CreateService() =>
-        new EasyRsaService(_loggerMock.Object, new Mock<IConfiguration>().Object, _parseDbServiceMock.Object, _execCommandServiceMock.Object);
+        new EasyRsaService(_loggerMock.Object, _parseDbServiceMock.Object, _execCommandServiceMock.Object);
 
     [Fact]
     public void ReadPemContent_ShouldReturnOnlyCertificate()

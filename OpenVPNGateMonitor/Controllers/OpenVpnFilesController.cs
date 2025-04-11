@@ -39,17 +39,11 @@ public class OpenVpnFilesController(IOvpnFileService ovpFileService) : Controlle
     public async Task<IActionResult> AddOvpnFile([FromBody] AddOvpnFileRequest request,
         CancellationToken cancellationToken = default)
     {
-        var file = await ovpFileService.AddOvpnFile(
+        var response = await ovpFileService.AddOvpnFile(
             request.ExternalId, request.CommonName, request.VpnServerId,
             cancellationToken, request.IssuedTo);
 
-        var response = new AddOvpnFileApiResponse
-        {
-            FileName = file.OvpnFile.Name,
-            Metadata = file.IssuedOvpnFile.Adapt<OvpnFileResponse>()
-        };
-
-        return Ok(ApiResponse<AddOvpnFileApiResponse>.SuccessResponse(
+        return Ok(ApiResponse<AddOvpnFileResponse>.SuccessResponse(
             response, "Ovpn file added successfully."));
     }
 
