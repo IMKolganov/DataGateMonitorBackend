@@ -54,7 +54,7 @@ public class OvpnFileService : IOvpnFileService
         if (await _unitOfWork
                 .GetQuery<IssuedOvpnFile>()
                 .AsQueryable()
-                .AnyAsync(x => x.CommonName == commonName, cancellationToken))
+                .AnyAsync(x => x.CommonName == commonName && !x.IsRevoked, cancellationToken))
         {
             throw new InvalidOperationException($"OVPN file with CommonName '{commonName}' already exists.");
         }
