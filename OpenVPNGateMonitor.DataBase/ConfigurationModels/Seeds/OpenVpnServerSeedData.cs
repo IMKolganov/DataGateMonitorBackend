@@ -11,14 +11,18 @@ public static class OpenVpnServerSeedData
             Id = 1, 
             ServerName = "OpenVPN Server (udp)",
             ManagementIp = "openvpn_udp",
-            ManagementPort = 5092
+            ManagementPort = 5092,
+            IsOnline = false,
+            IsDefault = true,
         },
         new OpenVpnServer
         {
             Id = 2,
             ServerName = "OpenVPN Server (tcp)",
             ManagementIp = "openvpn_tcp",
-            ManagementPort = 5093
+            ManagementPort = 5093,
+            IsOnline = false,
+            IsDefault = false,
         },
     };
 }

@@ -39,7 +39,9 @@ public class VpnServerMapping : IRegister
             .Map(dest => dest.ManagementPort, src => src.ManagementPort)
             .Map(dest => dest.Login, src => src.Login)
             .Map(dest => dest.Password, src => src.Password)
-            .Map(dest => dest.IsOnline, src => src.IsOnline);
+            .Map(dest => dest.IsOnline, src => src.IsOnline)
+            .Map(dest => dest.IsDefault, src => src.IsDefault);
+
 
         config.NewConfig<AddServerRequest, OpenVpnServer>()
             .Map(dest => dest.ServerName, src => src.ServerName)
@@ -47,7 +49,8 @@ public class VpnServerMapping : IRegister
             .Map(dest => dest.ManagementPort, src => src.ManagementPort)
             .Map(dest => dest.Login, src => src.Login)
             .Map(dest => dest.Password, src => src.Password)
-            .Map(dest => dest.IsOnline, src => src.IsOnline);
+            .Map(dest => dest.IsOnline, src => src.IsOnline)
+            .Map(dest => dest.IsDefault, src => src.IsDefault);
 
         config.NewConfig<UpdateServerRequest, OpenVpnServer>()
             .Map(dest => dest.Id, src => src.Id)
@@ -56,7 +59,9 @@ public class VpnServerMapping : IRegister
             .Map(dest => dest.ManagementPort, src => src.ManagementPort)
             .Map(dest => dest.Login, src => src.Login)
             .Map(dest => dest.Password, src => src.Password)
-            .Map(dest => dest.IsOnline, src => src.IsOnline);
+            .Map(dest => dest.IsOnline, src => src.IsOnline)
+            .Map(dest => dest.IsDefault, src => src.IsDefault);
+
         
         config.NewConfig<KeyValuePair<string, BackgroundServerStatus>, ServiceStatusResponse>()
             .Map(dest => dest.VpnServerId, src => src.Value.VpnServerId)

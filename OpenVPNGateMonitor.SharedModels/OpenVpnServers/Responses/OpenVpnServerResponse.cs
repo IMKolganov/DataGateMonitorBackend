@@ -9,6 +9,7 @@ public class OpenVpnServerResponse
     public string? Login { get; set; } = string.Empty;
     public string? Password { get; set; } = string.Empty;
     public bool IsOnline { get; set; } = false;
+    public bool IsDefault { get; set; } = false;
     public DateTime CreateDate { get; set; }
     public DateTime LastUpdate { get; set; }
 }
