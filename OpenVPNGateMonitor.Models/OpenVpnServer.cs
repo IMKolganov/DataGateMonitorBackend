@@ -8,4 +8,5 @@ public class OpenVpnServer : BaseEntity<int>
     public string Login { get; set; } = string.Empty;
     public string Password { get; set; } = string.Empty;
     public bool IsOnline { get; set; } = false;
+    public bool IsDefault { get; set; } = false;
 }

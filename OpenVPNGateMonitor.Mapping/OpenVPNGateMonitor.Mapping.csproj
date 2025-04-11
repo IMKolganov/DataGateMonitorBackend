@@ -8,7 +8,7 @@
 
     <ItemGroup>
       <PackageReference Include="Mapster" Version="7.4.0" />
-      <PackageReference Include="OpenVPNGateMonitor.SharedModels" Version="1.0.4" />
+      <PackageReference Include="OpenVPNGateMonitor.SharedModels" Version="1.0.5" />
     </ItemGroup>
 
     <ItemGroup>
