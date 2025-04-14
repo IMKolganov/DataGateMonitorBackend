@@ -28,7 +28,6 @@ public class OpenVpnServerProcessor
         using var scope = _serviceProvider.CreateScope();
         var unitOfWork = scope.ServiceProvider.GetRequiredService<IUnitOfWork>();
         var openVpnServerService = scope.ServiceProvider.GetRequiredService<IOpenVpnServerService>();
-        var openVpnServerRepository = unitOfWork.GetRepository<OpenVpnServer>();
         try
         {
             var commandQueue = await _commandQueueManager.GetOrCreateQueueAsync(
@@ -42,9 +41,9 @@ public class OpenVpnServerProcessor
             _logger.LogInformation($"VpnServerId: {openVpnServer.Id}. Vpn Server Name: {openVpnServer.ServerName}. " +
                                    $"Saving connected clients for {openVpnServer.ManagementIp}:{openVpnServer.ManagementPort}");
             await openVpnServerService.SaveConnectedClientsAsync(openVpnServer.Id, commandQueue, cancellationToken);
-
+            
             openVpnServer.IsOnline = true;
-            openVpnServerRepository.Update(openVpnServer);
+            unitOfWork.MarkPropertyModified(openVpnServer, x => x.IsOnline);
             await unitOfWork.SaveChangesAsync(cancellationToken);
 
             _logger.LogInformation($"VpnServerId: {openVpnServer.Id}. Vpn Server Name: {openVpnServer.ServerName}. " +
@@ -53,7 +52,7 @@ public class OpenVpnServerProcessor
         catch (Exception ex)
         {
             openVpnServer.IsOnline = false;
-            openVpnServerRepository.Update(openVpnServer);
+            unitOfWork.MarkPropertyModified(openVpnServer, x => x.IsOnline);
             await unitOfWork.SaveChangesAsync(cancellationToken);
             _logger.LogError(ex, $"VpnServerId: {openVpnServer.Id}. Vpn Server Name: {openVpnServer.ServerName}. " +
                                  $"OpenVpnServerProcessor: Error processing OpenVPN server {openVpnServer.ManagementIp}:{openVpnServer.ManagementPort}");

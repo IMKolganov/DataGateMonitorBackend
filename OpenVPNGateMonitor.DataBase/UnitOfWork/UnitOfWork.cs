@@ -1,3 +1,4 @@
+using System.Linq.Expressions;
 using Microsoft.EntityFrameworkCore;
 using Microsoft.EntityFrameworkCore.Storage;
 using OpenVPNGateMonitor.DataBase.Contexts;
@@ -56,6 +57,24 @@ public class UnitOfWork : IUnitOfWork
 
         var dbContext = await _dbContextFactory.CreateDbContextAsync(cancellationToken);
         return await dbContext.Database.BeginTransactionAsync(cancellationToken);
+    }
+    
+    public void MarkPropertyModified<T>(T entity, Expression<Func<T, object>> property) where T : class
+    {
+        if (_context == null)
+        {
+            throw new InvalidOperationException("MarkPropertyModified can only be used " +
+                                                "when UnitOfWork is initialized with scoped DbContext.");
+        }
+
+        var entry = _context.Entry(entity);
+
+        if (entry.State == EntityState.Detached)
+        {
+            _context.Attach(entity);
+        }
+
+        entry.Property(property).IsModified = true;
     }
 
     public void Dispose()
