@@ -149,6 +149,7 @@ public class VpnDataService : IVpnDataService
     
     public async Task<OpenVpnServer> AddOpenVpnServer(OpenVpnServer openVpnServer, CancellationToken cancellationToken)
     {
+        await using var transaction = await _unitOfWork.BeginTransactionAsync(cancellationToken);
         var openVpnServerRepository = _unitOfWork.GetRepository<OpenVpnServer>();
 
         if (openVpnServer.IsDefault)
@@ -157,12 +158,14 @@ public class VpnDataService : IVpnDataService
         }
 
         await openVpnServerRepository.AddAsync(openVpnServer, cancellationToken);
-        await _unitOfWork.SaveChangesAsync(cancellationToken);
 
-        if (await CheckAndPutDefaultExpiredSettings(openVpnServer, cancellationToken))
+        if (!await CheckAndPutDefaultExpiredSettings(openVpnServer, cancellationToken))
         {
             _logger.LogWarning("Something went wrong when try to add OpenVPN Server settings");
         }
+
+        await _unitOfWork.SaveChangesAsync(cancellationToken);
+        await transaction.CommitAsync(cancellationToken);
 
         return await _unitOfWork.GetQuery<OpenVpnServer>()
             .AsQueryable()
@@ -172,6 +175,7 @@ public class VpnDataService : IVpnDataService
 
     public async Task<OpenVpnServer> UpdateOpenVpnServer(OpenVpnServer openVpnServer, CancellationToken cancellationToken)
     {
+        await using var transaction = await _unitOfWork.BeginTransactionAsync(cancellationToken);
         var openVpnServerRepository = _unitOfWork.GetRepository<OpenVpnServer>();
 
         if (openVpnServer.IsDefault)
@@ -180,12 +184,14 @@ public class VpnDataService : IVpnDataService
         }
 
         openVpnServerRepository.Update(openVpnServer);
-        await _unitOfWork.SaveChangesAsync(cancellationToken);
 
-        if (await CheckAndPutDefaultExpiredSettings(openVpnServer, cancellationToken))
+        if (!await CheckAndPutDefaultExpiredSettings(openVpnServer, cancellationToken))
         {
             _logger.LogWarning("Something went wrong when try to add OpenVPN Server settings");
         }
+        
+        await _unitOfWork.SaveChangesAsync(cancellationToken);
+        await transaction.CommitAsync(cancellationToken);
 
         return await _unitOfWork.GetQuery<OpenVpnServer>()
             .AsQueryable()
@@ -205,28 +211,30 @@ public class VpnDataService : IVpnDataService
     private async Task<bool> CheckAndPutDefaultExpiredSettings(OpenVpnServer openVpnServer, CancellationToken cancellationToken)
     {
         var ovpnRepo = _unitOfWork.GetRepository<OpenVpnServerOvpnFileConfig>();
-        if (!await ovpnRepo.Query
-                .AnyAsync(x => x.VpnServerId == openVpnServer.Id, cancellationToken))
+        var certRepo = _unitOfWork.GetRepository<OpenVpnServerCertConfig>();
+
+        var changesMade = false;
+
+        if (!await ovpnRepo.Query.AnyAsync(x => x.VpnServerId == openVpnServer.Id, cancellationToken))
         {
             await ovpnRepo.AddAsync(new OpenVpnServerOvpnFileConfig
             {
                 VpnServerId = openVpnServer.Id,
                 VpnServerIp = await _externalIpAddressService.GetRemoteIpAddress(cancellationToken),
             }, cancellationToken);
+            changesMade = true;
         }
 
-        var certRepo = _unitOfWork.GetRepository<OpenVpnServerCertConfig>();
-        if (!await certRepo.Query
-                .AnyAsync(x => x.VpnServerId == openVpnServer.Id, cancellationToken))
+        if (!await certRepo.Query.AnyAsync(x => x.VpnServerId == openVpnServer.Id, cancellationToken))
         {
             await certRepo.AddAsync(new OpenVpnServerCertConfig
             {
                 VpnServerId = openVpnServer.Id,
             }, cancellationToken);
+            changesMade = true;
         }
 
-        await _unitOfWork.SaveChangesAsync(cancellationToken);
-        return true;
+        return changesMade;
     }
     
     private async Task UnsetPreviousDefaultServer(CancellationToken cancellationToken, int exceptId = 0)
