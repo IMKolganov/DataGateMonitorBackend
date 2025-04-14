@@ -110,25 +110,47 @@ public class VpnDataService : IVpnDataService
     {
         var openVpnServer = await _unitOfWork.GetQuery<OpenVpnServer>()
             .AsQueryable()
-            .Where(x=> x.Id == vpnServerId)
-            .OrderByDescending(x=>x.Id)
-            .FirstOrDefaultAsync(cancellationToken);
-        
-        if (openVpnServer == null) throw new NullReferenceException("OpenVPN Server not found");
-        
-        var openVpnServerStatusLog = await _unitOfWork.GetQuery<OpenVpnServerStatusLog>()
+            .FirstOrDefaultAsync(x => x.Id == vpnServerId, cancellationToken);
+
+        if (openVpnServer == null)
+            throw new NullReferenceException("OpenVPN Server not found");
+
+        var latestStatusLog = await _unitOfWork.GetQuery<OpenVpnServerStatusLog>()
             .AsQueryable()
-            .Where(x => x.VpnServerId == openVpnServer.Id)
-            .OrderBy(x=>x.Id)
-            .LastOrDefaultAsync(cancellationToken);
-        
-        var openVpnServerInfoResponse = new OpenVpnServerWithStatus()
+            .Where(x => x.VpnServerId == vpnServerId)
+            .OrderByDescending(x => x.Id)
+            .FirstOrDefaultAsync(cancellationToken);
+
+        var trafficSummary = await _unitOfWork.GetQuery<OpenVpnServerStatusLog>()
+            .AsQueryable()
+            .Where(x => x.VpnServerId == vpnServerId)
+            .GroupBy(x => x.VpnServerId)
+            .Select(g => new
+            {
+                TotalBytesIn = g.Sum(x => x.BytesIn),
+                TotalBytesOut = g.Sum(x => x.BytesOut)
+            })
+            .FirstOrDefaultAsync(cancellationToken);
+
+        var countConnectedClients = await _unitOfWork.GetQuery<OpenVpnServerClient>()
+            .AsQueryable()
+            .Where(x => x.IsConnected && x.VpnServerId == vpnServerId)
+            .CountAsync(cancellationToken);
+
+        var countSessions = await _unitOfWork.GetQuery<OpenVpnServerClient>()
+            .AsQueryable()
+            .Where(x => x.VpnServerId == vpnServerId)
+            .CountAsync(cancellationToken);
+
+        return new OpenVpnServerWithStatus
         {
             OpenVpnServer = openVpnServer,
-            OpenVpnServerStatusLog = openVpnServerStatusLog
+            OpenVpnServerStatusLog = latestStatusLog,
+            CountConnectedClients = countConnectedClients,
+            CountSessions = countSessions,
+            TotalBytesIn = trafficSummary?.TotalBytesIn ?? 0,
+            TotalBytesOut = trafficSummary?.TotalBytesOut ?? 0
         };
-
-        return openVpnServerInfoResponse;
     }
 
     public async Task<OpenVpnServer> GetOpenVpnServer(int vpnServerId, CancellationToken cancellationToken)
