@@ -1,3 +1,4 @@
+using System.Linq.Expressions;
 using Microsoft.EntityFrameworkCore.Storage;
 using OpenVPNGateMonitor.DataBase.Repositories.Interfaces;
 using OpenVPNGateMonitor.DataBase.Repositories.Queries.Interfaces;
@@ -11,4 +12,5 @@ public interface IUnitOfWork : IDisposable
     Task<int> SaveChangesAsync(CancellationToken cancellationToken = default);
     void SaveChanges();
     Task<IDbContextTransaction> BeginTransactionAsync(CancellationToken cancellationToken = default);
+    void MarkPropertyModified<T>(T entity, Expression<Func<T, object>> property) where T : class;
 }

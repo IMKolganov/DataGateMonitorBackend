@@ -65,6 +65,7 @@ public class ApplicationService : IApplicationService
     {
         return await _unitOfWork.GetQuery<ClientApplication>()
             .AsQueryable()
+            .Where(x=> x.IsRevoked == false)
             .ToListAsync();
     }
     
