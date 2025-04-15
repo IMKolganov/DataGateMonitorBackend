@@ -5,37 +5,48 @@
         <ImplicitUsings>enable</ImplicitUsings>
         <Nullable>enable</Nullable>
         <LangVersion>13</LangVersion>
+
+        <!-- NuGet package metadata -->
         <GeneratePackageOnBuild>true</GeneratePackageOnBuild>
         <PackageId>OpenVPNGateMonitor.SharedModels</PackageId>
         <Authors>imkolganov</Authors>
         <Description>Shared models for accessing OpenVPNGateMonitor API</Description>
         <Title>DashBoard OpenVpn Gate Moniotor SharedModels</Title>
         <RepositoryUrl>https://github.com/IMKolganov/OpenVPNGateMonitor</RepositoryUrl>
+        <RepositoryType>git</RepositoryType>
         <Copyright>OpenVPNGateMonitor</Copyright>
         <PackageProjectUrl>https://github.com/IMKolganov/OpenVPNGateMonitor</PackageProjectUrl>
-        <RepositoryType>git</RepositoryType>
         <PackageTags>#OpenVPNGateMonitor #OpenVpn #GateMonitor #Dashboard</PackageTags>
-        <Version>1.0.5</Version>
-        <AssemblyVersion>1.0.5</AssemblyVersion>
-        <FileVersion>1.0.5</FileVersion>
-        <PackageReadmeFile>README.md</PackageReadmeFile>
         <PackageLicenseExpression>MIT</PackageLicenseExpression>
+        <PackageReadmeFile>README.md</PackageReadmeFile>
+        <Version>1.0.9</Version>
+        <AssemblyVersion>1.0.9.0</AssemblyVersion>
+        <FileVersion>1.0.9.0</FileVersion>
+
+        <Deterministic>true</Deterministic>
+        <ContinuousIntegrationBuild>true</ContinuousIntegrationBuild>
+
+        <IncludeSymbols>true</IncludeSymbols>
+        <IncludeSource>true</IncludeSource>
+        <EmbedUntrackedSources>true</EmbedUntrackedSources>
+        <PublishRepositoryUrl>true</PublishRepositoryUrl>
+        <SymbolPackageFormat>snupkg</SymbolPackageFormat>
     </PropertyGroup>
 
     <ItemGroup>
         <None Include="README.md" Pack="true" PackagePath="">
-          <CopyToOutputDirectory>Always</CopyToOutputDirectory>
+            <CopyToOutputDirectory>Always</CopyToOutputDirectory>
         </None>
     </ItemGroup>
 
     <ItemGroup>
-      <Folder Include="Auth\Requests\" />
-      <Folder Include="OpenVpnWebSocket\Responses\" />
-      <Folder Include="Requests\" />
+        <Folder Include="Auth\Requests\" />
+        <Folder Include="OpenVpnWebSocket\Responses\" />
+        <Folder Include="Requests\" />
     </ItemGroup>
 
     <ItemGroup>
-      <PackageReference Include="Mapster" Version="7.4.0" />
+        <PackageReference Include="Microsoft.SourceLink.GitHub" Version="8.0.0" PrivateAssets="All" />
     </ItemGroup>
 
 </Project>
