@@ -36,6 +36,7 @@ public class ApplicationDbContext : DbContext
     public DbSet<OpenVpnServerOvpnFileConfig> OpenVpnServerOvpnFileConfigs { get; set; } = null!;
     public DbSet<ClientApplication> ClientApplications { get; set; } = null!;
     public DbSet<Setting> Settings { get; set; } = null!;
+    public DbSet<TelegramBotUser> TelegramBotUsers { get; set; } = null!;
     
     protected override void OnModelCreating(ModelBuilder modelBuilder)
     {
@@ -49,6 +50,7 @@ public class ApplicationDbContext : DbContext
         modelBuilder.ApplyConfiguration(new OpenVpnServerOvpnFileConfigConfiguration());
         modelBuilder.ApplyConfiguration(new ClientApplicationConfiguration());
         modelBuilder.ApplyConfiguration(new SettingConfiguration());
+        modelBuilder.ApplyConfiguration(new TelegramBotUserConfiguration());
     }
     
     private void UpdateTimestamps()
