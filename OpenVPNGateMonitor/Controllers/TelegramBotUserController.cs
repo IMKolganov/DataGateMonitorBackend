@@ -25,7 +25,7 @@ public class TelegramBotUserController(ITelegramUserService telegramUserService)
     }
 
     [HttpGet("GetAdmins")]
-    public async Task<IActionResult> Set(CancellationToken cancellationToken = default)
+    public async Task<IActionResult> GetAdmins(CancellationToken cancellationToken = default)
     {
         var telegramBotUsers = await telegramUserService.GetAdminsAsync(cancellationToken);
         return Ok(ApiResponse<GetAdminsResponse>.SuccessResponse(telegramBotUsers.Adapt<GetAdminsResponse>()));

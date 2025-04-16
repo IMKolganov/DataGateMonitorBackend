@@ -71,7 +71,7 @@ public class TelegramBotUserControllerTests
             .ReturnsAsync(admins);
 
         // Act
-        var result = await _controller.Set();
+        var result = await _controller.GetAdmins();
 
         // Assert
         var okResult = result as OkObjectResult;
