@@ -72,7 +72,7 @@ public class OpenVpnFilesControllerTests
 
         apiResponse!.Success.Should().BeTrue();
         apiResponse.Data.Should().HaveCount(1);
-        apiResponse.Data![0].CommonName.Should().Be("client1");
+        apiResponse.Data![0].IssuedOvpnFile.CommonName.Should().Be("client1");
 
         mockService.Verify(s => s.GetAllOvpnFiles(vpnServerId, It.IsAny<CancellationToken>()), Times.Once);
     }
@@ -138,9 +138,9 @@ public class OpenVpnFilesControllerTests
 
         var fileResponse = new AddOvpnFileResponse
         {
-            FileName = "dummy.ovpn",
-            FullPath = "/path/dummy.ovpn",
-            FileSizeBytes = 15,
+            // FileName = "dummy.ovpn",
+            // FullPath = "/path/dummy.ovpn",
+            // FileSizeBytes = 15,
             // OvpnFile = new FileInfo("dummy.ovpn"),
             IssuedOvpnFile = new IssuedOvpnFileDto
             {
@@ -169,7 +169,7 @@ public class OpenVpnFilesControllerTests
         var response = ok.Value.Should().BeAssignableTo<ApiResponse<AddOvpnFileResponse>>().Subject;
 
         response.Success.Should().BeTrue();
-        response.Data!.FileName.Should().Be("dummy.ovpn");
+        // response.Data!.FileName.Should().Be("dummy.ovpn");
         // response.Data.Metadata.CommonName.Should().Be("client");
         // response.Data.Metadata.ExternalId.Should().Be("user123");
     }
