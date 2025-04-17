@@ -26,32 +26,45 @@ public class TelegramBotLocalizationController(ILocalizationService localization
     }
 
     [HttpGet("GetTelegramUserLanguage/{telegramId:int}")]
-    public async Task<IActionResult> GetTelegramUserLanguageAsync([FromRoute] GetTelegramUserLanguageRequest request,
+    public async Task<IActionResult> GetTelegramUserLanguageAsync(
+        [FromRoute] GetTelegramUserLanguageRequest request,
         CancellationToken cancellationToken = default)
     {
-        var telegramBotUsers = await localization.GetTelegramUserLanguageAsync(
-            request.TelegramId, cancellationToken);
-        return Ok(ApiResponse<GetTelegramUserLanguageResponse>.SuccessResponse(
-            telegramBotUsers.Adapt<GetTelegramUserLanguageResponse>()));
+        var language = await localization.GetTelegramUserLanguageAsync(request.TelegramId, cancellationToken);
+
+        var response = new GetTelegramUserLanguageResponse
+        {
+            PreferredLanguage = (SharedModels.TelegramBotLocalization.Enums.Language)language
+        };
+
+        return Ok(ApiResponse<GetTelegramUserLanguageResponse>.SuccessResponse(response));
     }
+
     
     [HttpGet("IsExistTelegramUserLanguagePreference/{telegramId:int}")]
     public async Task<IActionResult> IsExistTelegramUserLanguagePreferenceAsync(
-        [FromRoute] IsExistTelegramUserLanguagePreferenceRequest request, CancellationToken cancellationToken = default)
+        [FromRoute] IsExistTelegramUserLanguagePreferenceRequest request, 
+        CancellationToken cancellationToken = default)
     {
-        var telegramBotUsers = await localization.IsExistTelegramUserLanguagePreferenceAsync(
-            request.TelegramId, cancellationToken);
-        return Ok(ApiResponse<IsExistTelegramUserLanguagePreferenceResponse>.SuccessResponse(
-            telegramBotUsers.Adapt<IsExistTelegramUserLanguagePreferenceResponse>()));
+        var response = new IsExistTelegramUserLanguagePreferenceResponse
+        {
+            IsExistTelegramUserLanguagePreference = await localization.IsExistTelegramUserLanguagePreferenceAsync(
+                request.TelegramId, cancellationToken)
+        };
+
+        return Ok(ApiResponse<IsExistTelegramUserLanguagePreferenceResponse>.SuccessResponse(response));
     }
     
     [HttpGet("GetTextForTelegramUser/{telegramId:int}/{key:int}")]
     public async Task<IActionResult> GetTextAsync([FromRoute] GetTextForTelegramUserRequest request,
         CancellationToken cancellationToken = default)
     {
-        var telegramBotUsers = await localization.GetTextForTelegramUser(request.Key,
-            request.TelegramId, cancellationToken);
-        return Ok(ApiResponse<GetTextForTelegramUserResponse>.SuccessResponse(
-            telegramBotUsers.Adapt<GetTextForTelegramUserResponse>()));
+        var response = new GetTextForTelegramUserResponse
+        {
+            Text = await localization.GetTextForTelegramUser(
+                request.Key, request.TelegramId, cancellationToken)
+        };
+
+        return Ok(ApiResponse<GetTextForTelegramUserResponse>.SuccessResponse(response));
     }
 }
