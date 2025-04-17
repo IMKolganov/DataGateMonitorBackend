@@ -25,8 +25,8 @@ public class TelegramBotLocalizationController(ILocalizationService localization
             telegramUserLanguagePreference.Adapt<SetTelegramUserLanguageResponse>()));
     }
 
-    [HttpGet("GetTelegramUserLanguage")]
-    public async Task<IActionResult> GetTelegramUserLanguageAsync(GetTelegramUserLanguageRequest request,
+    [HttpGet("GetTelegramUserLanguage/{telegramId:int}")]
+    public async Task<IActionResult> GetTelegramUserLanguageAsync([FromRoute] GetTelegramUserLanguageRequest request,
         CancellationToken cancellationToken = default)
     {
         var telegramBotUsers = await localization.GetTelegramUserLanguageAsync(
@@ -35,9 +35,9 @@ public class TelegramBotLocalizationController(ILocalizationService localization
             telegramBotUsers.Adapt<GetTelegramUserLanguageResponse>()));
     }
     
-    [HttpGet("IsExistTelegramUserLanguagePreference")]
+    [HttpGet("IsExistTelegramUserLanguagePreference/{telegramId:int}")]
     public async Task<IActionResult> IsExistTelegramUserLanguagePreferenceAsync(
-        IsExistTelegramUserLanguagePreferenceRequest request, CancellationToken cancellationToken = default)
+        [FromRoute] IsExistTelegramUserLanguagePreferenceRequest request, CancellationToken cancellationToken = default)
     {
         var telegramBotUsers = await localization.IsExistTelegramUserLanguagePreferenceAsync(
             request.TelegramId, cancellationToken);
@@ -45,8 +45,8 @@ public class TelegramBotLocalizationController(ILocalizationService localization
             telegramBotUsers.Adapt<IsExistTelegramUserLanguagePreferenceResponse>()));
     }
     
-    [HttpGet("GetTextForTelegramUser")]
-    public async Task<IActionResult> GetTextAsync(GetTextForTelegramUserRequest request,
+    [HttpGet("GetTextForTelegramUser/{telegramId:int}/{key:int}")]
+    public async Task<IActionResult> GetTextAsync([FromRoute] GetTextForTelegramUserRequest request,
         CancellationToken cancellationToken = default)
     {
         var telegramBotUsers = await localization.GetTextForTelegramUser(request.Key,
