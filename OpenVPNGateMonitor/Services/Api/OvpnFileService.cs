@@ -138,10 +138,6 @@ public class OvpnFileService : IOvpnFileService
 
         return new AddOvpnFileResponse
         {
-            FileName = fileInfo.Name,
-            FullPath = fileInfo.FullName,
-            FileSizeBytes = fileInfo.Length,
-            CreatedAtUtc = fileInfo.CreationTimeUtc,
             IssuedOvpnFile = issuedOvpnFileDto
         };
     }
