@@ -4,7 +4,7 @@ using Serilog;
 
 var builder = WebApplication.CreateBuilder(args);
 
-builder.Host.ConfigureSerilog(builder.Configuration);
+builder.Host.ConfigureSerilog();
 
 // 🔐
 var logger = Log.ForContext("SourceContext", "JwtSecretLoader");
