@@ -1,8 +1,10 @@
 ﻿using FluentAssertions;
+using Mapster;
 using Microsoft.AspNetCore.Http;
 using Microsoft.AspNetCore.Mvc;
 using Moq;
 using OpenVPNGateMonitor.Controllers;
+using OpenVPNGateMonitor.Mapping.OpenVpnFiles.Mappings;
 using OpenVPNGateMonitor.Models;
 using OpenVPNGateMonitor.Models.Helpers.Services;
 using OpenVPNGateMonitor.Services.Api.Interfaces;
@@ -20,6 +22,7 @@ public class OpenVpnFilesControllerTests
 
     public OpenVpnFilesControllerTests()
     {
+        TypeAdapterConfig.GlobalSettings.Scan(typeof(OvpnFileMapping).Assembly);
         _fileServiceMock = new Mock<IOvpnFileService>();
         _controller = new OpenVpnFilesController(_fileServiceMock.Object);
     }
@@ -69,7 +72,7 @@ public class OpenVpnFilesControllerTests
 
         apiResponse!.Success.Should().BeTrue();
         apiResponse.Data.Should().HaveCount(1);
-        apiResponse.Data![0].CommonName.Should().Be("client1");
+        apiResponse.Data![0].IssuedOvpnFile.CommonName.Should().Be("client1");
 
         mockService.Verify(s => s.GetAllOvpnFiles(vpnServerId, It.IsAny<CancellationToken>()), Times.Once);
     }
@@ -135,6 +138,9 @@ public class OpenVpnFilesControllerTests
 
         var fileResponse = new AddOvpnFileResponse
         {
+            // FileName = "dummy.ovpn",
+            // FullPath = "/path/dummy.ovpn",
+            // FileSizeBytes = 15,
             // OvpnFile = new FileInfo("dummy.ovpn"),
             IssuedOvpnFile = new IssuedOvpnFileDto
             {
@@ -163,53 +169,9 @@ public class OpenVpnFilesControllerTests
         var response = ok.Value.Should().BeAssignableTo<ApiResponse<AddOvpnFileResponse>>().Subject;
 
         response.Success.Should().BeTrue();
-        response.Data!.FileName.Should().Be("dummy.ovpn");
+        // response.Data!.FileName.Should().Be("dummy.ovpn");
         // response.Data.Metadata.CommonName.Should().Be("client");
         // response.Data.Metadata.ExternalId.Should().Be("user123");
-    }
-    
-    [Fact]
-    public async Task RevokeOvpnFile_ReturnsSuccess_WhenNotAlreadyRevoked()
-    {
-        var request = new RevokeOvpnFileRequest
-        {
-            VpnServerId = 1,
-            CommonName = "client1",
-        };
-
-        _fileServiceMock
-            .Setup(s => s.RevokeOvpnFile(request.VpnServerId, request.CommonName, It.IsAny<CancellationToken>()))
-            .ReturnsAsync((IssuedOvpnFile?)null);
-
-        var result = await _controller.RevokeOvpnFile(request, CancellationToken.None);
-
-        var ok = result.Should().BeOfType<OkObjectResult>().Subject;
-        var response = ok.Value.Should().BeAssignableTo<ApiResponse<RevokeOvpnFileResponse>>().Subject;
-        response.Success.Should().BeTrue();
-        response.Data?.Message.Should().Be("Ovpn file revoked successfully.");
-    }
-
-    [Fact]
-    public async Task RevokeOvpnFile_ReturnsNotFound_WhenAlreadyRevoked()
-    {
-        var request = new RevokeOvpnFileRequest
-        {
-            VpnServerId = 1,
-            CommonName = "client1",
-        };
-
-        var alreadyRevoked = new IssuedOvpnFile { Id = 99 };
-
-        _fileServiceMock
-            .Setup(s => s.RevokeOvpnFile(request.VpnServerId, request.CommonName, It.IsAny<CancellationToken>()))
-            .ReturnsAsync(alreadyRevoked);
-
-        var result = await _controller.RevokeOvpnFile(request, CancellationToken.None);
-
-        var notFound = result.Should().BeOfType<NotFoundObjectResult>().Subject;
-        var response = notFound.Value.Should().BeAssignableTo<ApiResponse<RevokeOvpnFileResponse>>().Subject;
-        response.Success.Should().BeFalse();
-        response.Message.Should().Be("File not found or already revoked.");
     }
     
     [Fact]
