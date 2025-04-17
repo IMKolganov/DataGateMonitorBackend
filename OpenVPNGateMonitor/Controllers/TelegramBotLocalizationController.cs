@@ -25,7 +25,7 @@ public class TelegramBotLocalizationController(ILocalizationService localization
             telegramUserLanguagePreference.Adapt<SetTelegramUserLanguageResponse>()));
     }
 
-    [HttpGet("GetTelegramUserLanguage/{telegramId:int}")]
+    [HttpGet("GetTelegramUserLanguage/{telegramId}")]
     public async Task<IActionResult> GetTelegramUserLanguageAsync(
         [FromRoute] GetTelegramUserLanguageRequest request,
         CancellationToken cancellationToken = default)
@@ -41,7 +41,7 @@ public class TelegramBotLocalizationController(ILocalizationService localization
     }
 
     
-    [HttpGet("IsExistTelegramUserLanguagePreference/{telegramId:int}")]
+    [HttpGet("IsExistTelegramUserLanguagePreference/{telegramId}")]
     public async Task<IActionResult> IsExistTelegramUserLanguagePreferenceAsync(
         [FromRoute] IsExistTelegramUserLanguagePreferenceRequest request, 
         CancellationToken cancellationToken = default)
@@ -55,7 +55,7 @@ public class TelegramBotLocalizationController(ILocalizationService localization
         return Ok(ApiResponse<IsExistTelegramUserLanguagePreferenceResponse>.SuccessResponse(response));
     }
     
-    [HttpGet("GetTextForTelegramUser/{telegramId:int}/{key:int}")]
+    [HttpGet("GetTextForTelegramUser/{telegramId}/{key}")]
     public async Task<IActionResult> GetTextAsync([FromRoute] GetTextForTelegramUserRequest request,
         CancellationToken cancellationToken = default)
     {
