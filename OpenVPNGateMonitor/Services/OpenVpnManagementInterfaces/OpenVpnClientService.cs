@@ -24,7 +24,18 @@ public class OpenVpnClientService : IOpenVpnClientService
         CancellationToken cancellationToken)
     {
         var response = await commandQueue.SendCommandAsync("status 3", cancellationToken);
-        return await ParseStatus(response, cancellationToken);
+        _logger.LogDebug("Received status response:\n{Response}", response);
+        
+        var clients = await ParseStatus(response, cancellationToken);
+        _logger.LogInformation("Found {ClientCount} connected clients", clients.Count);
+        
+        if (clients.Any())
+        {
+            _logger.LogDebug("Connected clients: {Clients}", 
+                string.Join(", ", clients.Select(c => c.CommonName)));
+        }
+        
+        return clients;
     }
 
     private async Task<List<OpenVpnClient>> ParseStatus(string data, CancellationToken cancellationToken)

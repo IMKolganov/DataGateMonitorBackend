@@ -77,7 +77,7 @@ public class CommandQueue : ICommandQueue
         var cmdId = Guid.NewGuid();
         var tcs = new TaskCompletionSource<string>();
         _pendingCommands[cmdId] = tcs;
-
+        
         await _telnetClient.SendAsync(command, cancellationToken);
 
         var completedTask = await Task.WhenAny(tcs.Task, Task.Delay(timeoutMs, cancellationToken));
@@ -91,7 +91,7 @@ public class CommandQueue : ICommandQueue
         else
         {
             _pendingCommands.TryRemove(cmdId, out _);
-            throw new TimeoutException($"[ERROR] Command \"{command}\" timed out after {timeoutMs}ms.");
+            throw new TimeoutException($"[CommandQueue] Command \"{command}\" timed out after {timeoutMs}ms.");
         }
     }
 
