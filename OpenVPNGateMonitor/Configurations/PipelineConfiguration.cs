@@ -2,7 +2,6 @@
 using Microsoft.EntityFrameworkCore;
 using Microsoft.OpenApi.Writers;
 using OpenVPNGateMonitor.DataBase.Contexts;
-using OpenVPNGateMonitor.Services.EasyRsaServices.Interfaces;
 using Swashbuckle.AspNetCore.Swagger;
 
 namespace OpenVPNGateMonitor.Configurations;
@@ -77,7 +76,7 @@ public static class PipelineConfiguration
         var environmentName = app.Environment.EnvironmentName;
         
         app.MapGet("/",
-            (ILogger<IEasyRsaService> logger) => Results.Text(statusCode: 200, 
+            () => Results.Text(statusCode: 200, 
                 content: $"OpenVPNGateMonitor Application version: {version}; Environment: {environmentName};"));
 
         app.Logger.LogInformation($"Application version: {version}; Environment: {environmentName};");
