@@ -4,7 +4,6 @@ using OpenVPNGateMonitor.DataBase.UnitOfWork;
 using OpenVPNGateMonitor.Models;
 using OpenVPNGateMonitor.Models.Helpers.Services;
 using OpenVPNGateMonitor.Services.Api.Interfaces;
-using OpenVPNGateMonitor.Services.EasyRsaServices.Interfaces;
 using OpenVPNGateMonitor.SharedModels.OpenVpnFiles.Responses;
 using OpenVPNGateMonitor.SharedModels.OpenVpnFiles.Responses.Dto;
 
@@ -14,16 +13,11 @@ public class OvpnFileService : IOvpnFileService
 {
     private readonly ILogger<IOvpnFileService> _logger;
     private readonly IUnitOfWork _unitOfWork;
-    private readonly ICertVpnService _certVpnService;
-    private readonly IEasyRsaService _easyRsaService;
 
-    public OvpnFileService(ILogger<IOvpnFileService> logger, IUnitOfWork unitOfWork, 
-        ICertVpnService certVpnService, IEasyRsaService easyRsaService)
+    public OvpnFileService(ILogger<IOvpnFileService> logger, IUnitOfWork unitOfWork)
     {
         _logger = logger;
         _unitOfWork = unitOfWork;
-        _certVpnService = certVpnService;
-        _easyRsaService = easyRsaService;
     }
 
     public async Task<List<IssuedOvpnFile>> GetAllOvpnFiles(int vpnServerId, 

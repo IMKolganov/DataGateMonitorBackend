@@ -3,7 +3,6 @@ using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Mvc;
 using OpenVPNGateMonitor.Models.Enums;
 using OpenVPNGateMonitor.Models.Helpers.Services;
-using OpenVPNGateMonitor.Services.Api.Interfaces;
 using OpenVPNGateMonitor.SharedModels.OpenVpnServerCerts.Requests;
 using OpenVPNGateMonitor.SharedModels.OpenVpnServerCerts.Responses;
 using OpenVPNGateMonitor.SharedModels.Responses;
@@ -13,7 +12,7 @@ namespace OpenVPNGateMonitor.Controllers;
 [ApiController]
 [Route("api/[controller]")]
 [Authorize]
-public class OpenVpnServerCertsController(ILogger<OpenVpnServerCertsController> logger, ICertVpnService certVpnService)
+public class OpenVpnServerCertsController(ILogger<OpenVpnServerCertsController> logger)
     : ControllerBase
 {
     private readonly ILogger<OpenVpnServerCertsController> _logger = logger;
