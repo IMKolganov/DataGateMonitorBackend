@@ -1,7 +1,5 @@
 using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Mvc;
-using OpenVPNGateMonitor.Services.Api.Interfaces;
-using Mapster;
 using OpenVPNGateMonitor.SharedModels.OpenVpnFiles.Requests;
 using OpenVPNGateMonitor.SharedModels.OpenVpnFiles.Responses;
 using OpenVPNGateMonitor.SharedModels.Responses;
