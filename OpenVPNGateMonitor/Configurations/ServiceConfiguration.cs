@@ -3,6 +3,8 @@ using OpenVPNGateMonitor.Services.Api;
 using OpenVPNGateMonitor.Services.Api.Interfaces;
 using OpenVPNGateMonitor.Services.BackgroundServices;
 using OpenVPNGateMonitor.Services.BackgroundServices.Interfaces;
+using OpenVPNGateMonitor.Services.DataGateCertManager;
+using OpenVPNGateMonitor.Services.DataGateCertManager.Interfaces;
 using OpenVPNGateMonitor.Services.Helpers;
 using OpenVPNGateMonitor.Services.OpenVpnManagementInterfaces;
 using OpenVPNGateMonitor.Services.OpenVpnManagementInterfaces.Interfaces;
@@ -41,7 +43,6 @@ public static class ServiceConfiguration
         services.AddScoped<IOpenVpnTelnetService, OpenVpnTelnetService>();
         
         services.AddScoped<IVpnDataService, VpnDataService>();
-        services.AddScoped<IOvpnFileService, OvpnFileService>();
 
         services.AddSingleton<OpenVpnServerStatusManager>();
         services.AddSingleton<OpenVpnServerProcessorFactory>();
@@ -54,5 +55,16 @@ public static class ServiceConfiguration
         services.AddScoped<ISettingsService, SettingsService>();
         
         services.AddScoped<ExternalIpAddressService>();
+
+        #region DataGateCertManager
+
+        services.AddHttpClient<ICertApiClient, CertApiClient>(client =>
+        {
+            client.BaseAddress = new Uri(configuration["DataGateCertManager:BaseUrl"] 
+                                         ?? throw new InvalidOperationException("DataGateCertManager:BaseUrl not configured"));
+            client.Timeout = TimeSpan.FromSeconds(30);
+        });
+
+        #endregion
     }
 }

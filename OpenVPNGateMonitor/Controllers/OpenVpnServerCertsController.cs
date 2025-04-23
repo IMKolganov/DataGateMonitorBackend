@@ -12,11 +12,9 @@ namespace OpenVPNGateMonitor.Controllers;
 [ApiController]
 [Route("api/[controller]")]
 [Authorize]
-public class OpenVpnServerCertsController(ILogger<OpenVpnServerCertsController> logger)
+public class OpenVpnServerCertsController()
     : ControllerBase
 {
-    private readonly ILogger<OpenVpnServerCertsController> _logger = logger;
-
     [HttpGet("GetAllVpnServerCertificates/{VpnServerId:int}")]
     public async Task<IActionResult> GetAllVpnServerCertificates(
         [FromRoute] GetAllVpnServerCertificatesRequest request,
