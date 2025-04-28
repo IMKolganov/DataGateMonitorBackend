@@ -59,41 +59,50 @@ public class OpenVpnBackgroundService : BackgroundService, IOpenVpnBackgroundSer
 
     private async Task RunOpenVpnTask(int nextRunSeconds, CancellationToken cancellationToken)
     {
-        _logger.LogInformation("Starting OpenVPN task execution...");
-        using var scope = _serviceProvider.CreateScope();
-        var unitOfWork = scope.ServiceProvider.GetRequiredService<IUnitOfWork>();
-        var openVpnServers = unitOfWork.GetQuery<OpenVpnServer>().AsQueryable().ToList();
-        _statusManager.ClearAllStatuses();
-
-        await Parallel.ForEachAsync(openVpnServers, cancellationToken, async (server, ct) =>
+        try
         {
-            _logger.LogInformation($"VpnServerId: {server.Id}. VpnServerName: {server.ServerName} " +
-                                   $"Processing server: {server.ManagementIp}:{server.ManagementPort}");
-            try
+            await RunOpenVpnTask(nextRunSeconds, cancellationToken);
+            _logger.LogInformation("Starting OpenVPN task execution...");
+            using var scope = _serviceProvider.CreateScope();
+            var unitOfWork = scope.ServiceProvider.GetRequiredService<IUnitOfWork>();
+            var openVpnServers = unitOfWork.GetQuery<OpenVpnServer>().AsQueryable().ToList();
+            _statusManager.ClearAllStatuses();
+
+            await Parallel.ForEachAsync(openVpnServers, cancellationToken, async (server, ct) =>
             {
-                _statusManager.UpdateStatus(server.Id, ServiceStatus.Running, nextRunSeconds);
-                
-                var processor = _processorFactory.GetOrCreateProcessor(server);
-                await processor.ProcessServerAsync(server, ct);
-                
-                _statusManager.UpdateStatus(server.Id, ServiceStatus.Idle, nextRunSeconds);
                 _logger.LogInformation($"VpnServerId: {server.Id}. VpnServerName: {server.ServerName} " +
-                                       $"Completed processing for server Id: {server.Id} Name: {server.ServerName}");
-            }
-            catch (TimeoutException ex)
-            {
-                _statusManager.UpdateStatus(server.Id, ServiceStatus.Error, nextRunSeconds, "Timeout");
-                _logger.LogError(ex, $"VpnServerId: {server.Id}. VpnServerName: {server.ServerName} " +
-                                     $"Timeout while processing OpenVPN server {server.ManagementIp}:{server.ManagementPort}");
-            }
-            catch (Exception ex)
-            {
-                _statusManager.UpdateStatus(server.Id, ServiceStatus.Error, nextRunSeconds, ex.Message);
-                _logger.LogError(ex, $"VpnServerId: {server.Id}. VpnServerName: {server.ServerName} " +
-                                     $"Error processing OpenVPN server {server.ManagementIp}:{server.ManagementPort}");
-            }
-        });
-        _logger.LogInformation("OpenVPN task execution completed.");
+                                       $"Processing server: {server.ManagementIp}:{server.ManagementPort}");
+                try
+                {
+                    _statusManager.UpdateStatus(server.Id, ServiceStatus.Running, nextRunSeconds);
+
+                    var processor = _processorFactory.GetOrCreateProcessor(server);
+                    await processor.ProcessServerAsync(server, ct);
+
+                    _statusManager.UpdateStatus(server.Id, ServiceStatus.Idle, nextRunSeconds);
+                    _logger.LogInformation($"VpnServerId: {server.Id}. VpnServerName: {server.ServerName} " +
+                                           $"Completed processing for server Id: {server.Id} Name: {server.ServerName}");
+                }
+                catch (TimeoutException ex)
+                {
+                    _statusManager.UpdateStatus(server.Id, ServiceStatus.Error, nextRunSeconds, "Timeout");
+                    _logger.LogError(ex, $"VpnServerId: {server.Id}. VpnServerName: {server.ServerName} " +
+                                         $"Timeout while processing OpenVPN server {server.ManagementIp}:{server.ManagementPort}");
+                }
+                catch (Exception ex)
+                {
+                    _statusManager.UpdateStatus(server.Id, ServiceStatus.Error, nextRunSeconds, ex.Message);
+                    _logger.LogError(ex, $"VpnServerId: {server.Id}. VpnServerName: {server.ServerName} " +
+                                         $"Error processing OpenVPN server {server.ManagementIp}:{server.ManagementPort}");
+                }
+            });
+            _logger.LogInformation("OpenVPN task execution completed.");
+        }
+        catch (Exception ex)
+        {
+            _logger.LogError(ex, "Error during first OpenVPN task execution. Retrying after short delay.");
+            await Task.Delay(TimeSpan.FromSeconds(30), cancellationToken);
+        }
     }
 
     protected override async Task ExecuteAsync(CancellationToken cancellationToken)
