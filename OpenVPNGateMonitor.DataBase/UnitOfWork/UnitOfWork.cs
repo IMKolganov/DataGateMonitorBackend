@@ -32,7 +32,7 @@ public class UnitOfWork : IUnitOfWork
         return _queryFactory.GetQuery<T>();
     }
 
-    public async Task<int> SaveChangesAsync(CancellationToken cancellationToken = default)
+    public async Task<int> SaveChangesAsync(CancellationToken cancellationToken)
     {
         if (_context != null)
         {
@@ -48,7 +48,7 @@ public class UnitOfWork : IUnitOfWork
         _context?.SaveChanges();
     }
 
-    public async Task<IDbContextTransaction> BeginTransactionAsync(CancellationToken cancellationToken = default)
+    public async Task<IDbContextTransaction> BeginTransactionAsync(CancellationToken cancellationToken)
     {
         if (_context != null)
         {

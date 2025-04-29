@@ -13,7 +13,7 @@ namespace OpenVPNGateMonitor.Controllers;
 public class SettingsController(ISettingsService settingsService) : ControllerBase
 {
     [HttpGet("Get")]
-    public async Task<IActionResult> Get([FromQuery] GetSettingRequest request, CancellationToken cancellationToken = default)
+    public async Task<IActionResult> Get([FromQuery] GetSettingRequest request, CancellationToken cancellationToken)
     {
         var settingType = await settingsService.GetValueAsync<string>($"{request.Key}_Type", cancellationToken);
         if (settingType == null)
@@ -42,7 +42,7 @@ public class SettingsController(ISettingsService settingsService) : ControllerBa
     [HttpPost("Set")]
     public async Task<IActionResult> Set(
         [FromQuery] SetSettingRequest request,
-        CancellationToken cancellationToken = default)
+        CancellationToken cancellationToken)
     {
         object? convertedValue = request.Type.ToLower() switch
         {

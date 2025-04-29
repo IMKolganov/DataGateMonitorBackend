@@ -42,7 +42,7 @@ public class TelegramBotLocalizationControllerTests
             .Setup(x => x.SetTelegramUserLanguageAsync(It.IsAny<TelegramUserLanguagePreference>(), It.IsAny<CancellationToken>()))
             .ReturnsAsync(preference);
 
-        var result = await _controller.SetTelegramUserLanguageAsync(request);
+        var result = await _controller.SetTelegramUserLanguageAsync(request, CancellationToken.None);
 
         var okResult = result as OkObjectResult;
         okResult.Should().NotBeNull();
@@ -68,7 +68,7 @@ public class TelegramBotLocalizationControllerTests
                 It.IsAny<CancellationToken>()))
             .ReturnsAsync(Language.Russian);
 
-        var result = await _controller.GetTelegramUserLanguageAsync(request);
+        var result = await _controller.GetTelegramUserLanguageAsync(request, CancellationToken.None);
 
         var okResult = result as OkObjectResult;
         okResult.Should().NotBeNull();
@@ -89,7 +89,7 @@ public class TelegramBotLocalizationControllerTests
                 request.TelegramId, It.IsAny<CancellationToken>()))
             .ReturnsAsync(true);
 
-        var result = await _controller.IsExistTelegramUserLanguagePreferenceAsync(request);
+        var result = await _controller.IsExistTelegramUserLanguagePreferenceAsync(request, CancellationToken.None);
 
         var okResult = result as OkObjectResult;
         okResult.Should().NotBeNull();
@@ -117,7 +117,7 @@ public class TelegramBotLocalizationControllerTests
                 It.Is<Language?>(lang => lang == null)))
             .ReturnsAsync("long text");
 
-        var result = await _controller.GetTextAsync(request);
+        var result = await _controller.GetTextAsync(request, CancellationToken.None);
 
         var okResult = result as OkObjectResult;
         okResult.Should().NotBeNull();

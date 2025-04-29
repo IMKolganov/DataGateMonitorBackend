@@ -23,7 +23,7 @@ public class GeoLiteController(
     }
     
     [HttpGet("GetGeoInfo")]
-    public async Task<IActionResult> GetGeoInfo(string ipaddress, CancellationToken cancellationToken = default)
+    public async Task<IActionResult> GetGeoInfo(string ipaddress, CancellationToken cancellationToken)
     {
         if (string.IsNullOrEmpty(ipaddress))
             return BadRequest("ipaddress is required.");
@@ -36,14 +36,14 @@ public class GeoLiteController(
     }
     
     [HttpGet("GetVersionDatabase")]
-    public async Task<IActionResult> GetVersionDatabase(CancellationToken cancellationToken = default)
+    public async Task<IActionResult> GetVersionDatabase(CancellationToken cancellationToken)
     {
         var version = await geoLiteQueryService.GetDatabaseVersionAsync(cancellationToken);
         return Ok(new { version });
     }
 
     [HttpPost("UpdateDatabase")]
-    public async Task<IActionResult> UpdateDatabase(CancellationToken cancellationToken = default)
+    public async Task<IActionResult> UpdateDatabase(CancellationToken cancellationToken)
     {
         var updateResult = await geoLiteUpdaterService.DownloadAndUpdateDatabaseAsync(cancellationToken);
 
