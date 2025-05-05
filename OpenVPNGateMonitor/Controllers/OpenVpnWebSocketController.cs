@@ -13,7 +13,7 @@ public class OpenVpnWebSocketController(IOpenVpnTelnetService openVpnTelnetServi
     [HttpGet("ws/{openVpnServerId:int}")]
     public async Task GetWebSocket(
         [FromRoute] GetWebSocketByServerIdRequest request,
-        CancellationToken cancellationToken = default)
+        CancellationToken cancellationToken)
     {
         await openVpnTelnetService.HandleWebSocketByServerIdAsync(HttpContext, request.OpenVpnServerId, cancellationToken);
     }
@@ -21,7 +21,7 @@ public class OpenVpnWebSocketController(IOpenVpnTelnetService openVpnTelnetServi
     [HttpGet("ws/{ip}/{port:int}")]
     public async Task GetWebSocket(
         [FromRoute] GetWebSocketByIpRequest request,
-        CancellationToken cancellationToken = default)
+        CancellationToken cancellationToken)
     {
         await openVpnTelnetService.HandleWebSocketAsync(HttpContext, request.Ip, request.Port, cancellationToken);
     }

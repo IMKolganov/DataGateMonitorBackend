@@ -1,93 +1,68 @@
 using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Mvc;
-using OpenVPNGateMonitor.Services.Api.Interfaces;
-using Mapster;
-using OpenVPNGateMonitor.SharedModels.OpenVpnFiles.Requests;
-using OpenVPNGateMonitor.SharedModels.OpenVpnFiles.Responses;
-using OpenVPNGateMonitor.SharedModels.Responses;
+using OpenVPNGateMonitor.Models;
+using OpenVPNGateMonitor.Models.Helpers.DataGateCertManager;
+using OpenVPNGateMonitor.Services.DataGateCertManager.Interfaces;
 
 namespace OpenVPNGateMonitor.Controllers;
 
 [ApiController]
 [Route("api/[controller]")]
 [Authorize]
-public class OpenVpnFilesController(IOvpnFileService ovpFileService) : ControllerBase
+public class OpenVpnFilesController(
+    IOvpnFileApiClient ovpnFileApiClient,
+    ILogger<OpenVpnFilesController> logger) : ControllerBase
 {
-    [HttpGet("GetAllOvpnFiles/{VpnServerId:int}")]
-    public async Task<IActionResult> GetAllOvpnFiles([FromRoute] GetAllOvpnFilesRequest request,
-        CancellationToken cancellationToken)
-    {
-        var files = await ovpFileService.GetAllOvpnFiles(request.VpnServerId, cancellationToken);
-        var response = files.Adapt<List<OvpnFileResponse>>();
-
-        return Ok(ApiResponse<List<OvpnFileResponse>>.SuccessResponse(response));
-    }
-
-    [HttpGet("GetAllByExternalIdOvpnFiles")]
-    public async Task<IActionResult> GetAllByExternalIdOvpnFiles(
-        [FromQuery] GetAllByExternalIdOvpnFilesRequest request,
-        CancellationToken cancellationToken)
-    {
-        var files = await ovpFileService.GetAllOvpnFilesByExternalId(
-            request.VpnServerId, request.ExternalId, cancellationToken);
-
-        var response = files.Adapt<List<OvpnFileResponse>>();
-        return Ok(ApiResponse<List<OvpnFileResponse>>.SuccessResponse(response));
-    }
-
     [HttpPost("AddOvpnFile")]
-    public async Task<IActionResult> AddOvpnFile([FromBody] AddOvpnFileRequest request,
-        CancellationToken cancellationToken = default)
+    public async Task<ActionResult<IssuedOvpnFile>> AddOvpnFile(
+        [FromBody] AddOvpnFileRequest request,
+        CancellationToken cancellationToken)
     {
-        var response = await ovpFileService.AddOvpnFile(
-            request.ExternalId, request.CommonName, request.VpnServerId,
-            cancellationToken, request.IssuedTo);
-
-        return Ok(ApiResponse<AddOvpnFileResponse>.SuccessResponse(
-            response, "Ovpn file added successfully."));
+        try
+        {
+            var result = await ovpnFileApiClient.AddOvpnFileAsync(request, cancellationToken);
+            return Ok(result);
+        }
+        catch (Exception ex)
+        {
+            logger.LogError(ex, "Failed to add OVPN file for {CommonName}", request.CommonName);
+            return BadRequest(new { error = "Failed to add OVPN file", message = ex.Message });
+        }
     }
 
     [HttpPost("RevokeOvpnFile")]
-    public async Task<IActionResult> RevokeOvpnFile([FromBody] RevokeOvpnFileRequest request,
-        CancellationToken cancellationToken = default)
-    {
-        var result = await ovpFileService.RevokeOvpnFile(request.VpnServerId, request.CommonName, 
-            cancellationToken);
-
-        if (result == null)
-            return NotFound(
-                ApiResponse<RevokeOvpnFileResponse>.ErrorResponse($"Something went wrong," +
-                                                                  $" when trying to revoke an Ovpn file. " +
-                                                                  $"CommonName: {request.CommonName}"));
-
-        return Ok(ApiResponse<RevokeOvpnFileResponse>.SuccessResponse(new RevokeOvpnFileResponse
-        {
-            Success = true,
-            Message = $"Ovpn file revoked successfully. FileName: {result.FileName} CommonName: {request.CommonName}"
-        }));
-    }
-
-    [HttpGet("DownloadOvpnFile/{issuedOvpnFileId}/{vpnServerId}")]
-    public async Task<IActionResult> DownloadOvpnFile(
-        [FromRoute] DownloadOvpnFileRequest request,
+    public async Task<ActionResult<bool>> RevokeOvpnFile(
+        [FromBody] RevokeOvpnFileRequest request,
         CancellationToken cancellationToken)
     {
-        var result = await ovpFileService.GetOvpnFile(
-            request.IssuedOvpnFileId, request.VpnServerId, cancellationToken);
-
-        if (result.FileStream == null)
-            return NotFound(ApiResponse<string>.ErrorResponse($"File not found: {result.FileName}"));
-
-        var response = new DownloadOvpnFileResponse
+        try
         {
-            FileStream = result.FileStream,
-            FileName = result.FileName
-        };
+            var result = await ovpnFileApiClient.RevokeOvpnFileAsync(request, cancellationToken);
+            return Ok(result);
+        }
+        catch (Exception ex)
+        {
+            logger.LogError(ex, "Failed to revoke OVPN file {FileName} for {CommonName}", 
+                request.OvpnFileName, request.CommonName);
+            return BadRequest(new { error = "Failed to revoke OVPN file", message = ex.Message });
+        }
+    }
 
-        var safeFileName = Uri.EscapeDataString(response.FileName);
-        Response.Headers["Content-Disposition"] = $"attachment; filename=\"{safeFileName}\"";
-        Response.Headers["Access-Control-Expose-Headers"] = "Content-Disposition";
-
-        return File(response.FileStream, "application/x-openvpn-profile", response.FileName);
+    [HttpPost("DownloadOvpnFile")]
+    public async Task<ActionResult<string>> DownloadOvpnFile(
+        [FromBody] DownloadOvpnFileRequest request,
+        CancellationToken cancellationToken)
+    {
+        try
+        {
+            var content = await ovpnFileApiClient.DownloadOvpnFileAsync(request, cancellationToken);
+            return Ok(content);
+        }
+        catch (Exception ex)
+        {
+            logger.LogError(ex, "Failed to download OVPN file {FileName} for {CommonName}", 
+                request.FileName, request.CommonName);
+            return BadRequest(new { error = "Failed to download OVPN file", message = ex.Message });
+        }
     }
 }

@@ -4,11 +4,12 @@ namespace OpenVPNGateMonitor.Services.Api.Auth;
 
 public interface IApplicationService
 {
-    Task<ClientApplication> RegisterApplicationAsync(string name);
-    Task<ClientApplication?> GetApplicationByClientIdAsync(string clientId);
-    Task<ClientApplication?> GetApplicationSystemByClientIdAsync(string clientId);
-    Task<bool> IsSystemApplicationSetAsync();
-    Task<List<ClientApplication>> GetAllApplicationsAsync();
-    Task<ClientApplication> UpdateApplicationAsync(ClientApplication clientApplication);
-    Task<bool> RevokeApplicationAsync(string clientId);
+    Task<ClientApplication> RegisterApplicationAsync(string name, CancellationToken cancellationToken);
+    Task<ClientApplication?> GetApplicationByClientIdAsync(string clientId, CancellationToken cancellationToken);
+    Task<ClientApplication?> GetApplicationSystemByClientIdAsync(string clientId, CancellationToken cancellationToken);
+    Task<bool> IsSystemApplicationSetAsync(CancellationToken cancellationToken);
+    Task<List<ClientApplication>> GetAllApplicationsAsync(CancellationToken cancellationToken);
+    Task<ClientApplication> UpdateApplicationAsync(ClientApplication clientApplication, 
+        CancellationToken cancellationToken);
+    Task<bool> RevokeApplicationAsync(string clientId, CancellationToken cancellationToken);
 }

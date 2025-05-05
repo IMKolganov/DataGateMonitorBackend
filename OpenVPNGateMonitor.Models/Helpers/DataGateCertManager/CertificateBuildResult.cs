@@ -1,4 +1,4 @@
-﻿namespace OpenVPNGateMonitor.Models.Helpers;
+﻿namespace OpenVPNGateMonitor.Models.Helpers.DataGateCertManager;
 
 public class CertificateBuildResult
 {

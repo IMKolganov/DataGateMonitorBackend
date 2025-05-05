@@ -18,7 +18,7 @@ public class OpenVpnServerOvpnFileConfigController(
 {
     [HttpGet("GetOvpnFileConfig/{vpnServerId:int}")]
     public async Task<IActionResult> GetOvpnFileConfig(
-        [FromRoute] GetOvpnFileConfigRequest request, CancellationToken cancellationToken = default)
+        [FromRoute] GetOvpnFileConfigRequest request, CancellationToken cancellationToken)
     {
         var config = await openVpnServerOvpnFileConfigService
             .GetOpenVpnServerOvpnFileConfigByServerId(request.VpnServerId, cancellationToken);
@@ -28,7 +28,7 @@ public class OpenVpnServerOvpnFileConfigController(
     
     [HttpPost("AddOrUpdateOvpnFileConfig")]
     public async Task<IActionResult> AddOrUpdateOvpnFileConfig(
-        [FromBody] AddOrUpdateOvpnFileConfigRequest request, CancellationToken cancellationToken = default)
+        [FromBody] AddOrUpdateOvpnFileConfigRequest request, CancellationToken cancellationToken)
     {
         var config = await openVpnServerOvpnFileConfigService
             .AddOrUpdateOpenVpnServerOvpnFileConfigByServerId(request.Adapt<OpenVpnServerOvpnFileConfig>(), cancellationToken);

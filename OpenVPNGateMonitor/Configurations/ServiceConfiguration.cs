@@ -3,8 +3,8 @@ using OpenVPNGateMonitor.Services.Api;
 using OpenVPNGateMonitor.Services.Api.Interfaces;
 using OpenVPNGateMonitor.Services.BackgroundServices;
 using OpenVPNGateMonitor.Services.BackgroundServices.Interfaces;
-using OpenVPNGateMonitor.Services.EasyRsaServices;
-using OpenVPNGateMonitor.Services.EasyRsaServices.Interfaces;
+using OpenVPNGateMonitor.Services.DataGateCertManager;
+using OpenVPNGateMonitor.Services.DataGateCertManager.Interfaces;
 using OpenVPNGateMonitor.Services.Helpers;
 using OpenVPNGateMonitor.Services.OpenVpnManagementInterfaces;
 using OpenVPNGateMonitor.Services.OpenVpnManagementInterfaces.Interfaces;
@@ -39,24 +39,10 @@ public static class ServiceConfiguration
 
         services.AddSingleton<CommandQueueManager>();
         services.AddSingleton<ICommandQueueManager>(provider => provider.GetRequiredService<CommandQueueManager>());
-
-        services.AddSingleton<BashCommandRunner>();
-        services.AddSingleton<IBashCommandRunner>(provider => provider.GetRequiredService<BashCommandRunner>());
-        
-        services.AddSingleton<EasyRsaService>();
-        services.AddSingleton<IEasyRsaService>(provider => provider.GetRequiredService<EasyRsaService>());
-
-        services.AddSingleton<EasyRsaParseDbService>();
-        services.AddSingleton<IEasyRsaParseDbService>(provider => provider.GetRequiredService<EasyRsaParseDbService>());
-
-        services.AddSingleton<EasyRsaExecCommandService>();
-        services.AddSingleton<IEasyRsaExecCommandService>(provider => provider.GetRequiredService<EasyRsaExecCommandService>());
         
         services.AddScoped<IOpenVpnTelnetService, OpenVpnTelnetService>();
         
         services.AddScoped<IVpnDataService, VpnDataService>();
-        services.AddScoped<ICertVpnService, CertVpnService>();
-        services.AddScoped<IOvpnFileService, OvpnFileService>();
 
         services.AddSingleton<OpenVpnServerStatusManager>();
         services.AddSingleton<OpenVpnServerProcessorFactory>();
@@ -69,5 +55,22 @@ public static class ServiceConfiguration
         services.AddScoped<ISettingsService, SettingsService>();
         
         services.AddScoped<ExternalIpAddressService>();
+
+        #region DataGateCertManager
+
+        var baseUrl = configuration["DataGateCertManager:BaseUrl"]
+                      ?? throw new InvalidOperationException("DataGateCertManager:BaseUrl not configured");
+
+        static void ConfigureDataGateClient(HttpClient client, string baseUrl)
+        {
+            client.BaseAddress = new Uri(baseUrl);
+            client.Timeout = TimeSpan.FromSeconds(30);
+        }
+
+        services.AddHttpClient<ICertApiClient, CertApiClient>(client => ConfigureDataGateClient(client, baseUrl));
+        services.AddHttpClient<IOvpnFileApiClient, OvpnFileApiClient>(client => ConfigureDataGateClient(client, baseUrl));
+
+
+        #endregion
     }
 }
