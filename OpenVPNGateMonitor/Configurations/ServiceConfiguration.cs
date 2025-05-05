@@ -58,12 +58,18 @@ public static class ServiceConfiguration
 
         #region DataGateCertManager
 
-        services.AddHttpClient<ICertApiClient, CertApiClient>(client =>
+        var baseUrl = configuration["DataGateCertManager:BaseUrl"]
+                      ?? throw new InvalidOperationException("DataGateCertManager:BaseUrl not configured");
+
+        static void ConfigureDataGateClient(HttpClient client, string baseUrl)
         {
-            client.BaseAddress = new Uri(configuration["DataGateCertManager:BaseUrl"] 
-                                         ?? throw new InvalidOperationException("DataGateCertManager:BaseUrl not configured"));
+            client.BaseAddress = new Uri(baseUrl);
             client.Timeout = TimeSpan.FromSeconds(30);
-        });
+        }
+
+        services.AddHttpClient<ICertApiClient, CertApiClient>(client => ConfigureDataGateClient(client, baseUrl));
+        services.AddHttpClient<IOvpnFileApiClient, OvpnFileApiClient>(client => ConfigureDataGateClient(client, baseUrl));
+
 
         #endregion
     }
