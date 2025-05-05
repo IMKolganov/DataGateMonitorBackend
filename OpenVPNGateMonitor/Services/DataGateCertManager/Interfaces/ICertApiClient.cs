@@ -5,8 +5,8 @@ namespace OpenVPNGateMonitor.Services.DataGateCertManager.Interfaces;
 
 public interface ICertApiClient
 {
-    Task<List<CertificateCaInfo>> GetAllCertificatesAsync(CancellationToken cancellationToken);
-    Task<CertificateBuildResult> BuildCertificateAsync(string commonName, CancellationToken cancellationToken);
-    Task<CertificateRevokeResult> RevokeCertificateAsync(string commonName, CancellationToken cancellationToken);
-    Task<string> GetPemContentAsync(string filePath, CancellationToken cancellationToken);
+    Task<List<CertificateCaInfo>> GetAllCertificatesAsync(int serverId, CancellationToken cancellationToken);
+    Task<CertificateBuildResult> BuildCertificateAsync(int serverId, string commonName, CancellationToken cancellationToken);
+    Task<CertificateRevokeResult> RevokeCertificateAsync(int serverId, string commonName, CancellationToken cancellationToken);
+    Task<string> GetPemContentAsync(int serverId, string filePath, CancellationToken cancellationToken);
 }

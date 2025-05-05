@@ -4,6 +4,7 @@ namespace OpenVPNGateMonitor.Models.Helpers.DataGateCertManager;
 
 public class AddOvpnFileRequest
 {
+    public int ServerId {get; set;}
     [DefaultValue("")]
     public string CommonName { get; set; } = string.Empty;
 

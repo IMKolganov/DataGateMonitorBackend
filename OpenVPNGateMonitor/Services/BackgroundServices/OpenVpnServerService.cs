@@ -3,7 +3,6 @@ using System.Text;
 using Microsoft.EntityFrameworkCore;
 using OpenVPNGateMonitor.DataBase.UnitOfWork;
 using OpenVPNGateMonitor.Models;
-using OpenVPNGateMonitor.Models.Helpers.Api;
 using OpenVPNGateMonitor.Models.Helpers.Services;
 using OpenVPNGateMonitor.Services.BackgroundServices.Interfaces;
 using OpenVPNGateMonitor.Services.Helpers;
