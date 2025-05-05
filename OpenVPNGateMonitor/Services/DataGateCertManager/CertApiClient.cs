@@ -1,17 +1,31 @@
 ﻿using System.Text.Json;
 using OpenVPNGateMonitor.Models.Helpers;
 using OpenVPNGateMonitor.Models.Helpers.DataGateCertManager;
+using OpenVPNGateMonitor.Services.Api.Interfaces;
 using OpenVPNGateMonitor.Services.DataGateCertManager.Interfaces;
 
 namespace OpenVPNGateMonitor.Services.DataGateCertManager;
 
-public class CertApiClient(HttpClient httpClient, ILogger<CertApiClient> logger) : ICertApiClient
+public class CertApiClient(
+    IHttpClientFactory httpClientFactory,
+    IVpnDataService vpnDataService,
+    ILogger<CertApiClient> logger)
+    : ICertApiClient
 {
-    public async Task<List<CertificateCaInfo>> GetAllCertificatesAsync(CancellationToken cancellationToken)
+    private async Task<HttpClient> GetClientForServerAsync(int serverId, CancellationToken cancellationToken)
+    {
+        var server = await vpnDataService.GetOpenVpnServer(serverId, cancellationToken);
+        var client = httpClientFactory.CreateClient();
+        client.BaseAddress = new Uri(server.ApiUrl);
+        return client;
+    }
+
+    public async Task<List<CertificateCaInfo>> GetAllCertificatesAsync(int serverId, CancellationToken cancellationToken)
     {
         try
         {
-            var response = await httpClient.GetAsync("api/EasyRsa/GetAllCertificates", cancellationToken);
+            using var client = await GetClientForServerAsync(serverId, cancellationToken);
+            var response = await client.GetAsync("api/EasyRsa/GetAllCertificates", cancellationToken);
             response.EnsureSuccessStatusCode();
 
             var certificates = await response.Content.ReadFromJsonAsync<List<CertificateCaInfo>>(
@@ -21,26 +35,27 @@ public class CertApiClient(HttpClient httpClient, ILogger<CertApiClient> logger)
         }
         catch (HttpRequestException ex)
         {
-            logger.LogError(ex, "HTTP request failed while getting certificates");
+            logger.LogError(ex, "HTTP request failed while getting certificates from server {ServerId}", serverId);
             throw;
         }
         catch (JsonException ex)
         {
-            logger.LogError(ex, "Failed to deserialize certificates response");
+            logger.LogError(ex, "Failed to deserialize certificates response from server {ServerId}", serverId);
             throw;
         }
     }
     
-    public async Task<CertificateBuildResult> BuildCertificateAsync(string commonName, CancellationToken cancellationToken)
+    public async Task<CertificateBuildResult> BuildCertificateAsync(int serverId, string commonName, CancellationToken cancellationToken)
     {
         try
         {
+            using var client = await GetClientForServerAsync(serverId, cancellationToken);
             var request = new CertificateBuildRequest
             {
                 CommonName = commonName
             };
 
-            var response = await httpClient.PostAsJsonAsync("api/EasyRsa/BuildCertificate", request, cancellationToken);
+            var response = await client.PostAsJsonAsync("api/EasyRsa/BuildCertificate", request, cancellationToken);
             response.EnsureSuccessStatusCode();
 
             var result = await response.Content.ReadFromJsonAsync<CertificateBuildResult>(
@@ -51,26 +66,30 @@ public class CertApiClient(HttpClient httpClient, ILogger<CertApiClient> logger)
                 throw new InvalidOperationException("Received null response when building certificate");
             }
 
-            logger.LogInformation("Successfully built certificate for {CommonName}", commonName);
+            logger.LogInformation("Successfully built certificate for {CommonName} on server {ServerId}", 
+                commonName, serverId);
             return result;
         }
         catch (HttpRequestException ex)
         {
-            logger.LogError(ex, "HTTP request failed while building certificate for {CommonName}", commonName);
+            logger.LogError(ex, "HTTP request failed while building certificate for {CommonName} on server {ServerId}", 
+                commonName, serverId);
             throw;
         }
         catch (JsonException ex)
         {
-            logger.LogError(ex, "Failed to deserialize build certificate response for {CommonName}", commonName);
+            logger.LogError(ex, "Failed to deserialize build certificate response for {CommonName} on server {ServerId}", 
+                commonName, serverId);
             throw;
         }
     }
     
-    public async Task<CertificateRevokeResult> RevokeCertificateAsync(string commonName, CancellationToken cancellationToken)
+    public async Task<CertificateRevokeResult> RevokeCertificateAsync(int serverId, string commonName, CancellationToken cancellationToken)
     {
         try
         {
-            var response = await httpClient.PostAsync(
+            using var client = await GetClientForServerAsync(serverId, cancellationToken);
+            var response = await client.PostAsync(
                 $"api/EasyRsa/RevokeCertificate/{Uri.EscapeDataString(commonName)}", 
                 null, 
                 cancellationToken);
@@ -86,8 +105,9 @@ public class CertApiClient(HttpClient httpClient, ILogger<CertApiClient> logger)
             }
 
             logger.LogInformation(
-                "Certificate revocation completed for {CommonName}. IsRevoked: {IsRevoked}, Message: {Message}", 
+                "Certificate revocation completed for {CommonName} on server {ServerId}. IsRevoked: {IsRevoked}, Message: {Message}", 
                 commonName, 
+                serverId,
                 result.IsRevoked,
                 result.Message);
 
@@ -95,21 +115,24 @@ public class CertApiClient(HttpClient httpClient, ILogger<CertApiClient> logger)
         }
         catch (HttpRequestException ex)
         {
-            logger.LogError(ex, "HTTP request failed while revoking certificate for {CommonName}", commonName);
+            logger.LogError(ex, "HTTP request failed while revoking certificate for {CommonName} on server {ServerId}", 
+                commonName, serverId);
             throw;
         }
         catch (JsonException ex)
         {
-            logger.LogError(ex, "Failed to deserialize revoke certificate response for {CommonName}", commonName);
+            logger.LogError(ex, "Failed to deserialize revoke certificate response for {CommonName} on server {ServerId}", 
+                commonName, serverId);
             throw;
         }
     }
     
-    public async Task<string> GetPemContentAsync(string filePath, CancellationToken cancellationToken)
+    public async Task<string> GetPemContentAsync(int serverId, string filePath, CancellationToken cancellationToken)
     {
         try
         {
-            var response = await httpClient.GetAsync(
+            using var client = await GetClientForServerAsync(serverId, cancellationToken);
+            var response = await client.GetAsync(
                 $"api/EasyRsa/GetPemContent/{Uri.EscapeDataString(filePath)}", 
                 cancellationToken);
             
@@ -123,17 +146,20 @@ public class CertApiClient(HttpClient httpClient, ILogger<CertApiClient> logger)
                 throw new InvalidOperationException($"Empty PEM content received for file: {filePath}");
             }
 
-            logger.LogDebug("Successfully retrieved PEM content from {FilePath}", filePath);
+            logger.LogDebug("Successfully retrieved PEM content from {FilePath} on server {ServerId}", 
+                filePath, serverId);
             return content;
         }
         catch (HttpRequestException ex)
         {
-            logger.LogError(ex, "HTTP request failed while getting PEM content from {FilePath}", filePath);
+            logger.LogError(ex, "HTTP request failed while getting PEM content from {FilePath} on server {ServerId}", 
+                filePath, serverId);
             throw;
         }
         catch (JsonException ex)
         {
-            logger.LogError(ex, "Failed to deserialize PEM content response from {FilePath}", filePath);
+            logger.LogError(ex, "Failed to deserialize PEM content response from {FilePath} on server {ServerId}", 
+                filePath, serverId);
             throw;
         }
     }
