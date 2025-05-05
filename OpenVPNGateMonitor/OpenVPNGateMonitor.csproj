@@ -11,7 +11,7 @@
 
     <ItemGroup>
         <PackageReference Include="BCrypt.Net-Next" Version="4.0.3" />
-        <PackageReference Include="Elastic.Clients.Elasticsearch" Version="8.17.4" />
+        <PackageReference Include="Elastic.Clients.Elasticsearch" Version="9.0.0" />
         <PackageReference Include="Mapster" Version="7.4.0" />
         <PackageReference Include="Mapster.DependencyInjection" Version="1.0.1" />
         <PackageReference Include="MaxMind.GeoIP2" Version="5.2.0" />

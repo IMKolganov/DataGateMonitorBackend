@@ -3,11 +3,10 @@ using Microsoft.EntityFrameworkCore;
 using OpenVPNGateMonitor.DataBase.UnitOfWork;
 using OpenVPNGateMonitor.Models;
 using OpenVPNGateMonitor.Models.Enums;
-using OpenVPNGateMonitor.Services.Api.Interfaces;
 
 namespace OpenVPNGateMonitor.Services.TelegramBot;
 
-public class LocalizationService(ILogger<ICertVpnService> logger, IUnitOfWork unitOfWork) : ILocalizationService
+public class LocalizationService(ILogger<LocalizationService> logger, IUnitOfWork unitOfWork) : ILocalizationService
 {
     public async Task<TelegramUserLanguagePreference> SetTelegramUserLanguageAsync(
         TelegramUserLanguagePreference request, CancellationToken cancellationToken)

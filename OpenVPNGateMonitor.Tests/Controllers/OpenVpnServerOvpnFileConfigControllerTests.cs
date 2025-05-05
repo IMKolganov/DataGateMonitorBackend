@@ -76,7 +76,7 @@ public class OpenVpnServerOvpnFileConfigControllerTests
             .ReturnsAsync(expectedConfig);
 
         // Act
-        var result = await _controller.AddOrUpdateOvpnFileConfig(request);
+        var result = await _controller.AddOrUpdateOvpnFileConfig(request, CancellationToken.None);
 
         // Assert
         var okResult = Assert.IsType<OkObjectResult>(result);

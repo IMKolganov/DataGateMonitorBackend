@@ -44,7 +44,7 @@ public class TelegramBotUserControllerTests
             .ReturnsAsync(createdUser);
 
         // Act
-        var result = await _controller.RegisterUser(request);
+        var result = await _controller.RegisterUser(request, CancellationToken.None);
 
         // Assert
         var okResult = result as OkObjectResult;
@@ -71,7 +71,7 @@ public class TelegramBotUserControllerTests
             .ReturnsAsync(admins);
 
         // Act
-        var result = await _controller.GetAdmins();
+        var result = await _controller.GetAdmins(CancellationToken.None);
 
         // Assert
         var okResult = result as OkObjectResult;

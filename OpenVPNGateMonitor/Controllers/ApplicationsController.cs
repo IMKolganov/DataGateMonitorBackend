@@ -14,24 +14,26 @@ namespace OpenVPNGateMonitor.Controllers;
 public class ApplicationsController(IApplicationService appService) : ControllerBase
 {
     [HttpPost("RegisterApplication")]
-    public async Task<IActionResult> RegisterApplication([FromBody] RegisterApplicationRequest request)
+    public async Task<IActionResult> RegisterApplication([FromBody] RegisterApplicationRequest request, 
+        CancellationToken cancellationToken)
     {
-        var newApp = await appService.RegisterApplicationAsync(request.Name);
+        var newApp = await appService.RegisterApplicationAsync(request.Name, cancellationToken);
         
         return Ok(ApiResponse<RegisterApplicationResponse>.SuccessResponse(newApp.Adapt<RegisterApplicationResponse>()));
     }
 
     [HttpGet("GetAllApplications")]
-    public async Task<IActionResult> GetAllApplications()
+    public async Task<IActionResult> GetAllApplications(CancellationToken cancellationToken)
     {
-        var apps = await appService.GetAllApplicationsAsync();
+        var apps = await appService.GetAllApplicationsAsync(cancellationToken);
         return Ok(ApiResponse<List<ApplicationResponse>>.SuccessResponse(apps.Adapt<List<ApplicationResponse>>()));
     }
 
     [HttpPost("RevokeApplication")]
-    public async Task<IActionResult> RevokeApplication([FromBody] RevokeApplicationRequest request)
+    public async Task<IActionResult> RevokeApplication([FromBody] RevokeApplicationRequest request, 
+        CancellationToken cancellationToken)
     {
-        var result = await appService.RevokeApplicationAsync(request.ClientId);
+        var result = await appService.RevokeApplicationAsync(request.ClientId, cancellationToken);
         
         if (!result)
             return NotFound(ApiResponse<string>.ErrorResponse("Application not found"));

@@ -15,16 +15,18 @@ namespace OpenVPNGateMonitor.Controllers;
 public class AuthController(IConfiguration config, IApplicationService appService) : ControllerBase
 {
     [HttpGet("system-secret-status")]
-    public async Task<IActionResult> GetSystemStatus()
+    public async Task<IActionResult> GetSystemStatus(CancellationToken cancellationToken)
     {
-        var isSet = await appService.IsSystemApplicationSetAsync();
+        var isSet = await appService.IsSystemApplicationSetAsync(cancellationToken);
         return Ok(new SystemSecretStatusResponse { SystemSet = isSet });
     }
 
     [HttpPost("set-system-secret")]
-    public async Task<IActionResult> SetSystemSecret([FromBody] SetSecretRequest request)
+    public async Task<IActionResult> SetSystemSecret([FromBody] SetSecretRequest request,
+        CancellationToken cancellationToken)
     {
-        var systemApp = await appService.GetApplicationSystemByClientIdAsync(request.ClientId);
+        var systemApp = await appService.GetApplicationSystemByClientIdAsync(request.ClientId, 
+            cancellationToken);
 
         if (systemApp is { ClientSecret: not null })
         {
@@ -41,15 +43,15 @@ public class AuthController(IConfiguration config, IApplicationService appServic
             IsSystem = true
         };
 
-        await appService.UpdateApplicationAsync(systemApp);
+        await appService.UpdateApplicationAsync(systemApp, cancellationToken);
 
         return Ok(new AuthResponse { Message = "ClientSecret set successfully" });
     }
 
     [HttpPost("token")]
-    public async Task<IActionResult> GenerateToken([FromBody] TokenRequest request)
+    public async Task<IActionResult> GenerateToken([FromBody] TokenRequest request, CancellationToken cancellationToken)
     {
-        var app = await appService.GetApplicationByClientIdAsync(request.ClientId);
+        var app = await appService.GetApplicationByClientIdAsync(request.ClientId, cancellationToken);
         if (app == null)
         {
             return Unauthorized(new AuthResponse { Message = "Invalid credentials" });

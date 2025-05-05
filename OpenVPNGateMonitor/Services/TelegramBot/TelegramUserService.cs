@@ -2,11 +2,10 @@
 using Microsoft.EntityFrameworkCore;
 using OpenVPNGateMonitor.DataBase.UnitOfWork;
 using OpenVPNGateMonitor.Models;
-using OpenVPNGateMonitor.Services.Api.Interfaces;
 
 namespace OpenVPNGateMonitor.Services.TelegramBot;
 
-public class TelegramUserService(ILogger<ICertVpnService> logger, IUnitOfWork unitOfWork) : ITelegramUserService
+public class TelegramUserService(ILogger<TelegramUserService> logger, IUnitOfWork unitOfWork) : ITelegramUserService
 {
     public async Task<TelegramBotUser> RegisterUserAsync(TelegramBotUser telegramBotUserRequest, 
         CancellationToken cancellationToken)
