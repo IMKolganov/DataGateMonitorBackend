@@ -1,17 +1,31 @@
 ﻿using System.Text.Json;
 using OpenVPNGateMonitor.Models;
 using OpenVPNGateMonitor.Models.Helpers.DataGateCertManager;
+using OpenVPNGateMonitor.Services.Api.Interfaces;
 using OpenVPNGateMonitor.Services.DataGateCertManager.Interfaces;
 
 namespace OpenVPNGateMonitor.Services.DataGateCertManager;
 
-public class OvpnFileApiClient(HttpClient httpClient, ILogger<OvpnFileApiClient> logger) : IOvpnFileApiClient
+public class OvpnFileApiClient(
+    IHttpClientFactory httpClientFactory,
+    IVpnDataService vpnDataService,
+    ILogger<OvpnFileApiClient> logger)
+    : IOvpnFileApiClient
 {
+    private async Task<HttpClient> GetClientForServerAsync(int serverId, CancellationToken cancellationToken)
+    {
+        var server = await vpnDataService.GetOpenVpnServer(serverId, cancellationToken);
+        var client = httpClientFactory.CreateClient();
+        client.BaseAddress = new Uri(server.ApiUrl);
+        return client;
+    }
+
     public async Task<IssuedOvpnFile> AddOvpnFileAsync(AddOvpnFileRequest request, CancellationToken cancellationToken)
     {
         try
         {
-            var response = await httpClient.PostAsJsonAsync("api/OvpnFile/AddOvpnFile", request, cancellationToken);
+            using var client = await GetClientForServerAsync(request.ServerId, cancellationToken);
+            var response = await client.PostAsJsonAsync("api/OvpnFile/AddOvpnFile", request, cancellationToken);
             response.EnsureSuccessStatusCode();
 
             var result = await response.Content.ReadFromJsonAsync<IssuedOvpnFile>(cancellationToken: cancellationToken);
@@ -21,17 +35,20 @@ public class OvpnFileApiClient(HttpClient httpClient, ILogger<OvpnFileApiClient>
                 throw new InvalidOperationException("Received null response when adding OVPN file");
             }
 
-            logger.LogInformation("Successfully added OVPN file for {CommonName}", request.CommonName);
+            logger.LogInformation("Successfully added OVPN file for {CommonName} on server {ServerUrl}", 
+                request.CommonName, client.BaseAddress);
             return result;
         }
         catch (HttpRequestException ex)
         {
-            logger.LogError(ex, "HTTP request failed while adding OVPN file for {CommonName}", request.CommonName);
+            logger.LogError(ex, "HTTP request failed while adding OVPN file for {CommonName} on server {ServerId}", 
+                request.CommonName, request.ServerId);
             throw;
         }
         catch (JsonException ex)
         {
-            logger.LogError(ex, "Failed to deserialize add OVPN file response for {CommonName}", request.CommonName);
+            logger.LogError(ex, "Failed to deserialize add OVPN file response for {CommonName} on server {ServerId}", 
+                request.CommonName, request.ServerId);
             throw;
         }
     }
@@ -40,22 +57,26 @@ public class OvpnFileApiClient(HttpClient httpClient, ILogger<OvpnFileApiClient>
     {
         try
         {
-            var response = await httpClient.PostAsJsonAsync("api/OvpnFile/RevokeOvpnFile", request, cancellationToken);
+            using var client = await GetClientForServerAsync(request.ServerId, cancellationToken);
+            var response = await client.PostAsJsonAsync("api/OvpnFile/RevokeOvpnFile", request, cancellationToken);
             response.EnsureSuccessStatusCode();
 
             var result = await response.Content.ReadFromJsonAsync<bool>(cancellationToken: cancellationToken);
             
-            logger.LogInformation("OVPN file revocation completed for {CommonName}", request.CommonName);
+            logger.LogInformation("OVPN file revocation completed for {CommonName} on server {ServerUrl}", 
+                request.CommonName, client.BaseAddress);
             return result;
         }
         catch (HttpRequestException ex)
         {
-            logger.LogError(ex, "HTTP request failed while revoking OVPN file for {CommonName}", request.CommonName);
+            logger.LogError(ex, "HTTP request failed while revoking OVPN file for {CommonName} on server {ServerId}", 
+                request.CommonName, request.ServerId);
             throw;
         }
         catch (JsonException ex)
         {
-            logger.LogError(ex, "Failed to deserialize revoke OVPN file response for {CommonName}", request.CommonName);
+            logger.LogError(ex, "Failed to deserialize revoke OVPN file response for {CommonName} on server {ServerId}", 
+                request.CommonName, request.ServerId);
             throw;
         }
     }
@@ -64,7 +85,8 @@ public class OvpnFileApiClient(HttpClient httpClient, ILogger<OvpnFileApiClient>
     {
         try
         {
-            var response = await httpClient.PostAsJsonAsync("api/OvpnFile/DownloadOvpnFile", request, cancellationToken);
+            using var client = await GetClientForServerAsync(request.ServerId, cancellationToken);
+            var response = await client.PostAsJsonAsync("api/OvpnFile/DownloadOvpnFile", request, cancellationToken);
             response.EnsureSuccessStatusCode();
 
             var content = await response.Content.ReadFromJsonAsync<string>(cancellationToken: cancellationToken);
@@ -74,20 +96,20 @@ public class OvpnFileApiClient(HttpClient httpClient, ILogger<OvpnFileApiClient>
                 throw new InvalidOperationException($"Empty OVPN content received for file: {request.FileName}");
             }
 
-            logger.LogDebug("Successfully downloaded OVPN file {FileName} for {CommonName}", 
-                request.FileName, request.CommonName);
+            logger.LogDebug("Successfully downloaded OVPN file {FileName} for {CommonName} on server {ServerUrl}", 
+                request.FileName, request.CommonName, client.BaseAddress);
             return content;
         }
         catch (HttpRequestException ex)
         {
-            logger.LogError(ex, "HTTP request failed while downloading OVPN file {FileName} for {CommonName}", 
-                request.FileName, request.CommonName);
+            logger.LogError(ex, "HTTP request failed while downloading OVPN file {FileName} for {CommonName} on server {ServerId}", 
+                request.FileName, request.CommonName, request.ServerId);
             throw;
         }
         catch (JsonException ex)
         {
-            logger.LogError(ex, "Failed to deserialize OVPN file content for {FileName} and {CommonName}", 
-                request.FileName, request.CommonName);
+            logger.LogError(ex, "Failed to deserialize OVPN file content for {FileName} and {CommonName} on server {ServerId}", 
+                request.FileName, request.CommonName, request.ServerId);
             throw;
         }
     }
