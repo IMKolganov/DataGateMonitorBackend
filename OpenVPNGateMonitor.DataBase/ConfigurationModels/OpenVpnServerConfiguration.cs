@@ -24,6 +24,8 @@ public class OpenVpnServerConfiguration : BaseEntityConfiguration<OpenVpnServer>
             .HasMaxLength(50);
         entity.Property(e => e.IsOnline);
         entity.Property(e => e.IsDefault);
+        entity.Property(e => e.ApiUrl)
+            .HasMaxLength(255);
         
         entity.HasData(OpenVpnServerSeedData.Data);
     }

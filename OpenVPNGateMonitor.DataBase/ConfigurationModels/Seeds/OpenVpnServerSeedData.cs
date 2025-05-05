@@ -14,6 +14,9 @@ public static class OpenVpnServerSeedData
             ManagementPort = 5092,
             IsOnline = false,
             IsDefault = true,
+            ApiUrl = "http://openvpn_udp:5000/",
+            Login = "",
+            Password = ""
         },
         new OpenVpnServer
         {
@@ -23,6 +26,9 @@ public static class OpenVpnServerSeedData
             ManagementPort = 5093,
             IsOnline = false,
             IsDefault = false,
+            ApiUrl = "http://openvpn_tcp:5000/",
+            Login = "",
+            Password = ""
         },
     };
 }
