@@ -61,7 +61,6 @@ public class OpenVpnBackgroundService : BackgroundService, IOpenVpnBackgroundSer
     {
         try
         {
-            await RunOpenVpnTask(nextRunSeconds, cancellationToken);
             _logger.LogInformation("Starting OpenVPN task execution...");
             using var scope = _serviceProvider.CreateScope();
             var unitOfWork = scope.ServiceProvider.GetRequiredService<IUnitOfWork>();
