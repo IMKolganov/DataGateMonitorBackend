@@ -23,10 +23,6 @@ public class OpenVpnServerProcessor
 
     public async Task ProcessServerAsync(OpenVpnServer openVpnServer, CancellationToken cancellationToken)
     {
-        if (openVpnServer.Id != 8)
-        {
-            return;
-        }
         _logger.LogInformation($"VpnServerId: {openVpnServer.Id}. Vpn Server Name: {openVpnServer.ServerName}. " +
                                $"Processing OpenVPN server: {openVpnServer.ManagementIp}:{openVpnServer.ManagementPort}");
         using var scope = _serviceProvider.CreateScope();
