@@ -2,7 +2,7 @@
 
 public class RevokeOvpnFileRequest
 {
-    public int ServerId {get; set;}
+    public int VpnServerId {get; set;}
     public string CommonName { get; set; } = string.Empty;
     public string OvpnFileName { get; set; } = string.Empty;
     public string OvpnFilePath { get; set; } = string.Empty;
