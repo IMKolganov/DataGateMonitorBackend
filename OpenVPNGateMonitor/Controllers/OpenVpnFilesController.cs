@@ -25,8 +25,8 @@ public class OpenVpnFilesController(
         }
         catch (Exception ex)
         {
-            logger.LogError(ex, "Failed to add OVPN file for {CommonName} on server {ServerId}", 
-                request.CommonName, request.ServerId);
+            logger.LogError(ex, "Failed to add OVPN file for {CommonName} on server {VpnServerId}",
+                request.CommonName, request.VpnServerId);
             return BadRequest(new { error = "Failed to add OVPN file", message = ex.Message });
         }
     }
@@ -43,8 +43,9 @@ public class OpenVpnFilesController(
         }
         catch (Exception ex)
         {
-            logger.LogError(ex, "Failed to revoke OVPN file {FileName} for {CommonName} on server {ServerId}", 
-                request.OvpnFileName, request.CommonName, request.ServerId);
+            logger.LogError(ex, "Failed to revoke OVPN file {FileName} for {CommonName} " +
+                                "on server {VpnServerId}", request.OvpnFileName, request.CommonName,
+                request.VpnServerId);
             return BadRequest(new { error = "Failed to revoke OVPN file", message = ex.Message });
         }
     }
@@ -61,8 +62,8 @@ public class OpenVpnFilesController(
         }
         catch (Exception ex)
         {
-            logger.LogError(ex, "Failed to download OVPN file {FileName} for {CommonName} on server {ServerId}", 
-                request.FileName, request.CommonName, request.ServerId);
+            logger.LogError(ex, "Failed to download OVPN file {FileName} for {CommonName} " +
+                                "on server {VpnServerId}", request.FileName, request.CommonName, request.VpnServerId);
             return BadRequest(new { error = "Failed to download OVPN file", message = ex.Message });
         }
     }

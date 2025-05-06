@@ -8,19 +8,19 @@ public class OpenVpnServerStatusManager
 {
     private readonly ConcurrentDictionary<int, BackgroundServerStatus> _serverStatuses = new();
 
-    public void UpdateStatus(int serverId, ServiceStatus status, int nextRunSeconds, string? errorMessage = null)
+    public void UpdateStatus(int vpnServerId, ServiceStatus status, int nextRunSeconds, string? errorMessage = null)
     {
-        _serverStatuses.AddOrUpdate(serverId,
+        _serverStatuses.AddOrUpdate(vpnServerId,
             new BackgroundServerStatus
             {
-                VpnServerId = serverId,
+                VpnServerId = vpnServerId,
                 Status = status, 
                 ErrorMessage = errorMessage, 
                 NextRunTime = DateTime.UtcNow.AddSeconds(nextRunSeconds)
             },
             (_, existing) =>
             {
-                existing.VpnServerId = serverId;
+                existing.VpnServerId = vpnServerId;
                 existing.Status = status;
                 existing.ErrorMessage = errorMessage;
                 existing.NextRunTime = DateTime.UtcNow.AddSeconds(nextRunSeconds);
