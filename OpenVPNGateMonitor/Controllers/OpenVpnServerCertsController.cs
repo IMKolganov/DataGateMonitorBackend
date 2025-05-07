@@ -36,35 +36,35 @@ public class OpenVpnServerCertsController(
         [FromBody] AddServerCertificateRequest request,
         CancellationToken cancellationToken)
     {
-        throw new NotImplementedException();
-        // try
-        // {
-        //     var result = await certApiClient.BuildCertificateAsync(request.VpnServerId, request.CommonName, cancellationToken);
-        //     return Ok(result);
-        // }
-        // catch (Exception ex)
-        // {
-        //     logger.LogError(ex, "Failed to build certificate for {CommonName} on server {VpnServerId}", 
-        //         request.CommonName, request.VpnServerId);
-        //     return BadRequest(new { error = "Failed to build certificate", message = ex.Message });
-        // }
+        try
+        {
+            var result = await certApiClient.BuildCertificateAsync(request.VpnServerId, 
+                request.CommonName, cancellationToken);
+            return Ok(result);
+        }
+        catch (Exception ex)
+        {
+            logger.LogError(ex, "Failed to build certificate for {CommonName} on server {VpnServerId}", 
+                request.CommonName, request.VpnServerId);
+            return BadRequest(new { error = "Failed to build certificate", message = ex.Message });
+        }
     }
 
     [HttpPost("RevokeCertificate")]
     public async Task<ActionResult<CertificateRevokeResult>> RevokeCertificate(
         [FromBody] RevokeCertificateRequest request, CancellationToken cancellationToken)
     {
-        throw new NotImplementedException();
-        // try
-        // {
-        //     var result = await certApiClient.RevokeCertificateAsync(request.VpnServerId, request.CommonName, cancellationToken);
-        //     return Ok(result);
-        // }
-        // catch (Exception ex)
-        // {
-        //     logger.LogError(ex, "Failed to revoke certificate for {CommonName} on server {VpnServerId}", 
-        //         request.CommonName, request.VpnServerId);
-        //     return BadRequest(new { error = "Failed to revoke certificate", message = ex.Message });
-        // }
+        try
+        {
+            var result = await certApiClient.RevokeCertificateAsync(request, 
+                cancellationToken);
+            return Ok(result);
+        }
+        catch (Exception ex)
+        {
+            logger.LogError(ex, "Failed to revoke certificate for {CommonName} on server {VpnServerId}", 
+                request.CommonName, request.VpnServerId);
+            return BadRequest(new { error = "Failed to revoke certificate", message = ex.Message });
+        }
     }
 }
