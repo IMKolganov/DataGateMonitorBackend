@@ -2,8 +2,9 @@
 using OpenVPNGateMonitor.Models.Helpers;
 using OpenVPNGateMonitor.Services.Api.Interfaces;
 using OpenVPNGateMonitor.Services.DataGateCertManager.Interfaces;
-using OpenVPNGateMonitor.SharedModels.DataGateCertManager.Cert.Requests;
 using OpenVPNGateMonitor.SharedModels.DataGateCertManager.Cert.Responses;
+using OpenVPNGateMonitor.SharedModels.DataGateMonitorBackend.OpenVpnServerCerts.Requests;
+using AddServerCertificateRequest = OpenVPNGateMonitor.SharedModels.DataGateCertManager.Cert.Requests.AddServerCertificateRequest;
 
 namespace OpenVPNGateMonitor.Services.DataGateCertManager;
 
@@ -13,16 +14,17 @@ public class CertApiClient(
     ILogger<CertApiClient> logger)
     : ICertApiClient
 {
-    private static readonly AsyncLocal<bool> _isLogging = new();
+    //todo: make table save in DB
+    private static readonly AsyncLocal<bool> IsLogging = new();
 
     private void LogSafe(Action action)
     {
-        if (_isLogging.Value)
+        if (IsLogging.Value)
             return;
 
         try
         {
-            _isLogging.Value = true;
+            IsLogging.Value = true;
             action();
         }
         catch
@@ -31,7 +33,7 @@ public class CertApiClient(
         }
         finally
         {
-            _isLogging.Value = false;
+            IsLogging.Value = false;
         }
     }
 
@@ -115,14 +117,14 @@ public class CertApiClient(
         }
     }
 
-    public async Task<CertificateRevokeResult> RevokeCertificateAsync(int vpnServerId, string commonName,
+    public async Task<CertificateRevokeResult> RevokeCertificateAsync(RevokeCertificateRequest request,
         CancellationToken cancellationToken)
     {
         try
         {
-            using var client = await GetClientForServerAsync(vpnServerId, cancellationToken);
-            var response = await client.PostAsync($"api/Cert/RevokeCertificate/{Uri.EscapeDataString(commonName)}",
-                null, cancellationToken);
+            using var client = await GetClientForServerAsync(request.VpnServerId, cancellationToken);
+            var response = await client.PostAsJsonAsync($"api/Cert/RevokeCertificate", request,
+                cancellationToken);
             response.EnsureSuccessStatusCode();
 
             var result =
@@ -133,7 +135,7 @@ public class CertApiClient(
             logger.LogInformation(
                 "Certificate revocation completed for {CommonName} on server {VpnServerId}." +
                 " IsRevoked: {IsRevoked}, Message: {Message}",
-                commonName, vpnServerId, result.IsRevoked, result.Message);
+                request.CommonName, request.VpnServerId, result.IsRevoked, result.Message);
             return result;
         }
         catch (HttpRequestException ex)
@@ -142,7 +144,7 @@ public class CertApiClient(
                 logger.LogError(
                     "HTTP request failed (code {Code}) while revoking certificate for" +
                     " {CommonName} on server {VpnServerId}: {Message}",
-                    ex.HResult, commonName, vpnServerId, ex.Message));
+                    ex.HResult, request.CommonName, request.VpnServerId, ex.Message));
             throw;
         }
         catch (JsonException ex)
@@ -151,7 +153,7 @@ public class CertApiClient(
                 logger.LogError(
                     "Deserialization error (code {Code}) while revoking certificate for {CommonName} " +
                     "on server {VpnServerId}: {Message}",
-                    ex.HResult, commonName, vpnServerId, ex.Message));
+                    ex.HResult, request.CommonName, request.VpnServerId, ex.Message));
             throw;
         }
     }
