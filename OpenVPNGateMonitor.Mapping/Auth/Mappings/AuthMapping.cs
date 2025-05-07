@@ -1,6 +1,6 @@
 ﻿using Mapster;
 using OpenVPNGateMonitor.Models;
-using OpenVPNGateMonitor.SharedModels.Auth.Responses;
+using OpenVPNGateMonitor.SharedModels.DataGateMonitorBackend.Auth.Responses;
 
 namespace OpenVPNGateMonitor.Mapping.Auth.Mappings;
 

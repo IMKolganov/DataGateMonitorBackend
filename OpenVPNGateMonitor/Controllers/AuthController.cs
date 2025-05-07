@@ -6,7 +6,7 @@ using System.Text;
 using OpenVPNGateMonitor.Models;
 using OpenVPNGateMonitor.Models.Helpers.Auth;
 using OpenVPNGateMonitor.Services.Api.Auth;
-using OpenVPNGateMonitor.SharedModels.Auth.Responses;
+using OpenVPNGateMonitor.SharedModels.DataGateMonitorBackend.Auth.Responses;
 
 namespace OpenVPNGateMonitor.Controllers;
 

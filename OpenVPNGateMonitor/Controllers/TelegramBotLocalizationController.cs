@@ -4,8 +4,8 @@ using Microsoft.AspNetCore.Mvc;
 using OpenVPNGateMonitor.Models;
 using OpenVPNGateMonitor.Services.TelegramBot;
 using OpenVPNGateMonitor.SharedModels.Responses;
-using OpenVPNGateMonitor.SharedModels.TelegramBotLocalization.Requests;
-using OpenVPNGateMonitor.SharedModels.TelegramBotLocalization.Responses;
+using OpenVPNGateMonitor.SharedModels.DataGateMonitorBackend.TelegramBotLocalization.Requests;
+using OpenVPNGateMonitor.SharedModels.DataGateMonitorBackend.TelegramBotLocalization.Responses;
 
 namespace OpenVPNGateMonitor.Controllers;
 
@@ -34,7 +34,7 @@ public class TelegramBotLocalizationController(ILocalizationService localization
 
         var response = new GetTelegramUserLanguageResponse
         {
-            PreferredLanguage = (SharedModels.TelegramBotLocalization.Enums.Language)language
+            PreferredLanguage = language
         };
 
         return Ok(ApiResponse<GetTelegramUserLanguageResponse>.SuccessResponse(response));

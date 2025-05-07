@@ -1,6 +1,6 @@
 ﻿using System.Collections.Concurrent;
-using OpenVPNGateMonitor.Models.Enums;
 using OpenVPNGateMonitor.Models.Helpers.Background;
+using OpenVPNGateMonitor.SharedModels.Enums;
 
 namespace OpenVPNGateMonitor.Services.BackgroundServices;
 

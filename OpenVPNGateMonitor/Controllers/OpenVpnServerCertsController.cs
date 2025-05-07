@@ -1,9 +1,9 @@
 ﻿using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Mvc;
 using OpenVPNGateMonitor.Models.Helpers;
-using OpenVPNGateMonitor.Models.Helpers.DataGateCertManager;
 using OpenVPNGateMonitor.Services.DataGateCertManager.Interfaces;
-using OpenVPNGateMonitor.SharedModels.OpenVpnServerCerts.Requests;
+using OpenVPNGateMonitor.SharedModels.DataGateCertManager.Cert.Responses;
+using OpenVPNGateMonitor.SharedModels.DataGateMonitorBackend.OpenVpnServerCerts.Requests;
 
 namespace OpenVPNGateMonitor.Controllers;
 
@@ -15,7 +15,7 @@ public class OpenVpnServerCertsController(
     ILogger<OpenVpnServerCertsController> logger) : ControllerBase
 {
     [HttpGet("{vpnServerId}/GetAllCertificates")]
-    public async Task<ActionResult<List<CertificateCaInfo>>> GetAllCertificates(int vpnServerId,
+    public async Task<ActionResult<List<ServerCertificate>>> GetAllCertificates(int vpnServerId,
         CancellationToken cancellationToken)
     {
         try
@@ -32,37 +32,39 @@ public class OpenVpnServerCertsController(
     }
 
     [HttpPost("BuildCertificate")]
-    public async Task<ActionResult<CertificateBuildResult>> BuildCertificate(
+    public async Task<ActionResult> BuildCertificate(
         [FromBody] AddServerCertificateRequest request,
         CancellationToken cancellationToken)
     {
-        try
-        {
-            var result = await certApiClient.BuildCertificateAsync(request.VpnServerId, request.CommonName, cancellationToken);
-            return Ok(result);
-        }
-        catch (Exception ex)
-        {
-            logger.LogError(ex, "Failed to build certificate for {CommonName} on server {VpnServerId}", 
-                request.CommonName, request.VpnServerId);
-            return BadRequest(new { error = "Failed to build certificate", message = ex.Message });
-        }
+        throw new NotImplementedException();
+        // try
+        // {
+        //     var result = await certApiClient.BuildCertificateAsync(request.VpnServerId, request.CommonName, cancellationToken);
+        //     return Ok(result);
+        // }
+        // catch (Exception ex)
+        // {
+        //     logger.LogError(ex, "Failed to build certificate for {CommonName} on server {VpnServerId}", 
+        //         request.CommonName, request.VpnServerId);
+        //     return BadRequest(new { error = "Failed to build certificate", message = ex.Message });
+        // }
     }
 
     [HttpPost("RevokeCertificate")]
     public async Task<ActionResult<CertificateRevokeResult>> RevokeCertificate(
         [FromBody] RevokeCertificateRequest request, CancellationToken cancellationToken)
     {
-        try
-        {
-            var result = await certApiClient.RevokeCertificateAsync(request.VpnServerId, request.CommonName, cancellationToken);
-            return Ok(result);
-        }
-        catch (Exception ex)
-        {
-            logger.LogError(ex, "Failed to revoke certificate for {CommonName} on server {VpnServerId}", 
-                request.CommonName, request.VpnServerId);
-            return BadRequest(new { error = "Failed to revoke certificate", message = ex.Message });
-        }
+        throw new NotImplementedException();
+        // try
+        // {
+        //     var result = await certApiClient.RevokeCertificateAsync(request.VpnServerId, request.CommonName, cancellationToken);
+        //     return Ok(result);
+        // }
+        // catch (Exception ex)
+        // {
+        //     logger.LogError(ex, "Failed to revoke certificate for {CommonName} on server {VpnServerId}", 
+        //         request.CommonName, request.VpnServerId);
+        //     return BadRequest(new { error = "Failed to revoke certificate", message = ex.Message });
+        // }
     }
 }
