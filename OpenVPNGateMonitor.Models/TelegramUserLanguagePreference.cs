@@ -1,5 +1,5 @@
 ﻿using System.ComponentModel.DataAnnotations;
-using OpenVPNGateMonitor.Models.Enums;
+using OpenVPNGateMonitor.SharedModels.Enums;
 
 namespace OpenVPNGateMonitor.Models;
 

@@ -1,9 +1,9 @@
 ﻿using Mapster;
 using OpenVPNGateMonitor.Models;
 using OpenVPNGateMonitor.Models.Helpers.Services;
-using OpenVPNGateMonitor.SharedModels.OpenVpnFiles.Requests;
-using OpenVPNGateMonitor.SharedModels.OpenVpnFiles.Responses;
-using OpenVPNGateMonitor.SharedModels.OpenVpnFiles.Responses.Dto;
+using OpenVPNGateMonitor.SharedModels.DataGateMonitorBackend.OpenVpnFiles.Requests;
+using OpenVPNGateMonitor.SharedModels.DataGateMonitorBackend.OpenVpnFiles.Responses;
+using OpenVPNGateMonitor.SharedModels.DataGateMonitorBackend.OpenVpnFiles.Responses.Dto;
 
 namespace OpenVPNGateMonitor.Mapping.OpenVpnFiles.Mappings;
 

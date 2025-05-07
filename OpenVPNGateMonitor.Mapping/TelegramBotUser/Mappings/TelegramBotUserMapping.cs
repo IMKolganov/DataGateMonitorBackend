@@ -1,7 +1,7 @@
 ﻿using Mapster;
-using OpenVPNGateMonitor.SharedModels.OpenVpnFiles.Responses.Dto;
-using OpenVPNGateMonitor.SharedModels.TelegramBotUser.Requests;
-using OpenVPNGateMonitor.SharedModels.TelegramBotUser.Responses;
+using OpenVPNGateMonitor.SharedModels.DataGateMonitorBackend.TelegramBotUser.Requests;
+using OpenVPNGateMonitor.SharedModels.DataGateMonitorBackend.TelegramBotUser.Responses;
+using OpenVPNGateMonitor.SharedModels.DataGateMonitorBackend.TelegramBotUser.Responses.Dto;
 
 namespace OpenVPNGateMonitor.Mapping.TelegramBotUser.Mappings;
 

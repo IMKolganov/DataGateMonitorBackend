@@ -7,8 +7,8 @@ using OpenVPNGateMonitor.Mapping.TelegramBotUser.Mappings;
 using OpenVPNGateMonitor.Models;
 using OpenVPNGateMonitor.Services.TelegramBot;
 using OpenVPNGateMonitor.SharedModels.Responses;
-using OpenVPNGateMonitor.SharedModels.TelegramBotUser.Requests;
-using OpenVPNGateMonitor.SharedModels.TelegramBotUser.Responses;
+using OpenVPNGateMonitor.SharedModels.DataGateMonitorBackend.TelegramBotUser.Requests;
+using OpenVPNGateMonitor.SharedModels.DataGateMonitorBackend.TelegramBotUser.Responses;
 
 namespace OpenVPNGateMonitor.Tests.Controllers;
 

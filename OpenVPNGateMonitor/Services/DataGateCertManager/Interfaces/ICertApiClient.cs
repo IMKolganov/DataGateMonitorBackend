@@ -1,12 +1,11 @@
 ﻿using OpenVPNGateMonitor.Models.Helpers;
-using OpenVPNGateMonitor.Models.Helpers.DataGateCertManager;
+using OpenVPNGateMonitor.SharedModels.DataGateCertManager.Cert.Responses;
 
 namespace OpenVPNGateMonitor.Services.DataGateCertManager.Interfaces;
 
 public interface ICertApiClient
 {
-    Task<List<CertificateCaInfo>> GetAllCertificatesAsync(int serverId, CancellationToken cancellationToken);
-    Task<CertificateBuildResult> BuildCertificateAsync(int serverId, string commonName, CancellationToken cancellationToken);
+    Task<List<ServerCertificate>> GetAllCertificatesAsync(int serverId, CancellationToken cancellationToken);
+    Task<ServerCertificate> BuildCertificateAsync(int serverId, string commonName, CancellationToken cancellationToken);
     Task<CertificateRevokeResult> RevokeCertificateAsync(int serverId, string commonName, CancellationToken cancellationToken);
-    Task<string> GetPemContentAsync(int serverId, string filePath, CancellationToken cancellationToken);
 }

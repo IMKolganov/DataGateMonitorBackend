@@ -2,8 +2,8 @@
 using Microsoft.AspNetCore.Mvc;
 using OpenVPNGateMonitor.Services.Others;
 using OpenVPNGateMonitor.SharedModels.Responses;
-using OpenVPNGateMonitor.SharedModels.Settings.Requests;
-using OpenVPNGateMonitor.SharedModels.Settings.Responses;
+using OpenVPNGateMonitor.SharedModels.DataGateMonitorBackend.Settings.Requests;
+using OpenVPNGateMonitor.SharedModels.DataGateMonitorBackend.Settings.Responses;
 
 namespace OpenVPNGateMonitor.Controllers;
 

@@ -3,8 +3,8 @@ using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Mvc;
 using OpenVPNGateMonitor.Models;
 using OpenVPNGateMonitor.Services.Api.Interfaces;
-using OpenVPNGateMonitor.SharedModels.OpenVpnServerOvpnFileConfig.Requests;
-using OpenVPNGateMonitor.SharedModels.OpenVpnServerOvpnFileConfig.Responses;
+using OpenVPNGateMonitor.SharedModels.DataGateMonitorBackend.OpenVpnServerOvpnFileConfig.Requests;
+using OpenVPNGateMonitor.SharedModels.DataGateMonitorBackend.OpenVpnServerOvpnFileConfig.Responses;
 using OpenVPNGateMonitor.SharedModels.Responses;
 
 namespace OpenVPNGateMonitor.Controllers;
