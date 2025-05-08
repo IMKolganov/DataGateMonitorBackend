@@ -33,6 +33,5 @@ public class VpnServerCertificateMapping : IRegister
             .Map(dest => dest.Success, _ => true)
             .Map(dest => dest.Message, _ => "Server certificate configuration updated successfully.");
 
-        config.NewConfig<UpdateServerCertConfigRequest, OpenVpnServerCertConfigInfo>();
     }
 }

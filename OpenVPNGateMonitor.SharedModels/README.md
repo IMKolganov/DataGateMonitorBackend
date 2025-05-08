@@ -7,7 +7,7 @@ These models are used for API communication between backend services and consume
 
 - DTOs for OpenVPN Gate Monitor API
 - Simple and lightweight
-- Compatible with .NET 9
+- Compatible with .NET 6 7 8 9
 
 ## Usage
 
