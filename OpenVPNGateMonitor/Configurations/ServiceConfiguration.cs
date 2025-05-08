@@ -51,12 +51,11 @@ public static class ServiceConfiguration
             Environment.GetEnvironmentVariable("OPEN_VPN_BACKGROUND_SERVICE_DISABLED"), 
             "true", 
             StringComparison.OrdinalIgnoreCase);
-        if (!isDisabled)
-        {
-            services.AddSingleton<OpenVpnBackgroundService>();
-            services.AddSingleton<IOpenVpnBackgroundService>(provider => provider.GetRequiredService<OpenVpnBackgroundService>());
-            services.AddHostedService(provider => provider.GetRequiredService<OpenVpnBackgroundService>());
-        }
+
+        services.AddSingleton<OpenVpnBackgroundService>();
+        services.AddSingleton<IOpenVpnBackgroundService>(provider => provider.GetRequiredService<OpenVpnBackgroundService>());
+        services.AddHostedService(provider => provider.GetRequiredService<OpenVpnBackgroundService>());
+        
 
         services.AddScoped<IOpenVpnServerOvpnFileConfigService, OpenVpnServerOvpnFileConfigService>();
         services.AddScoped<ISettingsService, SettingsService>();
