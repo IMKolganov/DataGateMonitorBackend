@@ -111,12 +111,21 @@ public class OvpnFileApiClient(
                     $"Failed to revoke OVPN file. Status: {(int)response.StatusCode} {response.ReasonPhrase}. Details: {extractedError}");
             }
 
-            var result = await response.Content.ReadFromJsonAsync<bool>(cancellationToken: cancellationToken);
+            var metadata =
+                await response.Content.ReadFromJsonAsync<OvpnFileMetadata>(cancellationToken: cancellationToken);
+
+            if (metadata == null)
+            {
+                logger.LogWarning(
+                    "Received null metadata after revoking OVPN file for {CommonName} on server {ServerUrl}",
+                    request.CommonName, client.BaseAddress);
+                return false;
+            }
 
             logger.LogInformation("OVPN file revocation completed for {CommonName} on server {ServerUrl}",
                 request.CommonName, client.BaseAddress);
 
-            return result;
+            return true;
         }
         catch (HttpRequestException ex)
         {
