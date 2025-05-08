@@ -2,8 +2,8 @@
 using OpenVPNGateMonitor.Models;
 using OpenVPNGateMonitor.Models.Helpers.Background;
 using OpenVPNGateMonitor.Models.Helpers.Services;
-using OpenVPNGateMonitor.SharedModels.OpenVpnServers.Requests;
-using OpenVPNGateMonitor.SharedModels.OpenVpnServers.Responses;
+using OpenVPNGateMonitor.SharedModels.DataGateMonitorBackend.OpenVpnServers.Requests;
+using OpenVPNGateMonitor.SharedModels.DataGateMonitorBackend.OpenVpnServers.Responses;
 
 namespace OpenVPNGateMonitor.Mapping.OpenVpnServers.Mappings;
 

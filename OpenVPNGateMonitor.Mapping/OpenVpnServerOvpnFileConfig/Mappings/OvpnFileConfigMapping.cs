@@ -1,6 +1,6 @@
 ﻿using Mapster;
-using OpenVPNGateMonitor.SharedModels.OpenVpnServerOvpnFileConfig.Requests;
-using OpenVPNGateMonitor.SharedModels.OpenVpnServerOvpnFileConfig.Responses;
+using OpenVPNGateMonitor.SharedModels.DataGateMonitorBackend.OpenVpnServerOvpnFileConfig.Requests;
+using OpenVPNGateMonitor.SharedModels.DataGateMonitorBackend.OpenVpnServerOvpnFileConfig.Responses;
 
 namespace OpenVPNGateMonitor.Mapping.OpenVpnServerOvpnFileConfig.Mappings;
 

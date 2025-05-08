@@ -1,0 +1,14 @@
+﻿using System.ComponentModel.DataAnnotations;
+
+namespace OpenVPNGateMonitor.SharedModels.DataGateMonitorBackend.OpenVpnServerCerts.Requests;
+
+public class AddServerCertificateRequest
+{
+    [Required(ErrorMessage = "vpnServerId is required.")]
+    [Range(1, int.MaxValue, ErrorMessage = "vpnServerId must be greater than 0.")]
+    public int VpnServerId { get; set; }
+
+    [Required(ErrorMessage = "commonName is required.")]
+    public string CommonName { get; set; } = string.Empty;
+    public int CertExpireDays { get; set; } = 365;
+}

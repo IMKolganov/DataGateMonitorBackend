@@ -1,4 +1,4 @@
-﻿using OpenVPNGateMonitor.Models.Enums;
+﻿using OpenVPNGateMonitor.SharedModels.Enums;
 
 namespace OpenVPNGateMonitor.Models.Helpers.Background;
 
