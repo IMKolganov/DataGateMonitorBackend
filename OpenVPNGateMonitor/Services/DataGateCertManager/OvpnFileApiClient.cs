@@ -86,20 +86,41 @@ public class OvpnFileApiClient(
         try
         {
             using var client = await GetClientForServerAsync(vpnServerId, cancellationToken);
-            var response = await client.PostAsJsonAsync("api/OvpnFile/RevokeOvpnFile", request,
-                cancellationToken);
-            response.EnsureSuccessStatusCode();
+            var response = await client.PostAsJsonAsync("api/OvpnFile/RevokeOvpnFile", request, cancellationToken);
+
+            if (!response.IsSuccessStatusCode)
+            {
+                var rawError = await response.Content.ReadAsStringAsync(cancellationToken);
+                logger.LogWarning("Service responded with error JSON while revoking OVPN file: {Error}", rawError);
+
+                string extractedError = "Unknown error";
+
+                try
+                {
+                    var root = JsonConvert.DeserializeObject<JObject>(rawError);
+                    var error = root?["error"]?.ToString();
+                    if (!string.IsNullOrWhiteSpace(error))
+                        extractedError = error;
+                }
+                catch (Exception ex)
+                {
+                    logger.LogWarning(ex, "Failed to parse JSON error from revoke response.");
+                }
+
+                throw new InvalidOperationException(
+                    $"Failed to revoke OVPN file. Status: {(int)response.StatusCode} {response.ReasonPhrase}. Details: {extractedError}");
+            }
 
             var result = await response.Content.ReadFromJsonAsync<bool>(cancellationToken: cancellationToken);
 
             logger.LogInformation("OVPN file revocation completed for {CommonName} on server {ServerUrl}",
                 request.CommonName, client.BaseAddress);
+
             return result;
         }
         catch (HttpRequestException ex)
         {
-            logger.LogError(ex, "HTTP request failed while revoking OVPN file for " +
-                                "{CommonName} on server {VpnServerId}",
+            logger.LogError(ex, "HTTP request failed while revoking OVPN file for {CommonName} on server {VpnServerId}",
                 request.CommonName, vpnServerId);
             throw;
         }

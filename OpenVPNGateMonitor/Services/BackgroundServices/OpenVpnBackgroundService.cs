@@ -106,6 +106,16 @@ public class OpenVpnBackgroundService : BackgroundService, IOpenVpnBackgroundSer
 
     protected override async Task ExecuteAsync(CancellationToken cancellationToken)
     {
+        
+        var isDisabled = string.Equals(
+            Environment.GetEnvironmentVariable("OPEN_VPN_BACKGROUND_SERVICE_DISABLED"), 
+            "true", 
+            StringComparison.OrdinalIgnoreCase);
+        if (isDisabled)
+        {
+            return;
+        }
+        
         _logger.LogInformation("OpenVPN Background Service: Execution started.");
         var nextRunSeconds = await GetPollingIntervalSecondsAsync(cancellationToken);
         await RunOpenVpnTask(nextRunSeconds, cancellationToken);
