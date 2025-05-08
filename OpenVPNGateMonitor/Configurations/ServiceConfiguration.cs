@@ -51,6 +51,7 @@ public static class ServiceConfiguration
         services.AddSingleton<IOpenVpnBackgroundService>(provider => provider.GetRequiredService<OpenVpnBackgroundService>());
         services.AddHostedService(provider => provider.GetRequiredService<OpenVpnBackgroundService>());
         
+
         services.AddScoped<IOpenVpnServerOvpnFileConfigService, OpenVpnServerOvpnFileConfigService>();
         services.AddScoped<ISettingsService, SettingsService>();
         
@@ -61,6 +62,7 @@ public static class ServiceConfiguration
         services.AddHttpClient();
         services.AddScoped<ICertApiClient, CertApiClient>();
         services.AddScoped<IOvpnFileApiClient, OvpnFileApiClient>();
+        services.AddScoped<IOvpnFileApiService, OvpnFileApiService>();
 
         #endregion
     }

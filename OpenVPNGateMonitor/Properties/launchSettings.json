@@ -8,7 +8,8 @@
       "launchUrl": "swagger",
       "applicationUrl": "http://localhost:5581",
       "environmentVariables": {
-        "ASPNETCORE_ENVIRONMENT": "Development"
+        "ASPNETCORE_ENVIRONMENT": "Development",
+        "OPEN_VPN_BACKGROUND_SERVICE_DISABLED": "true"
       }
     },
     "OpenVPNGateMonitor Release": {
@@ -17,7 +18,8 @@
       "launchBrowser": true,
       "applicationUrl": "https://localhost:7090;http://localhost:5581",
       "environmentVariables": {
-        "ASPNETCORE_ENVIRONMENT": "Release"
+        "ASPNETCORE_ENVIRONMENT": "Release",
+        "OPEN_VPN_BACKGROUND_SERVICE_DISABLED": "true"
       }
     }
   }

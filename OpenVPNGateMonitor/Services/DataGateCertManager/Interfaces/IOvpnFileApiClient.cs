@@ -1,11 +1,12 @@
-﻿using OpenVPNGateMonitor.Models;
-using OpenVPNGateMonitor.Models.Helpers.DataGateCertManager;
+﻿using OpenVPNGateMonitor.SharedModels.DataGateCertManager.OvpnFile.Requests;
+using OpenVPNGateMonitor.SharedModels.DataGateCertManager.OvpnFile.Responses;
 
 namespace OpenVPNGateMonitor.Services.DataGateCertManager.Interfaces;
 
 public interface IOvpnFileApiClient
 {
-    Task<IssuedOvpnFile> AddOvpnFileAsync(AddOvpnFileRequest request, CancellationToken cancellationToken);
-    Task<bool> RevokeOvpnFileAsync(RevokeOvpnFileRequest request, CancellationToken cancellationToken);
-    Task<string> DownloadOvpnFileAsync(DownloadOvpnFileRequest request, CancellationToken cancellationToken);
+    Task<OvpnFileMetadata> AddOvpnFileAsync(int vpnServerId, AddOvpnFileRequest request, 
+        CancellationToken cancellationToken);
+    Task<bool> RevokeOvpnFileAsync(int vpnServerId, RevokeOvpnFileRequest request, CancellationToken cancellationToken);
+    Task<OvpnFileDownload> DownloadOvpnFileAsync(int vpnServerId, DownloadOvpnFileRequest request, CancellationToken cancellationToken);
 }

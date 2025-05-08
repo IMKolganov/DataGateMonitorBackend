@@ -1,8 +1,10 @@
 ﻿using System.Text.Json;
 using OpenVPNGateMonitor.Models.Helpers;
-using OpenVPNGateMonitor.Models.Helpers.DataGateCertManager;
 using OpenVPNGateMonitor.Services.Api.Interfaces;
 using OpenVPNGateMonitor.Services.DataGateCertManager.Interfaces;
+using OpenVPNGateMonitor.SharedModels.DataGateCertManager.Cert.Responses;
+using OpenVPNGateMonitor.SharedModels.DataGateMonitorBackend.OpenVpnServerCerts.Requests;
+using AddServerCertificateRequest = OpenVPNGateMonitor.SharedModels.DataGateCertManager.Cert.Requests.AddServerCertificateRequest;
 
 namespace OpenVPNGateMonitor.Services.DataGateCertManager;
 
@@ -12,154 +14,146 @@ public class CertApiClient(
     ILogger<CertApiClient> logger)
     : ICertApiClient
 {
-    private async Task<HttpClient> GetClientForServerAsync(int serverId, CancellationToken cancellationToken)
+    //todo: make table save in DB
+    private static readonly AsyncLocal<bool> IsLogging = new();
+
+    private void LogSafe(Action action)
     {
-        var server = await vpnDataService.GetOpenVpnServer(serverId, cancellationToken);
+        if (IsLogging.Value)
+            return;
+
+        try
+        {
+            IsLogging.Value = true;
+            action();
+        }
+        catch
+        {
+            // Suppress all logging errors
+        }
+        finally
+        {
+            IsLogging.Value = false;
+        }
+    }
+
+    private async Task<HttpClient> GetClientForServerAsync(int vpnServerId, CancellationToken cancellationToken)
+    {
+        var server = await vpnDataService.GetOpenVpnServer(vpnServerId, cancellationToken);
         var client = httpClientFactory.CreateClient();
         client.BaseAddress = new Uri(server.ApiUrl);
         return client;
     }
 
-    public async Task<List<CertificateCaInfo>> GetAllCertificatesAsync(int serverId, CancellationToken cancellationToken)
+    public async Task<List<ServerCertificate>> GetAllCertificatesAsync(int vpnServerId,
+        CancellationToken cancellationToken)
     {
         try
         {
-            using var client = await GetClientForServerAsync(serverId, cancellationToken);
-            var response = await client.GetAsync("api/EasyRsa/GetAllCertificates", cancellationToken);
+            using var client = await GetClientForServerAsync(vpnServerId, cancellationToken);
+            var response = await client.GetAsync("api/Cert/GetAllCertificates", cancellationToken);
             response.EnsureSuccessStatusCode();
 
-            var certificates = await response.Content.ReadFromJsonAsync<List<CertificateCaInfo>>(
-                cancellationToken: cancellationToken);
-
-            return certificates ?? new List<CertificateCaInfo>();
+            var certificates =
+                await response.Content.ReadFromJsonAsync<List<ServerCertificate>>(cancellationToken: cancellationToken);
+            return certificates ?? new List<ServerCertificate>();
         }
         catch (HttpRequestException ex)
         {
-            logger.LogError(ex, "HTTP request failed while getting certificates from server {ServerId}", serverId);
+            LogSafe(() =>
+                logger.LogError(
+                    "HTTP request failed (code {Code}) while getting certificates from server {VpnServerId}: {Message}",
+                    ex.HResult, vpnServerId, ex.Message));
             throw;
         }
         catch (JsonException ex)
         {
-            logger.LogError(ex, "Failed to deserialize certificates response from server {ServerId}", serverId);
+            LogSafe(() =>
+                logger.LogError(
+                    "Deserialization error (code {Code}) while getting certificates from server {VpnServerId}: {Message}",
+                    ex.HResult, vpnServerId, ex.Message));
             throw;
         }
     }
-    
-    public async Task<CertificateBuildResult> BuildCertificateAsync(int serverId, string commonName, CancellationToken cancellationToken)
+
+    public async Task<ServerCertificate> BuildCertificateAsync(int vpnServerId, string commonName,
+        CancellationToken cancellationToken)
     {
         try
         {
-            using var client = await GetClientForServerAsync(serverId, cancellationToken);
-            var request = new CertificateBuildRequest
-            {
-                CommonName = commonName
-            };
+            using var client = await GetClientForServerAsync(vpnServerId, cancellationToken);
+            var request = new AddServerCertificateRequest { CommonName = commonName };
 
-            var response = await client.PostAsJsonAsync("api/EasyRsa/BuildCertificate", request, cancellationToken);
+            var response = await client.PostAsJsonAsync("api/Cert/AddServerCertificate", request,
+                cancellationToken);
             response.EnsureSuccessStatusCode();
 
-            var result = await response.Content.ReadFromJsonAsync<CertificateBuildResult>(
-                cancellationToken: cancellationToken);
-
+            var result =
+                await response.Content.ReadFromJsonAsync<ServerCertificate>(cancellationToken: cancellationToken);
             if (result == null)
-            {
                 throw new InvalidOperationException("Received null response when building certificate");
-            }
 
-            logger.LogInformation("Successfully built certificate for {CommonName} on server {ServerId}", 
-                commonName, serverId);
+            logger.LogInformation("Successfully built certificate for {CommonName} on server {VpnServerId}", commonName,
+                vpnServerId);
             return result;
         }
         catch (HttpRequestException ex)
         {
-            logger.LogError(ex, "HTTP request failed while building certificate for {CommonName} on server {ServerId}", 
-                commonName, serverId);
+            LogSafe(() =>
+                logger.LogError(
+                    "HTTP request failed (code {Code}) while building certificate for {CommonName}" +
+                    " on server {VpnServerId}: {Message}",
+                    ex.HResult, commonName, vpnServerId, ex.Message));
             throw;
         }
         catch (JsonException ex)
         {
-            logger.LogError(ex, "Failed to deserialize build certificate response for {CommonName} on server {ServerId}", 
-                commonName, serverId);
+            LogSafe(() =>
+                logger.LogError(
+                    "Deserialization error (code {Code}) while building certificate for {CommonName}" +
+                    " on server {VpnServerId}: {Message}",
+                    ex.HResult, commonName, vpnServerId, ex.Message));
             throw;
         }
     }
-    
-    public async Task<CertificateRevokeResult> RevokeCertificateAsync(int serverId, string commonName, CancellationToken cancellationToken)
+
+    public async Task<CertificateRevokeResult> RevokeCertificateAsync(RevokeCertificateRequest request,
+        CancellationToken cancellationToken)
     {
         try
         {
-            using var client = await GetClientForServerAsync(serverId, cancellationToken);
-            var response = await client.PostAsync(
-                $"api/EasyRsa/RevokeCertificate/{Uri.EscapeDataString(commonName)}", 
-                null, 
+            using var client = await GetClientForServerAsync(request.VpnServerId, cancellationToken);
+            var response = await client.PostAsJsonAsync($"api/Cert/RevokeCertificate", request,
                 cancellationToken);
-            
             response.EnsureSuccessStatusCode();
 
-            var result = await response.Content.ReadFromJsonAsync<CertificateRevokeResult>(
-                cancellationToken: cancellationToken);
-
+            var result =
+                await response.Content.ReadFromJsonAsync<CertificateRevokeResult>(cancellationToken: cancellationToken);
             if (result == null)
-            {
                 throw new InvalidOperationException("Received null response when revoking certificate");
-            }
 
             logger.LogInformation(
-                "Certificate revocation completed for {CommonName} on server {ServerId}. IsRevoked: {IsRevoked}, Message: {Message}", 
-                commonName, 
-                serverId,
-                result.IsRevoked,
-                result.Message);
-
+                "Certificate revocation completed for {CommonName} on server {VpnServerId}." +
+                " IsRevoked: {IsRevoked}, Message: {Message}",
+                request.CommonName, request.VpnServerId, result.IsRevoked, result.Message);
             return result;
         }
         catch (HttpRequestException ex)
         {
-            logger.LogError(ex, "HTTP request failed while revoking certificate for {CommonName} on server {ServerId}", 
-                commonName, serverId);
+            LogSafe(() =>
+                logger.LogError(
+                    "HTTP request failed (code {Code}) while revoking certificate for" +
+                    " {CommonName} on server {VpnServerId}: {Message}",
+                    ex.HResult, request.CommonName, request.VpnServerId, ex.Message));
             throw;
         }
         catch (JsonException ex)
         {
-            logger.LogError(ex, "Failed to deserialize revoke certificate response for {CommonName} on server {ServerId}", 
-                commonName, serverId);
-            throw;
-        }
-    }
-    
-    public async Task<string> GetPemContentAsync(int serverId, string filePath, CancellationToken cancellationToken)
-    {
-        try
-        {
-            using var client = await GetClientForServerAsync(serverId, cancellationToken);
-            var response = await client.GetAsync(
-                $"api/EasyRsa/GetPemContent/{Uri.EscapeDataString(filePath)}", 
-                cancellationToken);
-            
-            response.EnsureSuccessStatusCode();
-
-            var content = await response.Content.ReadFromJsonAsync<string>(
-                cancellationToken: cancellationToken);
-
-            if (string.IsNullOrEmpty(content))
-            {
-                throw new InvalidOperationException($"Empty PEM content received for file: {filePath}");
-            }
-
-            logger.LogDebug("Successfully retrieved PEM content from {FilePath} on server {ServerId}", 
-                filePath, serverId);
-            return content;
-        }
-        catch (HttpRequestException ex)
-        {
-            logger.LogError(ex, "HTTP request failed while getting PEM content from {FilePath} on server {ServerId}", 
-                filePath, serverId);
-            throw;
-        }
-        catch (JsonException ex)
-        {
-            logger.LogError(ex, "Failed to deserialize PEM content response from {FilePath} on server {ServerId}", 
-                filePath, serverId);
+            LogSafe(() =>
+                logger.LogError(
+                    "Deserialization error (code {Code}) while revoking certificate for {CommonName} " +
+                    "on server {VpnServerId}: {Message}",
+                    ex.HResult, request.CommonName, request.VpnServerId, ex.Message));
             throw;
         }
     }

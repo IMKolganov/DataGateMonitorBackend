@@ -1,5 +1,5 @@
 ﻿using OpenVPNGateMonitor.Models;
-using OpenVPNGateMonitor.Models.Enums;
+using OpenVPNGateMonitor.SharedModels.Enums;
 
 namespace OpenVPNGateMonitor.Services.TelegramBot;
 

@@ -5,11 +5,11 @@ using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Mvc;
 using Newtonsoft.Json;
 using OpenVPNGateMonitor.Models;
-using OpenVPNGateMonitor.Models.Enums;
 using OpenVPNGateMonitor.Services.Api.Interfaces;
 using OpenVPNGateMonitor.Services.BackgroundServices.Interfaces;
-using OpenVPNGateMonitor.SharedModels.OpenVpnServers.Requests;
-using OpenVPNGateMonitor.SharedModels.OpenVpnServers.Responses;
+using OpenVPNGateMonitor.SharedModels.DataGateMonitorBackend.OpenVpnServers.Requests;
+using OpenVPNGateMonitor.SharedModels.DataGateMonitorBackend.OpenVpnServers.Responses;
+using OpenVPNGateMonitor.SharedModels.Enums;
 using OpenVPNGateMonitor.SharedModels.Responses;
 
 namespace OpenVPNGateMonitor.Controllers;
@@ -17,11 +17,8 @@ namespace OpenVPNGateMonitor.Controllers;
 [ApiController]
 [Route("api/[controller]")]
 [Authorize]
-public class OpenVpnServersController(
-    ILogger<OpenVpnServersController> logger,
-    IVpnDataService vpnDataService,
-    IOpenVpnBackgroundService openVpnBackgroundService)
-    : ControllerBase
+public class OpenVpnServersController(ILogger<OpenVpnServersController> logger, IVpnDataService vpnDataService,
+    IOpenVpnBackgroundService openVpnBackgroundService) : ControllerBase
 {
     [HttpGet("GetAllConnectedClients")]
     public async Task<IActionResult> GetAllConnectedClients(
