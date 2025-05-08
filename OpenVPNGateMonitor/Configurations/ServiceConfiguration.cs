@@ -68,6 +68,7 @@ public static class ServiceConfiguration
         services.AddHttpClient();
         services.AddScoped<ICertApiClient, CertApiClient>();
         services.AddScoped<IOvpnFileApiClient, OvpnFileApiClient>();
+        services.AddScoped<IOvpnFileApiService, OvpnFileApiService>();
 
         #endregion
     }
