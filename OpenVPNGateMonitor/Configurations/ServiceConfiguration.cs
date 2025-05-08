@@ -47,11 +47,6 @@ public static class ServiceConfiguration
         services.AddSingleton<OpenVpnServerStatusManager>();
         services.AddSingleton<OpenVpnServerProcessorFactory>();
 
-        var isDisabled = string.Equals(
-            Environment.GetEnvironmentVariable("OPEN_VPN_BACKGROUND_SERVICE_DISABLED"), 
-            "true", 
-            StringComparison.OrdinalIgnoreCase);
-
         services.AddSingleton<OpenVpnBackgroundService>();
         services.AddSingleton<IOpenVpnBackgroundService>(provider => provider.GetRequiredService<OpenVpnBackgroundService>());
         services.AddHostedService(provider => provider.GetRequiredService<OpenVpnBackgroundService>());
