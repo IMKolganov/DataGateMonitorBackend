@@ -49,6 +49,8 @@ public class OvpnFileApiService(
             CommonName = request.CommonName,
             ExternalId = request.ExternalId,
             CertId = "unavailable",
+            PemFilePath = "unavailable",
+            ReqFilePath = "unavailable",
             FileName = result.FileName,
             FilePath = result.FilePath,
             IssuedAt = result.IssuedAt,
@@ -123,10 +125,15 @@ public class OvpnFileApiService(
             throw new InvalidOperationException("Issued OVPN file not found.");
         }
 
+        var requestApi =
+            new OpenVPNGateMonitor.SharedModels.DataGateCertManager.OvpnFile.Requests.DownloadOvpnFileRequest()
+            {
+                CommonName = issuedOvpnFile.CommonName,
+                FileName = issuedOvpnFile.FileName,
+                FilePath = issuedOvpnFile.FilePath
+            };
         var result = await ovpnFileApiClient.DownloadOvpnFileAsync(
-            request.VpnServerId,
-            request.Adapt<OpenVPNGateMonitor.SharedModels.DataGateCertManager.OvpnFile.Requests.DownloadOvpnFileRequest>(),
-            cancellationToken);
+            request.VpnServerId, requestApi, cancellationToken);
 
         if (result.Content == null)
         {
