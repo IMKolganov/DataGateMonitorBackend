@@ -1,16 +1,14 @@
-﻿using System.Text.Json;
-using OpenVPNGateMonitor.DataBase.UnitOfWork;
-using OpenVPNGateMonitor.Models;
+﻿using Newtonsoft.Json;
 using OpenVPNGateMonitor.Services.Api.Interfaces;
 using OpenVPNGateMonitor.Services.DataGateCertManager.Interfaces;
 using OpenVPNGateMonitor.SharedModels.DataGateCertManager.OvpnFile.Requests;
+using OpenVPNGateMonitor.SharedModels.DataGateCertManager.OvpnFile.Responses;
 
 namespace OpenVPNGateMonitor.Services.DataGateCertManager;
 
 public class OvpnFileApiClient(
     IHttpClientFactory httpClientFactory,
     IVpnDataService vpnDataService,
-    IUnitOfWork unitOfWork,
     ILogger<OvpnFileApiClient> logger)
     : IOvpnFileApiClient
 {
@@ -22,16 +20,17 @@ public class OvpnFileApiClient(
         return client;
     }
 
-    public async Task<IssuedOvpnFile> AddOvpnFileAsync(int vpnServerId, AddOvpnFileRequest request, 
+    public async Task<OvpnFileMetadata> AddOvpnFileAsync(int vpnServerId, AddOvpnFileRequest request, 
         CancellationToken cancellationToken)
     {
         try
         {
             using var client = await GetClientForServerAsync(vpnServerId, cancellationToken);
-            var response = await client.PostAsJsonAsync("api/OvpnFile/AddOvpnFile", request, cancellationToken);
+            var response = await client.PostAsJsonAsync("api/OvpnFile/AddOvpnFile", request, 
+                cancellationToken);
             response.EnsureSuccessStatusCode();
 
-            var result = await response.Content.ReadFromJsonAsync<IssuedOvpnFile>(cancellationToken: cancellationToken);
+            var result = await response.Content.ReadFromJsonAsync<OvpnFileMetadata>(cancellationToken);
 
             if (result == null)
             {
@@ -67,7 +66,8 @@ public class OvpnFileApiClient(
         try
         {
             using var client = await GetClientForServerAsync(vpnServerId, cancellationToken);
-            var response = await client.PostAsJsonAsync("api/OvpnFile/RevokeOvpnFile", request, cancellationToken);
+            var response = await client.PostAsJsonAsync("api/OvpnFile/RevokeOvpnFile", request,
+                cancellationToken);
             response.EnsureSuccessStatusCode();
 
             var result = await response.Content.ReadFromJsonAsync<bool>(cancellationToken: cancellationToken);
@@ -92,37 +92,39 @@ public class OvpnFileApiClient(
         }
     }
 
-    public async Task<string> DownloadOvpnFileAsync(int vpnServerId, DownloadOvpnFileRequest request,
+    public async Task<OvpnFileDownload> DownloadOvpnFileAsync(int vpnServerId, DownloadOvpnFileRequest request,
         CancellationToken cancellationToken)
     {
         try
         {
             using var client = await GetClientForServerAsync(vpnServerId, cancellationToken);
-            var response = await client.PostAsJsonAsync("api/OvpnFile/DownloadOvpnFile", request, cancellationToken);
+            var response = await client.PostAsJsonAsync("api/OvpnFile/DownloadOvpnFile", request, 
+                cancellationToken);
             response.EnsureSuccessStatusCode();
 
-            var content = await response.Content.ReadFromJsonAsync<string>(cancellationToken: cancellationToken);
-
-            if (string.IsNullOrEmpty(content))
-            {
-                throw new InvalidOperationException($"Empty OVPN content received for file: {request.FileName}");
-            }
-
+            var content = await response.Content.ReadFromJsonAsync<OvpnFileDownload>(cancellationToken);
+            
             logger.LogDebug("Successfully downloaded OVPN file {FileName} for {CommonName} on server {ServerUrl}",
                 request.FileName, request.CommonName, client.BaseAddress);
-            return content;
+            return content ?? 
+                   throw new InvalidOperationException($"Failed to deserialize OVPN file content for CommonName:" +
+                                                       $" {request.CommonName}, FileName: {request.FileName}." +
+                                                       $" The server returned a successful status " +
+                                                       $"code but the content was null.");
         }
         catch (HttpRequestException ex)
         {
             logger.LogError(ex,
-                "HTTP request failed while downloading OVPN file {FileName} for {CommonName} on server {VpnServerId}",
+                "HTTP request failed while downloading OVPN file {FileName} for {CommonName} " +
+                "on server {VpnServerId}",
                 request.FileName, request.CommonName, vpnServerId);
             throw;
         }
         catch (JsonException ex)
         {
             logger.LogError(ex,
-                "Failed to deserialize OVPN file content for {FileName} and {CommonName} on server {VpnServerId}",
+                "Failed to deserialize OVPN file content for {FileName} and {CommonName} " +
+                "on server {VpnServerId}",
                 request.FileName, request.CommonName, vpnServerId);
             throw;
         }

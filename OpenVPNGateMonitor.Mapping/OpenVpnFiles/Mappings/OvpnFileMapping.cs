@@ -16,13 +16,6 @@ public class OvpnFileMapping : IRegister
     
         config.NewConfig<IssuedOvpnFile, IssuedOvpnFileDto>();
 
-        config.NewConfig<OvpnFileResult, DownloadOvpnFileResponse>()
-            .MapWith(src => new DownloadOvpnFileResponse
-            {
-                FileStream = src.FileStream!,
-                FileName = src.FileName
-            });
-
         config.NewConfig<RevokeOvpnFileRequest, IssuedOvpnFile>()
             .Map(dest => dest.VpnServerId, src => src.VpnServerId)
             .Map(dest => dest.CommonName, src => src.CommonName);
