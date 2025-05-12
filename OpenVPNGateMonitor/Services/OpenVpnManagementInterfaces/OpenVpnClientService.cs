@@ -1,7 +1,7 @@
 ﻿using System.Globalization;
 using System.Security.Cryptography;
 using System.Text;
-using OpenVPNGateMonitor.Models.Helpers.OpenVpnManagementInterfaces;
+using OpenVPNGateMonitor.Models;
 using OpenVPNGateMonitor.Services.GeoLite.Interfaces;
 using OpenVPNGateMonitor.Services.OpenVpnManagementInterfaces.Interfaces;
 using OpenVPNGateMonitor.Services.OpenVpnManagementInterfaces.OpenVpnTelnet;
@@ -20,7 +20,7 @@ public class OpenVpnClientService : IOpenVpnClientService
         _geoLiteQueryService = geoLiteQueryService;
     }
     
-    public async Task<List<OpenVpnClient>> GetClientsAsync(ICommandQueue commandQueue, 
+    public async Task<List<OpenVpnServerClient>> GetClientsAsync(ICommandQueue commandQueue, 
         CancellationToken cancellationToken)
     {
         var response = await commandQueue.SendCommandAsync("status 3", cancellationToken);
@@ -38,10 +38,9 @@ public class OpenVpnClientService : IOpenVpnClientService
         return clients;
     }
 
-    private async Task<List<OpenVpnClient>> ParseStatus(string data, CancellationToken cancellationToken)
+    private async Task<List<OpenVpnServerClient>> ParseStatus(string data, CancellationToken cancellationToken)
     {
-        var id = 0;
-        var clients = new List<OpenVpnClient>();
+        var clients = new List<OpenVpnServerClient>();
         var lines = data.Split("\n", StringSplitOptions.RemoveEmptyEntries);
 
         foreach (var line in lines)
@@ -55,8 +54,6 @@ public class OpenVpnClientService : IOpenVpnClientService
                 
                 if (client != null)
                 {
-                    client.Id = id;//todo: remove
-                    id++;
                     var geoInfo = await _geoLiteQueryService.GetGeoInfoAsync(client.RemoteIp, cancellationToken);//todo: add mapper for project
                     if (geoInfo != null)
                     {
@@ -78,11 +75,11 @@ public class OpenVpnClientService : IOpenVpnClientService
         return clients;
     }
 
-    private OpenVpnClient? TryParseClient(string[] parts)
+    private OpenVpnServerClient? TryParseClient(string[] parts)
     {
         try
         {
-            return new OpenVpnClient()
+            return new OpenVpnServerClient()
             {
                 CommonName = parts[1],
                 RemoteIp = parts[2].Split(":")[0],
