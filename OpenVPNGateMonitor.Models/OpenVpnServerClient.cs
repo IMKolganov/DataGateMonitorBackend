@@ -3,13 +3,19 @@
 public class OpenVpnServerClient : BaseEntity<int>
 {
     public int VpnServerId { get; set; }
+    public string ExternalId { get; set; } = string.Empty;
     public Guid SessionId { get; set; }
     public string CommonName { get; set; } = string.Empty;
     public string RemoteIp { get; set; } = string.Empty;
     public string LocalIp { get; set; } = string.Empty;
     public long BytesReceived { get; set; }
     public long BytesSent { get; set; }
-    public DateTime ConnectedSince { get; set; }
+    private DateTime _connectedSince;
+    public DateTime ConnectedSince
+    {
+        get => _connectedSince;
+        set => _connectedSince = DateTime.SpecifyKind(value, DateTimeKind.Utc);
+    }
     public string Username { get; set; } = string.Empty;
     public string? Country { get; set; }
     public string? Region { get; set; }
