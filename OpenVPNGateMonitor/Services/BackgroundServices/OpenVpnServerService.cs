@@ -65,13 +65,15 @@ public class OpenVpnServerService : IOpenVpnServerService
 
                 if (existingOpenVpnServerClient != null)
                 {
-                    existingOpenVpnServerClient.VpnServerId = existingOpenVpnServerClient.VpnServerId;
+                    existingOpenVpnServerClient.CommonName = openVpnClient.CommonName;
+                    existingOpenVpnServerClient.VpnServerId = openVpnClient.VpnServerId;
                     existingOpenVpnServerClient.ExternalId = 
-                        await TryParseExternalIdAsync(existingOpenVpnServerClient.CommonName, cancellationToken)
+                        await TryParseExternalIdAsync(openVpnClient.CommonName, cancellationToken)
                         ?? string.Empty;
                     existingOpenVpnServerClient.BytesReceived = openVpnClient.BytesReceived;
                     existingOpenVpnServerClient.BytesSent = openVpnClient.BytesSent;
                     existingOpenVpnServerClient.LastUpdate = DateTime.UtcNow;
+                    existingOpenVpnServerClient.Username = openVpnClient.Username;
                     existingOpenVpnServerClient.Country = openVpnClient.Country;
                     existingOpenVpnServerClient.Region = openVpnClient.Region;
                     existingOpenVpnServerClient.City = openVpnClient.City;
