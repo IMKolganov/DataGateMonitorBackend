@@ -6,9 +6,9 @@ namespace OpenVPNGateMonitor.Services.Api.Interfaces;
 
 public interface IVpnDataService
 {
-    Task<OpenVpnServerClientList> GetAllConnectedOpenVpnServerClients(
+    Task<VpnClientInfoResponseList> GetAllConnectedOpenVpnServerClients(
         int vpnServerId, int page, int pageSize, CancellationToken cancellationToken);
-    Task<OpenVpnServerClientList> GetAllHistoryOpenVpnServerClients(
+    Task<VpnClientInfoResponseList> GetAllHistoryOpenVpnServerClients(
         int vpnServerId, int page, int pageSize, CancellationToken cancellationToken);
     Task<List<OpenVpnServerWithStatus>> GetAllOpenVpnServersWithStatus(CancellationToken cancellationToken);
     Task<OpenVpnServerWithStatus> GetOpenVpnServerWithStatus(int vpnServerId, CancellationToken cancellationToken);

@@ -5,6 +5,7 @@ using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Mvc;
 using Newtonsoft.Json;
 using OpenVPNGateMonitor.Models;
+using OpenVPNGateMonitor.Models.Helpers.Services;
 using OpenVPNGateMonitor.Services.Api.Interfaces;
 using OpenVPNGateMonitor.Services.BackgroundServices.Interfaces;
 using OpenVPNGateMonitor.SharedModels.DataGateMonitorBackend.OpenVpnServers.Requests;
@@ -21,7 +22,7 @@ public class OpenVpnServersController(ILogger<OpenVpnServersController> logger, 
     IOpenVpnBackgroundService openVpnBackgroundService) : ControllerBase
 {
     [HttpGet("GetAllConnectedClients")]
-    public async Task<IActionResult> GetAllConnectedClients(
+    public async Task<ActionResult<ApiResponse<ConnectedClientsResponse>>> GetAllConnectedClients(
         [FromQuery] GetConnectedClientsRequest request, CancellationToken cancellationToken)
     {
         var result = await vpnDataService.GetAllConnectedOpenVpnServerClients(
@@ -31,7 +32,7 @@ public class OpenVpnServersController(ILogger<OpenVpnServersController> logger, 
     }
 
     [HttpGet("GetAllHistoryClients")]
-    public async Task<IActionResult> GetAllHistoryClients(
+    public async Task<ActionResult<ApiResponse<ConnectedClientsResponse>>> GetAllHistoryClients(
         [FromQuery] GetHistoryClientsRequest request, CancellationToken cancellationToken)
     {
         var result = await vpnDataService.GetAllHistoryOpenVpnServerClients(
@@ -41,7 +42,7 @@ public class OpenVpnServersController(ILogger<OpenVpnServersController> logger, 
     }
     
     [HttpGet("GetAllServersWithStatus")]
-    public async Task<IActionResult> GetAllServersWithStatus(CancellationToken cancellationToken)
+    public async Task<ActionResult<ApiResponse<OpenVpnServerWithStatusResponse>>> GetAllServersWithStatus(CancellationToken cancellationToken)
     {
         var result = await vpnDataService.GetAllOpenVpnServersWithStatus(cancellationToken);
         return Ok(ApiResponse<List<OpenVpnServerWithStatusResponse>>.SuccessResponse(result.Adapt<List<OpenVpnServerWithStatusResponse>>()));
