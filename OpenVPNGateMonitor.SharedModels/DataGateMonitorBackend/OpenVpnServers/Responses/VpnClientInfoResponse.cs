@@ -4,7 +4,7 @@ public class VpnClientInfoResponse
 {
     public int Id { get; set; }
     public int VpnServerId { get; set; }
-    public int ExternalId { get; set; }
+    public string ExternalId { get; set; } = string.Empty;
     public string? TgUsername { get; set; } 
     public string? TgFirstName { get; set; }
     public string? TgLastName { get; set; }
