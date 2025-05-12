@@ -11,9 +11,9 @@ public class VpnServerMapping : IRegister
 {
     public void Register(TypeAdapterConfig config)
     {
-        config.NewConfig<OpenVpnServerClientList, ConnectedClientsResponse>()
+        config.NewConfig<VpnClientInfoResponseList, ConnectedClientsResponse>()
             .Map(dest => dest.TotalCount, src => src.TotalCount)
-            .Map(dest => dest.Clients, src => src.OpenVpnServerClients.Adapt<List<VpnClientInfoResponse>>());
+            .Map(dest => dest.Clients, src => src.VpnClientInfoResponse.Adapt<List<VpnClientInfoResponse>>());
 
         config.NewConfig<OpenVpnServerClient, VpnClientInfoResponse>();
 
