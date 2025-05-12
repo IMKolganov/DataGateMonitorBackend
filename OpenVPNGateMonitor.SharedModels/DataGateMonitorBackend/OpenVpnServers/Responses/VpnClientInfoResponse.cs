@@ -4,6 +4,10 @@ public class VpnClientInfoResponse
 {
     public int Id { get; set; }
     public int VpnServerId { get; set; }
+    public int ExternalId { get; set; }
+    public string? TgUsername { get; set; } 
+    public string? TgFirstName { get; set; }
+    public string? TgLastName { get; set; }
     public Guid SessionId { get; set; }
     public string CommonName { get; set; } = string.Empty;
     public string RemoteIp { get; set; } = string.Empty;
