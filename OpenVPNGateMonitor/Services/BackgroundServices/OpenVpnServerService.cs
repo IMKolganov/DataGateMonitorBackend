@@ -1,5 +1,6 @@
 ﻿using System.Security.Cryptography;
 using System.Text;
+using System.Text.RegularExpressions;
 using Microsoft.EntityFrameworkCore;
 using OpenVPNGateMonitor.DataBase.UnitOfWork;
 using OpenVPNGateMonitor.Models;
@@ -43,6 +44,7 @@ public class OpenVpnServerService : IOpenVpnServerService
         {
             var openVpnClients = await _openVpnClientService.GetClientsAsync(commandQueue, 
                 cancellationToken);
+            
             _logger.LogInformation($"VpnServerId: {vpnServerId}. " +
                                    $"Retrieved {openVpnClients.Count} clients from OpenVPN.");
 
@@ -63,10 +65,15 @@ public class OpenVpnServerService : IOpenVpnServerService
 
                 if (existingOpenVpnServerClient != null)
                 {
-                    existingOpenVpnServerClient.VpnServerId = existingOpenVpnServerClient.VpnServerId;
+                    existingOpenVpnServerClient.CommonName = openVpnClient.CommonName;
+                    existingOpenVpnServerClient.VpnServerId = openVpnClient.VpnServerId;
+                    existingOpenVpnServerClient.ExternalId = 
+                        await TryParseExternalIdAsync(openVpnClient.CommonName, cancellationToken)
+                        ?? string.Empty;
                     existingOpenVpnServerClient.BytesReceived = openVpnClient.BytesReceived;
                     existingOpenVpnServerClient.BytesSent = openVpnClient.BytesSent;
                     existingOpenVpnServerClient.LastUpdate = DateTime.UtcNow;
+                    existingOpenVpnServerClient.Username = openVpnClient.Username;
                     existingOpenVpnServerClient.Country = openVpnClient.Country;
                     existingOpenVpnServerClient.Region = openVpnClient.Region;
                     existingOpenVpnServerClient.City = openVpnClient.City;
@@ -82,6 +89,8 @@ public class OpenVpnServerService : IOpenVpnServerService
                     var newClient = new OpenVpnServerClient()
                     {
                         VpnServerId = vpnServerId,
+                        ExternalId = 
+                            await TryParseExternalIdAsync(openVpnClient.CommonName, cancellationToken) ?? string.Empty,
                         SessionId = sessionId,
                         CommonName = openVpnClient.CommonName,
                         RemoteIp = openVpnClient.RemoteIp,
@@ -225,7 +234,7 @@ public class OpenVpnServerService : IOpenVpnServerService
         return sessionId;
     }
 
-    private async Task<bool> SetDisconnectForAllUsers(int vpnServerId, CancellationToken cancellationToken)
+    private async Task SetDisconnectForAllUsers(int vpnServerId, CancellationToken cancellationToken)
     {
         var existingAllOpenVpnServerClient = await _unitOfWork.GetQuery<OpenVpnServerClient>()
             .AsQueryable().Where(x => x.IsConnected && x.VpnServerId == vpnServerId)
@@ -237,6 +246,27 @@ public class OpenVpnServerService : IOpenVpnServerService
         }
         _logger.LogInformation($"VpnServerId: {vpnServerId}. " +
                                $"Marked {existingAllOpenVpnServerClient.Count} existing clients as disconnected.");
-        return true;
+    }
+
+    private async Task<string?> TryParseExternalIdAsync(string commonName, CancellationToken cancellationToken = default)
+    {
+        var digitParts = Regex.Matches(commonName, @"\d+")
+            .Select(m => m.Value)
+            .Distinct();
+
+        foreach (var candidate in digitParts)
+        {
+            if (!long.TryParse(candidate, out var id))
+                continue;
+
+            var exists = await _unitOfWork.GetQuery<TelegramBotUser>()
+                .AsQueryable()
+                .AnyAsync(x => x.TelegramId == id, cancellationToken);
+
+            if (exists)
+                return candidate;
+        }
+
+        return null;
     }
 }
