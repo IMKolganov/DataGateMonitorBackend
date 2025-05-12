@@ -38,9 +38,36 @@ public class VpnDataService : IVpnDataService
             .Take(pageSize)
             .ToListAsync(cancellationToken);
 
+        var vpnClients = openVpnServerClients.Adapt<List<VpnClientInfoResponse>>();
+
+        var externalIds = vpnClients
+            .Select(c => long.TryParse(c.ExternalId, out var id) ? id : (long?)null)
+            .Where(id => id.HasValue)
+            .Select(id => id!.Value)
+            .ToList();
+
+        var telegramUsers = await _unitOfWork.GetQuery<TelegramBotUser>()
+            .AsQueryable()
+            .Where(x => externalIds.Contains(x.TelegramId))
+            .ToListAsync(cancellationToken);
+
+        foreach (var client in vpnClients)
+        {
+            if (!long.TryParse(client.ExternalId, out var externalId))
+                continue;
+
+            var tgUser = telegramUsers.FirstOrDefault(x => x.TelegramId == externalId);
+            if (tgUser != null)
+            {
+                client.TgUsername = tgUser.Username;
+                client.TgFirstName = tgUser.FirstName;
+                client.TgLastName = tgUser.LastName;
+            }
+        }
+
         return new VpnClientInfoResponseList
         {
-            VpnClientInfoResponse = openVpnServerClients.Adapt<List<VpnClientInfoResponse>>(),
+            VpnClientInfoResponse = vpnClients,
             TotalCount = totalCount
         };
     }
@@ -60,9 +87,36 @@ public class VpnDataService : IVpnDataService
             .Take(pageSize)
             .ToListAsync(cancellationToken);
 
+        var vpnClients = openVpnServerClients.Adapt<List<VpnClientInfoResponse>>();
+
+        var externalIds = vpnClients
+            .Select(c => long.TryParse(c.ExternalId, out var id) ? id : (long?)null)
+            .Where(id => id.HasValue)
+            .Select(id => id!.Value)
+            .ToList();
+
+        var telegramUsers = await _unitOfWork.GetQuery<TelegramBotUser>()
+            .AsQueryable()
+            .Where(x => externalIds.Contains(x.TelegramId))
+            .ToListAsync(cancellationToken);
+
+        foreach (var client in vpnClients)
+        {
+            if (!long.TryParse(client.ExternalId, out var externalId))
+                continue;
+
+            var tgUser = telegramUsers.FirstOrDefault(x => x.TelegramId == externalId);
+            if (tgUser != null)
+            {
+                client.TgUsername = tgUser.Username;
+                client.TgFirstName = tgUser.FirstName;
+                client.TgLastName = tgUser.LastName;
+            }
+        }
+
         return new VpnClientInfoResponseList
         {
-            VpnClientInfoResponse = openVpnServerClients.Adapt<List<VpnClientInfoResponse>>(),
+            VpnClientInfoResponse = vpnClients,
             TotalCount = totalCount
         };
     }
