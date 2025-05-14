@@ -15,27 +15,8 @@ public class GeoLiteHub : Hub
         if (!_started)
         {
             _started = true;
-            _ = StartFakeProgressBroadcast(Context);
         }
 
         await base.OnConnectedAsync();
-    }
-
-    private async Task StartFakeProgressBroadcast(HubCallerContext context)
-    {
-        var hubContext = (IHubContext<GeoLiteHub>)context
-            .GetHttpContext()
-            ?.RequestServices
-            .GetService(typeof(IHubContext<GeoLiteHub>))!;
-
-        while (true)
-        {
-            for (int i = 0; i <= 100; i++)
-            {
-                await hubContext.Clients.All.SendAsync("GeoLiteDownloadProgress", i);
-                Console.WriteLine($"[FakeProgress] Sent {i}%");
-                await Task.Delay(50);
-            }
-        }
     }
 }
