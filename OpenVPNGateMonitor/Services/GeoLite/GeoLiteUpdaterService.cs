@@ -119,8 +119,15 @@ public class GeoLiteUpdaterService(
             await ReportStepProgressAsync(8, totalSteps, "Reload in-memory database", 0, cancellationToken);
             await databaseFactory.ReloadDatabaseAsync(cancellationToken);
             await ReportStepProgressAsync(8, totalSteps, "Reload in-memory database", 100, cancellationToken);
-
+            
+            if (result.Success)
+            {
+                using var scope = serviceProvider.CreateScope();
+                var hubContext = scope.ServiceProvider.GetRequiredService<IHubContext<GeoLiteHub>>();
+                await hubContext.Clients.All.SendAsync("GeoLiteUpdateFinished", cancellationToken);
+            }
             logger.LogInformation("GeoLite2 database update completed successfully.");
+            return result;
         }
         catch (Exception ex)
         {
