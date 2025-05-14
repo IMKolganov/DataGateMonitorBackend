@@ -1,7 +1,10 @@
-﻿using System.Reflection;
+﻿using System.Net;
+using System.Reflection;
+using Microsoft.AspNetCore.HttpOverrides;
 using Microsoft.EntityFrameworkCore;
 using Microsoft.OpenApi.Writers;
 using OpenVPNGateMonitor.DataBase.Contexts;
+using OpenVPNGateMonitor.Hubs;
 using Swashbuckle.AspNetCore.Swagger;
 
 namespace OpenVPNGateMonitor.Configurations;
@@ -10,8 +13,33 @@ public static class PipelineConfiguration
 {
     public static void ConfigurePipeline(this WebApplication app)
     {
+        app.UseForwardedHeaders(new ForwardedHeadersOptions
+        {
+            ForwardedHeaders = ForwardedHeaders.XForwardedFor |
+                               ForwardedHeaders.XForwardedProto |
+                               ForwardedHeaders.XForwardedHost,
+        });
+        
+        app.Use(async (context, next) =>
+        {
+            if (context.Request.Headers.ContainsKey("X-Forwarded-Host"))
+            {
+                var host = context.Request.Headers["X-Forwarded-Host"].ToString();
+                context.Request.Host = new HostString(host);
+            }
+
+            if (context.Request.Headers.ContainsKey("X-Forwarded-Proto"))
+            {
+                var scheme = context.Request.Headers["X-Forwarded-Proto"].ToString();
+                context.Request.Scheme = scheme;
+            }
+
+            await next();
+        });
+
+        
         app.UseWebSockets();
-        app.UseCors("AllowAllOrigins"); 
+        app.UseCors("AllowAllOriginsWithCredentials");
         if (app.Environment.IsDevelopment())
         {
             // app.MapOpenApi();
@@ -71,6 +99,8 @@ public static class PipelineConfiguration
 
             await context.Response.WriteAsync(stringWriter.ToString());
         });
+        
+        app.MapHub<GeoLiteHub>("/api/hubs/geoLite");
 
         var version = Assembly.GetExecutingAssembly().GetName().Version?.ToString() ?? "Unknown version";
         var environmentName = app.Environment.EnvironmentName;

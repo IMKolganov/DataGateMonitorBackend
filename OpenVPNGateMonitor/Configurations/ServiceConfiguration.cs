@@ -17,18 +17,19 @@ public static class ServiceConfiguration
 {
     public static void ConfigureServices(this IServiceCollection services, IConfiguration configuration)
     {
-        var frontendSettings = configuration.GetSection("Frontend").Get<FrontendSettings>();
+        // var frontendSettings = configuration.GetSection("Frontend").Get<FrontendSettings>();
         services.AddCors(options =>
-        {   
-            
-            options.AddPolicy("AllowAllOrigins",
-                policy =>
-                {
-                    policy.AllowAnyOrigin()
-                        .AllowAnyMethod()
-                        .AllowAnyHeader();
-                });
+        {
+            options.AddPolicy("AllowAllOriginsWithCredentials", policy =>
+            {
+                policy
+                    .SetIsOriginAllowed(_ => true)
+                    .AllowAnyHeader()
+                    .AllowAnyMethod()
+                    .AllowCredentials();
+            });
         });
+        services.AddSignalR();
         
         services.AddScoped<IOpenVpnClientService, OpenVpnClientService>();
         services.AddScoped<IOpenVpnStateService, OpenVpnStateService>();
