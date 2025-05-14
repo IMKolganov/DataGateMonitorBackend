@@ -93,9 +93,7 @@ public class CommandQueue : ICommandQueue
 
         if (completedTask == tcs.Task)
             return await tcs.Task;
-
-        // Если таймаут — задача остаётся в очереди, её нужно удалить (не обязательно, но желательно)
-        // Пытаемся вручную удалить первый элемент, если он не завершился
+        
         _ = _pendingCommands.TryDequeue(out _);
 
         throw new TimeoutException($"[CommandQueue] Command \"{command}\" timed out after {timeoutMs}ms.");
