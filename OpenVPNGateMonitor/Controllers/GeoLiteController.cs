@@ -1,5 +1,7 @@
 ﻿using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Mvc;
+using Microsoft.AspNetCore.SignalR;
+using OpenVPNGateMonitor.Hubs;
 using OpenVPNGateMonitor.Services.GeoLite.Interfaces;
 
 namespace OpenVPNGateMonitor.Controllers;
@@ -10,7 +12,8 @@ namespace OpenVPNGateMonitor.Controllers;
 public class GeoLiteController(
     ILogger<GeoLiteController> logger,
     IGeoLiteQueryService geoLiteQueryService,
-    IGeoLiteUpdaterService geoLiteUpdaterService)
+    IGeoLiteUpdaterService geoLiteUpdaterService,
+    IHubContext<GeoLiteHub> hubContext)
     : ControllerBase
 {
     private readonly ILogger<GeoLiteController> _logger = logger;
@@ -51,5 +54,17 @@ public class GeoLiteController(
             return BadRequest(new { message = "Database update failed", error = updateResult.ErrorMessage });
 
         return Ok(updateResult);
+    }
+    
+    [HttpPost("SendTestProgress")]
+    public async Task<IActionResult> SendTestProgress(int percent, CancellationToken cancellationToken)
+    {
+        if (percent is > 100 or < 0)
+        {
+            percent = 100;
+        }
+        await hubContext.Clients.All.SendAsync("GeoLiteDownloadProgress", percent, cancellationToken);
+
+        return Ok($"Sent test progress: {percent}%");
     }
 }
