@@ -40,7 +40,9 @@ public class VpnServerMapping : IRegister
             .Map(dest => dest.Login, src => src.Login)
             .Map(dest => dest.Password, src => src.Password)
             .Map(dest => dest.IsOnline, src => src.IsOnline)
-            .Map(dest => dest.IsDefault, src => src.IsDefault);
+            .Map(dest => dest.IsDefault, src => src.IsDefault)
+            .Map(dest => dest.ApiUrl, src => src.ApiUrl);
+
 
 
         config.NewConfig<AddServerRequest, OpenVpnServer>()
@@ -50,7 +52,9 @@ public class VpnServerMapping : IRegister
             .Map(dest => dest.Login, src => src.Login)
             .Map(dest => dest.Password, src => src.Password)
             .Map(dest => dest.IsOnline, src => src.IsOnline)
-            .Map(dest => dest.IsDefault, src => src.IsDefault);
+            .Map(dest => dest.IsDefault, src => src.IsDefault)
+            .Map(dest => dest.ApiUrl, src => src.ApiUrl);
+
 
         config.NewConfig<UpdateServerRequest, OpenVpnServer>()
             .Map(dest => dest.Id, src => src.Id)
@@ -60,7 +64,9 @@ public class VpnServerMapping : IRegister
             .Map(dest => dest.Login, src => src.Login)
             .Map(dest => dest.Password, src => src.Password)
             .Map(dest => dest.IsOnline, src => src.IsOnline)
-            .Map(dest => dest.IsDefault, src => src.IsDefault);
+            .Map(dest => dest.IsDefault, src => src.IsDefault)
+            .Map(dest => dest.ApiUrl, src => src.ApiUrl);
+
 
         
         config.NewConfig<KeyValuePair<string, BackgroundServerStatus>, ServiceStatusResponse>()
