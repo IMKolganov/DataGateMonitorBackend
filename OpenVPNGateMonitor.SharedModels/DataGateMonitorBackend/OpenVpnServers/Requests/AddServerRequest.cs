@@ -16,4 +16,5 @@ public class AddServerRequest
     public string? Password { get; set; } = string.Empty;
     public bool IsOnline { get; set; } = false;
     public bool IsDefault { get; set; } = false;
+    public string ApiUrl { get; set; } = string.Empty;
 }
