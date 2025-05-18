@@ -1,3 +1,4 @@
+using FluentAssertions;
 using Mapster;
 using Microsoft.AspNetCore.Mvc;
 using Moq;
@@ -39,22 +40,17 @@ public class OpenVpnServerOvpnFileConfigControllerTests
             .ReturnsAsync(expectedConfig);
 
         // Act
-        var result = await _controller.GetOvpnFileConfig(new GetOvpnFileConfigRequest(){VpnServerId = 1}, cancellationToken);
+        var result = await _controller.GetOvpnFileConfig(new GetOvpnFileConfigRequest { VpnServerId = vpnServerId }, cancellationToken);
 
-        // Assert
-        var okResult = Assert.IsType<OkObjectResult>(result);
+        var okResult = Assert.IsType<OkObjectResult>(result.Result);
         var response = Assert.IsType<ApiResponse<OvpnFileConfigResponse>>(okResult.Value);
-        if (response.Data != null)
-        {
-            Assert.Equal(expectedConfig.VpnServerId, response.Data.VpnServerId);
-            Assert.Equal(expectedConfig.VpnServerIp, response.Data.VpnServerIp);
-            Assert.Equal(expectedConfig.VpnServerPort, response.Data.VpnServerPort);
-            Assert.Equal(expectedConfig.ConfigTemplate, response.Data.ConfigTemplate);
-        }
-        else
-        {
-            Assert.Null(response.Data);
-        }
+        Assert.NotNull(response.Data);
+
+        var data = response.Data!;
+        Assert.Equal(expectedConfig.VpnServerId, data.VpnServerId);
+        Assert.Equal(expectedConfig.VpnServerIp, data.VpnServerIp);
+        Assert.Equal(expectedConfig.VpnServerPort, data.VpnServerPort);
+        Assert.Equal(expectedConfig.ConfigTemplate, data.ConfigTemplate);
     }
 
     [Fact]
@@ -79,18 +75,16 @@ public class OpenVpnServerOvpnFileConfigControllerTests
         var result = await _controller.AddOrUpdateOvpnFileConfig(request, CancellationToken.None);
 
         // Assert
-        var okResult = Assert.IsType<OkObjectResult>(result);
+        var okResult = Assert.IsType<OkObjectResult>(result.Result);
         var response = Assert.IsType<ApiResponse<OvpnFileConfigResponse>>(okResult.Value);
-        if (response.Data != null)
-        {
-            Assert.Equal(request.VpnServerId, response.Data.VpnServerId);
-            Assert.Equal(request.VpnServerIp, response.Data.VpnServerIp);
-            Assert.Equal(request.VpnServerPort, response.Data.VpnServerPort);
-            Assert.Equal(request.ConfigTemplate, response.Data.ConfigTemplate);
-        }
-        else
-        {
-            Assert.Null(response.Data);
-        }
+        response.Should().NotBeNull();
+        response.Data.Should().NotBeNull();
+
+        var data = response.Data!;
+        Assert.Equal(request.VpnServerId, data.VpnServerId);
+        Assert.Equal(request.VpnServerIp, data.VpnServerIp);
+        Assert.Equal(request.VpnServerPort, data.VpnServerPort);
+        Assert.Equal(request.ConfigTemplate, data.ConfigTemplate);
+
     }
 }

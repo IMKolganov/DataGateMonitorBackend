@@ -13,7 +13,8 @@ namespace OpenVPNGateMonitor.Controllers;
 public class SettingsController(ISettingsService settingsService) : ControllerBase
 {
     [HttpGet("Get")]
-    public async Task<IActionResult> Get([FromQuery] GetSettingRequest request, CancellationToken cancellationToken)
+    public async Task<ActionResult<ApiResponse<SettingResponse>>> Get([FromQuery] GetSettingRequest request, 
+        CancellationToken cancellationToken)
     {
         var settingType = await settingsService.GetValueAsync<string>($"{request.Key}_Type", cancellationToken);
         if (settingType == null)
@@ -36,11 +37,14 @@ public class SettingsController(ISettingsService settingsService) : ControllerBa
             return NotFound(ApiResponse<string>.ErrorResponse($"Setting '{request.Key}' not found."));
         }
 
-        return Ok(ApiResponse<SettingResponse>.SuccessResponse(new SettingResponse { Key = request.Key, Value = value }));
+        return Ok(ApiResponse<SettingResponse>.SuccessResponse(new SettingResponse
+        {
+            Key = request.Key, Value = value
+        }));
     }
 
     [HttpPost("Set")]
-    public async Task<IActionResult> Set(
+    public async Task<ActionResult<ApiResponse<SettingResponse>>> Set(
         [FromQuery] SetSettingRequest request,
         CancellationToken cancellationToken)
     {
@@ -62,6 +66,9 @@ public class SettingsController(ISettingsService settingsService) : ControllerBa
         await settingsService.SetValueAsync(request.Key, convertedValue, cancellationToken);
         await settingsService.SetValueAsync($"{request.Key}_Type", request.Type.ToLower(), cancellationToken);
 
-        return Ok(ApiResponse<SettingResponse>.SuccessResponse(new SettingResponse { Key = request.Key, Value = convertedValue }));
+        return Ok(ApiResponse<SettingResponse>.SuccessResponse(new SettingResponse
+        {
+            Key = request.Key, Value = convertedValue
+        }));
     }
 }

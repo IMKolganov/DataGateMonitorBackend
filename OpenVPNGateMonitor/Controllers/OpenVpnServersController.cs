@@ -49,7 +49,7 @@ public class OpenVpnServersController(ILogger<OpenVpnServersController> logger, 
     }
     
     [HttpGet("GetServerWithStatus/{vpnServerId:int}")]
-    public async Task<IActionResult> GetServerWithStatus(
+    public async Task<ActionResult<ApiResponse<OpenVpnServerWithStatusResponse>>> GetServerWithStatus(
         [FromRoute] GetServerWithStatsRequest request, CancellationToken cancellationToken)
     {
         var serverInfo = await vpnDataService.GetOpenVpnServerWithStatus(request.VpnServerId, cancellationToken);
@@ -58,15 +58,17 @@ public class OpenVpnServersController(ILogger<OpenVpnServersController> logger, 
     }
 
     [HttpGet("GetAllServers")]
-    public async Task<IActionResult> GetAllServers(CancellationToken cancellationToken)
+    public async Task<ActionResult<ApiResponse<List<OpenVpnServerResponse>>>> GetAllServers(
+        CancellationToken cancellationToken)
     {
         var serversList = await vpnDataService.GetAllServers(cancellationToken);
 
-        return Ok(ApiResponse<List<OpenVpnServerResponse>>.SuccessResponse(serversList.Adapt<List<OpenVpnServerResponse>>()));
+        return Ok(ApiResponse<List<OpenVpnServerResponse>>.SuccessResponse(
+            serversList.Adapt<List<OpenVpnServerResponse>>()));
     }
     
     [HttpGet("GetServer/{vpnServerId:int}")]
-    public async Task<IActionResult> GetServer(
+    public async Task<ActionResult<ApiResponse<OpenVpnServerResponse>>> GetServer(
         [FromRoute] GetServerRequest request, CancellationToken cancellationToken)
     {
         var server = await vpnDataService.GetOpenVpnServer(request.VpnServerId, cancellationToken);
@@ -75,7 +77,7 @@ public class OpenVpnServersController(ILogger<OpenVpnServersController> logger, 
     }
 
     [HttpPost("AddServer")]
-    public async Task<IActionResult> AddServer(
+    public async Task<ActionResult<ApiResponse<OpenVpnServerResponse>>> AddServer(
         [FromBody] AddServerRequest request, CancellationToken cancellationToken)
     {
         var newServer = await vpnDataService.AddOpenVpnServer(request.Adapt<OpenVpnServer>(), cancellationToken);
@@ -84,7 +86,7 @@ public class OpenVpnServersController(ILogger<OpenVpnServersController> logger, 
     }
     
     [HttpPut("UpdateServer")]
-    public async Task<IActionResult> UpdateServer(
+    public async Task<ActionResult<ApiResponse<OpenVpnServerResponse>>> UpdateServer(
         [FromBody] UpdateServerRequest request, CancellationToken cancellationToken)
     {
         var updatedServer = await vpnDataService.UpdateOpenVpnServer(request.Adapt<OpenVpnServer>(), cancellationToken);
@@ -93,6 +95,7 @@ public class OpenVpnServersController(ILogger<OpenVpnServersController> logger, 
     }
 
     [HttpDelete("DeleteServer/{vpnServerId:int}")]
+    //todo: fixed response
     public async Task<IActionResult> DeleteServer(
         [FromRoute] DeleteServerRequest request, CancellationToken cancellationToken)
     {
@@ -102,7 +105,7 @@ public class OpenVpnServersController(ILogger<OpenVpnServersController> logger, 
     }
     
     [HttpGet("status")]
-    public IActionResult GetStatus()
+    public ActionResult<ApiResponse<List<ServiceStatusResponse>>> GetStatus()
     {
         var serverStatuses = openVpnBackgroundService.GetStatus()
             .Select(x => x.Adapt<ServiceStatusResponse>())
@@ -112,7 +115,7 @@ public class OpenVpnServersController(ILogger<OpenVpnServersController> logger, 
     }
 
     [HttpPost("run-now")]
-    public async Task<IActionResult> RunNow(CancellationToken cancellationToken)
+    public async Task<ActionResult<ApiResponse<string>>> RunNow(CancellationToken cancellationToken)
     {
         var serverStatuses = openVpnBackgroundService.GetStatus();
 

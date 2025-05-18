@@ -15,7 +15,7 @@ namespace OpenVPNGateMonitor.Controllers;
 public class TelegramBotUserController(ITelegramUserService telegramUserService) : ControllerBase
 {
     [HttpPost("RegisterUser")]
-    public async Task<IActionResult> RegisterUser([FromBody] RegisterUserRequest request, 
+    public async Task<ActionResult<ApiResponse<RegisterUserResponse>>> RegisterUser([FromBody] RegisterUserRequest request, 
         CancellationToken cancellationToken)
     {
         var telegramBotUser = await telegramUserService.RegisterUserAsync(request.Adapt<TelegramBotUser>(), 
@@ -25,7 +25,7 @@ public class TelegramBotUserController(ITelegramUserService telegramUserService)
     }
 
     [HttpGet("GetAdmins")]
-    public async Task<IActionResult> GetAdmins(CancellationToken cancellationToken)
+    public async Task<ActionResult<ApiResponse<GetAdminsResponse>>> GetAdmins(CancellationToken cancellationToken)
     {
         var telegramBotUsers = await telegramUserService.GetAdminsAsync(cancellationToken);
         return Ok(ApiResponse<GetAdminsResponse>.SuccessResponse(telegramBotUsers.Adapt<GetAdminsResponse>()));
