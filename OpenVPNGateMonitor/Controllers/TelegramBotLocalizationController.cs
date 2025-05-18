@@ -15,7 +15,8 @@ namespace OpenVPNGateMonitor.Controllers;
 public class TelegramBotLocalizationController(ILocalizationService localization) : ControllerBase
 {
     [HttpPost("SetTelegramUserLanguage")]
-    public async Task<IActionResult> SetTelegramUserLanguageAsync([FromBody] SetTelegramUserLanguageRequest request, 
+    public async Task<ActionResult<ApiResponse<SetTelegramUserLanguageResponse>>> SetTelegramUserLanguageAsync(
+        [FromBody] SetTelegramUserLanguageRequest request, 
         CancellationToken cancellationToken)
     {
         var telegramUserLanguagePreference = await localization.SetTelegramUserLanguageAsync(
@@ -26,7 +27,7 @@ public class TelegramBotLocalizationController(ILocalizationService localization
     }
 
     [HttpGet("GetTelegramUserLanguage/{telegramId}")]
-    public async Task<IActionResult> GetTelegramUserLanguageAsync(
+    public async Task<ActionResult<ApiResponse<GetTelegramUserLanguageResponse>>> GetTelegramUserLanguageAsync(
         [FromRoute] GetTelegramUserLanguageRequest request,
         CancellationToken cancellationToken)
     {
@@ -42,7 +43,8 @@ public class TelegramBotLocalizationController(ILocalizationService localization
 
     
     [HttpGet("IsExistTelegramUserLanguagePreference/{telegramId}")]
-    public async Task<IActionResult> IsExistTelegramUserLanguagePreferenceAsync(
+    public async Task<ActionResult<ApiResponse<IsExistTelegramUserLanguagePreferenceResponse>>> 
+        IsExistTelegramUserLanguagePreferenceAsync(
         [FromRoute] IsExistTelegramUserLanguagePreferenceRequest request, 
         CancellationToken cancellationToken)
     {
@@ -56,7 +58,8 @@ public class TelegramBotLocalizationController(ILocalizationService localization
     }
     
     [HttpGet("GetTextForTelegramUser/{telegramId}/{key}")]
-    public async Task<IActionResult> GetTextAsync([FromRoute] GetTextForTelegramUserRequest request,
+    public async Task<ActionResult<ApiResponse<GetTextForTelegramUserResponse>>> 
+        GetTextAsync([FromRoute] GetTextForTelegramUserRequest request,
         CancellationToken cancellationToken)
     {
         var response = new GetTextForTelegramUserResponse

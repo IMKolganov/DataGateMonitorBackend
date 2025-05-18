@@ -41,14 +41,15 @@ public class TelegramBotUserControllerTests
 
         _telegramUserServiceMock
             .Setup(s => s.RegisterUserAsync(It.IsAny<TelegramBotUser>(), It.IsAny<CancellationToken>()))
-            .ReturnsAsync(createdUser);
-
+            .ReturnsAsync(createdUser); 
+        
         // Act
         var result = await _controller.RegisterUser(request, CancellationToken.None);
 
         // Assert
-        var okResult = result as OkObjectResult;
+        var okResult = result.Result as OkObjectResult;
         okResult.Should().NotBeNull();
+
 
         var apiResponse = okResult!.Value as ApiResponse<RegisterUserResponse>;
         apiResponse.Should().NotBeNull();
@@ -74,7 +75,7 @@ public class TelegramBotUserControllerTests
         var result = await _controller.GetAdmins(CancellationToken.None);
 
         // Assert
-        var okResult = result as OkObjectResult;
+        var okResult = result.Result as OkObjectResult;
         okResult.Should().NotBeNull();
 
         var apiResponse = okResult!.Value as ApiResponse<GetAdminsResponse>;

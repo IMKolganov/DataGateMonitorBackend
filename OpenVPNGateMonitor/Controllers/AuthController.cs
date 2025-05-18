@@ -15,14 +15,14 @@ namespace OpenVPNGateMonitor.Controllers;
 public class AuthController(IConfiguration config, IApplicationService appService) : ControllerBase
 {
     [HttpGet("system-secret-status")]
-    public async Task<IActionResult> GetSystemStatus(CancellationToken cancellationToken)
+    public async Task<ActionResult<SystemSecretStatusResponse>> GetSystemStatus(CancellationToken cancellationToken)
     {
         var isSet = await appService.IsSystemApplicationSetAsync(cancellationToken);
         return Ok(new SystemSecretStatusResponse { SystemSet = isSet });
     }
 
     [HttpPost("set-system-secret")]
-    public async Task<IActionResult> SetSystemSecret([FromBody] SetSecretRequest request,
+    public async Task<ActionResult<AuthResponse>> SetSystemSecret([FromBody] SetSecretRequest request,
         CancellationToken cancellationToken)
     {
         var systemApp = await appService.GetApplicationSystemByClientIdAsync(request.ClientId, 
@@ -49,7 +49,7 @@ public class AuthController(IConfiguration config, IApplicationService appServic
     }
 
     [HttpPost("token")]
-    public async Task<IActionResult> GenerateToken([FromBody] TokenRequest request, CancellationToken cancellationToken)
+    public async Task<ActionResult<TokenResponse>> GenerateToken([FromBody] TokenRequest request, CancellationToken cancellationToken)
     {
         var app = await appService.GetApplicationByClientIdAsync(request.ClientId, cancellationToken);
         if (app == null)

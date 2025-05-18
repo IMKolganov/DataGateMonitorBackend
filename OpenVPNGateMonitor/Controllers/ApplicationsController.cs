@@ -14,7 +14,7 @@ namespace OpenVPNGateMonitor.Controllers;
 public class ApplicationsController(IApplicationService appService) : ControllerBase
 {
     [HttpPost("RegisterApplication")]
-    public async Task<IActionResult> RegisterApplication([FromBody] RegisterApplicationRequest request, 
+    public async Task<ActionResult<ApiResponse<RegisterApplicationResponse>>> RegisterApplication([FromBody] RegisterApplicationRequest request, 
         CancellationToken cancellationToken)
     {
         var newApp = await appService.RegisterApplicationAsync(request.Name, cancellationToken);
@@ -23,14 +23,15 @@ public class ApplicationsController(IApplicationService appService) : Controller
     }
 
     [HttpGet("GetAllApplications")]
-    public async Task<IActionResult> GetAllApplications(CancellationToken cancellationToken)
+    public async Task<ActionResult<ApiResponse<List<ApplicationResponse>>>> GetAllApplications(CancellationToken cancellationToken)
     {
         var apps = await appService.GetAllApplicationsAsync(cancellationToken);
         return Ok(ApiResponse<List<ApplicationResponse>>.SuccessResponse(apps.Adapt<List<ApplicationResponse>>()));
     }
 
     [HttpPost("RevokeApplication")]
-    public async Task<IActionResult> RevokeApplication([FromBody] RevokeApplicationRequest request, 
+    public async Task<ActionResult<ApiResponse<string>>> RevokeApplication(
+        [FromBody] RevokeApplicationRequest request, 
         CancellationToken cancellationToken)
     {
         var result = await appService.RevokeApplicationAsync(request.ClientId, cancellationToken);

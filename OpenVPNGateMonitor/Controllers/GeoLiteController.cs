@@ -2,6 +2,8 @@
 using Microsoft.AspNetCore.Mvc;
 using Microsoft.AspNetCore.SignalR;
 using OpenVPNGateMonitor.Hubs;
+using OpenVPNGateMonitor.Models.Helpers.Api;
+using OpenVPNGateMonitor.Models.Helpers.OpenVpnManagementInterfaces;
 using OpenVPNGateMonitor.Services.GeoLite.Interfaces;
 
 namespace OpenVPNGateMonitor.Controllers;
@@ -19,14 +21,15 @@ public class GeoLiteController(
     private readonly ILogger<GeoLiteController> _logger = logger;
 
     [HttpGet("GetDatabasePath")]
-    public Task<IActionResult> GetDatabasePath()
+    public Task<IActionResult> GetDatabasePath()//todo: fixed
     {
         var dbPath = geoLiteQueryService.GetDatabasePath();
         return Task.FromResult<IActionResult>(Ok(new { databasePath = dbPath }));
     }
     
     [HttpGet("GetGeoInfo")]
-    public async Task<IActionResult> GetGeoInfo(string ipaddress, CancellationToken cancellationToken)
+    //todo: fixed OpenVpnGeoInfo
+    public async Task<ActionResult<OpenVpnGeoInfo>> GetGeoInfo(string ipaddress, CancellationToken cancellationToken)
     {
         if (string.IsNullOrEmpty(ipaddress))
             return BadRequest("ipaddress is required.");
@@ -38,7 +41,7 @@ public class GeoLiteController(
         return Ok(geoInfo);
     }
     
-    [HttpGet("GetVersionDatabase")]
+    [HttpGet("GetVersionDatabase")]//todo: fixed response
     public async Task<IActionResult> GetVersionDatabase(CancellationToken cancellationToken)
     {
         var version = await geoLiteQueryService.GetDatabaseVersionAsync(cancellationToken);
@@ -46,7 +49,8 @@ public class GeoLiteController(
     }
 
     [HttpPost("UpdateDatabase")]
-    public async Task<IActionResult> UpdateDatabase(CancellationToken cancellationToken)
+    //todo: fixed response
+    public async Task<ActionResult<GeoLiteUpdateResponse>> UpdateDatabase(CancellationToken cancellationToken)
     {
         var updateResult = await geoLiteUpdaterService.DownloadAndUpdateDatabaseAsync(cancellationToken);
 
@@ -57,6 +61,7 @@ public class GeoLiteController(
     }
     
     [HttpPost("SendTestProgress")]
+    //todo: fixed response
     public async Task<IActionResult> SendTestProgress(int percent, CancellationToken cancellationToken)
     {
         if (percent is > 100 or < 0)
