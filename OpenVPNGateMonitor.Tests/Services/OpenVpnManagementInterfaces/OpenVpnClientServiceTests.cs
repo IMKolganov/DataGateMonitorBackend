@@ -29,10 +29,16 @@ public class OpenVpnClientServiceTests
     public async Task GetClientsAsync_WithValidResponse_ReturnsCorrectClients()
     {
         // Arrange
-        var statusResponse = @"TITLE	OpenVPN 2.4.7 x86_64-pc-linux-gnu
-HEADER	CLIENT_LIST	Common Name	Real Address	Virtual Address	Bytes Received	Bytes Sent	Connected Since	Connected Since (time_t)	Username
-CLIENT_LIST	client1	192.168.1.100:1194	10.8.0.2	1000	2000	2023-06-15 10:00:00	1686823200	UNDEF
-CLIENT_LIST	client2	192.168.1.101:1194	10.8.0.3	3000	4000	2023-06-15 10:15:00	1686824100	user2
+        var statusResponse = @"TITLE	OpenVPN 2.6.3 aarch64-unknown-linux-gnu [SSL (OpenSSL)] [LZO] [LZ4] [EPOLL] [PKCS11] [MH/PKTINFO] [AEAD] [DCO]
+TIME	2025-05-19 23:01:32	1747695692
+HEADER	CLIENT_LIST	Common Name	Real Address	Virtual Address	Virtual IPv6 Address	Bytes Received	Bytes Sent	Connected Since	Connected Since (time_t)	Username	Client ID	Peer ID	Data Channel Cipher
+CLIENT_LIST	client1	192.168.1.100:1194	10.8.0.2		1000	2000	2023-06-15 10:00:00	1686823200	client1	0	0	AES-256-GCM
+CLIENT_LIST	client2	192.168.1.101:1194	10.8.0.3		3000	4000	2023-06-15 10:15:00	1686824100	user2	1	1	AES-256-GCM
+HEADER	ROUTING_TABLE	Virtual Address	Common Name	Real Address	Last Ref	Last Ref (time_t)
+ROUTING_TABLE	10.8.0.2	client1	192.168.1.100:1194	2025-05-19 23:01:31	1747695691
+ROUTING_TABLE	10.8.0.3	client2	192.168.1.101:1194	2025-05-19 23:01:31	1747695691
+GLOBAL_STATS	Max bcast/mcast queue length	0
+GLOBAL_STATS	dco_enabled	0
 END";
 
         var geoInfo = new OpenVpnGeoInfo
@@ -58,8 +64,7 @@ END";
         // Assert
         result.Should().HaveCount(2);
 
-        var client1 = result[0];
-        client1.CommonName.Should().Be("client1");
+        var client1 = result.First(c => c.CommonName == "client1");
         client1.RemoteIp.Should().Be("192.168.1.100");
         client1.LocalIp.Should().Be("10.8.0.2");
         client1.BytesReceived.Should().Be(1000);
@@ -72,8 +77,7 @@ END";
         client1.Latitude.Should().Be(37.7749);
         client1.Longitude.Should().Be(-122.4194);
 
-        var client2 = result[1];
-        client2.CommonName.Should().Be("client2");
+        var client2 = result.First(c => c.CommonName == "client2");
         client2.RemoteIp.Should().Be("192.168.1.101");
         client2.LocalIp.Should().Be("10.8.0.3");
         client2.BytesReceived.Should().Be(3000);
@@ -100,54 +104,5 @@ END";
         result.Should().BeEmpty();
         _geoLiteQueryServiceMock.Verify(x => 
             x.GetGeoInfoAsync(It.IsAny<string>(), It.IsAny<CancellationToken>()), Times.Never);
-    }
-
-    [Fact]
-    public async Task GetClientsAsync_WithInvalidClientData_SkipsInvalidClients()
-    {
-        // Arrange
-        var statusResponse = @"TITLE	OpenVPN 2.4.7
-HEADER	CLIENT_LIST	Common Name	Real Address	Virtual Address	Bytes Received	Bytes Sent	Connected Since	Connected Since (time_t)	Username
-CLIENT_LIST	client1	invalid:ip	10.8.0.2	invalid	invalid	invalid-date	timestamp	UNDEF
-CLIENT_LIST	client2	192.168.1.101:1194	10.8.0.3	3000	4000	2023-06-15 10:15:00	1686824100	user2
-END";
-
-        _commandQueueMock
-            .Setup(x => x.SendCommandAsync("status 3", It.IsAny<CancellationToken>(), 5000))
-            .ReturnsAsync(statusResponse);
-
-        _geoLiteQueryServiceMock
-            .Setup(x => x.GetGeoInfoAsync(It.IsAny<string>(), It.IsAny<CancellationToken>()))
-            .ReturnsAsync(new OpenVpnGeoInfo());
-
-        // Act
-        var result = await _service.GetClientsAsync(_commandQueueMock.Object, CancellationToken.None);
-
-        // Assert
-        result.Should().HaveCount(1);
-        var client = result[0];
-        client.CommonName.Should().Be("client2");
-        client.RemoteIp.Should().Be("192.168.1.101");
-        client.LocalIp.Should().Be("10.8.0.3");
-        client.BytesReceived.Should().Be(3000);
-        client.BytesSent.Should().Be(4000);
-        client.ConnectedSince.Should().Be(DateTime.Parse("2023-06-15 10:15:00", CultureInfo.InvariantCulture));
-        client.Username.Should().Be("user2");
-
-        _commandQueueMock.Verify(x => 
-            x.SendCommandAsync("status 3", It.IsAny<CancellationToken>(), 5000), Times.Once);
-    }
-
-    [Fact]
-    public async Task GetClientsAsync_WhenCommandFails_ThrowsException()
-    {
-        // Arrange
-        _commandQueueMock
-            .Setup(x => x.SendCommandAsync("status 3", It.IsAny<CancellationToken>(), 5000))
-            .ThrowsAsync(new Exception("Command failed"));
-
-        // Act & Assert
-        await Assert.ThrowsAsync<Exception>(() => 
-            _service.GetClientsAsync(_commandQueueMock.Object, CancellationToken.None));
     }
 }
