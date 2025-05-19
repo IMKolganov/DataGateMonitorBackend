@@ -38,7 +38,9 @@ public class VpnDataService : IVpnDataService
             .Take(pageSize)
             .ToListAsync(cancellationToken);
 
-        var vpnClients = openVpnServerClients.Adapt<List<VpnClientInfoResponse>>();
+        var vpnClients = openVpnServerClients
+            .Select(x => x.Adapt<VpnClientInfoResponse>())
+            .ToList();
 
         var externalIds = vpnClients
             .Select(c => long.TryParse(c.ExternalId, out var id) ? id : (long?)null)
@@ -51,7 +53,7 @@ public class VpnDataService : IVpnDataService
             .Where(x => externalIds.Contains(x.TelegramId))
             .ToListAsync(cancellationToken);
 
-        foreach (var client in vpnClients)
+        foreach (var client in vpnClients.OrderByDescending(x=> x.Id))
         {
             if (!long.TryParse(client.ExternalId, out var externalId))
                 continue;
@@ -87,7 +89,9 @@ public class VpnDataService : IVpnDataService
             .Take(pageSize)
             .ToListAsync(cancellationToken);
 
-        var vpnClients = openVpnServerClients.Adapt<List<VpnClientInfoResponse>>();
+        var vpnClients = openVpnServerClients
+            .Select(x => x.Adapt<VpnClientInfoResponse>())
+            .ToList();
 
         var externalIds = vpnClients
             .Select(c => long.TryParse(c.ExternalId, out var id) ? id : (long?)null)
