@@ -1,11 +1,11 @@
-﻿using OpenVPNGateMonitor.Models.Helpers;
-using OpenVPNGateMonitor.Services.Api;
+﻿using OpenVPNGateMonitor.Services.Api;
 using OpenVPNGateMonitor.Services.Api.Interfaces;
 using OpenVPNGateMonitor.Services.BackgroundServices;
 using OpenVPNGateMonitor.Services.BackgroundServices.Interfaces;
 using OpenVPNGateMonitor.Services.DataGateCertManager;
 using OpenVPNGateMonitor.Services.DataGateCertManager.Interfaces;
 using OpenVPNGateMonitor.Services.Helpers;
+using OpenVPNGateMonitor.Services.Helpers.Interfaces;
 using OpenVPNGateMonitor.Services.OpenVpnManagementInterfaces;
 using OpenVPNGateMonitor.Services.OpenVpnManagementInterfaces.Interfaces;
 using OpenVPNGateMonitor.Services.OpenVpnManagementInterfaces.OpenVpnTelnet;
@@ -56,7 +56,7 @@ public static class ServiceConfiguration
         services.AddScoped<IOpenVpnServerOvpnFileConfigService, OpenVpnServerOvpnFileConfigService>();
         services.AddScoped<ISettingsService, SettingsService>();
         
-        services.AddScoped<ExternalIpAddressService>();
+        services.AddScoped<IExternalIpAddressService, ExternalIpAddressService>();
 
         #region DataGateCertManager
 
