@@ -66,7 +66,7 @@ public class OpenVpnServerService : IOpenVpnServerService
                 if (existingOpenVpnServerClient != null)
                 {
                     existingOpenVpnServerClient.CommonName = openVpnClient.CommonName;
-                    existingOpenVpnServerClient.VpnServerId = openVpnClient.VpnServerId;
+                    existingOpenVpnServerClient.VpnServerId = vpnServerId;
                     existingOpenVpnServerClient.ExternalId = 
                         await TryParseExternalIdAsync(openVpnClient.CommonName, cancellationToken)
                         ?? string.Empty;
