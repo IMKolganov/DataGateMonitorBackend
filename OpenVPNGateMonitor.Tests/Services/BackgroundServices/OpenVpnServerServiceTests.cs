@@ -1,19 +1,10 @@
-﻿using System.Linq.Expressions;
-using System.Reflection;
-using System.Security.Cryptography;
+﻿using System.Security.Cryptography;
 using System.Text;
-using Microsoft.EntityFrameworkCore;
-using Microsoft.EntityFrameworkCore.Query;
 using Microsoft.Extensions.Logging;
 using Moq;
 using Microsoft.EntityFrameworkCore.Storage;
 using MockQueryable;
-using Moq.EntityFrameworkCore;
-using Moq.Protected;
-using OpenVPNGateMonitor.DataBase.Contexts;
 using OpenVPNGateMonitor.DataBase.Repositories.Interfaces;
-using OpenVPNGateMonitor.DataBase.Repositories.Queries;
-using OpenVPNGateMonitor.DataBase.Repositories.Queries.Interfaces;
 using OpenVPNGateMonitor.DataBase.UnitOfWork;
 using OpenVPNGateMonitor.Models;
 using OpenVPNGateMonitor.Services.BackgroundServices;
@@ -112,7 +103,6 @@ public class OpenVpnServerServiceTests
         var commonName = "client1 external_123456";
         var remoteIp = "10.0.0.1";
 
-        // Сгенерировать sessionId так же, как в сервисе
         var sessionString = $"{commonName}-{remoteIp}-{connectedSince:o}";
         using var sha256 = SHA256.Create();
         var hashBytes = sha256.ComputeHash(Encoding.UTF8.GetBytes(sessionString));
@@ -145,7 +135,6 @@ public class OpenVpnServerServiceTests
         var mockRepo = new Mock<IRepository<OpenVpnServerClient>>();
         var mockUoW = new Mock<IUnitOfWork>();
 
-        // TelegramBotUser для TryParseExternalIdAsync
         var telegramUsers = new List<TelegramBotUser>
         {
             new TelegramBotUser { TelegramId = 123456 }
@@ -153,7 +142,6 @@ public class OpenVpnServerServiceTests
         mockUoW.Setup(u => u.GetQuery<TelegramBotUser>().AsQueryable())
             .Returns(telegramUsers.AsQueryable().BuildMock());
 
-        // Подменяем вызовы .AsQueryable()
         mockUoW.SetupSequence(u => u.GetQuery<OpenVpnServerClient>().AsQueryable())
             .Returns(new List<OpenVpnServerClient>().AsQueryable().BuildMock()) // SetDisconnectForAllUsers
             .Returns(new List<OpenVpnServerClient>().AsQueryable().BuildMock()) // foreach (1st)
