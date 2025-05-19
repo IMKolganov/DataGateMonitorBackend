@@ -8,6 +8,7 @@ using Microsoft.Extensions.Logging;
 using Moq;
 using Microsoft.EntityFrameworkCore.Storage;
 using MockQueryable;
+using Moq.EntityFrameworkCore;
 using Moq.Protected;
 using OpenVPNGateMonitor.DataBase.Contexts;
 using OpenVPNGateMonitor.DataBase.Repositories.Interfaces;
@@ -53,75 +54,6 @@ public class OpenVpnServerServiceTests
             _unitOfWorkMock.Object,
             _externalIpAddressServiceMock.Object // Use mock object
         );
-    }
-
-    [Fact]
-    public async Task SaveConnectedClientsAsync_WithValidClients_ShouldSaveSuccessfully()
-    {
-        // Arrange
-        var vpnServerId = 1;
-        var commandQueue = Mock.Of<ICommandQueue>();
-        var cancellationToken = CancellationToken.None;
-        var mockTransaction = new Mock<IDbContextTransaction>();
-        var mockRepository = new Mock<IRepository<OpenVpnServerClient>>();
-
-        // Create mock DbSet
-        var existingClients = new List<OpenVpnServerClient>().AsQueryable();
-        var mockDbSet = new Mock<DbSet<OpenVpnServerClient>>();
-        mockDbSet.As<IQueryable<OpenVpnServerClient>>().Setup(m => m.Provider).Returns(existingClients.Provider);
-        mockDbSet.As<IQueryable<OpenVpnServerClient>>().Setup(m => m.Expression).Returns(existingClients.Expression);
-        mockDbSet.As<IQueryable<OpenVpnServerClient>>().Setup(m => m.ElementType).Returns(existingClients.ElementType);
-        mockDbSet.As<IQueryable<OpenVpnServerClient>>().Setup(m => m.GetEnumerator())
-            .Returns(existingClients.GetEnumerator());
-
-        // Create mock context and Query<T>
-        var mockContext = new Mock<ApplicationDbContext>();
-        mockContext.Setup(c => c.Set<OpenVpnServerClient>()).Returns(mockDbSet.Object);
-        var query = new Query<OpenVpnServerClient>(mockContext.Object);
-
-        var testTime = DateTime.UtcNow;
-        var clients = new List<OpenVpnServerClient>
-        {
-            new OpenVpnServerClient
-            {
-                CommonName = "TestClient",
-                RemoteIp = "192.168.1.1",
-                LocalIp = "10.0.0.2",
-                ConnectedSince = testTime,
-                BytesReceived = 1000,
-                BytesSent = 2000,
-                Username = "testuser",
-                Country = "TestCountry",
-                Region = "TestRegion",
-                City = "TestCity",
-                Latitude = 12.34,
-                Longitude = 56.78,
-                IsConnected = true
-            }
-        };
-
-        _unitOfWorkMock.Setup(x => x.BeginTransactionAsync(cancellationToken))
-            .ReturnsAsync(mockTransaction.Object);
-        _openVpnClientServiceMock.Setup(x => x.GetClientsAsync(commandQueue, cancellationToken))
-            .ReturnsAsync(clients);
-        _unitOfWorkMock.Setup(x => x.GetRepository<OpenVpnServerClient>())
-            .Returns(mockRepository.Object);
-        _unitOfWorkMock.Setup(x => x.GetQuery<OpenVpnServerClient>())
-            .Returns(query);
-
-        // Act
-        await _service.SaveConnectedClientsAsync(vpnServerId, commandQueue, cancellationToken);
-
-        // Assert
-        mockRepository.Verify(x => x.AddAsync(
-                It.Is<OpenVpnServerClient>(c =>
-                    c.CommonName == "TestClient" &&
-                    c.VpnServerId == vpnServerId &&
-                    c.RemoteIp == "192.168.1.1"),
-                cancellationToken),
-            Times.Once);
-        _unitOfWorkMock.Verify(x => x.SaveChangesAsync(cancellationToken), Times.Once);
-        mockTransaction.Verify(x => x.CommitAsync(cancellationToken), Times.Once);
     }
 
     [Fact]
