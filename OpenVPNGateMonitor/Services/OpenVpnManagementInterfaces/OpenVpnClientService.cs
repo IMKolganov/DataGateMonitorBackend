@@ -8,30 +8,21 @@ using OpenVPNGateMonitor.Services.OpenVpnManagementInterfaces.OpenVpnTelnet;
 
 namespace OpenVPNGateMonitor.Services.OpenVpnManagementInterfaces;
 
-public class OpenVpnClientService : IOpenVpnClientService
+public class OpenVpnClientService(ILogger<IOpenVpnClientService> logger, IGeoLiteQueryService geoLiteQueryService)
+    : IOpenVpnClientService
 {
-    private readonly ILogger<IOpenVpnClientService> _logger;
-    private readonly IGeoLiteQueryService _geoLiteQueryService;
-    
-    public OpenVpnClientService(ILogger<IOpenVpnClientService> logger, IGeoLiteQueryService geoLiteQueryService, 
-        ICommandQueueManager commandQueueManager)
-    {
-        _logger = logger;
-        _geoLiteQueryService = geoLiteQueryService;
-    }
-    
     public async Task<List<OpenVpnServerClient>> GetClientsAsync(ICommandQueue commandQueue, 
         CancellationToken cancellationToken)
     {
         var response = await commandQueue.SendCommandAsync("status 3", cancellationToken);
-        _logger.LogDebug("Received status response:\n{Response}", response);
+        logger.LogDebug("Received status response:\n{Response}", response);
         
         var clients = await ParseStatus(response, cancellationToken);
-        _logger.LogInformation("Found {ClientCount} connected clients", clients.Count);
+        logger.LogInformation("Found {ClientCount} connected clients", clients.Count);
         
         if (clients.Any())
         {
-            _logger.LogDebug("Connected clients: {Clients}", 
+            logger.LogDebug("Connected clients: {Clients}", 
                 string.Join(", ", clients.Select(c => c.CommonName)));
         }
         
@@ -54,7 +45,7 @@ public class OpenVpnClientService : IOpenVpnClientService
                 
                 if (client != null)
                 {
-                    var geoInfo = await _geoLiteQueryService.GetGeoInfoAsync(client.RemoteIp, cancellationToken);//todo: add mapper for project
+                    var geoInfo = await geoLiteQueryService.GetGeoInfoAsync(client.RemoteIp, cancellationToken);//todo: add mapper for project
                     if (geoInfo != null)
                     {
                         client.Country = geoInfo.Country;
@@ -92,7 +83,7 @@ public class OpenVpnClientService : IOpenVpnClientService
         }
         catch (Exception ex)
         {
-            _logger.LogError(ex, "Error parsing OpenVPN client data. Raw parts: {Parts}", string.Join("|", parts));
+            logger.LogError(ex, "Error parsing OpenVPN client data. Raw parts: {Parts}", string.Join("|", parts));
             return null;
         }
     }
@@ -101,14 +92,14 @@ public class OpenVpnClientService : IOpenVpnClientService
     {
         if (string.IsNullOrWhiteSpace(value))
         {
-            _logger.LogWarning("{FieldName} is empty. Using default value 0.", fieldName);
+            logger.LogWarning("{FieldName} is empty. Using default value 0.", fieldName);
             return 0;
         }
 
         if (long.TryParse(value, out var result))
             return result;
 
-        _logger.LogError("Failed to parse {FieldName}. Value: '{Value}'", fieldName, value);
+        logger.LogError("Failed to parse {FieldName}. Value: '{Value}'", fieldName, value);
         throw new FormatException($"Invalid long format in field {fieldName}: '{value}'");
     }
     
@@ -116,7 +107,7 @@ public class OpenVpnClientService : IOpenVpnClientService
     {
         if (string.IsNullOrWhiteSpace(value))
         {
-            _logger.LogWarning("{FieldName} is empty. Using default DateTimeOffset.MinValue.", fieldName);
+            logger.LogWarning("{FieldName} is empty. Using default DateTimeOffset.MinValue.", fieldName);
             return DateTimeOffset.MinValue;
         }
 
@@ -125,16 +116,16 @@ public class OpenVpnClientService : IOpenVpnClientService
             try
             {
                 var dateTimeOffset = DateTimeOffset.FromUnixTimeSeconds(unixTime);
-                _logger.LogInformation("Parsed {FieldName} as Unix Timestamp: {DateTime}", fieldName, dateTimeOffset);
+                logger.LogInformation("Parsed {FieldName} as Unix Timestamp: {DateTime}", fieldName, dateTimeOffset);
                 return dateTimeOffset;
             }
             catch (Exception ex)
             {
-                _logger.LogError(ex, "Failed to parse {FieldName} as Unix Timestamp. Value: '{Value}'", fieldName, value);
+                logger.LogError(ex, "Failed to parse {FieldName} as Unix Timestamp. Value: '{Value}'", fieldName, value);
             }
         }
 
-        _logger.LogError("Failed to parse {FieldName}. Value: '{Value}'", fieldName, value);
+        logger.LogError("Failed to parse {FieldName}. Value: '{Value}'", fieldName, value);
         throw new FormatException($"Invalid DateTimeOffset format in field {fieldName}: '{value}'");
     }
 
@@ -143,7 +134,7 @@ public class OpenVpnClientService : IOpenVpnClientService
     {
         if (string.IsNullOrWhiteSpace(value))
         {
-            _logger.LogWarning("{FieldName} is empty. Using default DateTime.MinValue.", fieldName);
+            logger.LogWarning("{FieldName} is empty. Using default DateTime.MinValue.", fieldName);
             return DateTime.MinValue;
         }
 
@@ -155,16 +146,16 @@ public class OpenVpnClientService : IOpenVpnClientService
             try
             {
                 var dateTime = DateTimeOffset.FromUnixTimeSeconds(unixTime).UtcDateTime;
-                _logger.LogInformation("Parsed {FieldName} as Unix Timestamp: {DateTime}", fieldName, dateTime);
+                logger.LogInformation("Parsed {FieldName} as Unix Timestamp: {DateTime}", fieldName, dateTime);
                 return dateTime;
             }
             catch (Exception ex)
             {
-                _logger.LogError(ex, "Failed to parse {FieldName} as Unix Timestamp. Value: '{Value}'", fieldName, value);
+                logger.LogError(ex, "Failed to parse {FieldName} as Unix Timestamp. Value: '{Value}'", fieldName, value);
             }
         }
 
-        _logger.LogError("Failed to parse {FieldName}. Value: '{Value}'", fieldName, value);
+        logger.LogError("Failed to parse {FieldName}. Value: '{Value}'", fieldName, value);
         throw new FormatException($"Invalid DateTime format in field {fieldName}: '{value}'");
     }
     
