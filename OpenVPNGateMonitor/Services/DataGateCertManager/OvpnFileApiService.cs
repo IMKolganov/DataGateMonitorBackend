@@ -21,6 +21,15 @@ public class OvpnFileApiService(
                 x.VpnServerId == vpnServerId)
             .ToListAsync(cancellationToken);
     }
+    
+    public async Task<List<IssuedOvpnFile>> GetAllByExternalIdOvpnFilesAsync(int vpnServerId, string externalId,
+        CancellationToken cancellationToken)
+    {
+        return  await unitOfWork.GetQuery<IssuedOvpnFile>().AsQueryable()
+            .Where(x =>
+                x.VpnServerId == vpnServerId &&  x.ExternalId == externalId)
+            .ToListAsync(cancellationToken);
+    }
 
     public async Task<IssuedOvpnFile> AddOvpnFileAsync(AddOvpnFileRequest request, CancellationToken cancellationToken)
     {

@@ -31,6 +31,25 @@ public class OpenVpnFilesController(
             return BadRequest(ApiResponse<List<IssuedOvpnFile>>.ErrorResponse(ex.Message));
         }
     }
+    
+    [HttpGet("GetAllByExternalIdOvpnFiles/{vpnServerId}/{externalId}")]
+    public async Task<ActionResult<ApiResponse<List<IssuedOvpnFile>>>> GetAllByExternalIdOvpnFiles(
+        [FromRoute] GetAllByExternalIdOvpnFilesRequest request,
+        CancellationToken cancellationToken)
+    {
+        try
+        {
+            var result = await ovpnFileApiService.GetAllByExternalIdOvpnFilesAsync(
+                request.VpnServerId, request.ExternalId, cancellationToken);
+            return Ok(ApiResponse<List<IssuedOvpnFile>>.SuccessResponse(result));
+        }
+        catch (Exception ex)
+        {
+            logger.LogError(ex, "Failed to get all ovpn files on server {VpnServerId} and {ExternalId}", 
+                request.VpnServerId, request.ExternalId);
+            return BadRequest(ApiResponse<List<IssuedOvpnFile>>.ErrorResponse(ex.Message));
+        }
+    }
 
     [HttpPost("AddOvpnFile")]
     public async Task<ActionResult<ApiResponse<IssuedOvpnFile>>> AddOvpnFile(
