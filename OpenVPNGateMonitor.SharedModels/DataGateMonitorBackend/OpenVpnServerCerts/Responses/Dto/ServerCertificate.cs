@@ -1,9 +1,10 @@
 ﻿using OpenVPNGateMonitor.SharedModels.Enums;
 
-namespace OpenVPNGateMonitor.SharedModels.DataGateMonitorBackend.OpenVpnServerCerts.Responses;
+namespace OpenVPNGateMonitor.SharedModels.DataGateMonitorBackend.OpenVpnServerCerts.Responses.Dto;
 
 public class ServerCertificate
 {
+    public int VpnServerId { get; set; }
     public string CommonName { get; set; } = string.Empty;
     public CertificateStatus Status { get; set; } = CertificateStatus.Unknown;
     public string SerialNumber { get; set; } = string.Empty;

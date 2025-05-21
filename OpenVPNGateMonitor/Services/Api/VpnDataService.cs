@@ -147,7 +147,7 @@ public class VpnDataService(
             .Select(g => g.OrderByDescending(x => x.Id).FirstOrDefault())
             .ToListAsync(cancellationToken);
 
-        var logMap = lastLogs.ToDictionary(x => x.VpnServerId);
+        var logMap = lastLogs.ToDictionary(x => x!.VpnServerId);
 
         var serverTraffic = await unitOfWork.GetQuery<OpenVpnServerStatusLog>()
             .AsQueryable()
