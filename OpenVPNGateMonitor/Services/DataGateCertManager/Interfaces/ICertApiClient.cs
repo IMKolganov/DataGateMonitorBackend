@@ -8,5 +8,5 @@ public interface ICertApiClient
 {
     Task<List<ServerCertificate>> GetAllCertificatesAsync(int serverId, CancellationToken cancellationToken);
     Task<ServerCertificate> BuildCertificateAsync(int serverId, string commonName, CancellationToken cancellationToken);
-    Task<CertificateRevokeResult> RevokeCertificateAsync(RevokeCertificateRequest request, CancellationToken cancellationToken);
+    Task<ServerCertificate> RevokeCertificateAsync(RevokeCertificateRequest request, CancellationToken cancellationToken);
 }

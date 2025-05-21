@@ -2,7 +2,7 @@
 
 namespace OpenVPNGateMonitor.SharedModels.DataGateMonitorBackend.OpenVpnFiles.Responses;
 
-public class OvpnFileResponse
+public class GetOvpnFilesResponse
 {
     public IssuedOvpnFileDto IssuedOvpnFile { get; set; } = new IssuedOvpnFileDto();
 }

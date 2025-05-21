@@ -17,17 +17,18 @@ public class OpenVpnFilesController(
 {
     [HttpGet("GetAllOvpnFiles/{vpnServerId}")]
     public async Task<ActionResult<ApiResponse<List<IssuedOvpnFile>>>> GetAllOvpnFiles(
-        [FromRoute] int vpnServerId,
+        [FromRoute] GetAllOvpnFilesRequest request,
         CancellationToken cancellationToken)
     {
         try
         {
-            var result = await ovpnFileApiService.GetAllOvpnFilesAsync(vpnServerId, cancellationToken);
+            var result = await ovpnFileApiService.GetAllOvpnFilesAsync(request.VpnServerId, 
+                cancellationToken);
             return Ok(ApiResponse<List<IssuedOvpnFile>>.SuccessResponse(result));
         }
         catch (Exception ex)
         {
-            logger.LogError(ex, "Failed to get all ovpn files on server {VpnServerId}", vpnServerId);
+            logger.LogError(ex, "Failed to get all ovpn files on server {VpnServerId}", request.VpnServerId);
             return BadRequest(ApiResponse<List<IssuedOvpnFile>>.ErrorResponse(ex.Message));
         }
     }
@@ -94,7 +95,8 @@ public class OpenVpnFilesController(
     {
         try
         {
-            var content = await ovpnFileApiService.DownloadOvpnFileAsync(request, cancellationToken);
+            var content = await ovpnFileApiService.DownloadOvpnFileAsync(request, 
+                cancellationToken);
             return Ok(ApiResponse<DownloadOvpnFileResponse>.SuccessResponse(content));
         }
         catch (Exception ex)

@@ -1,14 +1,10 @@
 ﻿using System.ComponentModel.DataAnnotations;
-using OpenVPNGateMonitor.SharedModels.Enums;
 
 namespace OpenVPNGateMonitor.SharedModels.DataGateMonitorBackend.OpenVpnServerCerts.Requests;
 
-public class GetAllVpnServerCertificatesByStatusRequest
+public class GetAllCertificatesRequest
 {
     [Required(ErrorMessage = "vpnServerId is required.")]
     [Range(1, int.MaxValue, ErrorMessage = "vpnServerId must be greater than 0.")]
     public int VpnServerId { get; set; }
-
-    [Required(ErrorMessage = "certificateStatus is required.")]
-    public CertificateStatus CertificateStatus { get; set; }
 }

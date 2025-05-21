@@ -1,5 +1,4 @@
 ﻿using System.Text.Json;
-using OpenVPNGateMonitor.Models.Helpers;
 using OpenVPNGateMonitor.Services.Api.Interfaces;
 using OpenVPNGateMonitor.Services.DataGateCertManager.Interfaces;
 using OpenVPNGateMonitor.SharedModels.DataGateCertManager.Cert.Responses;
@@ -109,7 +108,7 @@ public class CertApiClient(
         }
     }
 
-    public async Task<CertificateRevokeResult> RevokeCertificateAsync(RevokeCertificateRequest request, CancellationToken cancellationToken)
+    public async Task<ServerCertificate> RevokeCertificateAsync(RevokeCertificateRequest request, CancellationToken cancellationToken)
     {
         try
         {
@@ -124,7 +123,7 @@ public class CertApiClient(
                 throw new HttpRequestException(message, null, response.StatusCode);
             }
 
-            var result = await response.Content.ReadFromJsonAsync<CertificateRevokeResult>(cancellationToken: cancellationToken);
+            var result = await response.Content.ReadFromJsonAsync<ServerCertificate>(cancellationToken: cancellationToken);
             if (result == null)
                 throw new InvalidOperationException("Received null response when revoking certificate");
 
