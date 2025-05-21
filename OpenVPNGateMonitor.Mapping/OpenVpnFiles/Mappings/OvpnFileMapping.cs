@@ -11,9 +11,6 @@ public class OvpnFileMapping : IRegister
 {
     public void Register(TypeAdapterConfig config)
     {
-        config.NewConfig<IssuedOvpnFile, OvpnFileResponse>()
-            .Map(dest => dest.IssuedOvpnFile, src => src);
-    
         config.NewConfig<IssuedOvpnFile, IssuedOvpnFileDto>();
 
         config.NewConfig<RevokeOvpnFileRequest, IssuedOvpnFile>()

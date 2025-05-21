@@ -18,7 +18,7 @@ public class OpenVpnServerCertsController(
 {
     [HttpGet("{vpnServerId}/GetAllCertificates")]
     public async Task<ActionResult<ApiResponse<GetAllCertificatesResponse>>> GetAllCertificates(
-        GetAllCertificatesRequest request, CancellationToken cancellationToken)
+        [FromRoute] GetAllCertificatesRequest request, CancellationToken cancellationToken)
     {
         try
         {
