@@ -1,5 +1,6 @@
 ﻿using Mapster;
-using OpenVPNGateMonitor.SharedModels.DataGateMonitorBackend.OpenVpnServerCerts.Responses.Dto;
+using SourceCert = OpenVPNGateMonitor.SharedModels.DataGateCertManager.Cert.Responses.ServerCertificate;
+using DestCert = OpenVPNGateMonitor.SharedModels.DataGateMonitorBackend.OpenVpnServerCerts.Responses.Dto.ServerCertificate;
 
 namespace OpenVPNGateMonitor.Mapping.OpenVpnServerCerts.Mappings;
 
@@ -7,7 +8,8 @@ public class VpnServerCertificateMapping : IRegister
 {
     public void Register(TypeAdapterConfig config)
     {
-        config.NewConfig<(ServerCertificate cert, int vpnServerId), ServerCertificate>()
+        config.NewConfig<(SourceCert cert, int vpnServerId), DestCert>()
+            .Map(dest => dest.VpnServerId, src => src.vpnServerId)
             .Map(dest => dest.CommonName, src => src.cert.CommonName)
             .Map(dest => dest.Status, src => src.cert.Status)
             .Map(dest => dest.SerialNumber, src => src.cert.SerialNumber)
