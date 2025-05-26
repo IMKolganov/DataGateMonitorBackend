@@ -8,13 +8,11 @@ public class TelnetClient : IDisposable
     private readonly string _host;
     private readonly int _port;
     private TcpClient? _client;
-    private NetworkStream _stream = null!;
-    private StreamReader _reader = null!;
-    private StreamWriter _writer = null!;
+    private NetworkStream? _stream;
+    private StreamReader? _reader;
+    private StreamWriter? _writer;
     private CancellationTokenSource _cancellationTokenSource = new();
     public event Action<string> OnDataReceived = delegate { };
-
-    // public event Action<string> OnDataReceived;
 
     public TelnetClient(string host, int port)
     {
@@ -24,13 +22,19 @@ public class TelnetClient : IDisposable
 
     public async Task ConnectAsync(CancellationToken cancellationToken, int timeoutSec = 5)
     {
-        _client = new TcpClient(); 
-        await _client.ConnectAsync(_host, _port, cancellationToken);
+        _client = new TcpClient();
+
+        var connectTask = _client.ConnectAsync(_host, _port, cancellationToken).AsTask();
+
+        if (await Task.WhenAny(connectTask, Task.Delay(TimeSpan.FromSeconds(timeoutSec), cancellationToken)) != connectTask)
+        {
+            throw new TimeoutException($"Timeout while connecting to {_host}:{_port}");
+        }
 
         _stream = _client.GetStream();
         _reader = new StreamReader(_stream, Encoding.ASCII);
         _writer = new StreamWriter(_stream, Encoding.ASCII) { AutoFlush = true };
-        
+
         _cancellationTokenSource = new CancellationTokenSource();
         _ = Task.Run(() => ListenAsync(_cancellationTokenSource.Token), cancellationToken);
     }
@@ -44,18 +48,18 @@ public class TelnetClient : IDisposable
 
             while (!cancellationToken.IsCancellationRequested)
             {
-                int bytesRead = await _reader.ReadAsync(buffer, 0, buffer.Length);
+                int bytesRead = await _reader!.ReadAsync(buffer, 0, buffer.Length);
                 if (bytesRead == 0) continue;
 
                 response.Append(buffer, 0, bytesRead);
                 string message = response.ToString();
-                
-                if (message.Contains("END") || message.Contains("SUCCESS:", StringComparison.OrdinalIgnoreCase) 
-                                            || message.Contains("ERROR:", StringComparison.OrdinalIgnoreCase) 
-                                            || message.Contains("NOTIFY:", StringComparison.OrdinalIgnoreCase)
-                                            || message.Contains("NOTICE:", StringComparison.OrdinalIgnoreCase))
+
+                if (message.Contains("END") || message.Contains("SUCCESS:", StringComparison.OrdinalIgnoreCase)
+                                           || message.Contains("ERROR:", StringComparison.OrdinalIgnoreCase)
+                                           || message.Contains("NOTIFY:", StringComparison.OrdinalIgnoreCase)
+                                           || message.Contains("NOTICE:", StringComparison.OrdinalIgnoreCase))
                 {
-                    OnDataReceived?.Invoke(message.Trim());
+                    OnDataReceived.Invoke(message.Trim());
                     response.Clear();
                 }
             }
@@ -68,28 +72,40 @@ public class TelnetClient : IDisposable
 
     public async Task SendAsync(string command, CancellationToken cancellationToken)
     {
-        if (_client == null || !_client.Connected)
+        if (_client == null || _stream == null || !_client.Connected || !_stream.CanWrite)
         {
-            await _client!.ConnectAsync(_host, _port, cancellationToken);
-            // throw new InvalidOperationException("Client is not connected");
+            throw new IOException("[TelnetClient] Cannot send: Not connected or stream unavailable.");
         }
 
-        await _writer.WriteLineAsync(command);
+        try
+        {
+            await _writer!.WriteLineAsync(command.AsMemory(), cancellationToken);
+        }
+        catch (Exception ex)
+        {
+            throw new IOException($"[TelnetClient] Failed to send command: {ex.Message}", ex);
+        }
     }
 
     public Task DisconnectAsync()
     {
         _cancellationTokenSource.Cancel();
-        _writer.Dispose();
-        _reader.Dispose();
-        _stream.Dispose();
-        _client?.Close();
+
+        try { _writer?.Dispose(); } catch { }
+        try { _reader?.Dispose(); } catch { }
+        try { _stream?.Dispose(); } catch { }
+        try { _client?.Close(); } catch { }
+
+        _writer = null;
+        _reader = null;
+        _stream = null;
         _client = null;
+
         return Task.CompletedTask;
     }
 
     public void Dispose()
     {
-        DisconnectAsync().Wait();
+        Task.Run(DisconnectAsync).Wait();
     }
 }

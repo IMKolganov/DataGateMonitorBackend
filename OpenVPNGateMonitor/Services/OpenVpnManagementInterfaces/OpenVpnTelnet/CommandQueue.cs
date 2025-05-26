@@ -2,7 +2,7 @@
 
 namespace OpenVPNGateMonitor.Services.OpenVpnManagementInterfaces.OpenVpnTelnet;
 
-public class CommandQueue : ICommandQueue
+public class CommandQueue : ICommandQueue, IDisposable
 {
     private readonly ConcurrentQueue<string> _messageQueue = new();
     private readonly ConcurrentQueue<PendingCommand> _pendingCommands = new();
@@ -104,11 +104,30 @@ public class CommandQueue : ICommandQueue
         var result = _messageQueue.TryDequeue(out var message);
         return (result, message);
     }
+    
+    public async Task<bool> IsAliveAsync(CancellationToken cancellationToken)
+    {
+        try
+        {
+            var response = await SendCommandAsync("echo", cancellationToken, timeoutMs: 2000);
+            return !string.IsNullOrWhiteSpace(response);
+        }
+        catch (Exception ex)
+        {
+            Console.WriteLine($"[CommandQueue] IsAliveAsync failed: {ex.Message}");
+            return false;
+        }
+    }
 
     public async Task DisconnectAsync()
     {
         await _cts.CancelAsync();
         if (!HasSubscribers)
             await _telnetClient.DisconnectAsync();
+    }
+
+    public void Dispose()
+    {
+        DisconnectAsync().Wait();
     }
 }
