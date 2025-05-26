@@ -5,8 +5,8 @@
         <Nullable>enable</Nullable>
         <ImplicitUsings>enable</ImplicitUsings>
         <DockerDefaultTargetOS>Linux</DockerDefaultTargetOS>
-        <AssemblyVersion>1.0.1.23</AssemblyVersion>
-        <FileVersion>1.0.1.23</FileVersion>
+        <AssemblyVersion>1.0.1.24</AssemblyVersion>
+        <FileVersion>1.0.1.24</FileVersion>
     </PropertyGroup>
 
     <ItemGroup>
