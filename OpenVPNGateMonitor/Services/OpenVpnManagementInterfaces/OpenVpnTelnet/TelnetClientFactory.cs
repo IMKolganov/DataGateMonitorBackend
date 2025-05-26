@@ -13,7 +13,15 @@ public class CommandQueueManager : ICommandQueueManager
 
         if (_queues.TryGetValue(key, out var existingQueue))
         {
-            return existingQueue;
+            if (!await existingQueue.IsAliveAsync(cancellationToken))
+            { 
+                existingQueue.Dispose();
+                _queues.TryRemove(key, out _);
+            }
+            else
+            {
+                return existingQueue;
+            }
         }
 
         var newClient = new TelnetClient(ip, port);
