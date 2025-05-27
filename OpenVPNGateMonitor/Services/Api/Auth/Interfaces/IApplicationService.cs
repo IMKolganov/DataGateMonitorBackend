@@ -1,6 +1,6 @@
 using OpenVPNGateMonitor.Models;
 
-namespace OpenVPNGateMonitor.Services.Api.Auth;
+namespace OpenVPNGateMonitor.Services.Api.Auth.Interfaces;
 
 public interface IApplicationService
 {

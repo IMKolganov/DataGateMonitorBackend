@@ -1,4 +1,7 @@
-﻿using System.Text.Json;
+﻿using System.Net.Http.Headers;
+using System.Text.Json;
+using OpenVPNGateMonitor.Services.Api.Auth;
+using OpenVPNGateMonitor.Services.Api.Auth.Interfaces;
 using OpenVPNGateMonitor.Services.Api.Interfaces;
 using OpenVPNGateMonitor.Services.DataGateCertManager.Interfaces;
 using OpenVPNGateMonitor.SharedModels.DataGateCertManager.Cert.Responses;
@@ -10,6 +13,7 @@ namespace OpenVPNGateMonitor.Services.DataGateCertManager;
 public class CertApiClient(
     IHttpClientFactory httpClientFactory,
     IVpnDataService vpnDataService,
+    IMicroserviceTokenService tokenService,
     ILogger<CertApiClient> logger)
     : ICertApiClient
 {
@@ -43,101 +47,150 @@ public class CertApiClient(
         return client;
     }
 
-    public async Task<List<ServerCertificate>> GetAllCertificatesAsync(int vpnServerId, CancellationToken cancellationToken)
+    public async Task<List<ServerCertificate>> GetAllCertificatesAsync(int vpnServerId,
+        CancellationToken cancellationToken)
     {
         try
         {
             using var client = await GetClientForServerAsync(vpnServerId, cancellationToken);
+            var jwt = tokenService.GenerateToken("vpn-cert-issuer");
+            client.DefaultRequestHeaders.Authorization = new AuthenticationHeaderValue("Bearer", jwt);
+
             var response = await client.GetAsync("api/Cert/GetAllCertificates", cancellationToken);
 
             if (!response.IsSuccessStatusCode)
             {
                 var error = await response.Content.ReadAsStringAsync(cancellationToken);
                 var message = $"Server returned {(int)response.StatusCode} ({response.StatusCode}): {error}";
-                LogSafe(() => logger.LogError("Failed to get certificates from server {VpnServerId}: {Message}", vpnServerId, message));
+                LogSafe(() => logger.LogError("Failed to get certificates from server {VpnServerId}: {Message}",
+                    vpnServerId, message));
                 throw new HttpRequestException(message, null, response.StatusCode);
             }
 
-            var certificates = await response.Content.ReadFromJsonAsync<List<ServerCertificate>>(cancellationToken: cancellationToken);
+            var certificates =
+                await response.Content.ReadFromJsonAsync<List<ServerCertificate>>(cancellationToken: cancellationToken);
             return certificates ?? new List<ServerCertificate>();
         }
         catch (HttpRequestException ex)
         {
-            LogSafe(() => logger.LogError("HTTP request failed (code {Code}) while getting certificates from server {VpnServerId}: {Message}", ex.HResult, vpnServerId, ex.Message));
+            LogSafe(() =>
+                logger.LogError(
+                    "HTTP request failed (code {Code}) while getting certificates from server {VpnServerId}: {Message}",
+                    ex.HResult, vpnServerId, ex.Message));
             throw;
         }
         catch (JsonException ex)
         {
-            LogSafe(() => logger.LogError("Deserialization error (code {Code}) while getting certificates from server {VpnServerId}: {Message}", ex.HResult, vpnServerId, ex.Message));
+            LogSafe(() =>
+                logger.LogError(
+                    "Deserialization error (code {Code}) while getting certificates " +
+                    "from server {VpnServerId}: {Message}",
+                    ex.HResult, vpnServerId, ex.Message));
             throw;
         }
     }
 
-    public async Task<ServerCertificate> BuildCertificateAsync(int vpnServerId, string commonName, CancellationToken cancellationToken)
+    public async Task<ServerCertificate> BuildCertificateAsync(int vpnServerId, string commonName,
+        CancellationToken cancellationToken)
     {
         try
         {
             using var client = await GetClientForServerAsync(vpnServerId, cancellationToken);
+            var jwt = tokenService.GenerateToken("vpn-cert-issuer");
+            client.DefaultRequestHeaders.Authorization = new AuthenticationHeaderValue("Bearer", jwt);
+
             var request = new AddServerCertificateRequest { CommonName = commonName };
-            var response = await client.PostAsJsonAsync("api/Cert/AddServerCertificate", request, cancellationToken);
+            var response = await client.PostAsJsonAsync("api/Cert/AddServerCertificate", request,
+                cancellationToken);
 
             if (!response.IsSuccessStatusCode)
             {
                 var error = await response.Content.ReadAsStringAsync(cancellationToken);
                 var message = $"Server returned {(int)response.StatusCode} ({response.StatusCode}): {error}";
-                LogSafe(() => logger.LogError("Failed to build certificate for {CommonName} on server {VpnServerId}: {Message}", commonName, vpnServerId, message));
+                LogSafe(() =>
+                    logger.LogError("Failed to build certificate for {CommonName} on server {VpnServerId}: {Message}",
+                        commonName, vpnServerId, message));
                 throw new HttpRequestException(message, null, response.StatusCode);
             }
 
-            var result = await response.Content.ReadFromJsonAsync<ServerCertificate>(cancellationToken: cancellationToken);
+            var result =
+                await response.Content.ReadFromJsonAsync<ServerCertificate>(cancellationToken: cancellationToken);
             if (result == null)
                 throw new InvalidOperationException("Received null response when building certificate");
 
-            logger.LogInformation("Successfully built certificate for {CommonName} on server {VpnServerId}", commonName, vpnServerId);
+            logger.LogInformation("Successfully built certificate for {CommonName} on server {VpnServerId}", commonName,
+                vpnServerId);
             return result;
         }
         catch (HttpRequestException ex)
         {
-            LogSafe(() => logger.LogError("HTTP request failed (code {Code}) while building certificate for {CommonName} on server {VpnServerId}: {Message}", ex.HResult, commonName, vpnServerId, ex.Message));
+            LogSafe(() =>
+                logger.LogError(
+                    "HTTP request failed (code {Code}) while building certificate for {CommonName} " +
+                    "on server {VpnServerId}: {Message}",
+                    ex.HResult, commonName, vpnServerId, ex.Message));
             throw;
         }
         catch (JsonException ex)
         {
-            LogSafe(() => logger.LogError("Deserialization error (code {Code}) while building certificate for {CommonName} on server {VpnServerId}: {Message}", ex.HResult, commonName, vpnServerId, ex.Message));
+            LogSafe(() =>
+                logger.LogError(
+                    "Deserialization error (code {Code}) while building certificate for {CommonName} " +
+                    "on server {VpnServerId}: {Message}",
+                    ex.HResult, commonName, vpnServerId, ex.Message));
             throw;
         }
     }
 
-    public async Task<ServerCertificate> RevokeCertificateAsync(RevokeCertificateRequest request, CancellationToken cancellationToken)
+    public async Task<ServerCertificate> RevokeCertificateAsync(RevokeCertificateRequest request,
+        CancellationToken cancellationToken)
     {
         try
         {
             using var client = await GetClientForServerAsync(request.VpnServerId, cancellationToken);
-            var response = await client.PostAsJsonAsync("api/Cert/RevokeCertificate", request, cancellationToken);
+            var jwt = tokenService.GenerateToken("vpn-cert-issuer");
+            client.DefaultRequestHeaders.Authorization = new AuthenticationHeaderValue("Bearer", jwt);
+
+            var response = await client.PostAsJsonAsync("api/Cert/RevokeCertificate", request,
+                cancellationToken);
 
             if (!response.IsSuccessStatusCode)
             {
                 var error = await response.Content.ReadAsStringAsync(cancellationToken);
                 var message = $"Server returned {(int)response.StatusCode} ({response.StatusCode}): {error}";
-                LogSafe(() => logger.LogError("Failed to revoke certificate for {CommonName} on server {VpnServerId}: {Message}", request.CommonName, request.VpnServerId, message));
+                LogSafe(() =>
+                    logger.LogError("Failed to revoke certificate for {CommonName} on server {VpnServerId}: {Message}",
+                        request.CommonName, request.VpnServerId, message));
                 throw new HttpRequestException(message, null, response.StatusCode);
             }
 
-            var result = await response.Content.ReadFromJsonAsync<ServerCertificate>(cancellationToken: cancellationToken);
+            var result =
+                await response.Content.ReadFromJsonAsync<ServerCertificate>(cancellationToken: cancellationToken);
             if (result == null)
                 throw new InvalidOperationException("Received null response when revoking certificate");
 
-            logger.LogInformation("Certificate revocation completed for {CommonName} on server {VpnServerId}. IsRevoked: {IsRevoked}, Message: {Message}", request.CommonName, request.VpnServerId, result.IsRevoked, result.Message);
+            logger.LogInformation(
+                "Certificate revocation completed for {CommonName} on server {VpnServerId}." +
+                " IsRevoked: {IsRevoked}, Message: {Message}",
+                request.CommonName, request.VpnServerId, result.IsRevoked, result.Message);
             return result;
         }
         catch (HttpRequestException ex)
         {
-            LogSafe(() => logger.LogError("HTTP request failed (code {Code}) while revoking certificate for {CommonName} on server {VpnServerId}: {Message}", ex.HResult, request.CommonName, request.VpnServerId, ex.Message));
+            LogSafe(() =>
+                logger.LogError(
+                    "HTTP request failed (code {Code}) while revoking certificate for {CommonName} " +
+                    "on server {VpnServerId}: {Message}",
+                    ex.HResult, request.CommonName, request.VpnServerId, ex.Message));
             throw;
         }
         catch (JsonException ex)
         {
-            LogSafe(() => logger.LogError("Deserialization error (code {Code}) while revoking certificate for {CommonName} on server {VpnServerId}: {Message}", ex.HResult, request.CommonName, request.VpnServerId, ex.Message));
+            LogSafe(() =>
+                logger.LogError(
+                    "Deserialization error (code {Code}) while revoking certificate for {CommonName} " +
+                    "on server {VpnServerId}: {Message}",
+                    ex.HResult, request.CommonName, request.VpnServerId, ex.Message));
             throw;
         }
     }

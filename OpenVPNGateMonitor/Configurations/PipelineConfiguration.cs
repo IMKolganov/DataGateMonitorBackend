@@ -1,10 +1,10 @@
-﻿using System.Net;
-using System.Reflection;
+﻿using System.Reflection;
 using Microsoft.AspNetCore.HttpOverrides;
 using Microsoft.EntityFrameworkCore;
 using Microsoft.OpenApi.Writers;
 using OpenVPNGateMonitor.DataBase.Contexts;
 using OpenVPNGateMonitor.Hubs;
+using OpenVPNGateMonitor.Services.Others;
 using Swashbuckle.AspNetCore.Swagger;
 
 namespace OpenVPNGateMonitor.Configurations;
@@ -110,5 +110,7 @@ public static class PipelineConfiguration
                 content: $"OpenVPNGateMonitor Application version: {version}; Environment: {environmentName};"));
 
         app.Logger.LogInformation($"Application version: {version}; Environment: {environmentName};");
+        
+        RsaKeyInitializer.EnsureRsaKeysExist(app.Configuration, app.Logger);
     }
 }

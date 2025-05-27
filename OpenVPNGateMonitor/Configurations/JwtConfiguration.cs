@@ -1,6 +1,8 @@
 ﻿using System.Text;
 using Microsoft.AspNetCore.Authentication.JwtBearer;
 using Microsoft.IdentityModel.Tokens;
+using OpenVPNGateMonitor.Services.Api.Auth;
+using OpenVPNGateMonitor.Services.Api.Auth.Interfaces;
 
 namespace OpenVPNGateMonitor.Configurations;
 
@@ -43,5 +45,6 @@ public static class JwtConfiguration
                     }
                 };
             });
+        services.AddSingleton<IMicroserviceTokenService, MicroserviceTokenService>();
     }
 }
