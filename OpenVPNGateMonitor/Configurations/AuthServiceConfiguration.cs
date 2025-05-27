@@ -1,6 +1,7 @@
 ﻿using Microsoft.OpenApi.Models;
 using OpenVPNGateMonitor.Controllers;
 using OpenVPNGateMonitor.Services.Api.Auth;
+using OpenVPNGateMonitor.Services.Api.Auth.Interfaces;
 
 namespace OpenVPNGateMonitor.Configurations;
 
