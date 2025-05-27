@@ -8,24 +8,22 @@ namespace OpenVPNGateMonitor.Services.Api.Auth;
 
 public class MicroserviceTokenService : IMicroserviceTokenService
 {
-    private readonly RSA _privateRsa;
     private readonly RsaSecurityKey _rsaSecurityKey;
     private readonly string _publicKeyPem;
 
     public MicroserviceTokenService(IConfiguration config)
     {
-        var privateKeyPath = config["Jwt:PrivateKeyPath"];
-        var publicKeyPath = config["Jwt:PublicKeyPath"];
-
+        var privateKeyPath = config["MicroserviceJwt:PrivateKeyPath"] ?? "private-microservice.key";
+        var publicKeyPath = config["MicroserviceJwt:PublicKeyPath"] ?? "public-microservice.key";
         var privateKeyText = File.ReadAllText(privateKeyPath);
         var publicKeyText = File.ReadAllText(publicKeyPath);
 
         _publicKeyPem = publicKeyText;
 
-        _privateRsa = RSA.Create();
-        _privateRsa.ImportFromPem(privateKeyText.ToCharArray());
+        var privateRsa = RSA.Create();
+        privateRsa.ImportFromPem(privateKeyText.ToCharArray());
 
-        _rsaSecurityKey = new RsaSecurityKey(_privateRsa);
+        _rsaSecurityKey = new RsaSecurityKey(privateRsa);
     }
 
     public string GenerateToken(string subject, string purpose, string role, string audience)
