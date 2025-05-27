@@ -5,7 +5,6 @@ using System.Security.Claims;
 using System.Text;
 using OpenVPNGateMonitor.Models;
 using OpenVPNGateMonitor.Models.Helpers.Auth;
-using OpenVPNGateMonitor.Services.Api.Auth;
 using OpenVPNGateMonitor.Services.Api.Auth.Interfaces;
 using OpenVPNGateMonitor.SharedModels.DataGateMonitorBackend.Auth.Responses;
 
