@@ -2,6 +2,7 @@ using Mapster;
 using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Mvc;
 using OpenVPNGateMonitor.Services.Api.Auth;
+using OpenVPNGateMonitor.Services.Api.Auth.Interfaces;
 using OpenVPNGateMonitor.SharedModels.DataGateMonitorBackend.Applications.Requests;
 using OpenVPNGateMonitor.SharedModels.DataGateMonitorBackend.Applications.Responses;
 using OpenVPNGateMonitor.SharedModels.Responses;

@@ -5,14 +5,15 @@ using System.Security.Claims;
 using System.Text;
 using OpenVPNGateMonitor.Models;
 using OpenVPNGateMonitor.Models.Helpers.Auth;
-using OpenVPNGateMonitor.Services.Api.Auth;
+using OpenVPNGateMonitor.Services.Api.Auth.Interfaces;
 using OpenVPNGateMonitor.SharedModels.DataGateMonitorBackend.Auth.Responses;
 
 namespace OpenVPNGateMonitor.Controllers;
 
 [Route("api/[controller]")]
 [ApiController]
-public class AuthController(IConfiguration config, IApplicationService appService) : ControllerBase
+public class AuthController(IConfiguration config, IApplicationService appService, 
+    IMicroserviceTokenService microserviceTokenService) : ControllerBase
 {
     [HttpGet("system-secret-status")]
     public async Task<ActionResult<SystemSecretStatusResponse>> GetSystemStatus(CancellationToken cancellationToken)
@@ -85,5 +86,11 @@ public class AuthController(IConfiguration config, IApplicationService appServic
             Token = tokenHandler.WriteToken(token),
             Expiration = tokenDescriptor.Expires ?? DateTime.UtcNow
         });
+    }
+    
+    [HttpGet("public-key")]
+    public IActionResult GetPublicKeyForMicroservice()
+    {
+        return Content(microserviceTokenService.GetPublicKeyPem(), "text/plain");
     }
 }
