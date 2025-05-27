@@ -28,15 +28,23 @@ public class MicroserviceTokenService : IMicroserviceTokenService
         _rsaSecurityKey = new RsaSecurityKey(_privateRsa);
     }
 
-    public string GenerateToken(string subject)
+    public string GenerateToken(string subject, string purpose, string role, string audience)
     {
         var handler = new JwtSecurityTokenHandler();
+
+        var claims = new[]
+        {
+            new Claim(ClaimTypes.NameIdentifier, subject),
+            new Claim("purpose", purpose),
+            new Claim(ClaimTypes.Role, role)
+        };
+
         var descriptor = new SecurityTokenDescriptor
         {
-            Subject = new ClaimsIdentity([
-                new Claim(ClaimTypes.NameIdentifier, subject)
-            ]),
-            Expires = DateTime.UtcNow.AddHours(1),
+            Subject = new ClaimsIdentity(claims),
+            Expires = DateTime.UtcNow.AddMinutes(10),
+            Issuer = "OpenVPNGateBackend",
+            Audience = audience,
             SigningCredentials = new SigningCredentials(_rsaSecurityKey, SecurityAlgorithms.RsaSha256)
         };
 
