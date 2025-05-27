@@ -368,3 +368,5 @@ GeoLite2/
 secrets/
 jwt-secret.txt
 NuGet.config
+public-microservice.key
+private-microservice.key
