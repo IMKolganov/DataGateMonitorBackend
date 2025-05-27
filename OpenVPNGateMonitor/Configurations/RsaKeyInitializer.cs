@@ -6,8 +6,8 @@ public static class RsaKeyInitializer
 {
     public static void EnsureRsaKeysExist(IConfiguration config, ILogger logger)
     {
-        var privateKeyPath = config["Jwt:PrivateKeyPath"] ?? "private-microservice.key";
-        var publicKeyPath = config["Jwt:PublicKeyPath"] ?? "public-microservice.key";
+        var privateKeyPath = config["MicroserviceJwt:PrivateKeyPath"] ?? "private-microservice.key";
+        var publicKeyPath = config["MicroserviceJwt:PublicKeyPath"] ?? "public-microservice.key";
 
         if (!File.Exists(privateKeyPath) || !File.Exists(publicKeyPath))
         {
