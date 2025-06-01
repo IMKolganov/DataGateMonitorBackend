@@ -74,13 +74,13 @@ public class OpenVpnMicroserviceClient(
             {
                 logger.LogInformation("Forwarding ReceiveCommandResult to frontend for server {ServerId}", vpnServerId);
                 await frontendHub.Clients.Group(vpnServerId.ToString()).
-                    SendAsync("ReceiveCommandResult", result, cancellationToken);
+                    SendAsync("ReceiveCommandResult", result);
             });
 
             connection.On<string>("ReceiveMessage", async message =>
             {
                 await frontendHub.Clients.Group(vpnServerId.ToString()).
-                    SendAsync("ReceiveMessage", message, cancellationToken);
+                    SendAsync("ReceiveMessage", message);
             });
 
             _subscribed.Add(vpnServerId);
