@@ -1,9 +1,12 @@
 using Microsoft.AspNetCore.SignalR;
+using OpenVPNGateMonitor.Services.Api.Interfaces;
 using OpenVPNGateMonitor.Services.DataGateCertManager.OpenVpnProxy;
 
 namespace OpenVPNGateMonitor.Hubs;
 
-public class OpenVpnFrontendHub(OpenVpnMicroserviceClient proxy, ILogger<OpenVpnFrontendHub> logger) : Hub
+public class OpenVpnFrontendHub(
+    IOpenVpnMicroserviceClientFactory clientFactory,
+    ILogger<OpenVpnFrontendHub> logger) : Hub
 {
     public override async Task OnConnectedAsync()
     {
@@ -37,18 +40,22 @@ public class OpenVpnFrontendHub(OpenVpnMicroserviceClient proxy, ILogger<OpenVpn
 
     public async Task SendCommand(string command)
     {
-        var cancellationToken = Context.ConnectionAborted;
-
+        var ct = Context.ConnectionAborted;
         var serverIdStr = Context.GetHttpContext()?.Request.Query["serverId"].ToString();
+
         if (!int.TryParse(serverIdStr, out var serverId))
         {
-            logger.LogWarning("Invalid serverId on SendCommand from {ConnectionId}", Context.ConnectionId);
-            await Clients.Caller.SendAsync("ReceiveMessage", "❌ Invalid server ID", cancellationToken);
+            await Clients.Caller.SendAsync("ReceiveMessage", "❌ Invalid server ID", ct);
             return;
         }
 
-        logger.LogInformation("Received command '{Command}' for serverId={ServerId} from {ConnectionId}", 
-            command, serverId, Context.ConnectionId);
-        await proxy.SendCommandToMicroserviceAsync(serverId, command, cancellationToken);
+        var client = await (clientFactory as OpenVpnMicroserviceClientFactory)?.TryCreateByServerIdAsync(serverId, ct)!;
+        if (client is null)
+        {
+            await Clients.Caller.SendAsync("ReceiveMessage", "❌ Server not found", ct);
+            return;
+        }
+
+        await client.SendCommandAsync(command, ct);
     }
 }

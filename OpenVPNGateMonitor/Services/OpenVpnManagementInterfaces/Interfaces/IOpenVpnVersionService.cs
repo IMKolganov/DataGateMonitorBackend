@@ -1,7 +1,9 @@
-﻿namespace OpenVPNGateMonitor.Services.OpenVpnManagementInterfaces.Interfaces;
+﻿using OpenVPNGateMonitor.Models;
+
+namespace OpenVPNGateMonitor.Services.OpenVpnManagementInterfaces.Interfaces;
 
 public interface IOpenVpnVersionService
 {
-    Task<string> GetVersionAsync(int vpnServerId, 
+    Task<string> GetVersionAsync(OpenVpnServer openVpnServer, 
         CancellationToken cancellationToken);
 }

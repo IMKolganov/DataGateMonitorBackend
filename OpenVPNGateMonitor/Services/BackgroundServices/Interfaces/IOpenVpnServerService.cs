@@ -1,7 +1,9 @@
-﻿namespace OpenVPNGateMonitor.Services.BackgroundServices.Interfaces;
+﻿using OpenVPNGateMonitor.Models;
+
+namespace OpenVPNGateMonitor.Services.BackgroundServices.Interfaces;
 
 public interface IOpenVpnServerService
 {
-    Task SaveConnectedClientsAsync(int vpnServerId, CancellationToken cancellationToken);
-    Task SaveOpenVpnServerStatusLogAsync(int vpnServerId, CancellationToken cancellationToken);
+    Task SaveConnectedClientsAsync(OpenVpnServer openVpnServer, CancellationToken cancellationToken);
+    Task SaveOpenVpnServerStatusLogAsync(OpenVpnServer openVpnServer, CancellationToken cancellationToken);
 }

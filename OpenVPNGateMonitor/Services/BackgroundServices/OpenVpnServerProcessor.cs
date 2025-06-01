@@ -22,13 +22,13 @@ public class OpenVpnServerProcessor(
                                   $"VpnServerId: {openVpnServer.Id}. " +
                                   $"Vpn Server Name: {openVpnServer.ServerName}. " +
                                   $"Saving OpenVPN server status for {openVpnServer.ApiUrl}");
-            await openVpnServerService.SaveOpenVpnServerStatusLogAsync(openVpnServer.Id, cancellationToken);
+            await openVpnServerService.SaveOpenVpnServerStatusLogAsync(openVpnServer, cancellationToken);
 
             logger.LogInformation($"OpenVpnServerProcessor: " +
                                   $"VpnServerId: {openVpnServer.Id}. " +
                                   $"Vpn Server Name: {openVpnServer.ServerName}. " +
                                   $"Saving connected clients for {openVpnServer.ApiUrl}");
-            await openVpnServerService.SaveConnectedClientsAsync(openVpnServer.Id, cancellationToken);
+            await openVpnServerService.SaveConnectedClientsAsync(openVpnServer, cancellationToken);
             
             openVpnServer.IsOnline = true;
             unitOfWork.MarkPropertyModified(openVpnServer, x => x.IsOnline);

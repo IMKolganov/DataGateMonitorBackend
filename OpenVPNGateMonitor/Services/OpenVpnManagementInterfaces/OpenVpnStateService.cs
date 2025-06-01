@@ -1,16 +1,17 @@
-﻿using OpenVPNGateMonitor.Models.Helpers.OpenVpnManagementInterfaces;
+﻿using OpenVPNGateMonitor.Models;
+using OpenVPNGateMonitor.Models.Helpers.OpenVpnManagementInterfaces;
 using OpenVPNGateMonitor.Services.DataGateCertManager.OpenVpnProxy;
 using OpenVPNGateMonitor.Services.OpenVpnManagementInterfaces.Interfaces;
 
 namespace OpenVPNGateMonitor.Services.OpenVpnManagementInterfaces;
 
 public class OpenVpnStateService(ILogger<IOpenVpnStateService> logger, 
-    OpenVpnMicroserviceClient microserviceClient) : IOpenVpnStateService
+    IOpenVpnMicroserviceClientFactory openVpnMicroserviceClientFactory) : IOpenVpnStateService
 {
-    public async Task<OpenVpnState> GetStateAsync(int vpnServerId, CancellationToken cancellationToken)
+    public async Task<OpenVpnState> GetStateAsync(OpenVpnServer openVpnServer, CancellationToken cancellationToken)
     {
-        var response = await microserviceClient.SendCommandWithResponseAsync(
-            vpnServerId, "state", cancellationToken);
+        var client = openVpnMicroserviceClientFactory.Create(openVpnServer);
+        var response = await client.SendCommandWithResponseAsync("state", cancellationToken);
 
         logger.LogDebug("Received status response:\n{Response}", response);
 
