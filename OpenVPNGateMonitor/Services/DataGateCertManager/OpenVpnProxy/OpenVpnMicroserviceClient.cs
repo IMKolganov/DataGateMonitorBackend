@@ -23,8 +23,9 @@ public class OpenVpnMicroserviceClient(
 
             if (connection.State != HubConnectionState.Connected)
             {
+                logger.LogInformation("Reconnecting SignalR for server {ServerId}", vpnServerId);
                 await connection.StartAsync();
-                logger.LogInformation("Started SignalR connection for server {ServerId}", vpnServerId);
+                logger.LogInformation("Reconnected SignalR for server {ServerId}", vpnServerId);
             }
 
             await connection.InvokeAsync("SendCommand", command);
@@ -39,23 +40,9 @@ public class OpenVpnMicroserviceClient(
 
     private async Task<HubConnection> EnsureConnectionAsync(int vpnServerId)
     {
-        if (_connections.TryGetValue(vpnServerId, out var connection))
+        if (_connections.TryGetValue(vpnServerId, out var existingConnection))
         {
-            if (connection.State == HubConnectionState.Disconnected)
-            {
-                try
-                {
-                    logger.LogInformation("Reconnecting SignalR for server {ServerId}", vpnServerId);
-                    await connection.StartAsync();
-                }
-                catch (Exception ex)
-                {
-                    logger.LogError(ex, "Reconnection failed for server {ServerId}", vpnServerId);
-                    throw;
-                }
-            }
-
-            return connection;
+            return existingConnection;
         }
 
         logger.LogInformation("Creating SignalR connection for server {ServerId}", vpnServerId);
@@ -70,22 +57,27 @@ public class OpenVpnMicroserviceClient(
 
         var fullUrl = $"{server.ApiUrl.TrimEnd('/')}/hubs/openvpn";
 
-        connection = new HubConnectionBuilder()
+        var connection = new HubConnectionBuilder()
             .WithUrl(fullUrl, options => options.AccessTokenProvider = () => Task.FromResult<string?>(token))
             .WithAutomaticReconnect()
             .Build();
 
-        connection.On<string>("ReceiveCommandResult", async result =>
+        // Ensure On(...) handlers are registered only once per serverId
+        if (!_subscribed.Contains(vpnServerId))
         {
-            logger.LogInformation("Forwarding ReceiveCommandResult to frontend for server {ServerId}", vpnServerId);
-            await frontendHub.Clients.Group(vpnServerId.ToString()).SendAsync("ReceiveCommandResult", result);
-        });
+            connection.On<string>("ReceiveCommandResult", async result =>
+            {
+                logger.LogInformation("Forwarding ReceiveCommandResult to frontend for server {ServerId}", vpnServerId);
+                await frontendHub.Clients.Group(vpnServerId.ToString()).SendAsync("ReceiveCommandResult", result);
+            });
 
-        connection.On<string>("ReceiveMessage",
-            async message =>
+            connection.On<string>("ReceiveMessage", async message =>
             {
                 await frontendHub.Clients.Group(vpnServerId.ToString()).SendAsync("ReceiveMessage", message);
             });
+
+            _subscribed.Add(vpnServerId);
+        }
 
         await connection.StartAsync();
         logger.LogInformation("Started SignalR connection for server {ServerId}", vpnServerId);
