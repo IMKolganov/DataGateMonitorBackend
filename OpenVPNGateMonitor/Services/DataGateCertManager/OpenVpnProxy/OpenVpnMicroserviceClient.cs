@@ -29,25 +29,36 @@ public class OpenVpnMicroserviceClient
 
     public async Task SendCommandToMicroserviceAsync(int vpnServerId, string command)
     {
-        if (!_connections.TryGetValue(vpnServerId, out var connection))
+        try
         {
-            connection = await CreateConnectionForServerAsync(vpnServerId);
-            _connections[vpnServerId] = connection;
-        }
+            if (!_connections.TryGetValue(vpnServerId, out var connection))
+            {
+                connection = await CreateConnectionForServerAsync(vpnServerId);
+                _connections[vpnServerId] = connection;
+            }
 
-        if (connection.State == HubConnectionState.Disconnected)
-        {
-            await connection.StartAsync();
-            _logger.LogInformation("Connected to microservice for server {ServerId}", vpnServerId);
-        }
+            if (connection.State == HubConnectionState.Disconnected)
+            {
+                await connection.StartAsync();
+                _logger.LogInformation("Connected to microservice for server {ServerId}", vpnServerId);
+            }
 
-        if (connection.State == HubConnectionState.Connected)
-        {
-            await connection.InvokeAsync("SendCommand", command);
+            if (connection.State == HubConnectionState.Connected)
+            {
+                await connection.InvokeAsync("SendCommand", command);
+            }
+            else
+            {
+                var warning = $"Cannot send command to server {vpnServerId} — SignalR not connected";
+                _logger.LogWarning(warning);
+                await _frontendHub.Clients.Group(vpnServerId.ToString()).SendAsync("ReceiveCommandResult", warning);
+            }
         }
-        else
+        catch (Exception ex)
         {
-            _logger.LogWarning("Cannot send command to server {ServerId} — SignalR not connected", vpnServerId);
+            _logger.LogError(ex, "Failed to send command to microservice for server {ServerId}", vpnServerId);
+            var errorMessage = $"[Error] Failed to send command to server {vpnServerId}: {ex.Message}";
+            await _frontendHub.Clients.Group(vpnServerId.ToString()).SendAsync("ReceiveCommandResult", errorMessage);
         }
     }
 
