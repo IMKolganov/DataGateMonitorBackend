@@ -70,7 +70,7 @@ public class OpenVpnBackgroundService : BackgroundService, IOpenVpnBackgroundSer
             await Parallel.ForEachAsync(openVpnServers, cancellationToken, async (server, ct) =>
             {
                 _logger.LogInformation($"VpnServerId: {server.Id}. VpnServerName: {server.ServerName} " +
-                                       $"Processing server: {server.ManagementIp}:{server.ManagementPort}");
+                                       $"Processing server: {server.ApiUrl}");
                 try
                 {
                     _statusManager.UpdateStatus(server.Id, ServiceStatus.Running, nextRunSeconds);
@@ -86,13 +86,13 @@ public class OpenVpnBackgroundService : BackgroundService, IOpenVpnBackgroundSer
                 {
                     _statusManager.UpdateStatus(server.Id, ServiceStatus.Error, nextRunSeconds, "Timeout");
                     _logger.LogError(ex, $"VpnServerId: {server.Id}. VpnServerName: {server.ServerName} " +
-                                         $"Timeout while processing OpenVPN server {server.ManagementIp}:{server.ManagementPort}");
+                                         $"Timeout while processing OpenVPN server {server.ApiUrl}");
                 }
                 catch (Exception ex)
                 {
                     _statusManager.UpdateStatus(server.Id, ServiceStatus.Error, nextRunSeconds, ex.Message);
                     _logger.LogError(ex, $"VpnServerId: {server.Id}. VpnServerName: {server.ServerName} " +
-                                         $"Error processing OpenVPN server {server.ManagementIp}:{server.ManagementPort}");
+                                         $"Error processing OpenVPN server {server.ApiUrl}");
                 }
             });
             _logger.LogInformation("OpenVPN task execution completed.");

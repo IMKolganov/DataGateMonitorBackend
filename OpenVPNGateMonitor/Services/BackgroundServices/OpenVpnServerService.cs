@@ -8,7 +8,6 @@ using OpenVPNGateMonitor.Models.Helpers.Services;
 using OpenVPNGateMonitor.Services.BackgroundServices.Interfaces;
 using OpenVPNGateMonitor.Services.Helpers.Interfaces;
 using OpenVPNGateMonitor.Services.OpenVpnManagementInterfaces.Interfaces;
-using OpenVPNGateMonitor.Services.OpenVpnManagementInterfaces.OpenVpnTelnet;
 
 namespace OpenVPNGateMonitor.Services.BackgroundServices;
 
@@ -22,14 +21,13 @@ public class OpenVpnServerService(
     IExternalIpAddressService externalIpAddressService)
     : IOpenVpnServerService
 {
-    public async Task SaveConnectedClientsAsync(int vpnServerId, ICommandQueue commandQueue,
-        CancellationToken cancellationToken)
+    public async Task SaveConnectedClientsAsync(int vpnServerId, CancellationToken cancellationToken)
     {
         logger.LogInformation($"VpnServerId: {vpnServerId}. Starting SaveConnectedClientsAsync...");
         await using var transaction = await unitOfWork.BeginTransactionAsync(cancellationToken);
         try
         {
-            var openVpnClients = await openVpnClientService.GetClientsAsync(commandQueue, 
+            var openVpnClients = await openVpnClientService.GetClientsAsync(vpnServerId, 
                 cancellationToken);
             
             logger.LogInformation($"VpnServerId: {vpnServerId}. " +
@@ -114,28 +112,27 @@ public class OpenVpnServerService(
         }
     }
 
-    public async Task SaveOpenVpnServerStatusLogAsync(int vpnServerId, ICommandQueue commandQueue,
-        CancellationToken cancellationToken)
+    public async Task SaveOpenVpnServerStatusLogAsync(int vpnServerId, CancellationToken cancellationToken)
     {
         logger.LogInformation($"VpnServerId: {vpnServerId}. Starting SaveOpenVpnServerStatusLogAsync...");
 
         var serverInfo = new ServerInfo();
         try
         {
-            serverInfo.OpenVpnState = await openVpnStateService.GetStateAsync(commandQueue, cancellationToken);
+            serverInfo.OpenVpnState = await openVpnStateService.GetStateAsync(vpnServerId, cancellationToken);
             if (serverInfo.OpenVpnState.UpSince <= DateTime.MinValue)
             {
                 throw new Exception($"VpnServerId: {vpnServerId}. UpSince is not set. " +
                                     $"Check your configuration or server.");
             }
             
-            serverInfo.OpenVpnSummaryStats = await openVpnSummaryStatService.GetSummaryStatsAsync(commandQueue, 
+            serverInfo.OpenVpnSummaryStats = await openVpnSummaryStatService.GetSummaryStatsAsync(vpnServerId, 
                 cancellationToken);
             serverInfo.OpenVpnState.ServerRemoteIp = await externalIpAddressService.GetRemoteIpAddress(cancellationToken);
 
             if (serverInfo.OpenVpnState != null)
             {
-                serverInfo.Version = await openVpnVersionService.GetVersionAsync(commandQueue, cancellationToken);
+                serverInfo.Version = await openVpnVersionService.GetVersionAsync(vpnServerId, cancellationToken);
             }
         }
         catch (Exception ex)
