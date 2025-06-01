@@ -1,3 +1,4 @@
+using System.Collections.Concurrent;
 using Microsoft.AspNetCore.SignalR;
 using Microsoft.AspNetCore.SignalR.Client;
 using OpenVPNGateMonitor.Hubs;
@@ -14,6 +15,33 @@ public class OpenVpnMicroserviceClient(
 {
     private readonly Dictionary<int, HubConnection> _connections = new();
     private readonly HashSet<int> _subscribed = new();
+    
+    private readonly ConcurrentDictionary<string, TaskCompletionSource<string>> _pendingCommands = new();
+
+    public async Task<string> SendCommandWithResponseAsync(int vpnServerId, string command, CancellationToken cancellationToken)
+    {
+        var requestId = Guid.NewGuid().ToString("N");
+        var tcs = new TaskCompletionSource<string>(TaskCreationOptions.RunContinuationsAsynchronously);
+        _pendingCommands[requestId] = tcs;
+
+        try
+        {
+            var connection = await EnsureConnectionAsync(vpnServerId, cancellationToken);
+            await connection.InvokeAsync("SendCommandWithRequestId", requestId, command, cancellationToken);
+
+            using var timeoutCts = new CancellationTokenSource(TimeSpan.FromSeconds(10));
+            using var linkedCts = CancellationTokenSource.CreateLinkedTokenSource(timeoutCts.Token, cancellationToken);
+
+            await using (linkedCts.Token.Register(() => tcs.TrySetCanceled()))
+            {
+                return await tcs.Task;
+            }
+        }
+        finally
+        {
+            _pendingCommands.TryRemove(requestId, out _);
+        }
+    }
 
     public async Task SendCommandToMicroserviceAsync(int vpnServerId, string command, CancellationToken cancellationToken)
     {
@@ -27,9 +55,7 @@ public class OpenVpnMicroserviceClient(
                 await ReconnectAsync(connection, vpnServerId);
             }
 
-#pragma warning disable CA2016
             await connection.InvokeAsync("SendCommand", command);
-#pragma warning restore CA2016
         }
         catch (Exception ex)
         {
@@ -81,6 +107,14 @@ public class OpenVpnMicroserviceClient(
             {
                 await frontendHub.Clients.Group(vpnServerId.ToString()).
                     SendAsync("ReceiveMessage", message);
+            });
+            
+            connection.On<string, string>("ReceiveCommandResultWithRequestId", (requestId, result) =>
+            {
+                if (_pendingCommands.TryRemove(requestId, out var tcs))
+                {
+                    tcs.TrySetResult(result);
+                }
             });
 
             _subscribed.Add(vpnServerId);

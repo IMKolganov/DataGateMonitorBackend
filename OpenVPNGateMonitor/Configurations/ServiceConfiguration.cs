@@ -1,6 +1,4 @@
 ﻿using OpenVPNGateMonitor.Services.Api;
-using OpenVPNGateMonitor.Services.Api.Auth;
-using OpenVPNGateMonitor.Services.Api.Auth.Interfaces;
 using OpenVPNGateMonitor.Services.Api.Interfaces;
 using OpenVPNGateMonitor.Services.BackgroundServices;
 using OpenVPNGateMonitor.Services.BackgroundServices.Interfaces;
@@ -11,7 +9,6 @@ using OpenVPNGateMonitor.Services.Helpers;
 using OpenVPNGateMonitor.Services.Helpers.Interfaces;
 using OpenVPNGateMonitor.Services.OpenVpnManagementInterfaces;
 using OpenVPNGateMonitor.Services.OpenVpnManagementInterfaces.Interfaces;
-using OpenVPNGateMonitor.Services.OpenVpnManagementInterfaces.OpenVpnTelnet;
 using OpenVPNGateMonitor.Services.Others;
 
 namespace OpenVPNGateMonitor.Configurations;
@@ -40,11 +37,6 @@ public static class ServiceConfiguration
         services.AddScoped<IOpenVpnVersionService, OpenVpnVersionService>();
         
         services.AddScoped<IOpenVpnServerService, OpenVpnServerService>();
-
-        services.AddSingleton<CommandQueueManager>();
-        services.AddSingleton<ICommandQueueManager>(provider => provider.GetRequiredService<CommandQueueManager>());
-        
-        services.AddScoped<IOpenVpnTelnetService, OpenVpnTelnetService>();
         
         services.AddScoped<IVpnDataService, VpnDataService>();
 

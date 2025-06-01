@@ -1,22 +1,28 @@
 ﻿using OpenVPNGateMonitor.Models.Helpers.OpenVpnManagementInterfaces;
+using OpenVPNGateMonitor.Services.DataGateCertManager.OpenVpnProxy;
 using OpenVPNGateMonitor.Services.OpenVpnManagementInterfaces.Interfaces;
-using OpenVPNGateMonitor.Services.OpenVpnManagementInterfaces.OpenVpnTelnet;
 
 namespace OpenVPNGateMonitor.Services.OpenVpnManagementInterfaces;
 
 public class OpenVpnSummaryStatService : IOpenVpnSummaryStatService
 {
     private readonly ILogger<IOpenVpnSummaryStatService> _logger;
+    private readonly OpenVpnMicroserviceClient _microserviceClient;
     
-    public OpenVpnSummaryStatService(ILogger<IOpenVpnSummaryStatService> logger)
+    public OpenVpnSummaryStatService(ILogger<IOpenVpnSummaryStatService> logger,
+        OpenVpnMicroserviceClient microserviceClient)
     {
         _logger = logger;
+        _microserviceClient = microserviceClient;
     }
     
-    public async Task<OpenVpnSummaryStats> GetSummaryStatsAsync(ICommandQueue commandQueue, 
+    public async Task<OpenVpnSummaryStats> GetSummaryStatsAsync(int vpnServerId, 
         CancellationToken cancellationToken)
     {
-        var response = await commandQueue.SendCommandAsync("load-stats", cancellationToken);
+        var response = await _microserviceClient.SendCommandWithResponseAsync(
+            vpnServerId, "load-stats", cancellationToken);
+
+        _logger.LogDebug("Received summary stats response:\n{Response}", response);
         return ParseSummaryStats(response);
     }
     

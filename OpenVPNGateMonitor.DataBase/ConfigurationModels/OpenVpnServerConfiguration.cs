@@ -11,17 +11,6 @@ public class OpenVpnServerConfiguration : BaseEntityConfiguration<OpenVpnServer>
         base.Configure(entity);
         entity.Property(e => e.ServerName)
             .IsRequired();
-        entity.Property(e => e.ManagementIp)
-            .IsRequired()
-            .HasMaxLength(255);
-        entity.Property(e => e.ManagementPort)
-            .IsRequired();
-        entity.Property(e => e.Login)
-            .IsRequired()
-            .HasMaxLength(50);
-        entity.Property(e => e.Password)
-            .IsRequired()
-            .HasMaxLength(50);
         entity.Property(e => e.IsOnline);
         entity.Property(e => e.IsDefault);
         entity.Property(e => e.ApiUrl)
