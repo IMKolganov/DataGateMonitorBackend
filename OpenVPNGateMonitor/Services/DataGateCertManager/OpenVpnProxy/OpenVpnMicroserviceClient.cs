@@ -15,8 +15,7 @@ public class OpenVpnMicroserviceClient(
     private readonly Dictionary<int, HubConnection> _connections = new();
     private readonly HashSet<int> _subscribed = new();
 
-    public async Task SendCommandToMicroserviceAsync(int vpnServerId, string command, 
-        CancellationToken cancellationToken)
+    public async Task SendCommandToMicroserviceAsync(int vpnServerId, string command, CancellationToken cancellationToken)
     {
         try
         {
@@ -24,19 +23,20 @@ public class OpenVpnMicroserviceClient(
 
             if (connection.State != HubConnectionState.Connected)
             {
-                logger.LogInformation("Reconnecting SignalR for server {ServerId}", vpnServerId);
-                await connection.StartAsync(cancellationToken);
-                logger.LogInformation("Reconnected SignalR for server {ServerId}", vpnServerId);
+                logger.LogWarning("SignalR connection is {State}, trying to reconnect...", connection.State);
+                await ReconnectAsync(connection, vpnServerId);
             }
 
-            await connection.InvokeAsync("SendCommand", command, cancellationToken);
+#pragma warning disable CA2016
+            await connection.InvokeAsync("SendCommand", command);
+#pragma warning restore CA2016
         }
         catch (Exception ex)
         {
             logger.LogError(ex, "Failed to send command to microservice for server {ServerId}", vpnServerId);
             var errorMessage = $"[Error] Failed to send command to server {vpnServerId}: {ex.Message}";
-            await frontendHub.Clients.Group(vpnServerId.ToString()).
-                SendAsync("ReceiveCommandResult", errorMessage, cancellationToken);
+            await frontendHub.Clients.Group(vpnServerId.ToString())
+                .SendAsync("ReceiveCommandResult", errorMessage, cancellationToken);
         }
     }
 
@@ -92,5 +92,20 @@ public class OpenVpnMicroserviceClient(
         _connections[vpnServerId] = connection;
 
         return connection;
+    }
+    
+    private async Task ReconnectAsync(HubConnection connection, int vpnServerId)
+    {
+        try
+        {
+            await connection.StopAsync();
+            await connection.StartAsync();
+            logger.LogInformation("Reconnected to SignalR for server {ServerId}", vpnServerId);
+        }
+        catch (Exception ex)
+        {
+            logger.LogError(ex, "Failed to reconnect to SignalR for server {ServerId}", vpnServerId);
+            throw;
+        }
     }
 }
