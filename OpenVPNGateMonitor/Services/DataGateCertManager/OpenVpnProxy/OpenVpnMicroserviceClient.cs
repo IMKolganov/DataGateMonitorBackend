@@ -39,54 +39,56 @@ public class OpenVpnMicroserviceClient(
 
     private async Task<HubConnection> EnsureConnectionAsync(int vpnServerId)
     {
-        if (_connections.TryGetValue(vpnServerId, out var existingConnection))
+        if (_connections.TryGetValue(vpnServerId, out var connection))
         {
-            if (existingConnection.State == HubConnectionState.Disconnected)
+            if (connection.State == HubConnectionState.Disconnected)
             {
-                logger.LogInformation("Reconnecting to microservice for server {ServerId}", vpnServerId);
-                await existingConnection.StartAsync();
+                try
+                {
+                    logger.LogInformation("Reconnecting SignalR for server {ServerId}", vpnServerId);
+                    await connection.StartAsync();
+                }
+                catch (Exception ex)
+                {
+                    logger.LogError(ex, "Reconnection failed for server {ServerId}", vpnServerId);
+                    throw;
+                }
             }
 
-            return existingConnection;
+            return connection;
         }
 
-        var server = await vpnDataService.GetOpenVpnServer(vpnServerId, CancellationToken.None);
+        logger.LogInformation("Creating SignalR connection for server {ServerId}", vpnServerId);
 
+        var server = await vpnDataService.GetOpenVpnServer(vpnServerId, CancellationToken.None);
         if (server is null || string.IsNullOrWhiteSpace(server.ApiUrl))
             throw new InvalidOperationException($"OpenVPN server {vpnServerId} not found or has no microservice URL");
 
-        var token = tokenService.GenerateToken("vpn-cert-issuer", "cert-create",
-            "backend", "DataGateCertManager");
-
+        var token = tokenService.GenerateToken("vpn-cert-issuer", "cert-create", "backend", "DataGateCertManager");
         if (string.IsNullOrWhiteSpace(token))
             throw new InvalidOperationException("Generated token is null or empty");
 
         var fullUrl = $"{server.ApiUrl.TrimEnd('/')}/hubs/openvpn";
 
-        var connection = new HubConnectionBuilder()
-            .WithUrl(fullUrl, options =>
-            {
-                options.AccessTokenProvider = () => Task.FromResult<string?>(token);
-            })
+        connection = new HubConnectionBuilder()
+            .WithUrl(fullUrl, options => options.AccessTokenProvider = () => Task.FromResult<string?>(token))
             .WithAutomaticReconnect()
             .Build();
 
-        if (!_subscribed.Contains(vpnServerId))
+        connection.On<string>("ReceiveCommandResult", async result =>
         {
-            connection.On<string>("ReceiveMessage", async message =>
+            logger.LogInformation("Forwarding ReceiveCommandResult to frontend for server {ServerId}", vpnServerId);
+            await frontendHub.Clients.Group(vpnServerId.ToString()).SendAsync("ReceiveCommandResult", result);
+        });
+
+        connection.On<string>("ReceiveMessage",
+            async message =>
             {
-                logger.LogInformation("Forwarding ReceiveMessage to frontend for server {ServerId}", vpnServerId);
                 await frontendHub.Clients.Group(vpnServerId.ToString()).SendAsync("ReceiveMessage", message);
             });
 
-            connection.On<string>("ReceiveCommandResult", async result =>
-            {
-                logger.LogInformation("Forwarding ReceiveCommandResult to frontend for server {ServerId}", vpnServerId);
-                await frontendHub.Clients.Group(vpnServerId.ToString()).SendAsync("ReceiveCommandResult", result);
-            });
-
-            _subscribed.Add(vpnServerId);
-        }
+        await connection.StartAsync();
+        logger.LogInformation("Started SignalR connection for server {ServerId}", vpnServerId);
 
         _connections[vpnServerId] = connection;
 
