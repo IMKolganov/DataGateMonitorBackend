@@ -27,8 +27,15 @@ public class OpenVpnFrontendHub(OpenVpnMicroserviceClient proxy) : Hub
         await base.OnDisconnectedAsync(exception);
     }
 
-    public async Task SendCommand(int serverId, string command)
+    public async Task SendCommand(string command)
     {
+        var serverIdStr = Context.GetHttpContext()?.Request.Query["serverId"].ToString();
+        if (!int.TryParse(serverIdStr, out var serverId))
+        {
+            await Clients.Caller.SendAsync("ReceiveMessage", "❌ Invalid server ID");
+            return;
+        }
+
         await proxy.SendCommandToMicroserviceAsync(serverId, command);
     }
 }
