@@ -8,14 +8,15 @@ using OpenVPNGateMonitor.Services.OpenVpnManagementInterfaces.Interfaces;
 
 namespace OpenVPNGateMonitor.Services.OpenVpnManagementInterfaces;
 
-public class OpenVpnClientService(ILogger<IOpenVpnClientService> logger, OpenVpnMicroserviceClient microserviceClient,
+public class OpenVpnClientService(ILogger<IOpenVpnClientService> logger, 
+    IOpenVpnMicroserviceClientFactory openVpnMicroserviceClientFactory,
     IGeoLiteQueryService geoLiteQueryService)
     : IOpenVpnClientService
 {
-    public async Task<List<OpenVpnServerClient>> GetClientsAsync(int vpnServerId, CancellationToken cancellationToken)
+    public async Task<List<OpenVpnServerClient>> GetClientsAsync(OpenVpnServer openVpnServer, CancellationToken cancellationToken)
     {
-        var response = await microserviceClient.SendCommandWithResponseAsync(
-            vpnServerId, "status 3", cancellationToken);
+        var client = openVpnMicroserviceClientFactory.Create(openVpnServer);
+        var response = await client.SendCommandWithResponseAsync("status 3", cancellationToken);
 
         logger.LogDebug("Received status response:\n{Response}", response);
 
