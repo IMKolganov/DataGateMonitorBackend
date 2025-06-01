@@ -69,7 +69,7 @@ public class OpenVpnMicroserviceClient
         if (server is null || string.IsNullOrWhiteSpace(server.ApiUrl))
             throw new InvalidOperationException($"OpenVPN server {vpnServerId} not found or has no microservice URL");
 
-        var audience = "OpenVpnMicroservice";
+        var audience = "DataGateCertManager";
         var token = _tokenService.GenerateToken(
             subject: "OpenVpnBackend",
             purpose: "proxy",
