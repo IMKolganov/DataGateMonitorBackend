@@ -1,9 +1,12 @@
 ﻿using OpenVPNGateMonitor.Services.Api;
+using OpenVPNGateMonitor.Services.Api.Auth;
+using OpenVPNGateMonitor.Services.Api.Auth.Interfaces;
 using OpenVPNGateMonitor.Services.Api.Interfaces;
 using OpenVPNGateMonitor.Services.BackgroundServices;
 using OpenVPNGateMonitor.Services.BackgroundServices.Interfaces;
 using OpenVPNGateMonitor.Services.DataGateCertManager;
 using OpenVPNGateMonitor.Services.DataGateCertManager.Interfaces;
+using OpenVPNGateMonitor.Services.DataGateCertManager.OpenVpnProxy;
 using OpenVPNGateMonitor.Services.Helpers;
 using OpenVPNGateMonitor.Services.Helpers.Interfaces;
 using OpenVPNGateMonitor.Services.OpenVpnManagementInterfaces;
@@ -64,6 +67,8 @@ public static class ServiceConfiguration
         services.AddScoped<ICertApiClient, CertApiClient>();
         services.AddScoped<IOvpnFileApiClient, OvpnFileApiClient>();
         services.AddScoped<IOvpnFileApiService, OvpnFileApiService>();
+        
+        services.AddScoped<OpenVpnMicroserviceClient>();
 
         #endregion
     }
