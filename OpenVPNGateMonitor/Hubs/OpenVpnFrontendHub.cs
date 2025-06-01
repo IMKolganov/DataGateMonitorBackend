@@ -35,8 +35,10 @@ public class OpenVpnFrontendHub(OpenVpnMicroserviceClient proxy, ILogger<OpenVpn
         await base.OnDisconnectedAsync(exception);
     }
 
-    public async Task SendCommand(string command, CancellationToken cancellationToken)
+    public async Task SendCommand(string command)
     {
+        var cancellationToken = Context.ConnectionAborted;
+
         var serverIdStr = Context.GetHttpContext()?.Request.Query["serverId"].ToString();
         if (!int.TryParse(serverIdStr, out var serverId))
         {
