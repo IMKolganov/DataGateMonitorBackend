@@ -70,7 +70,7 @@ public class OpenVpnMicroserviceClient
             throw new InvalidOperationException("Generated token is null or empty");
 
         var baseUrl = server.ApiUrl?.TrimEnd('/');
-        var fullUrl = $"{baseUrl}/hub/openvpn";
+        var fullUrl = $"{baseUrl}/hubs/openvpn";
 
         var connection = new HubConnectionBuilder()
             .WithUrl(fullUrl, options =>
