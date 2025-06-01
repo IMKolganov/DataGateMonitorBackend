@@ -6,77 +6,62 @@ using OpenVPNGateMonitor.Services.Api.Interfaces;
 
 namespace OpenVPNGateMonitor.Services.DataGateCertManager.OpenVpnProxy;
 
-public class OpenVpnMicroserviceClient
+public class OpenVpnMicroserviceClient(
+    ILogger<OpenVpnMicroserviceClient> logger,
+    IHubContext<OpenVpnFrontendHub> frontendHub,
+    IMicroserviceTokenService tokenService,
+    IVpnDataService vpnDataService)
 {
-    private readonly ILogger<OpenVpnMicroserviceClient> _logger;
-    private readonly IHubContext<OpenVpnFrontendHub> _frontendHub;
-    private readonly IMicroserviceTokenService _tokenService;
-    private readonly IVpnDataService _vpnDataService;
-
     private readonly Dictionary<int, HubConnection> _connections = new();
-
-    public OpenVpnMicroserviceClient(
-        ILogger<OpenVpnMicroserviceClient> logger,
-        IHubContext<OpenVpnFrontendHub> frontendHub,
-        IMicroserviceTokenService tokenService,
-        IVpnDataService vpnDataService)
-    {
-        _logger = logger;
-        _frontendHub = frontendHub;
-        _tokenService = tokenService;
-        _vpnDataService = vpnDataService;
-    }
+    private readonly HashSet<int> _subscribed = new();
 
     public async Task SendCommandToMicroserviceAsync(int vpnServerId, string command)
     {
         try
         {
-            if (!_connections.TryGetValue(vpnServerId, out var connection))
-            {
-                connection = await CreateConnectionForServerAsync(vpnServerId);
-                _connections[vpnServerId] = connection;
-            }
+            var connection = await EnsureConnectionAsync(vpnServerId);
 
-            if (connection.State == HubConnectionState.Disconnected)
+            if (connection.State != HubConnectionState.Connected)
             {
                 await connection.StartAsync();
-                _logger.LogInformation("Connected to microservice for server {ServerId}", vpnServerId);
+                logger.LogInformation("Started SignalR connection for server {ServerId}", vpnServerId);
             }
 
-            if (connection.State == HubConnectionState.Connected)
-            {
-                await connection.InvokeAsync("SendCommand", command);
-            }
-            else
-            {
-                var warning = $"Cannot send command to server {vpnServerId} — SignalR not connected";
-                _logger.LogWarning(warning);
-                await _frontendHub.Clients.Group(vpnServerId.ToString()).SendAsync("ReceiveCommandResult", warning);
-            }
+            await connection.InvokeAsync("SendCommand", command);
         }
         catch (Exception ex)
         {
-            _logger.LogError(ex, "Failed to send command to microservice for server {ServerId}", vpnServerId);
+            logger.LogError(ex, "Failed to send command to microservice for server {ServerId}", vpnServerId);
             var errorMessage = $"[Error] Failed to send command to server {vpnServerId}: {ex.Message}";
-            await _frontendHub.Clients.Group(vpnServerId.ToString()).SendAsync("ReceiveCommandResult", errorMessage);
+            await frontendHub.Clients.Group(vpnServerId.ToString()).SendAsync("ReceiveCommandResult", errorMessage);
         }
     }
 
-    private async Task<HubConnection> CreateConnectionForServerAsync(int vpnServerId)
+    private async Task<HubConnection> EnsureConnectionAsync(int vpnServerId)
     {
-        var server = await _vpnDataService.GetOpenVpnServer(vpnServerId, CancellationToken.None);
+        if (_connections.TryGetValue(vpnServerId, out var existingConnection))
+        {
+            if (existingConnection.State == HubConnectionState.Disconnected)
+            {
+                logger.LogInformation("Reconnecting to microservice for server {ServerId}", vpnServerId);
+                await existingConnection.StartAsync();
+            }
+
+            return existingConnection;
+        }
+
+        var server = await vpnDataService.GetOpenVpnServer(vpnServerId, CancellationToken.None);
 
         if (server is null || string.IsNullOrWhiteSpace(server.ApiUrl))
             throw new InvalidOperationException($"OpenVPN server {vpnServerId} not found or has no microservice URL");
-        
-        var token = _tokenService.GenerateToken("vpn-cert-issuer", "cert-create", 
+
+        var token = tokenService.GenerateToken("vpn-cert-issuer", "cert-create",
             "backend", "DataGateCertManager");
 
         if (string.IsNullOrWhiteSpace(token))
             throw new InvalidOperationException("Generated token is null or empty");
 
-        var baseUrl = server.ApiUrl?.TrimEnd('/');
-        var fullUrl = $"{baseUrl}/hubs/openvpn";
+        var fullUrl = $"{server.ApiUrl.TrimEnd('/')}/hubs/openvpn";
 
         var connection = new HubConnectionBuilder()
             .WithUrl(fullUrl, options =>
@@ -86,15 +71,24 @@ public class OpenVpnMicroserviceClient
             .WithAutomaticReconnect()
             .Build();
 
-        connection.On<string>("ReceiveMessage", async message =>
+        if (!_subscribed.Contains(vpnServerId))
         {
-            await _frontendHub.Clients.Group(vpnServerId.ToString()).SendAsync("ReceiveMessage", message);
-        });
+            connection.On<string>("ReceiveMessage", async message =>
+            {
+                logger.LogDebug("Forwarding ReceiveMessage to frontend for server {ServerId}", vpnServerId);
+                await frontendHub.Clients.Group(vpnServerId.ToString()).SendAsync("ReceiveMessage", message);
+            });
 
-        connection.On<string>("ReceiveCommandResult", async result =>
-        {
-            await _frontendHub.Clients.Group(vpnServerId.ToString()).SendAsync("ReceiveCommandResult", result);
-        });
+            connection.On<string>("ReceiveCommandResult", async result =>
+            {
+                logger.LogDebug("Forwarding ReceiveCommandResult to frontend for server {ServerId}", vpnServerId);
+                await frontendHub.Clients.Group(vpnServerId.ToString()).SendAsync("ReceiveCommandResult", result);
+            });
+
+            _subscribed.Add(vpnServerId);
+        }
+
+        _connections[vpnServerId] = connection;
 
         return connection;
     }
