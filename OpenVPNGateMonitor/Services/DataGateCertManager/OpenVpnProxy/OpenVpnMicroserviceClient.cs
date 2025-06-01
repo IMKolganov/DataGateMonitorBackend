@@ -69,8 +69,11 @@ public class OpenVpnMicroserviceClient
         if (string.IsNullOrWhiteSpace(token))
             throw new InvalidOperationException("Generated token is null or empty");
 
+        var baseUrl = server.ApiUrl?.TrimEnd('/');
+        var fullUrl = $"{baseUrl}/hub/openvpn";
+
         var connection = new HubConnectionBuilder()
-            .WithUrl($"{server.ApiUrl}/hub/openvpn", options =>
+            .WithUrl(fullUrl, options =>
             {
                 options.AccessTokenProvider = () => Task.FromResult<string?>(token);
             })
