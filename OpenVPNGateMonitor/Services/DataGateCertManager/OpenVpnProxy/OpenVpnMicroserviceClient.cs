@@ -16,6 +16,8 @@ public class OpenVpnMicroserviceClient(
     private readonly OpenVpnServer _server = server;
     private readonly ConcurrentDictionary<string, TaskCompletionSource<string>> _pendingCommands = new();
     private HubConnection? _connection;
+    private readonly SemaphoreSlim _connectionLock = new(1, 1);
+    private bool _handlersRegistered = false;
 
     public async Task<string> SendCommandWithResponseAsync(string command, CancellationToken cancellationToken)
     {
@@ -90,50 +92,61 @@ public class OpenVpnMicroserviceClient(
 
     private async Task<HubConnection> EnsureConnectionAsync(CancellationToken cancellationToken)
     {
-        if (_connection is not null)
-            return _connection;
-
-        logger.LogInformation("Creating SignalR connection for server {ServerId}", _server.Id);
-
-        if (string.IsNullOrWhiteSpace(_server.ApiUrl))
-            throw new InvalidOperationException($"OpenVPN server {_server.Id} has no microservice URL");
-
-        var token = tokenService.GenerateToken(
-            "vpn-cert-issuer", "cert-create", "backend", "DataGateCertManager");
-        if (string.IsNullOrWhiteSpace(token))
-            throw new InvalidOperationException("Generated token is null or empty");
-
-        var fullUrl = $"{_server.ApiUrl.TrimEnd('/')}/hubs/openvpn";
-
-        _connection = new HubConnectionBuilder()
-            .WithUrl(fullUrl, options => options.AccessTokenProvider = () => Task.FromResult<string?>(token))
-            .WithAutomaticReconnect()
-            .Build();
-
-        _connection.On<string>("ReceiveCommandResult", async result =>
+        await _connectionLock.WaitAsync(cancellationToken);
+        try
         {
-            await frontendHub.Clients.Group(_server.Id.ToString())
-                .SendAsync("ReceiveCommandResult", result);
-        });
+            if (_connection is not null && _connection.State == HubConnectionState.Connected)
+                return _connection;
 
-        _connection.On<string>("ReceiveMessage", async message =>
-        {
-            await frontendHub.Clients.Group(_server.Id.ToString())
-                .SendAsync("ReceiveMessage", message);
-        });
-
-        _connection.On<string, string>("ReceiveCommandResultWithRequestId", (requestId, result) =>
-        {
-            if (_pendingCommands.TryRemove(requestId, out var tcs))
+            if (_connection == null)
             {
-                tcs.TrySetResult(result);
+                logger.LogInformation("Creating SignalR connection for server {ServerId}", _server.Id);
+
+                var token = tokenService.GenerateToken("vpn-cert-issuer", "cert-create", "backend",
+                    "DataGateCertManager");
+                var fullUrl = $"{_server.ApiUrl.TrimEnd('/')}/hubs/openvpn";
+
+                _connection = new HubConnectionBuilder()
+                    .WithUrl(fullUrl, options => options.AccessTokenProvider = () => Task.FromResult<string?>(token))
+                    .WithAutomaticReconnect()
+                    .Build();
+
+                if (!_handlersRegistered)
+                {
+                    _connection.On<string>("ReceiveCommandResult", async result =>
+                    {
+                        await frontendHub.Clients.Group(_server.Id.ToString())
+                            .SendAsync("ReceiveCommandResult", result);
+                    });
+
+                    _connection.On<string>("ReceiveMessage", async message =>
+                    {
+                        await frontendHub.Clients.Group(_server.Id.ToString())
+                            .SendAsync("ReceiveMessage", message);
+                    });
+
+                    _connection.On<string, string>("ReceiveCommandResultWithRequestId", (requestId, result) =>
+                    {
+                        if (_pendingCommands.TryRemove(requestId, out var tcs))
+                            tcs.TrySetResult(result);
+                    });
+
+                    _handlersRegistered = true;
+                }
             }
-        });
 
-        await _connection.StartAsync(cancellationToken);
-        logger.LogInformation("Started SignalR connection for server {ServerId}", _server.Id);
+            if (_connection.State != HubConnectionState.Connected)
+            {
+                await _connection.StartAsync(cancellationToken);
+                logger.LogInformation("Started SignalR connection for server {ServerId}", _server.Id);
+            }
 
-        return _connection;
+            return _connection;
+        }
+        finally
+        {
+            _connectionLock.Release();
+        }
     }
 
     private async Task ReconnectAsync(HubConnection connection)
