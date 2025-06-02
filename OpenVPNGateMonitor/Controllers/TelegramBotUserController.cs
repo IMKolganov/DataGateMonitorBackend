@@ -30,4 +30,11 @@ public class TelegramBotUserController(ITelegramUserService telegramUserService)
         var telegramBotUsers = await telegramUserService.GetAdminsAsync(cancellationToken);
         return Ok(ApiResponse<GetAdminsResponse>.SuccessResponse(telegramBotUsers.Adapt<GetAdminsResponse>()));
     }
+    
+    [HttpGet("GetAllUsers")]
+    public async Task<ActionResult<ApiResponse<GetAllUsersResponse>>> GetAllUsers(CancellationToken cancellationToken)
+    {
+        var telegramBotUsers = await telegramUserService.GetAllUsersAsync(cancellationToken);
+        return Ok(ApiResponse<GetAllUsersResponse>.SuccessResponse(telegramBotUsers.Adapt<GetAllUsersResponse>()));
+    }
 }

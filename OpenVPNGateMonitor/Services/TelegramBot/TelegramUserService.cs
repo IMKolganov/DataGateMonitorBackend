@@ -53,4 +53,13 @@ public class TelegramUserService(ILogger<TelegramUserService> logger, IUnitOfWor
         
         return telegramBotUser;
     }
+    
+    public async Task<List<TelegramBotUser>?> GetAllUsersAsync(CancellationToken cancellationToken)
+    {
+        var telegramBotUser = await unitOfWork.GetQuery<TelegramBotUser>().AsQueryable()
+            .OrderBy(x=>x.Id)
+            .ToListAsync(cancellationToken: cancellationToken);
+        
+        return telegramBotUser;
+    }
 }
