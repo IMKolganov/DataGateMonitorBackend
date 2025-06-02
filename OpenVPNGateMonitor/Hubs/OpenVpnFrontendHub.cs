@@ -49,7 +49,7 @@ public class OpenVpnFrontendHub(
             return;
         }
 
-        var client = await (clientFactory as OpenVpnMicroserviceClientFactory)?.TryCreateByServerIdAsync(serverId, ct)!;
+        var client = await clientFactory.TryCreateByServerIdAsync(serverId, ct);
         if (client is null)
         {
             await Clients.Caller.SendAsync("ReceiveMessage", "❌ Server not found", ct);
