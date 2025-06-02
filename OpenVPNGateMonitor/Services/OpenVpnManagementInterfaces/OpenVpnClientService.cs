@@ -2,30 +2,33 @@
 using System.Security.Cryptography;
 using System.Text;
 using OpenVPNGateMonitor.Models;
+using OpenVPNGateMonitor.Services.DataGateCertManager.OpenVpnProxy;
 using OpenVPNGateMonitor.Services.GeoLite.Interfaces;
 using OpenVPNGateMonitor.Services.OpenVpnManagementInterfaces.Interfaces;
-using OpenVPNGateMonitor.Services.OpenVpnManagementInterfaces.OpenVpnTelnet;
 
 namespace OpenVPNGateMonitor.Services.OpenVpnManagementInterfaces;
 
-public class OpenVpnClientService(ILogger<IOpenVpnClientService> logger, IGeoLiteQueryService geoLiteQueryService)
+public class OpenVpnClientService(ILogger<IOpenVpnClientService> logger, 
+    IOpenVpnMicroserviceClientFactory openVpnMicroserviceClientFactory,
+    IGeoLiteQueryService geoLiteQueryService)
     : IOpenVpnClientService
 {
-    public async Task<List<OpenVpnServerClient>> GetClientsAsync(ICommandQueue commandQueue, 
-        CancellationToken cancellationToken)
+    public async Task<List<OpenVpnServerClient>> GetClientsAsync(OpenVpnServer openVpnServer, CancellationToken cancellationToken)
     {
-        var response = await commandQueue.SendCommandAsync("status 3", cancellationToken);
+        var client = openVpnMicroserviceClientFactory.Create(openVpnServer);
+        var response = await client.SendCommandWithResponseAsync("status 3", cancellationToken);
+
         logger.LogDebug("Received status response:\n{Response}", response);
-        
+
         var clients = await ParseStatus(response, cancellationToken);
         logger.LogInformation("Found {ClientCount} connected clients", clients.Count);
-        
+
         if (clients.Any())
         {
-            logger.LogDebug("Connected clients: {Clients}", 
+            logger.LogDebug("Connected clients: {Clients}",
                 string.Join(", ", clients.Select(c => c.CommonName)));
         }
-        
+
         return clients;
     }
 

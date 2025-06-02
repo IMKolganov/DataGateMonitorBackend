@@ -70,7 +70,6 @@ public class GeoLiteUpdaterService(
             await using var stream = await response.Content.ReadAsStreamAsync(cancellationToken);
             await using (var fileStream = new FileStream(tempFile, FileMode.Create, FileAccess.Write, FileShare.None))
             {
-                // CopyWithProgressAsync должен вызывать ReportStepProgressAsync(4, totalSteps, ..., percent)
                 await CopyWithProgressAsync(stream, fileStream, totalBytes, 4, 8, "Download file", cancellationToken);
             }
 
@@ -207,7 +206,6 @@ public class GeoLiteUpdaterService(
             }
         }
 
-        // Убедимся, что 100% отправлено в конце
         if (lastPercentSent != 100)
         {
             await ReportStepProgressAsync(currentStep, totalSteps, stepTitle, 100, cancellationToken);
