@@ -121,7 +121,7 @@ public class VpnDataService(
     {
         var servers = await unitOfWork.GetQuery<OpenVpnServer>()
             .AsQueryable()
-            .OrderByDescending(x => x.Id)
+            .OrderBy(x => x.Id)
             .ToListAsync(cancellationToken);
 
         var serverIds = servers.Select(s => s.Id).ToList();
@@ -144,7 +144,7 @@ public class VpnDataService(
             .AsQueryable()
             .Where(x => serverIds.Contains(x.VpnServerId))
             .GroupBy(x => x.VpnServerId)
-            .Select(g => g.OrderByDescending(x => x.Id).FirstOrDefault())
+            .Select(g => g.OrderBy(x => x.Id).FirstOrDefault())
             .ToListAsync(cancellationToken);
 
         var logMap = lastLogs.ToDictionary(x => x!.VpnServerId);
@@ -194,7 +194,7 @@ public class VpnDataService(
         var latestStatusLog = await unitOfWork.GetQuery<OpenVpnServerStatusLog>()
             .AsQueryable()
             .Where(x => x.VpnServerId == vpnServerId)
-            .OrderByDescending(x => x.Id)
+            .OrderBy(x => x.Id)
             .FirstOrDefaultAsync(cancellationToken);
 
         var trafficSummary = await unitOfWork.GetQuery<OpenVpnServerStatusLog>()
@@ -234,7 +234,7 @@ public class VpnDataService(
         return await unitOfWork.GetQuery<OpenVpnServer>()
             .AsQueryable()
             .Where(x=> x.Id == vpnServerId)
-            .OrderByDescending(x=>x.Id)
+            .OrderBy(x=>x.Id)
             .FirstOrDefaultAsync(cancellationToken) ?? throw new InvalidOperationException("OpenVPN Server not found");
     }
 
@@ -242,7 +242,7 @@ public class VpnDataService(
     {
         return await unitOfWork.GetQuery<OpenVpnServer>()
             .AsQueryable()
-            .OrderByDescending(x=>x.Id).ToListAsync(cancellationToken);
+            .OrderBy(x=>x.Id).ToListAsync(cancellationToken);
     }
     
     public async Task<OpenVpnServer> AddOpenVpnServer(OpenVpnServer openVpnServer, CancellationToken cancellationToken)
