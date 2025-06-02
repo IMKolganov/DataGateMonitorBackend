@@ -8,4 +8,6 @@ public interface ITelegramUserService
         CancellationToken cancellationToken);
 
     Task<List<TelegramBotUser>?> GetAdminsAsync(CancellationToken cancellationToken);
+
+    Task<List<TelegramBotUser>?> GetAllUsersAsync(CancellationToken cancellationToken);
 }
