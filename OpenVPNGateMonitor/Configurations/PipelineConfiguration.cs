@@ -4,6 +4,7 @@ using Microsoft.EntityFrameworkCore;
 using Microsoft.OpenApi.Writers;
 using OpenVPNGateMonitor.DataBase.Contexts;
 using OpenVPNGateMonitor.Hubs;
+using OpenVPNGateMonitor.Services.DataGateCertManager.OpenVpnProxy;
 using OpenVPNGateMonitor.Services.Others;
 using Swashbuckle.AspNetCore.Swagger;
 
@@ -101,6 +102,7 @@ public static class PipelineConfiguration
         });
         
         app.MapHub<GeoLiteHub>("/api/hubs/geoLite");
+        app.MapHub<OpenVpnFrontendHub>("/api/hubs/frontend");
 
         var version = Assembly.GetExecutingAssembly().GetName().Version?.ToString() ?? "Unknown version";
         var environmentName = app.Environment.EnvironmentName;

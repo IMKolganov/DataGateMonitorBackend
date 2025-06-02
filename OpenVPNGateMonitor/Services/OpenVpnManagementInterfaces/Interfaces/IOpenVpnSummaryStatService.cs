@@ -1,9 +1,10 @@
-﻿using OpenVPNGateMonitor.Models.Helpers.OpenVpnManagementInterfaces;
-using OpenVPNGateMonitor.Services.OpenVpnManagementInterfaces.OpenVpnTelnet;
+﻿using OpenVPNGateMonitor.Models;
+using OpenVPNGateMonitor.Models.Helpers.OpenVpnManagementInterfaces;
 
 namespace OpenVPNGateMonitor.Services.OpenVpnManagementInterfaces.Interfaces;
 
 public interface IOpenVpnSummaryStatService
 {
-    Task<OpenVpnSummaryStats> GetSummaryStatsAsync(ICommandQueue commandQueue, CancellationToken cancellationToken);
+    Task<OpenVpnSummaryStats> GetSummaryStatsAsync(OpenVpnServer openVpnServer,
+        CancellationToken cancellationToken);
 }

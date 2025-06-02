@@ -1,5 +1,7 @@
-﻿using Newtonsoft.Json;
+﻿using System.Net.Http.Headers;
+using Newtonsoft.Json;
 using Newtonsoft.Json.Linq;
+using OpenVPNGateMonitor.Services.Api.Auth.Interfaces;
 using OpenVPNGateMonitor.Services.Api.Interfaces;
 using OpenVPNGateMonitor.Services.DataGateCertManager.Interfaces;
 using OpenVPNGateMonitor.SharedModels.DataGateCertManager.OvpnFile.Requests;
@@ -10,6 +12,7 @@ namespace OpenVPNGateMonitor.Services.DataGateCertManager;
 public class OvpnFileApiClient(
     IHttpClientFactory httpClientFactory,
     IVpnDataService vpnDataService,
+    IMicroserviceTokenService tokenService,
     ILogger<OvpnFileApiClient> logger)
     : IOvpnFileApiClient
 {
@@ -27,6 +30,10 @@ public class OvpnFileApiClient(
         try
         {
             using var client = await GetClientForServerAsync(vpnServerId, cancellationToken);
+            var jwt = tokenService.GenerateToken("vpn-cert-issuer", "cert-create",
+                "backend", "DataGateCertManager");
+            client.DefaultRequestHeaders.Authorization = new AuthenticationHeaderValue("Bearer", jwt);
+            
             var response = await client.PostAsJsonAsync("api/OvpnFile/AddOvpnFile", request, cancellationToken);
 
             if (!response.IsSuccessStatusCode)
@@ -86,6 +93,10 @@ public class OvpnFileApiClient(
         try
         {
             using var client = await GetClientForServerAsync(vpnServerId, cancellationToken);
+            var jwt = tokenService.GenerateToken("vpn-cert-issuer", "cert-create",
+                "backend", "DataGateCertManager");
+            client.DefaultRequestHeaders.Authorization = new AuthenticationHeaderValue("Bearer", jwt);
+            
             var response = await client.PostAsJsonAsync("api/OvpnFile/RevokeOvpnFile", request, cancellationToken);
 
             if (!response.IsSuccessStatusCode)
@@ -148,6 +159,10 @@ public class OvpnFileApiClient(
         try
         {
             using var client = await GetClientForServerAsync(vpnServerId, cancellationToken);
+            var jwt = tokenService.GenerateToken("vpn-cert-issuer", "cert-create",
+                "backend", "DataGateCertManager");
+            client.DefaultRequestHeaders.Authorization = new AuthenticationHeaderValue("Bearer", jwt);
+            
             var response = await client.PostAsJsonAsync("api/OvpnFile/DownloadOvpnFile", request, cancellationToken);
 
             if (!response.IsSuccessStatusCode)

@@ -4,11 +4,11 @@ using OpenVPNGateMonitor.Services.BackgroundServices;
 using OpenVPNGateMonitor.Services.BackgroundServices.Interfaces;
 using OpenVPNGateMonitor.Services.DataGateCertManager;
 using OpenVPNGateMonitor.Services.DataGateCertManager.Interfaces;
+using OpenVPNGateMonitor.Services.DataGateCertManager.OpenVpnProxy;
 using OpenVPNGateMonitor.Services.Helpers;
 using OpenVPNGateMonitor.Services.Helpers.Interfaces;
 using OpenVPNGateMonitor.Services.OpenVpnManagementInterfaces;
 using OpenVPNGateMonitor.Services.OpenVpnManagementInterfaces.Interfaces;
-using OpenVPNGateMonitor.Services.OpenVpnManagementInterfaces.OpenVpnTelnet;
 using OpenVPNGateMonitor.Services.Others;
 
 namespace OpenVPNGateMonitor.Configurations;
@@ -37,11 +37,6 @@ public static class ServiceConfiguration
         services.AddScoped<IOpenVpnVersionService, OpenVpnVersionService>();
         
         services.AddScoped<IOpenVpnServerService, OpenVpnServerService>();
-
-        services.AddSingleton<CommandQueueManager>();
-        services.AddSingleton<ICommandQueueManager>(provider => provider.GetRequiredService<CommandQueueManager>());
-        
-        services.AddScoped<IOpenVpnTelnetService, OpenVpnTelnetService>();
         
         services.AddScoped<IVpnDataService, VpnDataService>();
 
@@ -64,6 +59,9 @@ public static class ServiceConfiguration
         services.AddScoped<ICertApiClient, CertApiClient>();
         services.AddScoped<IOvpnFileApiClient, OvpnFileApiClient>();
         services.AddScoped<IOvpnFileApiService, OvpnFileApiService>();
+        
+        services.AddSingleton<IOpenVpnMicroserviceClientFactory, OpenVpnMicroserviceClientFactory>();
+        services.AddTransient<OpenVpnMicroserviceClient>();
 
         #endregion
     }
