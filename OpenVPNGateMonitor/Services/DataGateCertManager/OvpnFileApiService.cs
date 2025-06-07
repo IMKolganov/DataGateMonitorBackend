@@ -31,7 +31,8 @@ public class OvpnFileApiService(
             .ToListAsync(cancellationToken);
     }
 
-    public async Task<IssuedOvpnFile> AddOvpnFileAsync(AddOvpnFileRequest request, CancellationToken cancellationToken)
+    public async Task<IssuedOvpnFile> AddOvpnFileAsync(AddClientOvpnFileRequest request, 
+        CancellationToken cancellationToken)
     {
         logger.LogInformation("Attempting to add new OVPN file: CommonName={CommonName}, VpnServerId={VpnServerId}",
             request.CommonName, request.VpnServerId);

@@ -39,6 +39,7 @@ public static class ServiceConfiguration
         services.AddScoped<IOpenVpnServerService, OpenVpnServerService>();
         
         services.AddScoped<IVpnDataService, VpnDataService>();
+        services.AddScoped<IVpnServerStatisticsService, VpnServerStatisticsService>();
 
         services.AddSingleton<OpenVpnServerStatusManager>();
         services.AddSingleton<OpenVpnServerProcessorFactory>();

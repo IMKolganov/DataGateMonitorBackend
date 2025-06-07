@@ -2,7 +2,7 @@
 
 namespace OpenVPNGateMonitor.SharedModels.DataGateMonitorBackend.OpenVpnFiles.Requests;
 
-public class AddOvpnFileRequest
+public class AddClientOvpnFileRequest
 {
     [Required(ErrorMessage = "externalId is required.")]
     public string ExternalId { get; set; } = string.Empty;
@@ -13,7 +13,9 @@ public class AddOvpnFileRequest
     [Required(ErrorMessage = "vpnServerId is required.")]
     [Range(1, int.MaxValue, ErrorMessage = "vpnServerId must be greater than 0.")]
     public int VpnServerId { get; set; }
-
+    
     [Required(ErrorMessage = "issuedTo is required.")]
     public string IssuedTo { get; set; } = "openVpnClient";
+    
+    public int OvpnFileExpireDays { get; set; } = 365;
 }
