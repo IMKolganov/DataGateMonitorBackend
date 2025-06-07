@@ -31,7 +31,6 @@ public class ApplicationDbContext : DbContext
     public DbSet<OpenVpnServerStatusLog> OpenVpnServerStatusLogs { get; set; } = null!;
     public DbSet<OpenVpnServerClient> OpenVpnServerClients { get; set; } = null!;
     public DbSet<OpenVpnServer> OpenVpnServers { get; set; } = null!;
-    public DbSet<OpenVpnServerCertConfig> OpenVpnServerCertConfigs { get; set; } = null!;
     public DbSet<IssuedOvpnFile> IssuedOvpnFiles { get; set; } = null!;
     public DbSet<OpenVpnServerOvpnFileConfig> OpenVpnServerOvpnFileConfigs { get; set; } = null!;
     public DbSet<ClientApplication> ClientApplications { get; set; } = null!;
@@ -47,7 +46,6 @@ public class ApplicationDbContext : DbContext
         modelBuilder.ApplyConfiguration(new OpenVpnServerStatusLogConfiguration());
         modelBuilder.ApplyConfiguration(new OpenVpnServerClientConfiguration());
         modelBuilder.ApplyConfiguration(new OpenVpnServerConfiguration());
-        modelBuilder.ApplyConfiguration(new OpenVpnServerCertConfigConfiguration());
         modelBuilder.ApplyConfiguration(new IssuedOvpnFileConfiguration());
         modelBuilder.ApplyConfiguration(new OpenVpnServerOvpnFileConfigConfiguration());
         modelBuilder.ApplyConfiguration(new ClientApplicationConfiguration());
