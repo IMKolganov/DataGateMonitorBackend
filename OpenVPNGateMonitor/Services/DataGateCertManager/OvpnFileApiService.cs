@@ -3,6 +3,7 @@ using Microsoft.EntityFrameworkCore;
 using OpenVPNGateMonitor.DataBase.UnitOfWork;
 using OpenVPNGateMonitor.Models;
 using OpenVPNGateMonitor.Services.DataGateCertManager.Interfaces;
+using OpenVPNGateMonitor.SharedModels.DataGateCertManager.OvpnFile.Requests;
 using OpenVPNGateMonitor.SharedModels.DataGateMonitorBackend.OpenVpnFiles.Requests;
 using OpenVPNGateMonitor.SharedModels.DataGateMonitorBackend.OpenVpnFiles.Responses;
 
@@ -50,7 +51,7 @@ public class OvpnFileApiService(
 
         var result = await ovpnFileApiClient.AddOvpnFileAsync(
             request.VpnServerId,
-            request.Adapt<OpenVPNGateMonitor.SharedModels.DataGateCertManager.OvpnFile.Requests.AddOvpnFileRequest>(),
+            request.Adapt<GenerateOvpnFileRequest>(),
             cancellationToken);
 
         var issuedOvpnFile = new IssuedOvpnFile
@@ -81,7 +82,7 @@ public class OvpnFileApiService(
             .FirstAsync(cancellationToken);
     }
 
-    public async Task<IssuedOvpnFile> RevokeOvpnFileAsync(RevokeOvpnFileRequest request, CancellationToken cancellationToken)
+    public async Task<IssuedOvpnFile> RevokeOvpnFileAsync(RevokeClientOvpnFileRequest request, CancellationToken cancellationToken)
     {
         logger.LogInformation("Attempting to revoke OVPN file: CommonName={CommonName}, VpnServerId={VpnServerId}",
             request.CommonName, request.VpnServerId);
@@ -117,7 +118,7 @@ public class OvpnFileApiService(
     }
 
     public async Task<DownloadOvpnFileResponse> DownloadOvpnFileAsync(
-        DownloadOvpnFileRequest request,
+        DownloadClientOvpnFileRequest request,
         CancellationToken cancellationToken)
     {
         logger.LogInformation("Start downloading OVPN file: VpnServerId={VpnServerId}, IssuedOvpnFileId={IssuedOvpnFileId}",

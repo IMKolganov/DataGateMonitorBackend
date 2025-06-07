@@ -24,7 +24,7 @@ public class OvpnFileApiClient(
         return client;
     }
 
-    public async Task<OvpnFileMetadata> AddOvpnFileAsync(int vpnServerId, AddOvpnFileRequest request,
+    public async Task<OvpnFileMetadata> AddOvpnFileAsync(int vpnServerId, GenerateOvpnFileRequest request,
         CancellationToken cancellationToken)
     {
         try
