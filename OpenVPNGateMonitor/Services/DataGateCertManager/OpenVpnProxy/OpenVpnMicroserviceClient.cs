@@ -101,13 +101,15 @@ public class OpenVpnMicroserviceClient(
             if (_connection == null)
             {
                 logger.LogInformation("Creating SignalR connection for server {ServerId}", _server.Id);
-
-                var token = tokenService.GenerateToken("vpn-cert-issuer", "cert-create", "backend",
-                    "DataGateCertManager");
+                
                 var fullUrl = $"{_server.ApiUrl.TrimEnd('/')}/hubs/openvpn";
 
                 _connection = new HubConnectionBuilder()
-                    .WithUrl(fullUrl, options => options.AccessTokenProvider = () => Task.FromResult<string?>(token))
+                    .WithUrl(fullUrl, options =>
+                    {
+                        options.AccessTokenProvider = () =>
+                            Task.FromResult<string?>(tokenService.GenerateToken("vpn-cert-issuer", "cert-create", "backend", "DataGateCertManager"));
+                    })
                     .WithAutomaticReconnect()
                     .Build();
 
