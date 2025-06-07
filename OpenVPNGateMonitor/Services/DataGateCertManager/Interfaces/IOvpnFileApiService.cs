@@ -11,7 +11,7 @@ public interface IOvpnFileApiService
     Task<List<IssuedOvpnFile>> GetAllByExternalIdOvpnFilesAsync(int vpnServerId, string externalId,
         CancellationToken cancellationToken);
     
-    Task<IssuedOvpnFile> AddOvpnFileAsync(AddOvpnFileRequest request, 
+    Task<IssuedOvpnFile> AddOvpnFileAsync(AddClientOvpnFileRequest request, 
         CancellationToken cancellationToken);
 
     Task<IssuedOvpnFile> RevokeOvpnFileAsync(RevokeOvpnFileRequest request,

@@ -52,9 +52,9 @@ public class OpenVpnFilesController(
         }
     }
 
-    [HttpPost("AddOvpnFile")]
-    public async Task<ActionResult<ApiResponse<IssuedOvpnFile>>> AddOvpnFile(
-        [FromBody] AddOvpnFileRequest request,
+    [HttpPost("AddClientOvpnFile")]
+    public async Task<ActionResult<ApiResponse<IssuedOvpnFile>>> AddClientOvpnFile(
+        [FromBody] AddClientOvpnFileRequest request,
         CancellationToken cancellationToken)
     {
         try
@@ -70,9 +70,9 @@ public class OpenVpnFilesController(
         }
     }
 
-    [HttpPost("RevokeOvpnFile")]
-    public async Task<ActionResult<ApiResponse<IssuedOvpnFile>>> RevokeOvpnFile(
-        [FromBody] RevokeOvpnFileRequest request,
+    [HttpPost("RevokeClientOvpnFile")]
+    public async Task<ActionResult<ApiResponse<IssuedOvpnFile>>> RevokeClientOvpnFile(
+        [FromBody] RevokeClientOvpnFileRequest request,
         CancellationToken cancellationToken)
     {
         try
@@ -88,9 +88,9 @@ public class OpenVpnFilesController(
         }
     }
 
-    [HttpPost("DownloadOvpnFile")]
-    public async Task<ActionResult<ApiResponse<DownloadOvpnFileResponse>>> DownloadOvpnFile(
-        [FromBody] DownloadOvpnFileRequest request,
+    [HttpPost("DownloadClientOvpnFile")]
+    public async Task<ActionResult<ApiResponse<DownloadOvpnFileResponse>>> DownloadClientOvpnFile(
+        [FromBody] DownloadClientOvpnFileRequest request,
         CancellationToken cancellationToken)
     {
         try

@@ -7,7 +7,7 @@
     </PropertyGroup>
 
     <ItemGroup>
-      <PackageReference Include="OpenVPNGateMonitor.SharedModels" Version="1.0.19" />
+      <PackageReference Include="OpenVPNGateMonitor.SharedModels" Version="1.0.21" />
     </ItemGroup>
 
 </Project>
