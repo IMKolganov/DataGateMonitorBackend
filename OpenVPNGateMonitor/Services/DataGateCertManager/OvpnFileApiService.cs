@@ -49,9 +49,18 @@ public class OvpnFileApiService(
             throw new Exception($"OVPN file with CommonName: '{request.CommonName}' already exists");
         }
 
+        //todo: refactor this
+        var ovpnFileConfig = await unitOfWork.GetQuery<OpenVpnServerOvpnFileConfig>().AsQueryable()
+            .Where(x => x.VpnServerId == request.VpnServerId).FirstAsync(cancellationToken);
+
+        var generateOvpnFileRequest = request.Adapt<GenerateOvpnFileRequest>();
+        generateOvpnFileRequest.ConfigTemplate = ovpnFileConfig.ConfigTemplate;
+        generateOvpnFileRequest.ServerIp = ovpnFileConfig.VpnServerIp;
+        generateOvpnFileRequest.ServerPort = ovpnFileConfig.VpnServerPort;
+        
         var result = await ovpnFileApiClient.AddOvpnFileAsync(
             request.VpnServerId,
-            request.Adapt<GenerateOvpnFileRequest>(),
+            generateOvpnFileRequest,
             cancellationToken);
 
         var issuedOvpnFile = new IssuedOvpnFile
