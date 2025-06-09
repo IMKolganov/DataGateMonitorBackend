@@ -5,7 +5,7 @@ namespace OpenVPNGateMonitor.Services.DataGateCertManager.Interfaces;
 
 public interface IOvpnFileApiClient
 {
-    Task<OvpnFileMetadata> AddOvpnFileAsync(int vpnServerId, AddOvpnFileRequest request, 
+    Task<OvpnFileMetadata> AddOvpnFileAsync(int vpnServerId, GenerateOvpnFileRequest request, 
         CancellationToken cancellationToken);
     Task<bool> RevokeOvpnFileAsync(int vpnServerId, RevokeOvpnFileRequest request, CancellationToken cancellationToken);
     Task<OvpnFileDownload> DownloadOvpnFileAsync(int vpnServerId, DownloadOvpnFileRequest request, CancellationToken cancellationToken);

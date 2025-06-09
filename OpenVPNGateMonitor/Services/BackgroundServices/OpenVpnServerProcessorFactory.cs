@@ -2,16 +2,10 @@
 
 namespace OpenVPNGateMonitor.Services.BackgroundServices;
 
-public class OpenVpnServerProcessorFactory
+public class OpenVpnServerProcessorFactory(IServiceProvider serviceProvider)
 {
     private readonly Dictionary<int, OpenVpnServerProcessor> _processors = new();
-    private readonly IServiceProvider _serviceProvider;
     private readonly object _lock = new();
-
-    public OpenVpnServerProcessorFactory(IServiceProvider serviceProvider)
-    {
-        _serviceProvider = serviceProvider;
-    }
 
     public OpenVpnServerProcessor GetOrCreateProcessor(OpenVpnServer server)
     {
@@ -19,7 +13,7 @@ public class OpenVpnServerProcessorFactory
         {
             if (!_processors.TryGetValue(server.Id, out var processor))
             {
-                processor = ActivatorUtilities.CreateInstance<OpenVpnServerProcessor>(_serviceProvider);
+                processor = ActivatorUtilities.CreateInstance<OpenVpnServerProcessor>(serviceProvider);
                 _processors[server.Id] = processor;
             }
 

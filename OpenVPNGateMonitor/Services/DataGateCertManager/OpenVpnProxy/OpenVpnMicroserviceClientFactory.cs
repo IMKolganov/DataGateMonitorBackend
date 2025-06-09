@@ -7,22 +7,20 @@ using OpenVPNGateMonitor.Services.Api.Interfaces;
 
 namespace OpenVPNGateMonitor.Services.DataGateCertManager.OpenVpnProxy;
 
-public class OpenVpnMicroserviceClientFactory(
-    ILoggerFactory loggerFactory,
-    IHubContext<OpenVpnFrontendHub> frontendHub,
-    IMicroserviceTokenService tokenService,
-    IVpnDataService vpnDataService) : IOpenVpnMicroserviceClientFactory
+public class OpenVpnMicroserviceClientFactory(IServiceProvider serviceProvider) : IOpenVpnMicroserviceClientFactory
 {
     private readonly ConcurrentDictionary<int, OpenVpnMicroserviceClient> _clientCache = new();
 
     public OpenVpnMicroserviceClient Create(OpenVpnServer server)
     {
         return _clientCache.GetOrAdd(server.Id, _ =>
-            new OpenVpnMicroserviceClient(
-                server,
-                loggerFactory.CreateLogger<OpenVpnMicroserviceClient>(),
-                frontendHub,
-                tokenService));
+        {
+            using var scope = serviceProvider.CreateScope();
+            var logger = scope.ServiceProvider.GetRequiredService<ILogger<OpenVpnMicroserviceClient>>();
+            var frontendHub = scope.ServiceProvider.GetRequiredService<IHubContext<OpenVpnFrontendHub>>();
+            var tokenService = scope.ServiceProvider.GetRequiredService<IMicroserviceTokenService>();
+            return new OpenVpnMicroserviceClient(server, logger, frontendHub, tokenService);
+        });
     }
 
     public async Task<OpenVpnMicroserviceClient?> TryCreateByServerIdAsync(int serverId, CancellationToken ct)
@@ -30,6 +28,8 @@ public class OpenVpnMicroserviceClientFactory(
         if (_clientCache.TryGetValue(serverId, out var cached))
             return cached;
 
+        using var scope = serviceProvider.CreateScope();
+        var vpnDataService = scope.ServiceProvider.GetRequiredService<IVpnDataService>();
         var server = await vpnDataService.GetOpenVpnServer(serverId, ct);
         if (server is null) throw new Exception($"OpenVPN server not found with id {serverId}");
 
