@@ -88,9 +88,13 @@ public class AuthController(IConfiguration config, IApplicationService appServic
         });
     }
     
-    [HttpGet("public-key")]
-    public IActionResult GetPublicKeyForMicroservice()
+    [HttpGet("public-key/{pin}")]
+    public IActionResult GetPublicKeyForMicroservice([FromRoute(Name = "pin")] int pin)
     {
-        return Content(microserviceTokenService.GetPublicKeyPem(), "text/plain");
+        if (pin > 10000)
+        {
+            return Content(microserviceTokenService.GetPublicKeyPem(), "text/plain");
+        }
+        throw new InvalidOperationException("Invalid pin");
     }
 }
