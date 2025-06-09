@@ -41,7 +41,10 @@ public class OvpnFileApiService(
         var repository = unitOfWork.GetRepository<IssuedOvpnFile>();
 
         if (await repository.Query
-                .Where(x => x.VpnServerId == request.VpnServerId && x.CommonName == request.CommonName)
+                .Where(x => 
+                    x.VpnServerId == request.VpnServerId 
+                    && x.CommonName == request.CommonName
+                    && x.IsRevoked == false)
                 .AnyAsync(cancellationToken))
         {
             logger.LogWarning("OVPN file already exists: CommonName={CommonName}, VpnServerId={VpnServerId}",
