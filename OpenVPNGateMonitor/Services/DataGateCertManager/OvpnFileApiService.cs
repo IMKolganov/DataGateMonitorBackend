@@ -107,7 +107,10 @@ public class OvpnFileApiService(
             cancellationToken);
 
         var issuedOvpnFile = await repository.Query
-            .Where(x => x.VpnServerId == request.VpnServerId && x.CommonName == request.CommonName)
+            .Where(x => 
+                x.VpnServerId == request.VpnServerId 
+                && x.CommonName == request.CommonName
+                && x.IsRevoked == false)
             .FirstOrDefaultAsync(cancellationToken);
 
         if (issuedOvpnFile == null)
