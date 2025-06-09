@@ -24,7 +24,7 @@ public class OvpnFileApiClient(
         return client;
     }
 
-    public async Task<OvpnFileMetadata> AddOvpnFileAsync(int vpnServerId, AddOvpnFileRequest request,
+    public async Task<OvpnFileMetadata> AddOvpnFileAsync(int vpnServerId, GenerateOvpnFileRequest request,
         CancellationToken cancellationToken)
     {
         try
@@ -96,7 +96,7 @@ public class OvpnFileApiClient(
             var jwt = tokenService.GenerateToken("vpn-cert-issuer", "cert-create",
                 "backend", "DataGateCertManager");
             client.DefaultRequestHeaders.Authorization = new AuthenticationHeaderValue("Bearer", jwt);
-            
+
             var response = await client.PostAsJsonAsync("api/OvpnFile/RevokeOvpnFile", request, cancellationToken);
 
             if (!response.IsSuccessStatusCode)
@@ -105,13 +105,10 @@ public class OvpnFileApiClient(
                 logger.LogWarning("Service responded with error JSON while revoking OVPN file: {Error}", rawError);
 
                 string extractedError = "Unknown error";
-
                 try
                 {
                     var root = JsonConvert.DeserializeObject<JObject>(rawError);
-                    var error = root?["error"]?.ToString();
-                    if (!string.IsNullOrWhiteSpace(error))
-                        extractedError = error;
+                    extractedError = root?["error"]?.ToString() ?? extractedError;
                 }
                 catch (Exception ex)
                 {
@@ -127,14 +124,14 @@ public class OvpnFileApiClient(
 
             if (metadata == null)
             {
-                logger.LogWarning(
-                    "Received null metadata after revoking OVPN file for {CommonName} on server {ServerUrl}",
-                    request.CommonName, client.BaseAddress);
-                return false;
+                logger.LogWarning("⚠ Revoke succeeded but metadata is null. CN={CN}, VpnServerId={ID}",
+                    request.CommonName, vpnServerId);
             }
-
-            logger.LogInformation("OVPN file revocation completed for {CommonName} on server {ServerUrl}",
-                request.CommonName, client.BaseAddress);
+            else
+            {
+                logger.LogInformation("✅ OVPN file revocation completed for {CommonName} on server {ServerUrl}",
+                    metadata.CommonName, client.BaseAddress);
+            }
 
             return true;
         }

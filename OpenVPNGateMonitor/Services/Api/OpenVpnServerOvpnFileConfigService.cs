@@ -5,24 +5,19 @@ using OpenVPNGateMonitor.Services.Api.Interfaces;
 
 namespace OpenVPNGateMonitor.Services.Api;
 
-public class OpenVpnServerOvpnFileConfigService : IOpenVpnServerOvpnFileConfigService
+public class OpenVpnServerOvpnFileConfigService(
+    ILogger<OpenVpnServerOvpnFileConfigService> logger,
+    IUnitOfWork unitOfWork)
+    : IOpenVpnServerOvpnFileConfigService
 {
-    private readonly ILogger<OpenVpnServerOvpnFileConfigService> _logger;
-    private readonly IUnitOfWork _unitOfWork;
+    private readonly ILogger<OpenVpnServerOvpnFileConfigService> _logger = logger;
 
-    
-    public OpenVpnServerOvpnFileConfigService(ILogger<OpenVpnServerOvpnFileConfigService> logger, 
-        IUnitOfWork unitOfWork)
-    {
-        _logger = logger;
-        _unitOfWork = unitOfWork;
-    }
-    
+
     public async Task<OpenVpnServerOvpnFileConfig> GetOpenVpnServerOvpnFileConfigByServerId(int vpnServerId, 
         CancellationToken cancellationToken)
     {
         
-        return await _unitOfWork.GetQuery<OpenVpnServerOvpnFileConfig>()
+        return await unitOfWork.GetQuery<OpenVpnServerOvpnFileConfig>()
             .AsQueryable()
             .Where(x => x.VpnServerId == vpnServerId)
             .FirstOrDefaultAsync(cancellationToken) ?? throw new InvalidOperationException("OvpnFileConfig not found");
@@ -31,9 +26,9 @@ public class OpenVpnServerOvpnFileConfigService : IOpenVpnServerOvpnFileConfigSe
     public async Task<OpenVpnServerOvpnFileConfig> AddOrUpdateOpenVpnServerOvpnFileConfigByServerId(
         OpenVpnServerOvpnFileConfig openVpnServerOvpnFileConfig, CancellationToken cancellationToken)
     {
-        var openVpnServerOvpnFileConfigRepository = _unitOfWork.GetRepository<OpenVpnServerOvpnFileConfig>();
+        var openVpnServerOvpnFileConfigRepository = unitOfWork.GetRepository<OpenVpnServerOvpnFileConfig>();
 
-        var existingConfig = await _unitOfWork.GetQuery<OpenVpnServerOvpnFileConfig>()
+        var existingConfig = await unitOfWork.GetQuery<OpenVpnServerOvpnFileConfig>()
             .AsQueryable()
             .FirstOrDefaultAsync(x => x.VpnServerId == openVpnServerOvpnFileConfig.VpnServerId, 
                 cancellationToken);
@@ -55,9 +50,9 @@ public class OpenVpnServerOvpnFileConfigService : IOpenVpnServerOvpnFileConfigSe
             await openVpnServerOvpnFileConfigRepository.AddAsync(openVpnServerOvpnFileConfig, cancellationToken);
         }
 
-        await _unitOfWork.SaveChangesAsync(cancellationToken);
+        await unitOfWork.SaveChangesAsync(cancellationToken);
 
-        return await _unitOfWork.GetQuery<OpenVpnServerOvpnFileConfig>()
+        return await unitOfWork.GetQuery<OpenVpnServerOvpnFileConfig>()
                    .AsQueryable()
                    .FirstOrDefaultAsync(x => x.VpnServerId == openVpnServerOvpnFileConfig.VpnServerId,
                        cancellationToken)

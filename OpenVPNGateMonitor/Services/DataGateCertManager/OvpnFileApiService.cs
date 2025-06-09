@@ -3,6 +3,7 @@ using Microsoft.EntityFrameworkCore;
 using OpenVPNGateMonitor.DataBase.UnitOfWork;
 using OpenVPNGateMonitor.Models;
 using OpenVPNGateMonitor.Services.DataGateCertManager.Interfaces;
+using OpenVPNGateMonitor.SharedModels.DataGateCertManager.OvpnFile.Requests;
 using OpenVPNGateMonitor.SharedModels.DataGateMonitorBackend.OpenVpnFiles.Requests;
 using OpenVPNGateMonitor.SharedModels.DataGateMonitorBackend.OpenVpnFiles.Responses;
 
@@ -40,7 +41,10 @@ public class OvpnFileApiService(
         var repository = unitOfWork.GetRepository<IssuedOvpnFile>();
 
         if (await repository.Query
-                .Where(x => x.VpnServerId == request.VpnServerId && x.CommonName == request.CommonName)
+                .Where(x => 
+                    x.VpnServerId == request.VpnServerId 
+                    && x.CommonName == request.CommonName
+                    && x.IsRevoked == false)
                 .AnyAsync(cancellationToken))
         {
             logger.LogWarning("OVPN file already exists: CommonName={CommonName}, VpnServerId={VpnServerId}",
@@ -48,9 +52,18 @@ public class OvpnFileApiService(
             throw new Exception($"OVPN file with CommonName: '{request.CommonName}' already exists");
         }
 
+        //todo: refactor this
+        var ovpnFileConfig = await unitOfWork.GetQuery<OpenVpnServerOvpnFileConfig>().AsQueryable()
+            .Where(x => x.VpnServerId == request.VpnServerId).FirstAsync(cancellationToken);
+
+        var generateOvpnFileRequest = request.Adapt<GenerateOvpnFileRequest>();
+        generateOvpnFileRequest.ConfigTemplate = ovpnFileConfig.ConfigTemplate;
+        generateOvpnFileRequest.ServerIp = ovpnFileConfig.VpnServerIp;
+        generateOvpnFileRequest.ServerPort = ovpnFileConfig.VpnServerPort;
+        
         var result = await ovpnFileApiClient.AddOvpnFileAsync(
             request.VpnServerId,
-            request.Adapt<OpenVPNGateMonitor.SharedModels.DataGateCertManager.OvpnFile.Requests.AddOvpnFileRequest>(),
+            generateOvpnFileRequest,
             cancellationToken);
 
         var issuedOvpnFile = new IssuedOvpnFile
@@ -81,7 +94,7 @@ public class OvpnFileApiService(
             .FirstAsync(cancellationToken);
     }
 
-    public async Task<IssuedOvpnFile> RevokeOvpnFileAsync(RevokeOvpnFileRequest request, CancellationToken cancellationToken)
+    public async Task<IssuedOvpnFile> RevokeOvpnFileAsync(RevokeClientOvpnFileRequest request, CancellationToken cancellationToken)
     {
         logger.LogInformation("Attempting to revoke OVPN file: CommonName={CommonName}, VpnServerId={VpnServerId}",
             request.CommonName, request.VpnServerId);
@@ -94,7 +107,10 @@ public class OvpnFileApiService(
             cancellationToken);
 
         var issuedOvpnFile = await repository.Query
-            .Where(x => x.VpnServerId == request.VpnServerId && x.CommonName == request.CommonName)
+            .Where(x => 
+                x.VpnServerId == request.VpnServerId 
+                && x.CommonName == request.CommonName
+                && x.IsRevoked == false)
             .FirstOrDefaultAsync(cancellationToken);
 
         if (issuedOvpnFile == null)
@@ -117,7 +133,7 @@ public class OvpnFileApiService(
     }
 
     public async Task<DownloadOvpnFileResponse> DownloadOvpnFileAsync(
-        DownloadOvpnFileRequest request,
+        DownloadClientOvpnFileRequest request,
         CancellationToken cancellationToken)
     {
         logger.LogInformation("Start downloading OVPN file: VpnServerId={VpnServerId}, IssuedOvpnFileId={IssuedOvpnFileId}",

@@ -62,7 +62,6 @@ public static class ServiceConfiguration
         services.AddScoped<IOvpnFileApiService, OvpnFileApiService>();
         
         services.AddSingleton<IOpenVpnMicroserviceClientFactory, OpenVpnMicroserviceClientFactory>();
-        services.AddTransient<OpenVpnMicroserviceClient>();
 
         #endregion
     }

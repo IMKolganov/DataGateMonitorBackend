@@ -1,9 +1,11 @@
+using Mapster;
 using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Mvc;
 using OpenVPNGateMonitor.Models;
 using OpenVPNGateMonitor.Services.DataGateCertManager.Interfaces;
 using OpenVPNGateMonitor.SharedModels.DataGateMonitorBackend.OpenVpnFiles.Requests;
 using OpenVPNGateMonitor.SharedModels.DataGateMonitorBackend.OpenVpnFiles.Responses;
+using OpenVPNGateMonitor.SharedModels.DataGateMonitorBackend.OpenVpnFiles.Responses.Dto;
 using OpenVPNGateMonitor.SharedModels.Responses;
 
 namespace OpenVPNGateMonitor.Controllers;
@@ -53,14 +55,17 @@ public class OpenVpnFilesController(
     }
 
     [HttpPost("AddClientOvpnFile")]
-    public async Task<ActionResult<ApiResponse<IssuedOvpnFile>>> AddClientOvpnFile(
+    public async Task<ActionResult<ApiResponse<AddOvpnFileResponse>>> AddClientOvpnFile(
         [FromBody] AddClientOvpnFileRequest request,
         CancellationToken cancellationToken)
     {
         try
         {
             var result = await ovpnFileApiService.AddOvpnFileAsync(request, cancellationToken);
-            return Ok(ApiResponse<IssuedOvpnFile>.SuccessResponse(result));
+
+            return Ok(ApiResponse<AddOvpnFileResponse>.SuccessResponse(
+                new AddOvpnFileResponse(){ IssuedOvpnFile = result.Adapt<IssuedOvpnFileDto>() }
+                ));
         }
         catch (Exception ex)
         {
@@ -71,20 +76,26 @@ public class OpenVpnFilesController(
     }
 
     [HttpPost("RevokeClientOvpnFile")]
-    public async Task<ActionResult<ApiResponse<IssuedOvpnFile>>> RevokeClientOvpnFile(
+    public async Task<ActionResult<ApiResponse<RevokeOvpnFileResponse>>> RevokeClientOvpnFile(
         [FromBody] RevokeClientOvpnFileRequest request,
         CancellationToken cancellationToken)
     {
         try
         {
             var result = await ovpnFileApiService.RevokeOvpnFileAsync(request, cancellationToken);
-            return Ok(ApiResponse<IssuedOvpnFile>.SuccessResponse(result));
+            return Ok(ApiResponse<RevokeOvpnFileResponse>.SuccessResponse(
+                new RevokeOvpnFileResponse()
+                {
+                    Success = true,
+                    IssuedOvpnFile = result.Adapt<IssuedOvpnFileDto>()
+                }
+                ));
         }
         catch (Exception ex)
         {
             logger.LogError(ex, "Failed to revoke OVPN for {CommonName} on server {VpnServerId}", 
                 request.CommonName, request.VpnServerId);
-            return BadRequest(ApiResponse<bool>.ErrorResponse(ex.Message));
+            return BadRequest(ApiResponse<RevokeOvpnFileResponse>.ErrorResponse(ex.Message));
         }
     }
 

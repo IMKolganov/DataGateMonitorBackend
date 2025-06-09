@@ -14,7 +14,7 @@ public class OpenVpnServerOvpnFileConfig : BaseEntity<int>
 
     public string ConfigTemplate { get; set; } = @"client
 dev tun
-proto tcp
+proto udp
 remote {{server_ip}} {{server_port}}
 resolv-retry infinite
 nobind
@@ -43,7 +43,7 @@ verb 3
         VpnServerIp = string.Empty;
         ConfigTemplate = @"client
 dev tun
-proto tcp
+proto udp
 remote {{server_ip}} {{server_port}}
 resolv-retry infinite
 nobind
