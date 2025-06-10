@@ -16,7 +16,7 @@ public class IncomingMessageLogService(ILogger<IncomingMessageLogService> logger
         var incomingMessageLogRepository = unitOfWork.GetRepository<IncomingMessageLog>();
 
         // Adapt request to entity
-        var incomingMessageLog = request.Adapt<IncomingMessageLog>();
+        var incomingMessageLog = request.Message.Adapt<IncomingMessageLog>();
 
         // Save message to DB
         await incomingMessageLogRepository.AddAsync(incomingMessageLog, cancellationToken);
