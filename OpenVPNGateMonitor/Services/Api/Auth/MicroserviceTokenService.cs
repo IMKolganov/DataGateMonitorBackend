@@ -14,10 +14,15 @@ public class MicroserviceTokenService : IMicroserviceTokenService
     public MicroserviceTokenService(IConfiguration config)
     {
         var basePath = AppContext.BaseDirectory;
+        var certsDir = Path.Combine(basePath, "resources", "certs");
+
+        if (!Directory.Exists(certsDir))
+            Directory.CreateDirectory(certsDir);
+
         var privateKeyPath = config["MicroserviceJwt:PrivateKeyPath"]
-                             ?? Path.Combine(basePath, "resources", "certs", "private-microservice.key");
+                             ?? Path.Combine(certsDir, "private-microservice.key");
         var publicKeyPath = config["MicroserviceJwt:PublicKeyPath"]
-                            ?? Path.Combine(basePath, "resources", "certs", "public-microservice.key");
+                            ?? Path.Combine(certsDir, "public-microservice.key");
 
         var privateKeyText = File.ReadAllText(privateKeyPath);
         var publicKeyText = File.ReadAllText(publicKeyPath);
