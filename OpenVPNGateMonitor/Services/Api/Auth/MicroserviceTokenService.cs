@@ -1,6 +1,7 @@
 ﻿using System.IdentityModel.Tokens.Jwt;
 using System.Security.Claims;
 using System.Security.Cryptography;
+using System.Text;
 using Microsoft.IdentityModel.Tokens;
 using OpenVPNGateMonitor.Services.Api.Auth.Interfaces;
 
@@ -88,4 +89,18 @@ public class MicroserviceTokenService : IMicroserviceTokenService
     }
 
     public string GetPublicKeyPem() => _publicKeyPem;
+
+    private static string ExportPrivateKeyToPem(RSA rsa)
+    {
+        var privateKeyBytes = rsa.ExportPkcs8PrivateKey();
+        var pemChars = PemEncoding.Write("PRIVATE KEY", privateKeyBytes);
+        return new string(pemChars);
+    }
+
+    private static string ExportPublicKeyToPem(RSA rsa)
+    {
+        var publicKeyBytes = rsa.ExportSubjectPublicKeyInfo();
+        var pemChars = PemEncoding.Write("PUBLIC KEY", publicKeyBytes);
+        return new string(pemChars);
+    }
 }
