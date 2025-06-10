@@ -5,17 +5,12 @@ using Microsoft.Extensions.Configuration;
 
 namespace OpenVPNGateMonitor.DataBase.Contexts;
 
-public class ApplicationDbContext : DbContext
+public class ApplicationDbContext(DbContextOptions<ApplicationDbContext> options, IConfiguration configuration)
+    : DbContext(options)
 {
-    private readonly string _defaultSchema;
-    
-    public ApplicationDbContext(DbContextOptions<ApplicationDbContext> options, IConfiguration configuration)
-        : base(options)
-    {
-        _defaultSchema = (Environment.GetEnvironmentVariable("DB_DEFAULT_SCHEMA") 
-                          ?? configuration["DataBaseSettings:DefaultSchema"]) ?? "public";
-    }
-    
+    private readonly string _defaultSchema = (Environment.GetEnvironmentVariable("DB_DEFAULT_SCHEMA") 
+                                              ?? configuration["DataBaseSettings:DefaultSchema"]) ?? "public";
+
     public override int SaveChanges()
     {
         UpdateTimestamps();
@@ -38,6 +33,7 @@ public class ApplicationDbContext : DbContext
     public DbSet<TelegramBotUser> TelegramBotUsers { get; set; } = null!;
     public DbSet<TelegramUserLanguagePreference> TelegramUserLanguagePreferences { get; set; } = null!;
     public DbSet<LocalizationText> LocalizationTexts { get; set; } = null!;
+    public DbSet<IncomingMessageLog> IncomingMessageLogs { get; set; } = null!;
     
     protected override void OnModelCreating(ModelBuilder modelBuilder)
     {
@@ -53,6 +49,7 @@ public class ApplicationDbContext : DbContext
         modelBuilder.ApplyConfiguration(new TelegramBotUserConfiguration());
         modelBuilder.ApplyConfiguration(new TelegramUserLanguagePreferenceConfiguration());
         modelBuilder.ApplyConfiguration(new LocalizationTextConfiguration());
+        modelBuilder.ApplyConfiguration(new IncomingMessageLogConfiguration());
     }
     
     private void UpdateTimestamps()
