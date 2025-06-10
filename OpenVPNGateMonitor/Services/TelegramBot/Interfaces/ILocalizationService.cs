@@ -1,7 +1,7 @@
 ﻿using OpenVPNGateMonitor.Models;
 using OpenVPNGateMonitor.SharedModels.Enums;
 
-namespace OpenVPNGateMonitor.Services.TelegramBot;
+namespace OpenVPNGateMonitor.Services.TelegramBot.Interfaces;
 
 public interface ILocalizationService
 {
