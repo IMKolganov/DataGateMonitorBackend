@@ -1,6 +1,6 @@
 ﻿using OpenVPNGateMonitor.Models;
 
-namespace OpenVPNGateMonitor.Services.TelegramBot;
+namespace OpenVPNGateMonitor.Services.TelegramBot.Interfaces;
 
 public interface ITelegramUserService
 {
