@@ -19,7 +19,7 @@ public class OpenVpnEventClientFactory(IServiceProvider serviceProvider) : IOpen
             var logger = scope.ServiceProvider.GetRequiredService<ILogger<OpenVpnEventClient>>();
             var eventHub = scope.ServiceProvider.GetRequiredService<IHubContext<OpenVpnEventHub>>();
             var tokenService = scope.ServiceProvider.GetRequiredService<IMicroserviceTokenService>();
-            return new OpenVpnEventClient(server, logger, eventHub, tokenService, scope.ServiceProvider);
+            return new OpenVpnEventClient(server, logger, eventHub, tokenService, serviceProvider);
         });
     }
 
