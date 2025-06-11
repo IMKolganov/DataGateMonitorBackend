@@ -52,31 +52,25 @@ public class OpenVpnEventClient(
 
                 if (!_handlersRegistered)
                 {
-                    _connection.On<string>("ReceiveEventMessage", async message =>
+                    _connection.On<OpenVpnServerEventLog>("ClientConnected", async data =>
                     {
-                        try
-                        {
-                            var data = JsonConvert.DeserializeObject<OpenVpnServerEventLog>(message);
-                            if (data is null) return;
-
-                            using var scope = serviceProvider.CreateScope();
-                            var logService = scope.ServiceProvider.GetRequiredService<IVpnEventLogService>();
-
-                            await logService.SaveEventAsync(_server.Id, "ReceiveEventMessage", data, message, CancellationToken.None);
-
-                            await eventHub.Clients.Group(_server.Id.ToString())
-                                .SendAsync("ReceiveEventMessage", message);
-                        }
-                        catch (Exception ex)
-                        {
-                            logger.LogError(ex, "Failed to process and store VPN event from server {ServerId}", _server.Id);
-                        }
+                        await HandleEvent("ClientConnected", data);
                     });
-                    // _connection.On<string>("ReceiveEventMessage", async message =>
-                    // {
-                    //     await eventHub.Clients.Group(_server.Id.ToString())
-                    //         .SendAsync("ReceiveEventMessage", message);
-                    // });
+
+                    _connection.On<OpenVpnServerEventLog>("ClientDisconnected", async data =>
+                    {
+                        await HandleEvent("ClientDisconnected", data);
+                    });
+
+                    _connection.On<OpenVpnServerEventLog>("ClientAttempted", async data =>
+                    {
+                        await HandleEvent("ClientAttempted", data);
+                    });
+
+                    _connection.On<OpenVpnServerEventLog>("TlsVerified", async data =>
+                    {
+                        await HandleEvent("TlsVerified", data);
+                    });
 
                     _handlersRegistered = true;
                 }
@@ -95,6 +89,37 @@ public class OpenVpnEventClient(
             _connectionLock.Release();
         }
     }
+    
+    private async Task HandleEvent(string eventType, OpenVpnServerEventLog data)
+    {
+        try
+        {
+            using var scope = serviceProvider.CreateScope();
+            var logService = scope.ServiceProvider.GetRequiredService<IVpnEventLogService>();
+
+            var rawJson = JsonConvert.SerializeObject(data);
+
+            var log = new OpenVpnServerEventLog
+            {
+                CommonName = data.CommonName,
+                RealAddress = data.RealAddress,
+                VirtualAddress = data.VirtualAddress,
+                ConnectedSince = data.ConnectedSince,
+                Message = data.Message,
+                RawJson = rawJson
+            };
+
+            await logService.SaveEventAsync(_server.Id, eventType, log, rawJson, CancellationToken.None);
+
+            await eventHub.Clients.Group(_server.Id.ToString())
+                .SendAsync(eventType, data);
+        }
+        catch (Exception ex)
+        {
+            logger.LogError(ex, "Failed to handle SignalR event {EventType} from server {ServerId}", eventType, _server.Id);
+        }
+    }
+
 
     private async Task ReconnectAsync(HubConnection connection)
     {
