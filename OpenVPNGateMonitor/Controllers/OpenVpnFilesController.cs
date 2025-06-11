@@ -117,4 +117,33 @@ public class OpenVpnFilesController(
             return BadRequest(ApiResponse<DownloadOvpnFileResponse>.ErrorResponse(ex.Message));
         }
     }
+    
+    [HttpGet("DownloadClientOvpnFile")]
+    public async Task<IActionResult> DownloadClientOvpnFile(
+        [FromQuery] int vpnServerId, 
+        [FromQuery] int issuedOvpnFileId,
+        CancellationToken cancellationToken)
+    {
+        try
+        {
+            var request = new DownloadClientOvpnFileRequest
+            {
+                VpnServerId = vpnServerId,
+                IssuedOvpnFileId = issuedOvpnFileId
+            };
+
+            var response = await ovpnFileApiService.DownloadOvpnFileAsync(request, cancellationToken);
+
+            return File(
+                response.Content,
+                "application/x-openvpn-profile",
+                response.FileName);
+        }
+        catch (Exception ex)
+        {
+            logger.LogError(ex, "Failed to download raw OVPN file {IssuedOvpnFileId} for {VpnServerId}",
+                issuedOvpnFileId, vpnServerId);
+            return NotFound("OVPN file not found or error occurred.");
+        }
+    }
 }
