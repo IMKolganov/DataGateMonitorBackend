@@ -3,6 +3,7 @@ using OpenVPNGateMonitor.Services.Api.Interfaces;
 using OpenVPNGateMonitor.Services.BackgroundServices;
 using OpenVPNGateMonitor.Services.BackgroundServices.Interfaces;
 using OpenVPNGateMonitor.Services.DataGateCertManager;
+using OpenVPNGateMonitor.Services.DataGateCertManager.Events;
 using OpenVPNGateMonitor.Services.DataGateCertManager.Interfaces;
 using OpenVPNGateMonitor.Services.DataGateCertManager.OpenVpnProxy;
 using OpenVPNGateMonitor.Services.Helpers;
@@ -48,6 +49,7 @@ public static class ServiceConfiguration
         services.AddSingleton<IOpenVpnBackgroundService>(provider => provider.GetRequiredService<OpenVpnBackgroundService>());
         services.AddHostedService(provider => provider.GetRequiredService<OpenVpnBackgroundService>());
         
+        services.AddSingleton<IOpenVpnEventClientFactory, OpenVpnEventClientFactory>();
         services.AddSingleton<OpenVpnEventBackgroundService>();
         services.AddSingleton<IOpenVpnEventBackgroundService>(provider => provider.GetRequiredService<OpenVpnEventBackgroundService>());
         services.AddHostedService(provider => provider.GetRequiredService<OpenVpnEventBackgroundService>());
