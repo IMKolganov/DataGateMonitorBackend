@@ -18,6 +18,7 @@ public class OpenVpnMicroserviceClient(
     private HubConnection? _connection;
     private readonly SemaphoreSlim _connectionLock = new(1, 1);
     private bool _handlersRegistered = false;
+    private string? _lastApiUrl;
 
     public async Task<string> SendCommandWithResponseAsync(string command, CancellationToken cancellationToken)
     {
@@ -66,7 +67,7 @@ public class OpenVpnMicroserviceClient(
                 .SendAsync("ReceiveCommandResult", errorMessage, cancellationToken);
         }
     }
-    
+
     public async Task SendCommandToMicroserviceAsync(string command, CancellationToken cancellationToken)
     {
         try
@@ -95,14 +96,20 @@ public class OpenVpnMicroserviceClient(
         await _connectionLock.WaitAsync(cancellationToken);
         try
         {
-            if (_connection is not null && _connection.State == HubConnectionState.Connected)
-                return _connection;
+            if (_connection is not null && _server.ApiUrl != _lastApiUrl)
+            {
+                logger.LogWarning("Detected API URL change for server {ServerId}. Recreating SignalR connection...", _server.Id);
+                await _connection.DisposeAsync();
+                _connection = null;
+                _handlersRegistered = false;
+            }
 
-            if (_connection == null)
+            if (_connection is null)
             {
                 logger.LogInformation("Creating SignalR connection for server {ServerId}", _server.Id);
-                
+
                 var fullUrl = $"{_server.ApiUrl.TrimEnd('/')}/hubs/openvpn";
+                _lastApiUrl = _server.ApiUrl;
 
                 _connection = new HubConnectionBuilder()
                     .WithUrl(fullUrl, options =>
