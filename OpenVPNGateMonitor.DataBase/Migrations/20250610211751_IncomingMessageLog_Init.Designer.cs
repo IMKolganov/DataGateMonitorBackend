@@ -2,6 +2,7 @@
 using System;
 using Microsoft.EntityFrameworkCore;
 using Microsoft.EntityFrameworkCore.Infrastructure;
+using Microsoft.EntityFrameworkCore.Migrations;
 using Microsoft.EntityFrameworkCore.Storage.ValueConversion;
 using Npgsql.EntityFrameworkCore.PostgreSQL.Metadata;
 using OpenVPNGateMonitor.DataBase.Contexts;
@@ -11,9 +12,11 @@ using OpenVPNGateMonitor.DataBase.Contexts;
 namespace OpenVPNGateMonitor.DataBase.Migrations
 {
     [DbContext(typeof(ApplicationDbContext))]
-    partial class ApplicationDbContextModelSnapshot : ModelSnapshot
+    [Migration("20250610211751_IncomingMessageLog_Init")]
+    partial class IncomingMessageLog_Init
     {
-        protected override void BuildModel(ModelBuilder modelBuilder)
+        /// <inheritdoc />
+        protected override void BuildTargetModel(ModelBuilder modelBuilder)
         {
 #pragma warning disable 612, 618
             modelBuilder
@@ -1245,7 +1248,7 @@ namespace OpenVPNGateMonitor.DataBase.Migrations
                             CreateDate = new DateTime(1, 1, 1, 0, 0, 0, 0, DateTimeKind.Unspecified),
                             Key = "GeoIp_Db_Path",
                             LastUpdate = new DateTime(1, 1, 1, 0, 0, 0, 0, DateTimeKind.Unspecified),
-                            StringValue = "resources/geo-lite2/geo-lite2-city.mmdb",
+                            StringValue = "GeoLite2/GeoLite2-City.mmdb",
                             ValueType = "string"
                         },
                         new

@@ -3,6 +3,7 @@ using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Mvc;
 using OpenVPNGateMonitor.Models;
 using OpenVPNGateMonitor.Services.TelegramBot;
+using OpenVPNGateMonitor.Services.TelegramBot.Interfaces;
 using OpenVPNGateMonitor.SharedModels.Responses;
 using OpenVPNGateMonitor.SharedModels.DataGateMonitorBackend.TelegramBotLocalization.Requests;
 using OpenVPNGateMonitor.SharedModels.DataGateMonitorBackend.TelegramBotLocalization.Responses;

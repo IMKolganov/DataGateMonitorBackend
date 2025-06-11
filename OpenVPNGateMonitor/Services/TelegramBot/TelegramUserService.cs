@@ -2,6 +2,7 @@
 using Microsoft.EntityFrameworkCore;
 using OpenVPNGateMonitor.DataBase.UnitOfWork;
 using OpenVPNGateMonitor.Models;
+using OpenVPNGateMonitor.Services.TelegramBot.Interfaces;
 
 namespace OpenVPNGateMonitor.Services.TelegramBot;
 
@@ -61,5 +62,14 @@ public class TelegramUserService(ILogger<TelegramUserService> logger, IUnitOfWor
             .ToListAsync(cancellationToken: cancellationToken);
         
         return telegramBotUser;
+    }
+    
+    public async Task<TelegramBotUser?> GetUserByTelegramIdAsync(long telegramId, CancellationToken cancellationToken)
+    {
+        var user = await unitOfWork.GetQuery<TelegramBotUser>().AsQueryable()
+            .Where(x => x.TelegramId == telegramId)
+            .FirstOrDefaultAsync(cancellationToken);
+
+        return user;
     }
 }
