@@ -12,4 +12,10 @@ public interface ITelegramUserService
     Task<List<TelegramBotUser>?> GetAllUsersAsync(CancellationToken cancellationToken);
 
     Task<TelegramBotUser?> GetUserByTelegramIdAsync(long telegramId, CancellationToken cancellationToken);
+
+    Task<bool> BlockUserAsync(long telegramId, CancellationToken cancellationToken);
+    Task<bool> UnblockUserAsync(long telegramId, CancellationToken cancellationToken);
+    
+    Task<bool> SetAdminAsync(long telegramId, CancellationToken cancellationToken);
+    Task<bool> UnsetAdminAsync(long telegramId, CancellationToken cancellationToken);
 }
