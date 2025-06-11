@@ -2,7 +2,7 @@
 using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Mvc;
 using OpenVPNGateMonitor.Models;
-using OpenVPNGateMonitor.Services.TelegramBot;
+using OpenVPNGateMonitor.Services.TelegramBot.Interfaces;
 using OpenVPNGateMonitor.SharedModels.Responses;
 using OpenVPNGateMonitor.SharedModels.DataGateMonitorBackend.TelegramBotUser.Requests;
 using OpenVPNGateMonitor.SharedModels.DataGateMonitorBackend.TelegramBotUser.Responses;
@@ -22,6 +22,14 @@ public class TelegramBotUserController(ITelegramUserService telegramUserService)
             cancellationToken);
         
         return Ok(ApiResponse<RegisterUserResponse>.SuccessResponse(telegramBotUser.Adapt<RegisterUserResponse>()));
+    }
+    
+    [HttpGet("UserExists/{telegramId}")]
+    public async Task<ActionResult<ApiResponse<bool>>> UserExists([FromRoute] UserExistsRequest request, 
+        CancellationToken cancellationToken)
+    {
+        var user = await telegramUserService.GetUserByTelegramIdAsync(request.TelegramId, cancellationToken);
+        return Ok(ApiResponse<bool>.SuccessResponse(user != null));
     }
 
     [HttpGet("GetAdmins")]

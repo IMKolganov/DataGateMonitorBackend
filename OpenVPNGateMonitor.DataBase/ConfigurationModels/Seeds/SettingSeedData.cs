@@ -55,7 +55,7 @@ public static class SettingSeedData
             Id = 7, 
             Key = "GeoIp_Db_Path",
             ValueType = "string",
-            StringValue = "GeoLite2/GeoLite2-City.mmdb"
+            StringValue = "resources/geo-lite2/geo-lite2-city.mmdb"
         },
         new Setting
         {

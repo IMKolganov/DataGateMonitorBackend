@@ -1,6 +1,7 @@
 ﻿using System.IdentityModel.Tokens.Jwt;
 using System.Security.Claims;
 using System.Security.Cryptography;
+using System.Text;
 using Microsoft.IdentityModel.Tokens;
 using OpenVPNGateMonitor.Services.Api.Auth.Interfaces;
 
@@ -13,8 +14,17 @@ public class MicroserviceTokenService : IMicroserviceTokenService
 
     public MicroserviceTokenService(IConfiguration config)
     {
-        var privateKeyPath = config["MicroserviceJwt:PrivateKeyPath"] ?? "private-microservice.key";
-        var publicKeyPath = config["MicroserviceJwt:PublicKeyPath"] ?? "public-microservice.key";
+        var basePath = AppContext.BaseDirectory;
+        var certsDir = Path.Combine(basePath, "resources", "certs");
+
+        if (!Directory.Exists(certsDir))
+            Directory.CreateDirectory(certsDir);
+
+        var privateKeyPath = config["MicroserviceJwt:PrivateKeyPath"]
+                             ?? Path.Combine(certsDir, "private-microservice.key");
+        var publicKeyPath = config["MicroserviceJwt:PublicKeyPath"]
+                            ?? Path.Combine(certsDir, "public-microservice.key");
+
         var privateKeyText = File.ReadAllText(privateKeyPath);
         var publicKeyText = File.ReadAllText(publicKeyPath);
 
@@ -79,4 +89,18 @@ public class MicroserviceTokenService : IMicroserviceTokenService
     }
 
     public string GetPublicKeyPem() => _publicKeyPem;
+
+    private static string ExportPrivateKeyToPem(RSA rsa)
+    {
+        var privateKeyBytes = rsa.ExportPkcs8PrivateKey();
+        var pemChars = PemEncoding.Write("PRIVATE KEY", privateKeyBytes);
+        return new string(pemChars);
+    }
+
+    private static string ExportPublicKeyToPem(RSA rsa)
+    {
+        var publicKeyBytes = rsa.ExportSubjectPublicKeyInfo();
+        var pemChars = PemEncoding.Write("PUBLIC KEY", publicKeyBytes);
+        return new string(pemChars);
+    }
 }
