@@ -19,6 +19,7 @@ public class OpenVpnMicroserviceClient(
     private readonly SemaphoreSlim _connectionLock = new(1, 1);
     private bool _handlersRegistered = false;
     private string? _lastApiUrl;
+    public string CurrentApiUrl => _server.ApiUrl;
 
     public async Task<string> SendCommandWithResponseAsync(string command, CancellationToken cancellationToken)
     {

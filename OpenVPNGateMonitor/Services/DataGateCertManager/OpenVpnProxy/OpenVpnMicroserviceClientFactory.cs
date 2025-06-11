@@ -25,13 +25,22 @@ public class OpenVpnMicroserviceClientFactory(IServiceProvider serviceProvider) 
 
     public async Task<OpenVpnMicroserviceClient?> TryCreateByServerIdAsync(int serverId, CancellationToken ct)
     {
-        if (_clientCache.TryGetValue(serverId, out var cached))
-            return cached;
-
         using var scope = serviceProvider.CreateScope();
         var vpnDataService = scope.ServiceProvider.GetRequiredService<IVpnDataService>();
         var server = await vpnDataService.GetOpenVpnServer(serverId, ct);
         if (server is null) throw new Exception($"OpenVPN server not found with id {serverId}");
+
+        if (_clientCache.TryGetValue(serverId, out var cached))
+        {
+            if (!string.Equals(cached.CurrentApiUrl, server.ApiUrl, StringComparison.OrdinalIgnoreCase))
+            {
+                _clientCache.TryRemove(serverId, out _);
+            }
+            else
+            {
+                return cached;
+            }
+        }
 
         return Create(server);
     }
