@@ -1,6 +1,7 @@
 using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Mvc;
 using OpenVPNGateMonitor.Services.Api.Interfaces;
+using OpenVPNGateMonitor.SharedModels.DataGateMonitorBackend.OpenVpnServerStatistics.Request;
 using OpenVPNGateMonitor.SharedModels.DataGateMonitorBackend.OpenVpnServerStatistics.Responses;
 using OpenVPNGateMonitor.SharedModels.Responses;
 
@@ -11,25 +12,28 @@ namespace OpenVPNGateMonitor.Controllers;
 [Authorize]
 public class OpenVpnServerStatisticsController(IVpnServerStatisticsService vpnServerStatisticsService) : ControllerBase
 {
-    [HttpGet("GetClientTrafficStats")]
+    [HttpGet("GetClientTrafficStats/{vpnServerId}")]
     public async Task<ActionResult<ApiResponse<List<TrafficByClientResponse>>>> GetClientTrafficStats(
-        CancellationToken cancellationToken)
+        [FromRoute] OpenVpnServerStatisticRequest request, CancellationToken cancellationToken)
     {
-        var result = await vpnServerStatisticsService.GetTrafficGroupedByClientAsync(1, cancellationToken);
+        var result = 
+            await vpnServerStatisticsService.GetTrafficGroupedByClientAsync(request.VpnServerId, cancellationToken);
         return Ok(ApiResponse<List<TrafficByClientResponse>>.SuccessResponse(result));
     }
-    [HttpGet("GetGroupedConnectionsByLocation")]
+    [HttpGet("GetGroupedConnectionsByLocation/{vpnServerId}")]
     public async Task<ActionResult<ApiResponse<List<GeoConnectionsResponse>>>> GetGroupedConnectionsByLocation(
-        CancellationToken cancellationToken)
+        [FromRoute] OpenVpnServerStatisticRequest request, CancellationToken cancellationToken)
     {
-        var result = await vpnServerStatisticsService.GetGroupedConnectionsByLocationAsync(1, cancellationToken);
+        var result = 
+            await vpnServerStatisticsService.GetGroupedConnectionsByLocationAsync(request.VpnServerId, cancellationToken);
         return Ok(ApiResponse<List<GeoConnectionsResponse>>.SuccessResponse(result));
     }
-    [HttpGet("GetAverageSessionDuration")]
+    [HttpGet("GetAverageSessionDuration/{vpnServerId}")]
     public async Task<ActionResult<ApiResponse<List<AverageSessionDurationResponse>>>> GetAverageSessionDuration(
-        CancellationToken cancellationToken)
+        [FromRoute] OpenVpnServerStatisticRequest request, CancellationToken cancellationToken)
     {
-        var result = await vpnServerStatisticsService.GetAverageSessionDurationAsync(1, cancellationToken);
+        var result =
+            await vpnServerStatisticsService.GetAverageSessionDurationAsync(request.VpnServerId, cancellationToken);
         return Ok(ApiResponse<List<AverageSessionDurationResponse>>.SuccessResponse(result));
     }
 }
