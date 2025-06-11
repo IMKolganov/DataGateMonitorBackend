@@ -25,7 +25,7 @@ public class TelegramBotUserController(ITelegramUserService telegramUserService)
     }
     
     [HttpGet("UserExists/{telegramId}")]
-    public async Task<ActionResult<ApiResponse<bool>>> UserExists([FromRoute] UserExistsRequest request, 
+    public async Task<ActionResult<ApiResponse<bool>>> UserExists([FromRoute] TelegramUserActionRequest request, 
         CancellationToken cancellationToken)
     {
         var user = await telegramUserService.GetUserByTelegramIdAsync(request.TelegramId, cancellationToken);
@@ -44,5 +44,37 @@ public class TelegramBotUserController(ITelegramUserService telegramUserService)
     {
         var telegramBotUsers = await telegramUserService.GetAllUsersAsync(cancellationToken);
         return Ok(ApiResponse<GetAllUsersResponse>.SuccessResponse(telegramBotUsers.Adapt<GetAllUsersResponse>()));
+    }
+    
+    [HttpPost("BlockUser")]
+    public async Task<ActionResult<ApiResponse<bool>>> BlockUser([FromBody] TelegramUserActionRequest request,
+        CancellationToken cancellationToken)
+    {
+        var result = await telegramUserService.BlockUserAsync(request.TelegramId, cancellationToken);
+        return Ok(ApiResponse<bool>.SuccessResponse(result));
+    }
+
+    [HttpPost("UnblockUser")]
+    public async Task<ActionResult<ApiResponse<bool>>> UnblockUser([FromBody] TelegramUserActionRequest request, 
+        CancellationToken cancellationToken)
+    {
+        var result = await telegramUserService.UnblockUserAsync(request.TelegramId, cancellationToken);
+        return Ok(ApiResponse<bool>.SuccessResponse(result));
+    }
+    
+    [HttpPost("SetAdmin")]
+    public async Task<ActionResult<ApiResponse<bool>>> SetAdmin([FromBody] TelegramUserActionRequest request,
+        CancellationToken cancellationToken)
+    {
+        var result = await telegramUserService.SetAdminAsync(request.TelegramId, cancellationToken);
+        return Ok(ApiResponse<bool>.SuccessResponse(result));
+    }
+
+    [HttpPost("UnsetAdmin")]
+    public async Task<ActionResult<ApiResponse<bool>>> UnsetAdmin([FromBody] TelegramUserActionRequest request,
+        CancellationToken cancellationToken)
+    {
+        var result = await telegramUserService.UnsetAdminAsync(request.TelegramId, cancellationToken);
+        return Ok(ApiResponse<bool>.SuccessResponse(result));
     }
 }
