@@ -72,4 +72,98 @@ public class TelegramUserService(ILogger<TelegramUserService> logger, IUnitOfWor
 
         return user;
     }
+    
+    public async Task<bool> BlockUserAsync(long telegramId, CancellationToken cancellationToken)
+    {
+        var repo = unitOfWork.GetRepository<TelegramBotUser>();
+        var user = await repo.Query.FirstOrDefaultAsync(x => x.TelegramId == telegramId, 
+            cancellationToken);
+        
+        if (user == null)
+        {
+            logger.LogWarning($"Attempted to block non-existent user with TelegramId: {telegramId}");
+            return false;
+        }
+
+        if (user.IsBlocked)
+        {
+            logger.LogInformation($"User {telegramId} is already blocked.");
+            return true;
+        }
+
+        user.IsBlocked = true;
+        await unitOfWork.SaveChangesAsync(cancellationToken);
+        logger.LogInformation($"User {telegramId} has been blocked.");
+        return true;
+    }
+
+    public async Task<bool> UnblockUserAsync(long telegramId, CancellationToken cancellationToken)
+    {
+        var repo = unitOfWork.GetRepository<TelegramBotUser>();
+        var user = await repo.Query.FirstOrDefaultAsync(x => x.TelegramId == telegramId, 
+            cancellationToken);
+        
+        if (user == null)
+        {
+            logger.LogWarning($"Attempted to unblock non-existent user with TelegramId: {telegramId}");
+            return false;
+        }
+
+        if (!user.IsBlocked)
+        {
+            logger.LogInformation($"User {telegramId} is not blocked.");
+            return true;
+        }
+
+        user.IsBlocked = false;
+        await unitOfWork.SaveChangesAsync(cancellationToken);
+        logger.LogInformation($"User {telegramId} has been unblocked.");
+        return true;
+    }
+    
+    public async Task<bool> SetAdminAsync(long telegramId, CancellationToken cancellationToken)
+    {
+        var repo = unitOfWork.GetRepository<TelegramBotUser>();
+        var user = await repo.Query.FirstOrDefaultAsync(x => x.TelegramId == telegramId, cancellationToken);
+
+        if (user == null)
+        {
+            logger.LogWarning($"Attempted to set admin for non-existent user with TelegramId: {telegramId}");
+            return false;
+        }
+
+        if (user.IsAdmin)
+        {
+            logger.LogInformation($"User {telegramId} is already admin.");
+            return true;
+        }
+
+        user.IsAdmin = true;
+        await unitOfWork.SaveChangesAsync(cancellationToken);
+        logger.LogInformation($"User {telegramId} has been set as admin.");
+        return true;
+    }
+
+    public async Task<bool> UnsetAdminAsync(long telegramId, CancellationToken cancellationToken)
+    {
+        var repo = unitOfWork.GetRepository<TelegramBotUser>();
+        var user = await repo.Query.FirstOrDefaultAsync(x => x.TelegramId == telegramId, cancellationToken);
+
+        if (user == null)
+        {
+            logger.LogWarning($"Attempted to unset admin for non-existent user with TelegramId: {telegramId}");
+            return false;
+        }
+
+        if (!user.IsAdmin)
+        {
+            logger.LogInformation($"User {telegramId} is not an admin.");
+            return true;
+        }
+
+        user.IsAdmin = false;
+        await unitOfWork.SaveChangesAsync(cancellationToken);
+        logger.LogInformation($"Admin rights removed from user {telegramId}.");
+        return true;
+    }
 }
