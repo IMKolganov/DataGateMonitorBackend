@@ -100,18 +100,24 @@ public class OvpnFileApiService(
             request.CommonName, request.VpnServerId);
 
         var repository = unitOfWork.GetRepository<IssuedOvpnFile>();
-
-        var result = await ovpnFileApiClient.RevokeOvpnFileAsync(
-            request.VpnServerId,
-            request.Adapt<OpenVPNGateMonitor.SharedModels.DataGateCertManager.OvpnFile.Requests.RevokeOvpnFileRequest>(),
-            cancellationToken);
-
         var issuedOvpnFile = await repository.Query
             .Where(x => 
                 x.VpnServerId == request.VpnServerId 
+                && x.Id == request.OvpnFileId
                 && x.CommonName == request.CommonName
                 && x.IsRevoked == false)
             .FirstOrDefaultAsync(cancellationToken);
+        
+        var revokeOvpnFileRequest = request.Adapt<RevokeOvpnFileRequest>();
+        revokeOvpnFileRequest.OvpnFileName = issuedOvpnFile?.FileName ?? 
+                                             throw new InvalidOperationException("FileName is null");
+        revokeOvpnFileRequest.OvpnFilePath = issuedOvpnFile.FilePath;
+
+            
+        var result = await ovpnFileApiClient.RevokeOvpnFileAsync(
+            request.VpnServerId,
+            revokeOvpnFileRequest,
+            cancellationToken);
 
         if (issuedOvpnFile == null)
         {
