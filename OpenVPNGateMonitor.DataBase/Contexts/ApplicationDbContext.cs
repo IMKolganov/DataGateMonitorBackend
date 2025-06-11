@@ -34,6 +34,7 @@ public class ApplicationDbContext(DbContextOptions<ApplicationDbContext> options
     public DbSet<TelegramUserLanguagePreference> TelegramUserLanguagePreferences { get; set; } = null!;
     public DbSet<LocalizationText> LocalizationTexts { get; set; } = null!;
     public DbSet<IncomingMessageLog> IncomingMessageLogs { get; set; } = null!;
+    public DbSet<OpenVpnServerEventLog> OpenVpnServerEventLogs { get; set; } = null!;
     
     protected override void OnModelCreating(ModelBuilder modelBuilder)
     {
@@ -50,6 +51,7 @@ public class ApplicationDbContext(DbContextOptions<ApplicationDbContext> options
         modelBuilder.ApplyConfiguration(new TelegramUserLanguagePreferenceConfiguration());
         modelBuilder.ApplyConfiguration(new LocalizationTextConfiguration());
         modelBuilder.ApplyConfiguration(new IncomingMessageLogConfiguration());
+        modelBuilder.ApplyConfiguration(new OpenVpnServerEventLogConfiguration());
     }
     
     private void UpdateTimestamps()
