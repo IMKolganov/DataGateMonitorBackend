@@ -3,9 +3,7 @@ using OpenVPNGateMonitor.Services.DataGateCertManager.Events;
 
 namespace OpenVPNGateMonitor.Hubs;
 
-public class OpenVpnEventHub(
-    IOpenVpnEventClientFactory clientFactory,
-    ILogger<OpenVpnEventHub> logger) : Hub
+public class OpenVpnEventHub(ILogger<OpenVpnEventHub> logger) : Hub
 {
     public override async Task OnConnectedAsync()
     {
