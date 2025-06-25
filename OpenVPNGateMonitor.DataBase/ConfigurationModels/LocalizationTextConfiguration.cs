@@ -4,7 +4,7 @@ using OpenVPNGateMonitor.DataBase.ConfigurationModels.Seeds;
 
 namespace OpenVPNGateMonitor.DataBase.ConfigurationModels;
 
-public class LocalizationTextConfiguration : BaseEntityConfiguration<LocalizationText>
+public class LocalizationTextConfiguration : BaseEntityConfiguration<LocalizationText, int>
 {
     public override void Configure(EntityTypeBuilder<LocalizationText> entity)
     {

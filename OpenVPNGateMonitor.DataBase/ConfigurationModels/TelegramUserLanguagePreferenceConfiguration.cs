@@ -3,7 +3,7 @@ using Microsoft.EntityFrameworkCore.Metadata.Builders;
 
 namespace OpenVPNGateMonitor.DataBase.ConfigurationModels;
 
-public class TelegramUserLanguagePreferenceConfiguration : BaseEntityConfiguration<TelegramUserLanguagePreference>
+public class TelegramUserLanguagePreferenceConfiguration : BaseEntityConfiguration<TelegramUserLanguagePreference, int>
 {
     public override void Configure(EntityTypeBuilder<TelegramUserLanguagePreference> entity)
     {
