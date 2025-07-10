@@ -1,6 +1,8 @@
 ﻿using System.Reflection;
+using Microsoft.AspNetCore.Diagnostics.HealthChecks;
 using Microsoft.AspNetCore.HttpOverrides;
 using Microsoft.EntityFrameworkCore;
+using Microsoft.Extensions.Diagnostics.HealthChecks;
 using Microsoft.OpenApi.Writers;
 using OpenVPNGateMonitor.DataBase.Contexts;
 using OpenVPNGateMonitor.Hubs;
@@ -55,6 +57,21 @@ public static class PipelineConfiguration
         app.UseAuthentication();
         app.UseAuthorization();
         app.MapControllers();
+        app.MapHealthChecks("/health");
+        app.MapHealthChecks("/health/ready", new HealthCheckOptions
+        {
+            Predicate = check => check.Tags.Contains("ready")
+        });
+
+        app.MapHealthChecks("/health/live", new HealthCheckOptions
+        {
+            Predicate = _ => false,
+            ResultStatusCodes = {
+                [HealthStatus.Healthy] = StatusCodes.Status200OK,
+                [HealthStatus.Unhealthy] = StatusCodes.Status503ServiceUnavailable
+            }
+        });
+
         
         using (var scope = app.Services.CreateScope())
         {
