@@ -9,7 +9,7 @@ namespace OpenVPNGateMonitor.Services.BackgroundServices;
 public class OpenVpnEventBackgroundService(
     ILogger<OpenVpnEventBackgroundService> logger,
     IOpenVpnEventClientFactory eventClientFactory,
-    IUnitOfWork unitOfWork)
+    IServiceScopeFactory scopeFactory)
     : BackgroundService, IOpenVpnEventBackgroundService
 {
     private static int _instanceCount = 0;
@@ -40,15 +40,19 @@ public class OpenVpnEventBackgroundService(
 
         try
         {
+            using var scope = scopeFactory.CreateScope();
+            var unitOfWork = scope.ServiceProvider.GetRequiredService<IUnitOfWork>();
+
             var servers = await unitOfWork.GetQuery<OpenVpnServer>()
-                .AsQueryable().ToListAsync(cancellationToken);
+                .AsQueryable()
+                .ToListAsync(cancellationToken);
 
             foreach (var server in servers)
             {
                 try
                 {
                     var client = eventClientFactory.Create(server);
-                    await client. StartListeningAsync(cancellationToken);
+                    await client.StartListeningAsync(cancellationToken);
                     logger.LogInformation("Started listening to events from OpenVPN server {ServerId}", server.Id);
                 }
                 catch (Exception ex)
