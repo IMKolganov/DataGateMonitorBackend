@@ -3,7 +3,7 @@ using OpenVPNGateMonitor.Models;
 
 namespace OpenVPNGateMonitor.DataBase.ConfigurationModels;
 
-public class IncomingMessageLogConfiguration : BaseEntityConfiguration<IncomingMessageLog>
+public class IncomingMessageLogConfiguration : BaseEntityConfiguration<IncomingMessageLog, int>
 {
     public override void Configure(EntityTypeBuilder<IncomingMessageLog> entity)
     {

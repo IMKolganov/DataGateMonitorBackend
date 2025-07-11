@@ -3,7 +3,7 @@ using Microsoft.EntityFrameworkCore.Metadata.Builders;
 
 namespace OpenVPNGateMonitor.DataBase.ConfigurationModels;
 
-public class OpenVpnServerClientConfiguration : BaseEntityConfiguration<OpenVpnServerClient>
+public class OpenVpnServerClientConfiguration : BaseEntityConfiguration<OpenVpnServerClient, int>
 {
     public override void Configure(EntityTypeBuilder<OpenVpnServerClient> entity)
     {

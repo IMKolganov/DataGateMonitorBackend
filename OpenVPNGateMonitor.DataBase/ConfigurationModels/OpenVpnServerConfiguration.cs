@@ -4,7 +4,7 @@ using OpenVPNGateMonitor.DataBase.ConfigurationModels.Seeds;
 
 namespace OpenVPNGateMonitor.DataBase.ConfigurationModels;
 
-public class OpenVpnServerConfiguration : BaseEntityConfiguration<OpenVpnServer>
+public class OpenVpnServerConfiguration : BaseEntityConfiguration<OpenVpnServer, int>
 {
     public override void Configure(EntityTypeBuilder<OpenVpnServer> entity)
     {
