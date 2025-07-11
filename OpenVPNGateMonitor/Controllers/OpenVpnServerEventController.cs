@@ -10,8 +10,7 @@ namespace OpenVPNGateMonitor.Controllers;
 [ApiController]
 [Route("api/[controller]")]
 [Authorize]
-public class OpenVpnServerEventController(IVpnEventLogService eventLogService,
-    ILogger<OpenVpnServerEventController> logger) : ControllerBase
+public class OpenVpnServerEventController(IVpnEventLogService eventLogService) : ControllerBase
 {
     [HttpGet("GetEventByVpnServerId")]
     public async Task<ActionResult<ApiResponse<VpnServerEventResponse>>> GetEventByVpnServerId(

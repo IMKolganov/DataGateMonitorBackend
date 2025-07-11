@@ -194,7 +194,7 @@ public class VpnDataService(
         var latestStatusLog = await unitOfWork.GetQuery<OpenVpnServerStatusLog>()
             .AsQueryable()
             .Where(x => x.VpnServerId == vpnServerId)
-            .OrderBy(x => x.Id)
+            .OrderByDescending(x => x.Id)
             .FirstOrDefaultAsync(cancellationToken);
 
         var trafficSummary = await unitOfWork.GetQuery<OpenVpnServerStatusLog>()

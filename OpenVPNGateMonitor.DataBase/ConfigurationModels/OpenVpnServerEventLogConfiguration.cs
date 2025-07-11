@@ -4,7 +4,7 @@ using Microsoft.EntityFrameworkCore.Metadata.Builders;
 
 namespace OpenVPNGateMonitor.DataBase.ConfigurationModels;
 
-public class OpenVpnServerEventLogConfiguration : BaseEntityConfiguration<OpenVpnServerEventLog>
+public class OpenVpnServerEventLogConfiguration : BaseEntityConfiguration<OpenVpnServerEventLog, int>
 {
     public override void Configure(EntityTypeBuilder<OpenVpnServerEventLog> entity)
     {

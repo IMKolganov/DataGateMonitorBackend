@@ -3,7 +3,7 @@ using Microsoft.EntityFrameworkCore.Metadata.Builders;
 
 namespace OpenVPNGateMonitor.DataBase.ConfigurationModels;
 
-public class TelegramBotUserConfiguration : BaseEntityConfiguration<TelegramBotUser>
+public class TelegramBotUserConfiguration : BaseEntityConfiguration<TelegramBotUser, int>
 {
     public override void Configure(EntityTypeBuilder<TelegramBotUser> entity)
     {
