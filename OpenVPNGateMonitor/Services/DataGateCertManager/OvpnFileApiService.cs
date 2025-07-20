@@ -9,11 +9,14 @@ using OpenVPNGateMonitor.SharedModels.DataGateMonitorBackend.OpenVpnFiles.Respon
 
 namespace OpenVPNGateMonitor.Services.DataGateCertManager;
 
-public class OvpnFileApiService(
-    IUnitOfWork unitOfWork,
-    IOvpnFileApiClient ovpnFileApiClient,
-    ILogger<OvpnFileApiClient> logger) : IOvpnFileApiService
+public class OvpnFileApiService(IUnitOfWork unitOfWork, IOvpnFileApiClient ovpnFileApiClient, 
+    ILogger<OvpnFileApiClient> logger, IConfiguration configuration) : IOvpnFileApiService
 {
+    private const int DefaultTokenExpireDays = 1;
+
+    private int TokenExpireDays =>
+        configuration.GetValue<int?>("OvpnFileToken:ExpireDays") ?? DefaultTokenExpireDays;
+    
     public async Task<List<IssuedOvpnFile>> GetAllOvpnFilesAsync(int vpnServerId, CancellationToken cancellationToken)
     {
         return  await unitOfWork.GetQuery<IssuedOvpnFile>().AsQueryable()
@@ -30,6 +33,17 @@ public class OvpnFileApiService(
                 x.VpnServerId == vpnServerId &&  x.ExternalId == externalId)
             .ToListAsync(cancellationToken);
     }
+
+    public async Task<(IssuedOvpnFile File, IssuedOvpnFileToken Token)> AddOvpnFileWithTokenAsync(
+        AddClientOvpnFileRequest request,
+        CancellationToken cancellationToken)
+    {
+        var issuedOvpnFile = await AddOvpnFileAsync(request, cancellationToken);
+        var token = await MakeTokenForFileAsync(issuedOvpnFile, cancellationToken);
+
+        return (issuedOvpnFile, token);
+    }
+
 
     public async Task<IssuedOvpnFile> AddOvpnFileAsync(AddClientOvpnFileRequest request, 
         CancellationToken cancellationToken)
@@ -51,9 +65,7 @@ public class OvpnFileApiService(
             throw new Exception($"OVPN file with CommonName: '{request.CommonName}' already exists");
         }
 
-        var ovpnFileConfig = await unitOfWork.GetQuery<OpenVpnServerOvpnFileConfig>().AsQueryable()
-            .Where(x => x.VpnServerId == request.VpnServerId)
-            .OrderDescending().FirstAsync(cancellationToken);
+        var ovpnFileConfig = await GetOpenVpnServerOvpnFileConfig(request.VpnServerId, cancellationToken);
 
         var generateOvpnFileRequest = request.Adapt<GenerateOvpnFileRequest>();
         generateOvpnFileRequest.ConfigTemplate = ovpnFileConfig.ConfigTemplate;
@@ -100,7 +112,6 @@ public class OvpnFileApiService(
         revokeOvpnFileRequest.OvpnFileName = issuedOvpnFile?.FileName ?? 
                                              throw new InvalidOperationException("FileName is null");
         revokeOvpnFileRequest.OvpnFilePath = issuedOvpnFile.FilePath;
-
             
         var result = await ovpnFileApiClient.RevokeOvpnFileAsync(
             request.VpnServerId,
@@ -176,8 +187,31 @@ public class OvpnFileApiService(
         };
     }
 
-    private void MakeTokenForFile()
+    private async Task<IssuedOvpnFileToken> MakeTokenForFileAsync(IssuedOvpnFile issuedOvpnFile, CancellationToken cancellationToken)
     {
-        
+        var issuedOvpnFileTokenRepository = unitOfWork.GetRepository<IssuedOvpnFileToken>();
+
+        var token = new IssuedOvpnFileToken
+        {
+            IssuedOvpnFileId = issuedOvpnFile.Id,
+            Token = Guid.NewGuid().ToString("N"),
+            CreatedAt = DateTime.UtcNow,
+            ExpiresAt = DateTime.UtcNow.AddDays(TokenExpireDays),
+            IsUsed = false,
+            Purpose = "download"
+        };
+
+        await issuedOvpnFileTokenRepository.AddAsync(token, cancellationToken);
+
+        await unitOfWork.SaveChangesAsync(cancellationToken);
+        return token;
+    }
+
+    private async Task<OpenVpnServerOvpnFileConfig> GetOpenVpnServerOvpnFileConfig(int vpnServerId, 
+        CancellationToken cancellationToken)
+    {
+        return await unitOfWork.GetQuery<OpenVpnServerOvpnFileConfig>().AsQueryable()
+            .Where(x => x.VpnServerId == vpnServerId)
+            .OrderDescending().FirstAsync(cancellationToken);
     }
 }
