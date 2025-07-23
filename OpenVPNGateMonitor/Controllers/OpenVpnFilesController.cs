@@ -74,6 +74,31 @@ public class OpenVpnFilesController(
             return BadRequest(ApiResponse<IssuedOvpnFile>.ErrorResponse(ex.Message));
         }
     }
+    
+    [HttpPost("AddClientOvpnFileWithToken")]
+    public async Task<ActionResult<ApiResponse<AddOvpnFileWithTokenResponse>>> AddClientOvpnFileWithToken(
+        [FromBody] AddClientOvpnFileRequest request,
+        CancellationToken cancellationToken)
+    {
+        try
+        {
+            var (file, token) = await ovpnFileApiService.AddOvpnFileWithTokenAsync(request, cancellationToken);
+
+            var response = new AddOvpnFileWithTokenResponse
+            {
+                IssuedOvpnFile = file.Adapt<IssuedOvpnFileDto>(),
+                IssuedOvpnFileToken = token.Adapt<IssuedOvpnFileTokenDto>()
+            };
+
+            return Ok(ApiResponse<AddOvpnFileWithTokenResponse>.SuccessResponse(response));
+        }
+        catch (Exception ex)
+        {
+            logger.LogError(ex, "Failed to add OVPN file for {CommonName} on server {VpnServerId}",
+                request.CommonName, request.VpnServerId);
+            return BadRequest(ApiResponse<AddOvpnFileWithTokenResponse>.ErrorResponse(ex.Message));
+        }
+    }
 
     [HttpPost("RevokeClientOvpnFile")]
     public async Task<ActionResult<ApiResponse<RevokeOvpnFileResponse>>> RevokeClientOvpnFile(
