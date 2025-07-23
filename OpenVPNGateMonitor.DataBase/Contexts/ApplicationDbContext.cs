@@ -27,6 +27,7 @@ public class ApplicationDbContext(DbContextOptions<ApplicationDbContext> options
     public DbSet<OpenVpnServerClient> OpenVpnServerClients { get; set; } = null!;
     public DbSet<OpenVpnServer> OpenVpnServers { get; set; } = null!;
     public DbSet<IssuedOvpnFile> IssuedOvpnFiles { get; set; } = null!;
+    public DbSet<IssuedOvpnFileToken> IssuedOvpnFileTokens { get; set; } = null!;
     public DbSet<OpenVpnServerOvpnFileConfig> OpenVpnServerOvpnFileConfigs { get; set; } = null!;
     public DbSet<ClientApplication> ClientApplications { get; set; } = null!;
     public DbSet<Setting> Settings { get; set; } = null!;
@@ -35,6 +36,7 @@ public class ApplicationDbContext(DbContextOptions<ApplicationDbContext> options
     public DbSet<LocalizationText> LocalizationTexts { get; set; } = null!;
     public DbSet<IncomingMessageLog> IncomingMessageLogs { get; set; } = null!;
     public DbSet<OpenVpnServerEventLog> OpenVpnServerEventLogs { get; set; } = null!;
+
     
     protected override void OnModelCreating(ModelBuilder modelBuilder)
     {
@@ -44,6 +46,7 @@ public class ApplicationDbContext(DbContextOptions<ApplicationDbContext> options
         modelBuilder.ApplyConfiguration(new OpenVpnServerClientConfiguration());
         modelBuilder.ApplyConfiguration(new OpenVpnServerConfiguration());
         modelBuilder.ApplyConfiguration(new IssuedOvpnFileConfiguration());
+        modelBuilder.ApplyConfiguration(new IssuedOvpnFileTokenConfiguration());
         modelBuilder.ApplyConfiguration(new OpenVpnServerOvpnFileConfigConfiguration());
         modelBuilder.ApplyConfiguration(new ClientApplicationConfiguration());
         modelBuilder.ApplyConfiguration(new SettingConfiguration());
