@@ -17,7 +17,8 @@ public class OvpnFileApiService(IUnitOfWork unitOfWork, IOvpnFileApiClient ovpnF
     private int TokenExpireDays =>
         configuration.GetValue<int?>("OvpnFileToken:ExpireDays") ?? DefaultTokenExpireDays;
 
-    public async Task<IssuedOvpnFile> GetOvpnFileByTokenAsync(string token, CancellationToken cancellationToken)
+    public async Task<IssuedOvpnFile> GetOvpnFileByTokenAsync(string token, CancellationToken cancellationToken,
+        bool isRevoked = false)
     {
         var issuedOvpnFileToken = await unitOfWork.GetQuery<IssuedOvpnFileToken>().AsQueryable()
             .Where(x => x.Token == token)
@@ -25,7 +26,7 @@ public class OvpnFileApiService(IUnitOfWork unitOfWork, IOvpnFileApiClient ovpnF
         
         return  await unitOfWork.GetQuery<IssuedOvpnFile>().AsQueryable()
             .Where(x =>
-                x.Id == issuedOvpnFileToken.IssuedOvpnFileId)
+                x.Id == issuedOvpnFileToken.IssuedOvpnFileId && x.IsRevoked == isRevoked)
             .FirstAsync(cancellationToken);
     }
     
@@ -38,11 +39,10 @@ public class OvpnFileApiService(IUnitOfWork unitOfWork, IOvpnFileApiClient ovpnF
     }
 
     public async Task<List<(IssuedOvpnFile File, IssuedOvpnFileToken? Token)>> GetAllOvpnFilesWithTokenAsync(
-        int vpnServerId,
-        CancellationToken cancellationToken)
+        int vpnServerId, CancellationToken cancellationToken, bool isRevoked = false)
     {
         var issuedFiles = await unitOfWork.GetQuery<IssuedOvpnFile>().AsQueryable()
-            .Where(x => x.VpnServerId == vpnServerId)
+            .Where(x => x.VpnServerId == vpnServerId && x.IsRevoked == isRevoked)
             .ToListAsync(cancellationToken);
 
         var fileIds = issuedFiles.Select(x => x.Id).ToList();
@@ -61,19 +61,20 @@ public class OvpnFileApiService(IUnitOfWork unitOfWork, IOvpnFileApiClient ovpnF
     }
 
     public async Task<List<IssuedOvpnFile>> GetAllByExternalIdOvpnFilesAsync(int vpnServerId, string externalId,
-        CancellationToken cancellationToken)
+        CancellationToken cancellationToken, bool isRevoked = false)
     {
         return  await unitOfWork.GetQuery<IssuedOvpnFile>().AsQueryable()
             .Where(x =>
-                x.VpnServerId == vpnServerId &&  x.ExternalId == externalId)
+                x.VpnServerId == vpnServerId &&  x.ExternalId == externalId && x.IsRevoked == isRevoked)
             .ToListAsync(cancellationToken);
     }
 
     public async Task<List<(IssuedOvpnFile File, IssuedOvpnFileToken? Token)>> GetAllByExternalIdOvpnFilesWithTokenAsync(
-        int vpnServerId, string externalId, CancellationToken cancellationToken)
+        int vpnServerId, string externalId, CancellationToken cancellationToken, bool isRevoked = false)
     {
         var issuedFiles = await unitOfWork.GetQuery<IssuedOvpnFile>().AsQueryable()
-            .Where(x => x.VpnServerId == vpnServerId && x.ExternalId == externalId)
+            .Where(x => x.VpnServerId == vpnServerId && x.ExternalId == externalId 
+                                                     && x.IsRevoked == isRevoked)
             .ToListAsync(cancellationToken);
 
         var fileIds = issuedFiles.Select(x => x.Id).ToList();
@@ -199,14 +200,14 @@ public class OvpnFileApiService(IUnitOfWork unitOfWork, IOvpnFileApiClient ovpnF
 
     public async Task<DownloadOvpnFileResponse> DownloadOvpnFileAsync(
         DownloadClientOvpnFileRequest request,
-        CancellationToken cancellationToken)
+        CancellationToken cancellationToken, bool isRevoked = false)
     {
         logger.LogInformation("Start downloading OVPN file: VpnServerId={VpnServerId}, IssuedOvpnFileId={IssuedOvpnFileId}",
             request.VpnServerId, request.IssuedOvpnFileId);
 
         var issuedOvpnFile = await unitOfWork.GetQuery<IssuedOvpnFile>().AsQueryable()
             .Where(x =>
-                x.VpnServerId == request.VpnServerId && x.Id == request.IssuedOvpnFileId)
+                x.VpnServerId == request.VpnServerId && x.Id == request.IssuedOvpnFileId && x.IsRevoked == isRevoked)
             .FirstOrDefaultAsync(cancellationToken);
 
         if (issuedOvpnFile == null)
