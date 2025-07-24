@@ -9,22 +9,24 @@ public static class RsaKeyInitializer
         var basePath = AppContext.BaseDirectory;
         var certsDir = Path.Combine(basePath, "resources", "certs");
 
-        if (!Directory.Exists(certsDir))
-            Directory.CreateDirectory(certsDir);
+        Directory.CreateDirectory(certsDir);
 
-        var privateKeyPath = config["MicroserviceJwt:PrivateKeyPath"]
-                             ?? Path.Combine(certsDir, "private-microservice.key");
-        var publicKeyPath = config["MicroserviceJwt:PublicKeyPath"]
-                            ?? Path.Combine(certsDir, "public-microservice.key");
+        var privateKeyConfigPath = config["MicroserviceJwt:PrivateKeyPath"]
+                                   ?? Path.Combine("resources", "certs", "private-microservice.key");
+        var publicKeyConfigPath = config["MicroserviceJwt:PublicKeyPath"]
+                                  ?? Path.Combine("resources", "certs", "public-microservice.key");
+
+        var privateKeyPath = Path.GetFullPath(Path.Combine(basePath, privateKeyConfigPath));
+        var publicKeyPath = Path.GetFullPath(Path.Combine(basePath, publicKeyConfigPath));
 
         if (!File.Exists(privateKeyPath) || !File.Exists(publicKeyPath))
         {
             RsaKeyGenerator.GenerateAndSaveKeyPair(privateKeyPath, publicKeyPath);
-            logger.LogInformation("Generated new RSA key pair at startup in {Path}", certsDir);
+            logger.LogInformation("Generated new RSA key pair at startup: {PrivateKey}, {PublicKey}", privateKeyPath, publicKeyPath);
         }
         else
         {
-            logger.LogInformation("RSA key pair already exists in {Path}", certsDir);
+            logger.LogInformation("RSA key pair already exists: {PrivateKey}, {PublicKey}", privateKeyPath, publicKeyPath);
         }
     }
 }
