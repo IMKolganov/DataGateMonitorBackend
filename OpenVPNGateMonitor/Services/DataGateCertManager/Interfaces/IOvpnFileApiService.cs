@@ -6,15 +6,16 @@ namespace OpenVPNGateMonitor.Services.DataGateCertManager.Interfaces;
 
 public interface IOvpnFileApiService
 {
-    Task<IssuedOvpnFile> GetOvpnFileByTokenAsync(string token, CancellationToken cancellationToken);
+    Task<IssuedOvpnFile> GetOvpnFileByTokenAsync(string token, CancellationToken cancellationToken
+        , bool isRevoked = false);
     Task<List<IssuedOvpnFile>> GetAllOvpnFilesAsync(int vpnServerId, CancellationToken cancellationToken);
     Task<List<(IssuedOvpnFile File, IssuedOvpnFileToken? Token)>> GetAllOvpnFilesWithTokenAsync(int vpnServerId,
-        CancellationToken cancellationToken);
+        CancellationToken cancellationToken, bool isRevoked = false);
 
     Task<List<IssuedOvpnFile>> GetAllByExternalIdOvpnFilesAsync(int vpnServerId, string externalId,
-        CancellationToken cancellationToken);
+        CancellationToken cancellationToken, bool isRevoked = false);
     Task<List<(IssuedOvpnFile File, IssuedOvpnFileToken? Token)>> GetAllByExternalIdOvpnFilesWithTokenAsync(int vpnServerId, 
-        string externalId, CancellationToken cancellationToken);
+        string externalId, CancellationToken cancellationToken, bool isRevoked = false);
     
     Task<IssuedOvpnFile> AddOvpnFileAsync(AddClientOvpnFileRequest request, 
         CancellationToken cancellationToken);
@@ -25,5 +26,5 @@ public interface IOvpnFileApiService
         CancellationToken cancellationToken);
 
     Task<DownloadOvpnFileResponse> DownloadOvpnFileAsync(DownloadClientOvpnFileRequest request,
-        CancellationToken cancellationToken);
+        CancellationToken cancellationToken, bool isRevoked = false);
 }
