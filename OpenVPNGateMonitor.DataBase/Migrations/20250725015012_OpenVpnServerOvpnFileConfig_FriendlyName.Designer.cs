@@ -1168,7 +1168,7 @@ namespace OpenVPNGateMonitor.DataBase.Migrations
                         new
                         {
                             Id = 1,
-                            ConfigTemplate = "setenv FRIENDLY_NAME {{friendly_name}}\nclient\ndev tun\nproto udp\nremote {{server_ip}} {{server_port}}\nresolv-retry infinite\nnobind\nremote-cert-tls server\ntls-version-min 1.2\ncipher AES-256-CBC\nauth SHA256\nauth-nocache\nverb 3\n<ca>\n{{ca_cert}}\n</ca>\n<cert>\n{{client_cert}}\n</cert>\n<key>\n{{client_key}}\n</key>\n<tls-crypt>\n{{tls_auth_key}}\n</tls-crypt>",
+                            ConfigTemplate = "setenv FRIENDLY_NAME \"{{friendly_name}}\"\nclient\ndev tun\nproto udp\nremote {{server_ip}} {{server_port}}\nresolv-retry infinite\nnobind\nremote-cert-tls server\ntls-version-min 1.2\ncipher AES-256-CBC\nauth SHA256\nauth-nocache\nverb 3\n<ca>\n{{ca_cert}}\n</ca>\n<cert>\n{{client_cert}}\n</cert>\n<key>\n{{client_key}}\n</key>\n<tls-crypt>\n{{tls_auth_key}}\n</tls-crypt>",
                             CreateDate = new DateTime(1, 1, 1, 0, 0, 0, 0, DateTimeKind.Unspecified),
                             LastUpdate = new DateTime(1, 1, 1, 0, 0, 0, 0, DateTimeKind.Unspecified),
                             VpnServerId = 1,
@@ -1178,7 +1178,7 @@ namespace OpenVPNGateMonitor.DataBase.Migrations
                         new
                         {
                             Id = 2,
-                            ConfigTemplate = "client\ndev tun\nproto tcp\nremote {{server_ip}} {{server_port}}\nresolv-retry infinite\nnobind\nremote-cert-tls server\ntls-version-min 1.2\ncipher AES-256-CBC\nauth SHA256\nauth-nocache\nverb 3\n<ca>\n{{ca_cert}}\n</ca>\n<cert>\n{{client_cert}}\n</cert>\n<key>\n{{client_key}}\n</key>\n<tls-crypt>\n{{tls_auth_key}}\n</tls-crypt>",
+                            ConfigTemplate = "setenv FRIENDLY_NAME \"{{friendly_name}}\"\nclient\ndev tun\nproto tcp\nremote {{server_ip}} {{server_port}}\nresolv-retry infinite\nnobind\nremote-cert-tls server\ntls-version-min 1.2\ncipher AES-256-CBC\nauth SHA256\nauth-nocache\nverb 3\n<ca>\n{{ca_cert}}\n</ca>\n<cert>\n{{client_cert}}\n</cert>\n<key>\n{{client_key}}\n</key>\n<tls-crypt>\n{{tls_auth_key}}\n</tls-crypt>",
                             CreateDate = new DateTime(1, 1, 1, 0, 0, 0, 0, DateTimeKind.Unspecified),
                             LastUpdate = new DateTime(1, 1, 1, 0, 0, 0, 0, DateTimeKind.Unspecified),
                             VpnServerId = 2,
