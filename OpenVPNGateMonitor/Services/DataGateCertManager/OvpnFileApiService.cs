@@ -1,4 +1,5 @@
-﻿using Mapster;
+﻿using System.Text.RegularExpressions;
+using Mapster;
 using Microsoft.EntityFrameworkCore;
 using OpenVPNGateMonitor.DataBase.UnitOfWork;
 using OpenVPNGateMonitor.Models;
@@ -129,7 +130,8 @@ public class OvpnFileApiService(IUnitOfWork unitOfWork, IOvpnFileApiClient ovpnF
         var ovpnFileConfig = await GetOpenVpnServerOvpnFileConfig(request.VpnServerId, cancellationToken);
 
         var generateOvpnFileRequest = request.Adapt<GenerateOvpnFileRequest>();
-        generateOvpnFileRequest.FrendlyName = "";
+        generateOvpnFileRequest.FriendlyΝame = 
+            await MakeFriendlyName(request.VpnServerId, request.CommonName, cancellationToken);
         generateOvpnFileRequest.ConfigTemplate = ovpnFileConfig.ConfigTemplate;
         generateOvpnFileRequest.ServerIp = ovpnFileConfig.VpnServerIp;
         generateOvpnFileRequest.ServerPort = ovpnFileConfig.VpnServerPort;
@@ -275,5 +277,24 @@ public class OvpnFileApiService(IUnitOfWork unitOfWork, IOvpnFileApiClient ovpnF
         return await unitOfWork.GetQuery<OpenVpnServerOvpnFileConfig>().AsQueryable()
             .Where(x => x.VpnServerId == vpnServerId)
             .OrderDescending().FirstAsync(cancellationToken);
+    }
+    
+    private async Task<string> MakeFriendlyName(int vpnServerId, string commonName, CancellationToken cancellationToken)
+    {
+        var vpnServer = await unitOfWork.GetQuery<OpenVpnServer>().AsQueryable()
+            .Where(x => x.Id == vpnServerId)
+            .FirstAsync(cancellationToken);
+
+        var lastNumber = ExtractLastNumber(commonName);
+
+        return lastNumber is not null
+            ? $"{vpnServer.ServerName} [{lastNumber}]"
+            : vpnServer.ServerName;
+    }
+    
+    private string? ExtractLastNumber(string input)
+    {
+        var match = Regex.Match(input, @"(\d+)$");
+        return match.Success ? match.Value : null;
     }
 }
