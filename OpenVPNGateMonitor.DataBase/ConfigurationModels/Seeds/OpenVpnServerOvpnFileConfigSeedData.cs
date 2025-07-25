@@ -13,7 +13,8 @@ public static class OpenVpnServerOvpnFileConfigSeedData
             VpnServerId = 1,
             VpnServerIp = "127.0.0.1",
             VpnServerPort = 1194,
-            ConfigTemplate = @"client
+            ConfigTemplate = @"setenv FRIENDLY_NAME {{friendly_name}}
+client
 dev tun
 proto udp
 remote {{server_ip}} {{server_port}}
