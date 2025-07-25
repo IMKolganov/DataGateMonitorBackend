@@ -31,6 +31,11 @@ builder.ConfigureExternalIpServices();
 builder.Services.AddOpenApi();
 
 var app = builder.Build();
+builder.Host.UseDefaultServiceProvider(options =>
+{
+    options.ValidateScopes = true;
+    options.ValidateOnBuild = true;
+});
 
 app.ConfigureMiddleware();
 app.ConfigurePipeline();
