@@ -12,7 +12,8 @@ public class OpenVpnServerOvpnFileConfig : BaseEntity<int>
 
     public int VpnServerPort { get; set; } = 1194;
 
-    public string ConfigTemplate { get; set; } = @"client
+    public string ConfigTemplate { get; set; } = @"setenv FRIENDLY_NAME {{friendly_name}}
+client
 dev tun
 proto udp
 remote {{server_ip}} {{server_port}}
@@ -41,7 +42,8 @@ verb 3
     {
         VpnServerPort = 1194;
         VpnServerIp = string.Empty;
-        ConfigTemplate = @"client
+        ConfigTemplate = @"setenv FRIENDLY_NAME {{friendly_name}}
+client
 dev tun
 proto udp
 remote {{server_ip}} {{server_port}}

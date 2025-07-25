@@ -129,6 +129,7 @@ public class OvpnFileApiService(IUnitOfWork unitOfWork, IOvpnFileApiClient ovpnF
         var ovpnFileConfig = await GetOpenVpnServerOvpnFileConfig(request.VpnServerId, cancellationToken);
 
         var generateOvpnFileRequest = request.Adapt<GenerateOvpnFileRequest>();
+        generateOvpnFileRequest.FrendlyName = "";
         generateOvpnFileRequest.ConfigTemplate = ovpnFileConfig.ConfigTemplate;
         generateOvpnFileRequest.ServerIp = ovpnFileConfig.VpnServerIp;
         generateOvpnFileRequest.ServerPort = ovpnFileConfig.VpnServerPort;
