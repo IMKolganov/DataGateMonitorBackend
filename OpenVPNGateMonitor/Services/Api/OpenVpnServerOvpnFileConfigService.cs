@@ -15,7 +15,7 @@ public class OpenVpnServerOvpnFileConfigService(
     public async Task<OpenVpnServerOvpnFileConfig> GetOpenVpnServerOvpnFileConfigByServerId(int vpnServerId, 
         CancellationToken ct)
     {
-        return await openVpnServerOvpnFileConfigQueryService.GetByServerIdIdAsync(vpnServerId, ct)
+        return await openVpnServerOvpnFileConfigQueryService.GetByVpnServerIdIdAsync(vpnServerId, ct)
                ?? throw new InvalidOperationException("OvpnFileConfig not found");
     }
     
@@ -24,7 +24,7 @@ public class OpenVpnServerOvpnFileConfigService(
     {
         var openVpnServerOvpnFileConfigRepository = unitOfWork.GetRepository<OpenVpnServerOvpnFileConfig>();
 
-        var existingConfig = await openVpnServerOvpnFileConfigQueryService.GetByServerIdIdAsync(
+        var existingConfig = await openVpnServerOvpnFileConfigQueryService.GetByVpnServerIdIdAsync(
             openVpnServerOvpnFileConfig.VpnServerId, ct);
 
         if (existingConfig != null)
@@ -46,7 +46,7 @@ public class OpenVpnServerOvpnFileConfigService(
 
         await unitOfWork.SaveChangesAsync(ct);
 
-        return await openVpnServerOvpnFileConfigQueryService.GetByServerIdIdAsync(
+        return await openVpnServerOvpnFileConfigQueryService.GetByVpnServerIdIdAsync(
                    openVpnServerOvpnFileConfig.VpnServerId, ct)
                ?? throw new InvalidOperationException($"OpenVPN server OVPN file configuration not found for " +
                                                       $"server ID {openVpnServerOvpnFileConfig.VpnServerId}.");
