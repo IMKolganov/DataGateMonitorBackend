@@ -1,4 +1,5 @@
-﻿using OpenVPNGateMonitor.DataBase.UnitOfWork;
+﻿using OpenVPNGateMonitor.DataBase.Services.Command;
+using OpenVPNGateMonitor.DataBase.UnitOfWork;
 using OpenVPNGateMonitor.Models;
 using OpenVPNGateMonitor.Services.BackgroundServices.Interfaces;
 
@@ -8,46 +9,50 @@ public class OpenVpnServerProcessor(
     ILogger<OpenVpnServerProcessor> logger,
     IServiceProvider serviceProvider)
 {
-    public async Task ProcessServerAsync(OpenVpnServer openVpnServer, CancellationToken cancellationToken)
+    public async Task ProcessServerAsync(OpenVpnServer openVpnServer, CancellationToken ct)
     {
-        logger.LogInformation($"OpenVpnServerProcessor: " +
-                              $"VpnServerId: {openVpnServer.Id}. Vpn Server Name: {openVpnServer.ServerName}. " +
-                               $"Processing OpenVPN server: {openVpnServer.ApiUrl}");
+        logger.LogInformation(
+            "OpenVpnServerProcessor: VpnServerId: {Id}. Name: {Name}. Processing: {Url}",
+            openVpnServer.Id, openVpnServer.ServerName, openVpnServer.ApiUrl);
+
         using var scope = serviceProvider.CreateScope();
-        // var unitOfWork = scope.ServiceProvider.GetRequiredService<IUnitOfWork>();
         var openVpnServerService = scope.ServiceProvider.GetRequiredService<IOpenVpnServerService>();
+        var serverCmd = scope.ServiceProvider.GetRequiredService<ICommandService<OpenVpnServer, int>>();
+
         try
         {
-            logger.LogInformation($"OpenVpnServerProcessor: " +
-                                  $"VpnServerId: {openVpnServer.Id}. " +
-                                  $"Vpn Server Name: {openVpnServer.ServerName}. " +
-                                  $"Saving OpenVPN server status for {openVpnServer.ApiUrl}");
-            await openVpnServerService.SaveOpenVpnServerStatusLogAsync(openVpnServer, cancellationToken);
+            logger.LogInformation("Saving status log for {Url}", openVpnServer.ApiUrl);
+            await openVpnServerService.SaveOpenVpnServerStatusLogAsync(openVpnServer, ct);
 
-            logger.LogInformation($"OpenVpnServerProcessor: " +
-                                  $"VpnServerId: {openVpnServer.Id}. " +
-                                  $"Vpn Server Name: {openVpnServer.ServerName}. " +
-                                  $"Saving connected clients for {openVpnServer.ApiUrl}");
-            await openVpnServerService.SaveConnectedClientsAsync(openVpnServer, cancellationToken);
-            
-            openVpnServer.IsOnline = true;
-            unitOfWork.MarkPropertyModified(openVpnServer, x => x.IsOnline);
-            await unitOfWork.SaveChangesAsync(cancellationToken);
+            logger.LogInformation("Saving connected clients for {Url}", openVpnServer.ApiUrl);
+            await openVpnServerService.SaveConnectedClientsAsync(openVpnServer, ct);
 
-            logger.LogInformation($"OpenVpnServerProcessor: " +
-                                  $"VpnServerId: {openVpnServer.Id}. " +
-                                  $"Vpn Server Name: {openVpnServer.ServerName}. " +
-                                  $"Finished processing OpenVPN server: {openVpnServer.ApiUrl}");
+            // Set IsOnline = true (server-side update, no entity tracking)
+            var now = DateTime.UtcNow;
+            await serverCmd.UpdateWhereAsync(
+                s => s.Id == openVpnServer.Id,
+                u => u.SetProperty(x => x.IsOnline, true)
+                    .SetProperty(x => x.LastUpdate, now),
+                ct);
+
+            logger.LogInformation(
+                "OpenVpnServerProcessor: VpnServerId: {Id}. Name: {Name}. Finished processing: {Url}",
+                openVpnServer.Id, openVpnServer.ServerName, openVpnServer.ApiUrl);
         }
         catch (Exception ex)
         {
-            openVpnServer.IsOnline = false;
-            unitOfWork.MarkPropertyModified(openVpnServer, x => x.IsOnline);
-            await unitOfWork.SaveChangesAsync(cancellationToken);
-            logger.LogError(ex, $"OpenVpnServerProcessor: " +
-                                $"VpnServerId: {openVpnServer.Id}. " +
-                                $"Vpn Server Name: {openVpnServer.ServerName}. " +
-                                $"OpenVpnServerProcessor: Error processing OpenVPN server {openVpnServer.ApiUrl}");
+            // Mark server offline on failure
+            var now = DateTime.UtcNow;
+            await serverCmd.UpdateWhereAsync(
+                s => s.Id == openVpnServer.Id,
+                u => u.SetProperty(x => x.IsOnline, false)
+                    .SetProperty(x => x.LastUpdate, now),
+                ct);
+
+            logger.LogError(ex,
+                "OpenVpnServerProcessor error. VpnServerId: {Id}. Name: {Name}. Url: {Url}",
+                openVpnServer.Id, openVpnServer.ServerName, openVpnServer.ApiUrl);
+
             throw;
         }
     }
