@@ -14,6 +14,9 @@ public class TelegramBotUserQueryService(IQueryService<TelegramBotUser, int> q) 
     public Task<TelegramBotUser?> GetByIdAsync(int id, CancellationToken ct)
         => q.FindByIdAsync(id, ct: ct);
 
+    public Task<bool> AnyByTelegramIdAsync(long telegramId, CancellationToken ct)
+        => q.AnyAsync(x=> x.TelegramId == telegramId, ct: ct);
+
     public Task<TelegramBotUser?> GetByTelegramIdAsync(long telegramId, CancellationToken ct)
         => q.Query().FirstOrDefaultAsync(x => x.TelegramId == telegramId, ct);
     

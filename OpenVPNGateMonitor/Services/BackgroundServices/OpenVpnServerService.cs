@@ -1,8 +1,8 @@
 ﻿using System.Security.Cryptography;
 using System.Text;
 using System.Text.RegularExpressions;
-using Microsoft.EntityFrameworkCore;
-using OpenVPNGateMonitor.DataBase.UnitOfWork;
+using OpenVPNGateMonitor.DataBase.Services.Query.OpenVpnServerClientTable;
+using OpenVPNGateMonitor.DataBase.Services.Query.TelegramBotUserTable;
 using OpenVPNGateMonitor.Models;
 using OpenVPNGateMonitor.Models.Helpers.Services;
 using OpenVPNGateMonitor.Services.BackgroundServices.Interfaces;
@@ -17,6 +17,8 @@ public class OpenVpnServerService(
     IOpenVpnSummaryStatService openVpnSummaryStatService,
     IOpenVpnVersionService openVpnVersionService,
     IOpenVpnStateService openVpnStateService,
+    IOpenVpnServerClientQueryService openVpnServerClientQueryService,
+    ITelegramBotUserQueryService telegramBotUserQueryService,
     IExternalIpAddressService externalIpAddressService)
     : IOpenVpnServerService
 {
@@ -217,11 +219,10 @@ public class OpenVpnServerService(
         return sessionId;
     }
 
-    private async Task SetDisconnectForAllUsers(int vpnServerId, CancellationToken cancellationToken)
+    private async Task SetDisconnectForAllUsers(int vpnServerId, CancellationToken ct)
     {
-        var existingAllOpenVpnServerClient = await unitOfWork.GetQuery<OpenVpnServerClient>()
-            .AsQueryable().Where(x => x.IsConnected && x.VpnServerId == vpnServerId)
-            .ToListAsync(cancellationToken);
+        var existingAllOpenVpnServerClient = 
+            await openVpnServerClientQueryService.GetAllConnectedByVpnServerIdAsync(vpnServerId, ct);
 
         foreach (var client in existingAllOpenVpnServerClient)
         {
@@ -231,7 +232,7 @@ public class OpenVpnServerService(
                                $"Marked {existingAllOpenVpnServerClient.Count} existing clients as disconnected.");
     }
 
-    private async Task<string?> TryParseExternalIdAsync(string commonName, CancellationToken cancellationToken = default)
+    private async Task<string?> TryParseExternalIdAsync(string commonName, CancellationToken ct = default)
     {
         var digitParts = Regex.Matches(commonName, @"\d+")
             .Select(m => m.Value)
@@ -242,9 +243,7 @@ public class OpenVpnServerService(
             if (!long.TryParse(candidate, out var id))
                 continue;
 
-            var exists = await unitOfWork.GetQuery<TelegramBotUser>()
-                .AsQueryable()
-                .AnyAsync(x => x.TelegramId == id, cancellationToken);
+            var exists = await telegramBotUserQueryService.AnyByTelegramIdAsync(id, ct);
 
             if (exists)
                 return candidate;
