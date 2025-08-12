@@ -1,6 +1,7 @@
 ﻿using System.Text.RegularExpressions;
 using Mapster;
 using Microsoft.EntityFrameworkCore;
+using OpenVPNGateMonitor.DataBase.Services.Query.OpenVpnServerTable;
 using OpenVPNGateMonitor.DataBase.UnitOfWork;
 using OpenVPNGateMonitor.Models;
 using OpenVPNGateMonitor.Services.DataGateCertManager.Interfaces;
@@ -11,7 +12,9 @@ using OpenVPNGateMonitor.SharedModels.DataGateMonitorBackend.OpenVpnFiles.Respon
 namespace OpenVPNGateMonitor.Services.DataGateCertManager;
 
 public class OvpnFileApiService(IUnitOfWork unitOfWork, IOvpnFileApiClient ovpnFileApiClient, 
-    ILogger<OvpnFileApiClient> logger, IConfiguration configuration) : IOvpnFileApiService
+    ILogger<OvpnFileApiClient> logger, IConfiguration configuration,
+    
+    IOpenVpnServerQueryService openVpnServerQueryService) : IOvpnFileApiService
 {
     private const int DefaultTokenExpireDays = 1;
 
@@ -279,11 +282,10 @@ public class OvpnFileApiService(IUnitOfWork unitOfWork, IOvpnFileApiClient ovpnF
             .OrderDescending().FirstAsync(cancellationToken);
     }
     
-    private async Task<string> MakeFriendlyName(int vpnServerId, string commonName, CancellationToken cancellationToken)
+    private async Task<string> MakeFriendlyName(int vpnServerId, string commonName, CancellationToken ct)
     {
-        // var vpnServer = await unitOfWork.GetQuery<OpenVpnServer>().AsQueryable()
-        //     .Where(x => x.Id == vpnServerId)
-        //     .FirstAsync(cancellationToken);
+        var vpnServer = await openVpnServerQueryService.GetByIdAsync(vpnServerId, ct)
+                        ?? throw new InvalidOperationException("OpenVPN Server not found");
 
         var lastNumber = ExtractLastNumber(commonName);
 

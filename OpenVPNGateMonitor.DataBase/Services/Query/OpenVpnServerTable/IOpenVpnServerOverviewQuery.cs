@@ -2,7 +2,7 @@
 
 namespace OpenVPNGateMonitor.DataBase.Services.Query.OpenVpnServerTable;
 
-public interface IOpenVpnOverviewQuery
+public interface IOpenVpnServerOverviewQuery
 {
     Task<List<OpenVpnServerWithStatus>> GetAllOpenVpnServersWithStatus(CancellationToken ct);
     Task<OpenVpnServerWithStatus> GetOpenVpnServerWithStatus(int vpnServerId, CancellationToken ct);

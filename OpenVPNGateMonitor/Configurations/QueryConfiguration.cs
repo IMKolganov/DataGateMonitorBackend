@@ -8,6 +8,6 @@ public static class QueryConfiguration
     public static void ConfigureQuery(this IServiceCollection services)
     {
         services.AddScoped(typeof(IQueryService<,>), typeof(EfQueryService<,>));
-        services.AddScoped<IOpenVpnOverviewQuery, OpenVpnOverviewQuery>();
+        services.AddScoped<IOpenVpnServerOverviewQuery, OpenVpnServerOverviewQuery>();
     }
 }
