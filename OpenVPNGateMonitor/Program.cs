@@ -18,7 +18,7 @@ var jwtSecret = JwtSecretLoaderConfiguration.LoadOrGenerateSecret(logger);
 builder.Configuration["Jwt:Secret"] = jwtSecret;
 
 builder.Services.ConfigureServices(builder.Configuration);
-builder.Services.ConfigureQuery();
+builder.Services.ConfigureQueryCommand();
 builder.Services.ConfigureTelegramServices();
 builder.Services.ConfigureGeoLiteServices();
 builder.Services.ConfigureAuthServices();
