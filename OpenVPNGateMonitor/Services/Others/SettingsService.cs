@@ -6,13 +6,6 @@ namespace OpenVPNGateMonitor.Services.Others;
 
 public class SettingsService : ISettingsService
 {
-    private readonly IUnitOfWork _unitOfWork;
-
-    public SettingsService(IUnitOfWork unitOfWork)
-    {
-        _unitOfWork = unitOfWork;
-    }
-
     public async Task<T?> GetValueAsync<T>(string key, CancellationToken cancellationToken)
     {
         var setting = await _unitOfWork.GetQuery<Setting>()

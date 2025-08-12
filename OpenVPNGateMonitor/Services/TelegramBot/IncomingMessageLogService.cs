@@ -8,8 +8,7 @@ using OpenVPNGateMonitor.SharedModels.DataGateMonitorBackend.TelegramBotIncoming
 
 namespace OpenVPNGateMonitor.Services.TelegramBot;
 
-public class IncomingMessageLogService(ILogger<IncomingMessageLogService> logger, 
-    IUnitOfWork unitOfWork) : IIncomingMessageLogService
+public class IncomingMessageLogService(ILogger<IncomingMessageLogService> logger) : IIncomingMessageLogService
 {
     public async Task<AddMessageResponse> SaveMessageAsync(AddMessageRequest request, CancellationToken cancellationToken)
     {

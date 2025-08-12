@@ -17,7 +17,6 @@ public class OpenVpnServerService(
     IOpenVpnSummaryStatService openVpnSummaryStatService,
     IOpenVpnVersionService openVpnVersionService,
     IOpenVpnStateService openVpnStateService,
-    IUnitOfWork unitOfWork,
     IExternalIpAddressService externalIpAddressService)
     : IOpenVpnServerService
 {

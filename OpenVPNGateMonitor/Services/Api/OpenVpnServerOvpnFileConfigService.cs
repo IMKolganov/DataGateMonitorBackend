@@ -6,8 +6,7 @@ using OpenVPNGateMonitor.Services.Api.Interfaces;
 namespace OpenVPNGateMonitor.Services.Api;
 
 public class OpenVpnServerOvpnFileConfigService(
-    ILogger<OpenVpnServerOvpnFileConfigService> logger,
-    IUnitOfWork unitOfWork)
+    ILogger<OpenVpnServerOvpnFileConfigService> logger)
     : IOpenVpnServerOvpnFileConfigService
 {
     private readonly ILogger<OpenVpnServerOvpnFileConfigService> _logger = logger;

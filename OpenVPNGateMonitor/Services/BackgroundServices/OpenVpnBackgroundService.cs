@@ -176,7 +176,7 @@ public class OpenVpnBackgroundService : BackgroundService, IOpenVpnBackgroundSer
         using var scope = _serviceProvider.CreateScope();
         try
         {
-            var unitOfWork = scope.ServiceProvider.GetRequiredService<IUnitOfWork>();
+            // var unitOfWork = scope.ServiceProvider.GetRequiredService<IUnitOfWork>();
             var settingsService = new SettingsService(unitOfWork);
             return await GetPollingIntervalSecondsAsync(settingsService, cancellationToken);
         }

@@ -4,12 +4,12 @@ namespace OpenVPNGateMonitor.DataBase.Services.Query.OpenVpnServerTable;
 
 public interface IOpenVpnServerOverviewQuery
 {
-    Task<List<OpenVpnServerWithStatus>> GetAllOpenVpnServersWithStatus(CancellationToken ct);
-    Task<OpenVpnServerWithStatus> GetOpenVpnServerWithStatus(int vpnServerId, CancellationToken ct);
+    Task<List<OpenVpnServerWithStatus>> GetAllOpenVpnServersWithStatusAsync(CancellationToken ct);
+    Task<OpenVpnServerWithStatus> GetOpenVpnServerWithStatusAsync(int vpnServerId, CancellationToken ct);
 
-    Task<VpnClientInfoResponseList> GetAllConnectedOpenVpnServerClients(
+    Task<VpnClientInfoResponseList> GetAllConnectedOpenVpnServerClientsAsync(
         int vpnServerId, int page, int pageSize, CancellationToken ct);
 
-    Task<VpnClientInfoResponseList> GetAllHistoryOpenVpnServerClients(
+    Task<VpnClientInfoResponseList> GetAllHistoryOpenVpnServerClientsAsync(
         int vpnServerId, int page, int pageSize, CancellationToken ct);
 }
