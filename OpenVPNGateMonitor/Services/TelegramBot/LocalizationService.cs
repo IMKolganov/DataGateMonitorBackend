@@ -1,13 +1,15 @@
 ﻿using Mapster;
-using Microsoft.EntityFrameworkCore;
-using OpenVPNGateMonitor.DataBase.UnitOfWork;
+using OpenVPNGateMonitor.DataBase.Services.Query.LocalizationTextTable;
+using OpenVPNGateMonitor.DataBase.Services.Query.TelegramUserLanguagePreferenceTable;
 using OpenVPNGateMonitor.Models;
 using OpenVPNGateMonitor.Services.TelegramBot.Interfaces;
 using OpenVPNGateMonitor.SharedModels.Enums;
 
 namespace OpenVPNGateMonitor.Services.TelegramBot;
 
-public class LocalizationService(ILogger<LocalizationService> logger) : ILocalizationService
+public class LocalizationService(ILogger<LocalizationService> logger,
+    ITelegramUserLanguagePreferenceQueryService telegramUserLanguagePreferenceQueryService,
+    ILocalizationTextQueryService localizationTextQueryService) : ILocalizationService
 {
     public async Task<TelegramUserLanguagePreference> SetTelegramUserLanguageAsync(
         TelegramUserLanguagePreference request, CancellationToken cancellationToken)
@@ -50,45 +52,36 @@ public class LocalizationService(ILogger<LocalizationService> logger) : ILocaliz
                                                                      $"{request.TelegramId}.");
     }
 
-    public async Task<Language> GetTelegramUserLanguageAsync(long telegramId, CancellationToken cancellationToken)
+    public async Task<Language> GetTelegramUserLanguageAsync(long telegramId, CancellationToken ct)
     {
-        var userPreference = await unitOfWork.GetQuery<TelegramUserLanguagePreference>()
-            .AsQueryable()
-            .FirstOrDefaultAsync(x => x.TelegramId == telegramId, 
-                cancellationToken: cancellationToken);
+        var userPreference = await telegramUserLanguagePreferenceQueryService.GetByTelegramId(telegramId, ct);
 
         return userPreference?.PreferredLanguage ?? Language.English;
     }
 
-    public async Task<bool> IsExistTelegramUserLanguagePreferenceAsync(long telegramId, CancellationToken cancellationToken)
+    public async Task<bool> IsExistTelegramUserLanguagePreferenceAsync(long telegramId, CancellationToken ct)
     {
         logger.LogInformation("Checking database for TelegramId: {TelegramId}.", telegramId);
 
-        var userLanguagePreference = await unitOfWork.GetQuery<TelegramUserLanguagePreference>()
-            .AsQueryable().AnyAsync(x => x.TelegramId == telegramId,  cancellationToken);
-
+        var userLanguagePreference = 
+            await telegramUserLanguagePreferenceQueryService.AnyByTelegramId(telegramId, ct);
         logger.LogInformation($"Database check for TelegramId {telegramId}: {userLanguagePreference}");
 
         return userLanguagePreference;
     }
 
-    public async Task<string> GetTextForTelegramUser(string key, long telegramId, CancellationToken cancellationToken, 
+    public async Task<string> GetTextForTelegramUser(string key, long telegramId, CancellationToken ct, 
         Language? language = null)
     {
         if (language == null)
         {
-            var telegramUserLanguagePreference = await unitOfWork.GetQuery<TelegramUserLanguagePreference>()
-                .AsQueryable()
-                .FirstOrDefaultAsync(x => x.TelegramId == telegramId, 
-                    cancellationToken: cancellationToken);
+            var telegramUserLanguagePreference = 
+                await telegramUserLanguagePreferenceQueryService.GetByTelegramId(telegramId, ct);
+            
             language = telegramUserLanguagePreference?.PreferredLanguage ?? Language.English;
         }
 
-        var text = await unitOfWork.GetQuery<LocalizationText>()
-            .AsQueryable()
-            .Where(x => x.Key == key && x.Language == language)
-            .Select(x => x.Text)
-            .FirstOrDefaultAsync(cancellationToken: cancellationToken);
+        var text = await localizationTextQueryService.GetTextValueByKeyAndLanguageAsync(key, (Language)language, ct);
 
         return text ?? $"[Translation missing for key: {key}, language: {language}]";
     }

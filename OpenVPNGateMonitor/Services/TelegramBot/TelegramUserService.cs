@@ -1,36 +1,44 @@
 ﻿using Mapster;
+using OpenVPNGateMonitor.DataBase.Services.Command;
 using OpenVPNGateMonitor.DataBase.Services.Query.TelegramBotUserTable;
 using OpenVPNGateMonitor.Models;
 using OpenVPNGateMonitor.Services.TelegramBot.Interfaces;
 
 namespace OpenVPNGateMonitor.Services.TelegramBot;
 
-public class TelegramUserService(ILogger<TelegramUserService> logger,
-    ITelegramBotUserQueryService telegramBotUserQueryService) : ITelegramUserService
+public class TelegramUserService(
+    ILogger<TelegramUserService> logger,
+    ITelegramBotUserQueryService telegramBotUserQueryService,
+    ICommandService<TelegramBotUser, int> telegramBotUserCommandService) : ITelegramUserService
 {
-    public async Task<TelegramBotUser> RegisterUserAsync(TelegramBotUser telegramBotUserRequest, 
+
+    public async Task<TelegramBotUser> RegisterUserAsync(
+        TelegramBotUser telegramBotUserRequest,
         CancellationToken ct)
     {
-        var telegramUserRepository = unitOfWork.GetRepository<TelegramBotUser>();
-        var telegramBotUser = await telegramBotUserQueryService.GetByTelegramIdAsync(
-            telegramBotUserRequest.TelegramId, ct);
+        var telegramBotUser = await telegramBotUserQueryService
+            .GetByTelegramIdAsync(telegramBotUserRequest.TelegramId, ct);
+
+        var now = DateTime.UtcNow;
 
         if (telegramBotUser == null)
         {
             var user = telegramBotUserRequest.Adapt<TelegramBotUser>();
+            user.CreateDate = now;
+            user.LastUpdate = now;
 
-            await telegramUserRepository.AddAsync(user, ct);
-            await unitOfWork.SaveChangesAsync(ct);
-            logger.LogInformation($"User {telegramBotUserRequest.Username} registered");
+            await telegramBotUserCommandService.AddAsync(user, saveChanges: true, ct);
+            logger.LogInformation("User {TelegramId} registered", telegramBotUserRequest.TelegramId);
+            return user;
         }
-        
-        telegramBotUser = await telegramBotUserQueryService.GetByTelegramIdAsync(
-            telegramBotUserRequest.TelegramId, ct);
 
-        return telegramBotUser ?? 
-               throw new InvalidOperationException($"Something went wrong when " + 
-                                                   $"try to add new " +
-                                                   $"TelegramBotUser: {telegramBotUserRequest.TelegramId}");
+        telegramBotUserRequest.Adapt(telegramBotUser);
+        telegramBotUser.LastUpdate = now;
+
+        await telegramBotUserCommandService.UpdateAsync(telegramBotUser, saveChanges: true, ct);
+        logger.LogInformation("User {TelegramId} updated", telegramBotUserRequest.TelegramId);
+
+        return telegramBotUser;
     }
 
     public Task<TelegramBotUser> DeleteUserAsync(TelegramBotUser telegramBotUserRequest,
@@ -42,118 +50,115 @@ public class TelegramUserService(ILogger<TelegramUserService> logger,
     public async Task<List<TelegramBotUser>?> GetAdminsAsync(CancellationToken ct)
     {
         var telegramBotUser = await telegramBotUserQueryService.GetAllAdminsAsync(ct);
-        
+
         if (telegramBotUser is { Count: 0 })
         {
             logger.LogError("Admins for telegram bot not found, returning empty list");
             return new List<TelegramBotUser>();
         }
-        
+
         return telegramBotUser;
     }
-    
+
     public async Task<List<TelegramBotUser>?> GetAllUsersAsync(CancellationToken ct)
     {
         var telegramBotUser = await telegramBotUserQueryService.GetAllAsync(ct);
-        return telegramBotUser.OrderBy(x=>x.Id).ToList();
+        return telegramBotUser.OrderBy(x => x.Id).ToList();
     }
-    
+
     public async Task<TelegramBotUser?> GetUserByTelegramIdAsync(long telegramId, CancellationToken ct)
     {
         var user = await telegramBotUserQueryService.GetByTelegramIdAsync(telegramId, ct);
 
         return user;
     }
-    
+
     public async Task<bool> BlockUserAsync(long telegramId, CancellationToken ct)
     {
-        var repo = unitOfWork.GetRepository<TelegramBotUser>();
         var user = await telegramBotUserQueryService.GetByTelegramIdAsync(telegramId, ct);
-        
         if (user == null)
         {
-            logger.LogWarning($"Attempted to block non-existent user with TelegramId: {telegramId}");
+            logger.LogWarning("Attempted to block non-existent user with TelegramId: {TelegramId}", telegramId);
             return false;
         }
 
         if (user.IsBlocked)
         {
-            logger.LogInformation($"User {telegramId} is already blocked.");
+            logger.LogInformation("User {TelegramId} is already blocked.", telegramId);
             return true;
         }
 
         user.IsBlocked = true;
-        await unitOfWork.SaveChangesAsync(ct);
-        logger.LogInformation($"User {telegramId} has been blocked.");
+        user.LastUpdate = DateTime.UtcNow;
+        await telegramBotUserCommandService.UpdateAsync(user, saveChanges: true, ct);
+        logger.LogInformation("User {TelegramId} has been blocked.", telegramId);
         return true;
     }
 
     public async Task<bool> UnblockUserAsync(long telegramId, CancellationToken ct)
     {
-        var repo = unitOfWork.GetRepository<TelegramBotUser>();
         var user = await telegramBotUserQueryService.GetByTelegramIdAsync(telegramId, ct);
-        
         if (user == null)
         {
-            logger.LogWarning($"Attempted to unblock non-existent user with TelegramId: {telegramId}");
+            logger.LogWarning("Attempted to unblock non-existent user with TelegramId: {TelegramId}", telegramId);
             return false;
         }
 
         if (!user.IsBlocked)
         {
-            logger.LogInformation($"User {telegramId} is not blocked.");
+            logger.LogInformation("User {TelegramId} is not blocked.", telegramId);
             return true;
         }
 
         user.IsBlocked = false;
-        await unitOfWork.SaveChangesAsync(ct);
-        logger.LogInformation($"User {telegramId} has been unblocked.");
+        user.LastUpdate = DateTime.UtcNow;
+        await telegramBotUserCommandService.UpdateAsync(user, saveChanges: true, ct);
+        logger.LogInformation("User {TelegramId} has been unblocked.", telegramId);
         return true;
     }
-    
+
     public async Task<bool> SetAdminAsync(long telegramId, CancellationToken ct)
     {
-        var repo = unitOfWork.GetRepository<TelegramBotUser>();
         var user = await telegramBotUserQueryService.GetByTelegramIdAsync(telegramId, ct);
-
         if (user == null)
         {
-            logger.LogWarning($"Attempted to set admin for non-existent user with TelegramId: {telegramId}");
+            logger.LogWarning("Attempted to set admin for non-existent user with TelegramId: {TelegramId}", telegramId);
             return false;
         }
 
         if (user.IsAdmin)
         {
-            logger.LogInformation($"User {telegramId} is already admin.");
+            logger.LogInformation("User {TelegramId} is already admin.", telegramId);
             return true;
         }
 
         user.IsAdmin = true;
-        await unitOfWork.SaveChangesAsync(ct);
-        logger.LogInformation($"User {telegramId} has been set as admin.");
+        user.LastUpdate = DateTime.UtcNow;
+        await telegramBotUserCommandService.UpdateAsync(user, saveChanges: true, ct);
+        logger.LogInformation("User {TelegramId} has been set as admin.", telegramId);
         return true;
     }
 
     public async Task<bool> UnsetAdminAsync(long telegramId, CancellationToken ct)
     {
-        var repo = unitOfWork.GetRepository<TelegramBotUser>();
         var user = await telegramBotUserQueryService.GetByTelegramIdAsync(telegramId, ct);
-
         if (user == null)
         {
-            logger.LogWarning($"Attempted to unset admin for non-existent user with TelegramId: {telegramId}");
+            logger.LogWarning("Attempted to unset admin for non-existent user with TelegramId: {TelegramId}",
+                telegramId);
             return false;
         }
 
         if (!user.IsAdmin)
         {
-            logger.LogInformation($"User {telegramId} is not an admin.");
+            logger.LogInformation("User {TelegramId} is not an admin.", telegramId);
             return true;
         }
 
         user.IsAdmin = false;
-        await unitOfWork.SaveChangesAsync(ct);
-        logger.LogInformation($"Admin rights removed from user {telegramId}.");
+        user.LastUpdate = DateTime.UtcNow;
+        await telegramBotUserCommandService.UpdateAsync(user, saveChanges: true, ct);
+        logger.LogInformation("Admin rights removed from user {TelegramId}.", telegramId);
         return true;
     }
 }
