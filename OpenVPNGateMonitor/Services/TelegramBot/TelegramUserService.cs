@@ -152,7 +152,7 @@ public class TelegramUserService(ILogger<TelegramUserService> logger,
         }
 
         user.IsAdmin = false;
-        await unitOfWork.SaveChangesAsync(cancellationToken);
+        await unitOfWork.SaveChangesAsync(ct);
         logger.LogInformation($"Admin rights removed from user {telegramId}.");
         return true;
     }
