@@ -1,4 +1,5 @@
-﻿using OpenVPNGateMonitor.Services.Api;
+﻿using OpenVPNGateMonitor.DataBase.Services.Query;
+using OpenVPNGateMonitor.Services.Api;
 using OpenVPNGateMonitor.Services.Api.Interfaces;
 using OpenVPNGateMonitor.Services.BackgroundServices;
 using OpenVPNGateMonitor.Services.BackgroundServices.Interfaces;
@@ -70,5 +71,7 @@ public static class ServiceConfiguration
         services.AddSingleton<IOpenVpnMicroserviceClientFactory, OpenVpnMicroserviceClientFactory>();
 
         #endregion
+        
+        services.AddScoped(typeof(IQueryService<,>), typeof(EfQueryService<,>));
     }
 }

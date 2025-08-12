@@ -281,9 +281,9 @@ public class OvpnFileApiService(IUnitOfWork unitOfWork, IOvpnFileApiClient ovpnF
     
     private async Task<string> MakeFriendlyName(int vpnServerId, string commonName, CancellationToken cancellationToken)
     {
-        var vpnServer = await unitOfWork.GetQuery<OpenVpnServer>().AsQueryable()
-            .Where(x => x.Id == vpnServerId)
-            .FirstAsync(cancellationToken);
+        // var vpnServer = await unitOfWork.GetQuery<OpenVpnServer>().AsQueryable()
+        //     .Where(x => x.Id == vpnServerId)
+        //     .FirstAsync(cancellationToken);
 
         var lastNumber = ExtractLastNumber(commonName);
 

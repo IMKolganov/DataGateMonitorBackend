@@ -64,7 +64,7 @@ public class OpenVpnBackgroundService : BackgroundService, IOpenVpnBackgroundSer
             _logger.LogInformation("Starting OpenVPN task execution...");
             using var scope = _serviceProvider.CreateScope();
             var unitOfWork = scope.ServiceProvider.GetRequiredService<IUnitOfWork>();
-            var openVpnServers = unitOfWork.GetQuery<OpenVpnServer>().AsQueryable().ToList();
+            // var openVpnServers = unitOfWork.GetQuery<OpenVpnServer>().AsQueryable().ToList();
             _statusManager.ClearAllStatuses();
 
             await Parallel.ForEachAsync(openVpnServers, cancellationToken, async (server, ct) =>

@@ -43,9 +43,9 @@ public class OpenVpnEventBackgroundService(
             using var scope = scopeFactory.CreateScope();
             var unitOfWork = scope.ServiceProvider.GetRequiredService<IUnitOfWork>();
 
-            var servers = await unitOfWork.GetQuery<OpenVpnServer>()
-                .AsQueryable()
-                .ToListAsync(cancellationToken);
+            // var servers = await unitOfWork.GetQuery<OpenVpnServer>()
+            //     .AsQueryable()
+            //     .ToListAsync(cancellationToken);
 
             foreach (var server in servers)
             {

@@ -119,10 +119,10 @@ public class VpnDataService(
 
     public async Task<List<OpenVpnServerWithStatus>> GetAllOpenVpnServersWithStatus(CancellationToken cancellationToken)
     {
-        var servers = await unitOfWork.GetQuery<OpenVpnServer>()
-            .AsQueryable()
-            .OrderBy(x => x.Id)
-            .ToListAsync(cancellationToken);
+        // var servers = await unitOfWork.GetQuery<OpenVpnServer>()
+        //     .AsQueryable()
+        //     .OrderBy(x => x.Id)
+        //     .ToListAsync(cancellationToken);
 
         var serverIds = servers.Select(s => s.Id).ToList();
 
@@ -184,9 +184,9 @@ public class VpnDataService(
 
     public async Task<OpenVpnServerWithStatus> GetOpenVpnServerWithStatus(int vpnServerId, CancellationToken cancellationToken)
     {
-        var openVpnServer = await unitOfWork.GetQuery<OpenVpnServer>()
-            .AsQueryable()
-            .FirstOrDefaultAsync(x => x.Id == vpnServerId, cancellationToken);
+        // var openVpnServer = await unitOfWork.GetQuery<OpenVpnServer>()
+        //     .AsQueryable()
+        //     .FirstOrDefaultAsync(x => x.Id == vpnServerId, cancellationToken);
 
         if (openVpnServer is null)
             throw new NullReferenceException("OpenVPN Server not found");
@@ -231,18 +231,18 @@ public class VpnDataService(
 
     public async Task<OpenVpnServer> GetOpenVpnServer(int vpnServerId, CancellationToken cancellationToken)
     {
-        return await unitOfWork.GetQuery<OpenVpnServer>()
-            .AsQueryable()
-            .Where(x=> x.Id == vpnServerId)
-            .OrderBy(x=>x.Id)
-            .FirstOrDefaultAsync(cancellationToken) ?? throw new InvalidOperationException("OpenVPN Server not found");
+        // return await unitOfWork.GetQuery<OpenVpnServer>()
+        //     .AsQueryable()
+        //     .Where(x=> x.Id == vpnServerId)
+        //     .OrderBy(x=>x.Id)
+        //     .FirstOrDefaultAsync(cancellationToken) ?? throw new InvalidOperationException("OpenVPN Server not found");
     }
 
     public async Task<List<OpenVpnServer>> GetAllServers(CancellationToken cancellationToken)
     {
-        return await unitOfWork.GetQuery<OpenVpnServer>()
-            .AsQueryable()
-            .OrderBy(x=>x.Id).ToListAsync(cancellationToken);
+        // return await unitOfWork.GetQuery<OpenVpnServer>()
+        //     .AsQueryable()
+        //     .OrderBy(x=>x.Id).ToListAsync(cancellationToken);
     }
     
     public async Task<OpenVpnServer> AddOpenVpnServer(OpenVpnServer openVpnServer, CancellationToken cancellationToken)
@@ -266,10 +266,10 @@ public class VpnDataService(
         await unitOfWork.SaveChangesAsync(cancellationToken);
         await transaction.CommitAsync(cancellationToken);
 
-        return await unitOfWork.GetQuery<OpenVpnServer>()
-            .AsQueryable()
-            .Where(x => x.Id == openVpnServer.Id)
-            .FirstOrDefaultAsync(cancellationToken: cancellationToken) ?? throw new InvalidOperationException();
+        // return await unitOfWork.GetQuery<OpenVpnServer>()
+        //     .AsQueryable()
+        //     .Where(x => x.Id == openVpnServer.Id)
+        //     .FirstOrDefaultAsync(cancellationToken: cancellationToken) ?? throw new InvalidOperationException();
     }
 
     public async Task<OpenVpnServer> UpdateOpenVpnServer(OpenVpnServer openVpnServer, CancellationToken cancellationToken)
@@ -292,10 +292,10 @@ public class VpnDataService(
         await unitOfWork.SaveChangesAsync(cancellationToken);
         await transaction.CommitAsync(cancellationToken);
 
-        return await unitOfWork.GetQuery<OpenVpnServer>()
-            .AsQueryable()
-            .Where(x => x.Id == openVpnServer.Id)
-            .FirstOrDefaultAsync(cancellationToken: cancellationToken) ?? throw new InvalidOperationException();
+        // return await unitOfWork.GetQuery<OpenVpnServer>()
+        //     .AsQueryable()
+        //     .Where(x => x.Id == openVpnServer.Id)
+        //     .FirstOrDefaultAsync(cancellationToken: cancellationToken) ?? throw new InvalidOperationException();
     }
 
     public async Task<bool> DeleteOpenVpnServer(int vpnServerId, CancellationToken cancellationToken)
@@ -327,10 +327,10 @@ public class VpnDataService(
     
     private async Task UnsetPreviousDefaultServer(CancellationToken cancellationToken, int exceptId = 0)
     {
-        var servers = await unitOfWork.GetQuery<OpenVpnServer>()
-            .AsQueryable()
-            .Where(x => x.IsDefault && x.Id != exceptId)
-            .ToListAsync(cancellationToken);
+        // var servers = await unitOfWork.GetQuery<OpenVpnServer>()
+        //     .AsQueryable()
+        //     .Where(x => x.IsDefault && x.Id != exceptId)
+        //     .ToListAsync(cancellationToken);
 
         if (servers.Count == 0)
             return;
