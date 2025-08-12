@@ -44,11 +44,3 @@ public interface IQueryService<TEntity, TKey> where TEntity : BaseEntity<TKey>
         bool asNoTracking = true,
         params Expression<Func<TEntity, object>>[] includes);
 }
-
-public sealed class PagedResult<T>
-{
-    public int Page { get; init; }
-    public int PageSize { get; init; }
-    public int TotalCount { get; init; }
-    public List<T> Items { get; init; } = new();
-}

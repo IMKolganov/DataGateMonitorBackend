@@ -18,6 +18,7 @@
     </ItemGroup>
 
     <ItemGroup>
+      <Folder Include="Services\Query\LocalizationTextToken\" />
       <Folder Include="Stores\" />
     </ItemGroup>
 
