@@ -129,7 +129,7 @@ public class TelegramUserService(ILogger<TelegramUserService> logger,
         }
 
         user.IsAdmin = true;
-        await unitOfWork.SaveChangesAsync(cancellationToken);
+        await unitOfWork.SaveChangesAsync(ct);
         logger.LogInformation($"User {telegramId} has been set as admin.");
         return true;
     }

@@ -2,7 +2,6 @@
 using System.Text.Json;
 using OpenVPNGateMonitor.DataBase.Services.Query.OpenVpnServerTable;
 using OpenVPNGateMonitor.Services.Api.Auth.Interfaces;
-using OpenVPNGateMonitor.Services.Api.Interfaces;
 using OpenVPNGateMonitor.Services.DataGateCertManager.Interfaces;
 using OpenVPNGateMonitor.SharedModels.DataGateCertManager.Cert.Responses;
 using OpenVPNGateMonitor.SharedModels.DataGateMonitorBackend.OpenVpnServerCerts.Requests;
@@ -12,7 +11,6 @@ namespace OpenVPNGateMonitor.Services.DataGateCertManager;
 
 public class CertApiClient(
     IHttpClientFactory httpClientFactory,
-    IVpnDataService vpnDataService,
     IMicroserviceTokenService tokenService,
     IOpenVpnServerQueryService openVpnServerQueryService,
     ILogger<CertApiClient> logger)

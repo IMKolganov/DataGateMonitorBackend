@@ -1,6 +1,4 @@
-﻿using Microsoft.EntityFrameworkCore;
-using OpenVPNGateMonitor.DataBase.UnitOfWork;
-using OpenVPNGateMonitor.Models;
+﻿using OpenVPNGateMonitor.Models;
 
 namespace OpenVPNGateMonitor.Services.Others;
 
