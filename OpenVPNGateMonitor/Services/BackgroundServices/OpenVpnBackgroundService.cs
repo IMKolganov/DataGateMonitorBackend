@@ -1,4 +1,5 @@
-﻿using OpenVPNGateMonitor.DataBase.UnitOfWork;
+﻿using OpenVPNGateMonitor.DataBase.Services.Query.OpenVpnServerTable;
+using OpenVPNGateMonitor.DataBase.UnitOfWork;
 using OpenVPNGateMonitor.Models;
 using OpenVPNGateMonitor.Models.Helpers.Background;
 using OpenVPNGateMonitor.Services.BackgroundServices.Interfaces;
@@ -63,8 +64,8 @@ public class OpenVpnBackgroundService : BackgroundService, IOpenVpnBackgroundSer
         {
             _logger.LogInformation("Starting OpenVPN task execution...");
             using var scope = _serviceProvider.CreateScope();
-            var unitOfWork = scope.ServiceProvider.GetRequiredService<IUnitOfWork>();
-            // var openVpnServers = unitOfWork.GetQuery<OpenVpnServer>().AsQueryable().ToList();
+            var openVpnServerQueryService = scope.ServiceProvider.GetRequiredService<IOpenVpnServerQueryService>();
+            var openVpnServers = await openVpnServerQueryService.GetAllAsync(cancellationToken);
             _statusManager.ClearAllStatuses();
 
             await Parallel.ForEachAsync(openVpnServers, cancellationToken, async (server, ct) =>
