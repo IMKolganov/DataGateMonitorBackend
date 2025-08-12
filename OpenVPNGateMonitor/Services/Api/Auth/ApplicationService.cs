@@ -1,19 +1,15 @@
-using Microsoft.EntityFrameworkCore;
-using OpenVPNGateMonitor.DataBase.UnitOfWork;
+using OpenVPNGateMonitor.DataBase.Services.Query.ClientApplicationTable;
 using OpenVPNGateMonitor.Models;
 using OpenVPNGateMonitor.Services.Api.Auth.Interfaces;
 
 namespace OpenVPNGateMonitor.Services.Api.Auth;
 
-public class ApplicationService() : IApplicationService
+public class ApplicationService(IClientApplicationQueryService clientApplicationQueryService) : IApplicationService
 {
-    public async Task<ClientApplication> RegisterApplicationAsync(string name, CancellationToken cancellationToken)
+    public async Task<ClientApplication> RegisterApplicationAsync(string name, CancellationToken ct)
     {
-        var existClientApplication = await unitOfWork.GetQuery<ClientApplication>()
-            .AsQueryable()
-            .Where(x => x.Name == name)
-            .FirstOrDefaultAsync(cancellationToken: cancellationToken);
-
+        var existClientApplication = clientApplicationQueryService.GetByNameAsync(name, ct);
+        
         if (existClientApplication != null)
         {
             throw new Exception("ClientApplication already exists");
@@ -25,44 +21,34 @@ public class ApplicationService() : IApplicationService
         };
         
         var repositoryRegisterApp = unitOfWork.GetRepository<ClientApplication>();
-        await repositoryRegisterApp.AddAsync(clientApplication, cancellationToken);
-        await unitOfWork.SaveChangesAsync(cancellationToken);
+        await repositoryRegisterApp.AddAsync(clientApplication, ct);
+        await unitOfWork.SaveChangesAsync(ct);
         return clientApplication;
     }
 
     public async Task<ClientApplication?> GetApplicationByClientIdAsync(string clientId, 
-        CancellationToken cancellationToken)
+        CancellationToken ct)
     {
-        return await unitOfWork.GetQuery<ClientApplication>()
-            .AsQueryable()
-            .Where(x => x.ClientId == clientId)
-            .FirstOrDefaultAsync(cancellationToken: cancellationToken);
+        return await clientApplicationQueryService.GetByClientIdAsync(clientId, ct);
     }
     
     public async Task<ClientApplication?> GetApplicationSystemByClientIdAsync(string clientId, 
-        CancellationToken cancellationToken)
+        CancellationToken ct)
     {
-        return await unitOfWork.GetQuery<ClientApplication>()
-            .AsQueryable()
-            .Where(x => x.ClientId == clientId && x.IsSystem && x.IsRevoked == false)
-            .FirstOrDefaultAsync(cancellationToken: cancellationToken);
+        return await clientApplicationQueryService.GetBySystemByClientIdAsync(clientId, ct);
+
     }
     
-    public async Task<bool> IsSystemApplicationSetAsync(CancellationToken cancellationToken)
+    public async Task<bool> IsSystemApplicationSetAsync(CancellationToken ct)
     {
-        var systemApp = await unitOfWork.GetQuery<ClientApplication>()
-            .AsQueryable()
-            .FirstOrDefaultAsync(x => x.IsSystem, cancellationToken: cancellationToken);
+        var systemApp = await clientApplicationQueryService.IsSystemConfiguredAsync(ct);
 
         return systemApp != null && !string.IsNullOrEmpty(systemApp.ClientSecret);
     }
 
-    public async Task<List<ClientApplication>> GetAllApplicationsAsync(CancellationToken cancellationToken)
+    public async Task<List<ClientApplication>> GetAllApplicationsAsync(CancellationToken ct)
     {
-        return await unitOfWork.GetQuery<ClientApplication>()
-            .AsQueryable()
-            .Where(x=> x.IsRevoked == false)
-            .ToListAsync(cancellationToken: cancellationToken);
+        return await clientApplicationQueryService.GetAllIsNotRevokedAsync(ct);
     }
     
     public async Task<ClientApplication> UpdateApplicationAsync(ClientApplication clientApplication, 
@@ -75,12 +61,9 @@ public class ApplicationService() : IApplicationService
         return clientApplication;
     }
 
-    public async Task<bool> RevokeApplicationAsync(string clientId, CancellationToken cancellationToken)
+    public async Task<bool> RevokeApplicationAsync(string clientId, CancellationToken ct)
     {
-        var clientApplication = await unitOfWork.GetQuery<ClientApplication>()
-            .AsQueryable()
-            .Where(x => x.ClientId == clientId)
-            .FirstOrDefaultAsync(cancellationToken: cancellationToken);
+        var clientApplication = await clientApplicationQueryService.GetByClientIdAsync(clientId, ct);
 
         if (clientApplication == null)
         {
@@ -91,7 +74,7 @@ public class ApplicationService() : IApplicationService
         
         var repositoryRegisterApp = unitOfWork.GetRepository<ClientApplication>();
         repositoryRegisterApp.Update(clientApplication);
-        await unitOfWork.SaveChangesAsync(cancellationToken);
+        await unitOfWork.SaveChangesAsync(ct);
         return true;
     }
 }
