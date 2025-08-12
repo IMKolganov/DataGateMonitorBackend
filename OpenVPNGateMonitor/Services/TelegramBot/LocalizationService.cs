@@ -7,7 +7,7 @@ using OpenVPNGateMonitor.SharedModels.Enums;
 
 namespace OpenVPNGateMonitor.Services.TelegramBot;
 
-public class LocalizationService(ILogger<LocalizationService> logger, IUnitOfWork unitOfWork) : ILocalizationService
+public class LocalizationService(ILogger<LocalizationService> logger) : ILocalizationService
 {
     public async Task<TelegramUserLanguagePreference> SetTelegramUserLanguageAsync(
         TelegramUserLanguagePreference request, CancellationToken cancellationToken)

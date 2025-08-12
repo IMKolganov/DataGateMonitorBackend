@@ -6,7 +6,7 @@ using OpenVPNGateMonitor.Services.TelegramBot.Interfaces;
 
 namespace OpenVPNGateMonitor.Services.TelegramBot;
 
-public class TelegramUserService(ILogger<TelegramUserService> logger, IUnitOfWork unitOfWork) : ITelegramUserService
+public class TelegramUserService(ILogger<TelegramUserService> logger) : ITelegramUserService
 {
     public async Task<TelegramBotUser> RegisterUserAsync(TelegramBotUser telegramBotUserRequest, 
         CancellationToken cancellationToken)

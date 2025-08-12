@@ -11,7 +11,7 @@ using OpenVPNGateMonitor.SharedModels.DataGateMonitorBackend.OpenVpnFiles.Respon
 
 namespace OpenVPNGateMonitor.Services.DataGateCertManager;
 
-public class OvpnFileApiService(IUnitOfWork unitOfWork, IOvpnFileApiClient ovpnFileApiClient, 
+public class OvpnFileApiService(IOvpnFileApiClient ovpnFileApiClient, 
     ILogger<OvpnFileApiClient> logger, IConfiguration configuration,
     
     IOpenVpnServerQueryService openVpnServerQueryService) : IOvpnFileApiService

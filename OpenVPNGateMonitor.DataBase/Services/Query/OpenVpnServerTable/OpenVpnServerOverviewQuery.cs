@@ -37,7 +37,7 @@ public class OpenVpnServerOverviewQuery(IUnitOfWork uow) : IOpenVpnServerOvervie
         };
 
     // Single roundtrip with correlated subqueries
-    public async Task<List<OpenVpnServerWithStatus>> GetAllOpenVpnServersWithStatus(CancellationToken ct)
+    public async Task<List<OpenVpnServerWithStatus>> GetAllOpenVpnServersWithStatusAsync(CancellationToken ct)
     {
         var servers = uow.GetQuery<OpenVpnServer>().AsQueryable();
         var clients = uow.GetQuery<OpenVpnServerClient>().AsQueryable();
@@ -63,7 +63,7 @@ public class OpenVpnServerOverviewQuery(IUnitOfWork uow) : IOpenVpnServerOvervie
     }
 
     // Single server variant; throws if not found
-    public async Task<OpenVpnServerWithStatus> GetOpenVpnServerWithStatus(int vpnServerId, CancellationToken ct)
+    public async Task<OpenVpnServerWithStatus> GetOpenVpnServerWithStatusAsync(int vpnServerId, CancellationToken ct)
     {
         var servers = uow.GetQuery<OpenVpnServer>().AsQueryable();
         var clients = uow.GetQuery<OpenVpnServerClient>().AsQueryable();
@@ -91,7 +91,7 @@ public class OpenVpnServerOverviewQuery(IUnitOfWork uow) : IOpenVpnServerOvervie
     }
 
     // Connected clients page + Telegram enrichment
-    public async Task<VpnClientInfoResponseList> GetAllConnectedOpenVpnServerClients(
+    public async Task<VpnClientInfoResponseList> GetAllConnectedOpenVpnServerClientsAsync(
         int vpnServerId, int page, int pageSize, CancellationToken ct)
     {
         if (page < 1) page = 1;
@@ -121,7 +121,7 @@ public class OpenVpnServerOverviewQuery(IUnitOfWork uow) : IOpenVpnServerOvervie
     }
 
     // Full history page + Telegram enrichment
-    public async Task<VpnClientInfoResponseList> GetAllHistoryOpenVpnServerClients(
+    public async Task<VpnClientInfoResponseList> GetAllHistoryOpenVpnServerClientsAsync(
         int vpnServerId, int page, int pageSize, CancellationToken ct)
     {
         if (page < 1) page = 1;

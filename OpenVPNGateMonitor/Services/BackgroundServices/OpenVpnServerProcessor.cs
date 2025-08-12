@@ -14,7 +14,7 @@ public class OpenVpnServerProcessor(
                               $"VpnServerId: {openVpnServer.Id}. Vpn Server Name: {openVpnServer.ServerName}. " +
                                $"Processing OpenVPN server: {openVpnServer.ApiUrl}");
         using var scope = serviceProvider.CreateScope();
-        var unitOfWork = scope.ServiceProvider.GetRequiredService<IUnitOfWork>();
+        // var unitOfWork = scope.ServiceProvider.GetRequiredService<IUnitOfWork>();
         var openVpnServerService = scope.ServiceProvider.GetRequiredService<IOpenVpnServerService>();
         try
         {

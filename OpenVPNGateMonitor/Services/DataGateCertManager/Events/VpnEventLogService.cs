@@ -7,7 +7,7 @@ using OpenVPNGateMonitor.SharedModels.DataGateMonitorBackend.OpenVpnServerEvent.
 
 namespace OpenVPNGateMonitor.Services.DataGateCertManager.Events;
 
-public class VpnEventLogService(IUnitOfWork unitOfWork) : IVpnEventLogService
+public class VpnEventLogService : IVpnEventLogService
 {
     public async Task SaveEventAsync(int vpnServerId, string eventType, OpenVpnServerEventLog data, string rawJson,
         CancellationToken cancellationToken)

@@ -5,7 +5,7 @@ using OpenVPNGateMonitor.Services.Api.Auth.Interfaces;
 
 namespace OpenVPNGateMonitor.Services.Api.Auth;
 
-public class ApplicationService(IUnitOfWork unitOfWork) : IApplicationService
+public class ApplicationService() : IApplicationService
 {
     public async Task<ClientApplication> RegisterApplicationAsync(string name, CancellationToken cancellationToken)
     {
