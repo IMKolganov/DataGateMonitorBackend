@@ -1,7 +1,9 @@
 ﻿using System.Security.Cryptography;
 using System.Text;
 using System.Text.RegularExpressions;
+using OpenVPNGateMonitor.DataBase.Services.Command;
 using OpenVPNGateMonitor.DataBase.Services.Query.OpenVpnServerClientTable;
+using OpenVPNGateMonitor.DataBase.Services.Query.OpenVpnServerStatusLogTable;
 using OpenVPNGateMonitor.DataBase.Services.Query.TelegramBotUserTable;
 using OpenVPNGateMonitor.Models;
 using OpenVPNGateMonitor.Models.Helpers.Services;
@@ -19,64 +21,67 @@ public class OpenVpnServerService(
     IOpenVpnStateService openVpnStateService,
     IOpenVpnServerClientQueryService openVpnServerClientQueryService,
     ITelegramBotUserQueryService telegramBotUserQueryService,
-    IExternalIpAddressService externalIpAddressService)
-    : IOpenVpnServerService
+    IOpenVpnServerStatusLogQueryService openVpnServerStatusLogQueryService,
+    IExternalIpAddressService externalIpAddressService,
+    ITransactionRunner transactionRunner,
+    ICommandService<OpenVpnServerClient, int> openVpnServerClientCommandService,
+    ICommandService<OpenVpnServerStatusLog, int> openVpnServerStatusLogCommandService) : IOpenVpnServerService
 {
-    public async Task SaveConnectedClientsAsync(OpenVpnServer openVpnServer, CancellationToken cancellationToken)
+    public async Task SaveConnectedClientsAsync(OpenVpnServer openVpnServer, CancellationToken ct)
     {
-        logger.LogInformation($"VpnServerId: {openVpnServer.Id}. Starting SaveConnectedClientsAsync...");
-        await using var transaction = await unitOfWork.BeginTransactionAsync(cancellationToken);
-        try
+        logger.LogInformation(
+            "VpnServerId: {Id}. Starting SaveConnectedClientsAsync...",
+            openVpnServer.Id);
+
+        await transactionRunner.RunAsync(async _ =>
         {
-            var openVpnClients = await openVpnClientService.GetClientsAsync(openVpnServer, 
-                cancellationToken);
-            
-            logger.LogInformation($"VpnServerId: {openVpnServer.Id}. " +
-                                   $"Retrieved {openVpnClients.Count} clients from OpenVPN.");
+            var openVpnClients = await openVpnClientService.GetClientsAsync(openVpnServer, ct);
+            logger.LogInformation(
+                "VpnServerId: {Id}. Retrieved {Count} clients from OpenVPN.",
+                openVpnServer.Id, openVpnClients.Count);
 
-            await SetDisconnectForAllUsers(openVpnServer.Id, cancellationToken);
-
-            var openVpnServerClientRepository = unitOfWork.GetRepository<OpenVpnServerClient>();
+            await openVpnServerClientCommandService.UpdateWhereAsync(
+                x => x.VpnServerId == openVpnServer.Id,
+                s => s
+                    .SetProperty(c => c.IsConnected, false)
+                    .SetProperty(c => c.LastUpdate, DateTime.UtcNow),
+                ct);
 
             foreach (var openVpnClient in openVpnClients)
             {
-                var sessionId = GenerateSessionId(openVpnClient.CommonName,
-                    openVpnClient.RemoteIp, openVpnClient.ConnectedSince);
+                var sessionId = GenerateSessionId(
+                    openVpnClient.CommonName,
+                    openVpnClient.RemoteIp,
+                    openVpnClient.ConnectedSince);
 
-                var existingOpenVpnServerClient = await unitOfWork.GetQuery<OpenVpnServerClient>()
-                    .AsQueryable()
-                    .FirstOrDefaultAsync(x =>
-                            x.SessionId == sessionId && x.VpnServerId == openVpnServer.Id
-                        , cancellationToken);
+                var existing = await openVpnServerClientQueryService
+                    .GetBySessionAndServerIdAsync(sessionId, openVpnServer.Id, ct);
 
-                if (existingOpenVpnServerClient != null)
+                if (existing != null)
                 {
-                    existingOpenVpnServerClient.CommonName = openVpnClient.CommonName;
-                    existingOpenVpnServerClient.VpnServerId = openVpnServer.Id;
-                    existingOpenVpnServerClient.ExternalId = 
-                        await TryParseExternalIdAsync(openVpnClient.CommonName, cancellationToken)
-                        ?? string.Empty;
-                    existingOpenVpnServerClient.BytesReceived = openVpnClient.BytesReceived;
-                    existingOpenVpnServerClient.BytesSent = openVpnClient.BytesSent;
-                    existingOpenVpnServerClient.LastUpdate = DateTime.UtcNow;
-                    existingOpenVpnServerClient.Username = openVpnClient.Username;
-                    existingOpenVpnServerClient.Country = openVpnClient.Country;
-                    existingOpenVpnServerClient.Region = openVpnClient.Region;
-                    existingOpenVpnServerClient.City = openVpnClient.City;
-                    existingOpenVpnServerClient.Latitude = openVpnClient.Latitude;
-                    existingOpenVpnServerClient.Longitude = openVpnClient.Longitude;
-                    existingOpenVpnServerClient.IsConnected = true;
+                    existing.CommonName = openVpnClient.CommonName;
+                    existing.VpnServerId = openVpnServer.Id;
+                    existing.ExternalId = await TryParseExternalIdAsync(openVpnClient.CommonName, ct) ?? string.Empty;
+                    existing.BytesReceived = openVpnClient.BytesReceived;
+                    existing.BytesSent = openVpnClient.BytesSent;
+                    existing.LastUpdate = DateTime.UtcNow;
+                    existing.Username = openVpnClient.Username;
+                    existing.Country = openVpnClient.Country;
+                    existing.Region = openVpnClient.Region;
+                    existing.City = openVpnClient.City;
+                    existing.Latitude = openVpnClient.Latitude;
+                    existing.Longitude = openVpnClient.Longitude;
+                    existing.IsConnected = true;
 
-                    openVpnServerClientRepository.Update(existingOpenVpnServerClient);
+                    await openVpnServerClientCommandService.UpdateAsync(existing, saveChanges: false, ct);
                     logger.LogDebug("Updated client session {SessionId}.", sessionId);
                 }
                 else
                 {
-                    var newClient = new OpenVpnServerClient()
+                    var newClient = new OpenVpnServerClient
                     {
                         VpnServerId = openVpnServer.Id,
-                        ExternalId = 
-                            await TryParseExternalIdAsync(openVpnClient.CommonName, cancellationToken) ?? string.Empty,
+                        ExternalId = await TryParseExternalIdAsync(openVpnClient.CommonName, ct) ?? string.Empty,
                         SessionId = sessionId,
                         CommonName = openVpnClient.CommonName,
                         RemoteIp = openVpnClient.RemoteIp,
@@ -95,32 +100,30 @@ public class OpenVpnServerService(
                         CreateDate = DateTime.UtcNow
                     };
 
-                    await openVpnServerClientRepository.AddAsync(newClient, cancellationToken);
-                    logger.LogInformation($"VpnServerId: {openVpnServer.Id}. Added new client session {sessionId}.");
+                    await openVpnServerClientCommandService.AddAsync(newClient, saveChanges: false, ct);
+                    logger.LogInformation(
+                        "VpnServerId: {Id}. Added new client session {SessionId}.",
+                        openVpnServer.Id, sessionId);
                 }
             }
 
-            await unitOfWork.SaveChangesAsync(cancellationToken);
-            await transaction.CommitAsync(cancellationToken);
-            logger.LogInformation($"VpnServerId: {openVpnServer.Id}. SaveConnectedClientsAsync completed successfully.");
-        }
-        catch (Exception ex)
-        {
-            logger.LogError(ex, $"VpnServerId: {openVpnServer.Id}. Error occurred in SaveConnectedClientsAsync, " +
-                                 $"rolling back transaction.");
-            await transaction.RollbackAsync(cancellationToken);
-            throw;
-        }
+            await openVpnServerClientCommandService.SaveChangesAsync(ct);
+
+            logger.LogInformation(
+                "VpnServerId: {Id}. SaveConnectedClientsAsync completed successfully.",
+                openVpnServer.Id);
+
+        }, ct);
     }
 
-    public async Task SaveOpenVpnServerStatusLogAsync(OpenVpnServer openVpnServer, CancellationToken cancellationToken)
+    public async Task SaveOpenVpnServerStatusLogAsync(OpenVpnServer openVpnServer, CancellationToken ct)
     {
         logger.LogInformation($"VpnServerId: {openVpnServer.Id}. Starting SaveOpenVpnServerStatusLogAsync...");
 
         var serverInfo = new ServerInfo();
         try
         {
-            serverInfo.OpenVpnState = await openVpnStateService.GetStateAsync(openVpnServer, cancellationToken);
+            serverInfo.OpenVpnState = await openVpnStateService.GetStateAsync(openVpnServer, ct);
             if (serverInfo.OpenVpnState.UpSince <= DateTime.MinValue)
             {
                 throw new Exception($"VpnServerId: {openVpnServer.Id}. UpSince is not set. " +
@@ -128,12 +131,12 @@ public class OpenVpnServerService(
             }
             
             serverInfo.OpenVpnSummaryStats = await openVpnSummaryStatService.GetSummaryStatsAsync(openVpnServer, 
-                cancellationToken);
-            serverInfo.OpenVpnState.ServerRemoteIp = await externalIpAddressService.GetRemoteIpAddress(cancellationToken);
+                ct);
+            serverInfo.OpenVpnState.ServerRemoteIp = await externalIpAddressService.GetRemoteIpAddress(ct);
 
             if (serverInfo.OpenVpnState != null)
             {
-                serverInfo.Version = await openVpnVersionService.GetVersionAsync(openVpnServer, cancellationToken);
+                serverInfo.Version = await openVpnVersionService.GetVersionAsync(openVpnServer, ct);
             }
         }
         catch (Exception ex)
@@ -145,7 +148,6 @@ public class OpenVpnServerService(
 
         serverInfo.Status = serverInfo.OpenVpnState != null ? "CONNECTED" : "DISCONNECTED";
 
-        var openVpnServerStatusLogRepository = unitOfWork.GetRepository<OpenVpnServerStatusLog>();
 
         if (serverInfo.OpenVpnState == null)
         {
@@ -154,17 +156,14 @@ public class OpenVpnServerService(
         }
 
         var sessionId = GenerateSessionId(
-            "RaspberryVPN", // TODO: make server name
+            openVpnServer.ServerName, // TODO: make server name
             serverInfo.OpenVpnState.ServerLocalIp ?? 
             throw new InvalidOperationException($"VpnServerId: {openVpnServer.Id}. LocalIp cannot be null"),
             serverInfo.OpenVpnState.UpSince
         );
 
-        var existingStatusLog = await unitOfWork.GetQuery<OpenVpnServerStatusLog>()
-            .AsQueryable()
-            .FirstOrDefaultAsync(x => 
-                x.SessionId == sessionId && x.VpnServerId == openVpnServer.Id,
-                cancellationToken);
+        var existingStatusLog =
+            await openVpnServerStatusLogQueryService.GetBySessionIdAndVpnServerIdAsync(sessionId, openVpnServer.Id, ct);
 
         if (existingStatusLog != null)
         {
@@ -177,7 +176,7 @@ public class OpenVpnServerService(
             existingStatusLog.Version = serverInfo.Version;
             existingStatusLog.LastUpdate = DateTime.UtcNow;
 
-            openVpnServerStatusLogRepository.Update(existingStatusLog);
+            await openVpnServerStatusLogCommandService.UpdateAsync(existingStatusLog, true, ct);
             logger.LogInformation($"VpnServerId: {openVpnServer.Id}. Updated existing status log {sessionId}.");
         }
         else
@@ -196,12 +195,11 @@ public class OpenVpnServerService(
                 CreateDate = DateTime.UtcNow
             };
 
-            await openVpnServerStatusLogRepository.AddAsync(newStatusLog, cancellationToken);
-            logger.LogInformation($"VpnServerId: {openVpnServer.Id}.Created new status log {{SessionId}}.", sessionId);
+            await openVpnServerStatusLogCommandService.AddAsync(newStatusLog, true, ct);
+            logger.LogInformation($"VpnServerId: {openVpnServer.Id}. Created new status log {{SessionId}}.", sessionId);
         }
-
-        await unitOfWork.SaveChangesAsync(cancellationToken);
-        logger.LogInformation($"VpnServerId: {openVpnServer.Id}.SaveOpenVpnServerStatusLogAsync completed successfully.");
+        logger.LogInformation($"VpnServerId: {openVpnServer.Id}. " +
+                              $"SaveOpenVpnServerStatusLogAsync completed successfully.");
     }
     
     private Guid GenerateSessionId(string commonName, string realAddress, DateTime connectedSince)
