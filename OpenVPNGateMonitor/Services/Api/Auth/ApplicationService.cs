@@ -1,10 +1,13 @@
+using OpenVPNGateMonitor.DataBase.Services.Command;
 using OpenVPNGateMonitor.DataBase.Services.Query.ClientApplicationTable;
 using OpenVPNGateMonitor.Models;
 using OpenVPNGateMonitor.Services.Api.Auth.Interfaces;
 
 namespace OpenVPNGateMonitor.Services.Api.Auth;
 
-public class ApplicationService(IClientApplicationQueryService clientApplicationQueryService) : IApplicationService
+public class ApplicationService(IClientApplicationQueryService clientApplicationQueryService,
+    ICommandService<ClientApplication, int> clientApplicationCommandService
+    ) : IApplicationService
 {
     public async Task<ClientApplication> RegisterApplicationAsync(string name, CancellationToken ct)
     {
@@ -19,10 +22,8 @@ public class ApplicationService(IClientApplicationQueryService clientApplication
         {
             Name = name
         };
-        
-        var repositoryRegisterApp = unitOfWork.GetRepository<ClientApplication>();
-        await repositoryRegisterApp.AddAsync(clientApplication, ct);
-        await unitOfWork.SaveChangesAsync(ct);
+
+        await clientApplicationCommandService.AddAsync(clientApplication, true, ct);
         return clientApplication;
     }
 
@@ -52,11 +53,9 @@ public class ApplicationService(IClientApplicationQueryService clientApplication
     }
     
     public async Task<ClientApplication> UpdateApplicationAsync(ClientApplication clientApplication, 
-        CancellationToken cancellationToken)
+        CancellationToken ct)
     {
-        var repository = unitOfWork.GetRepository<ClientApplication>();
-        repository.Update(clientApplication);
-        await unitOfWork.SaveChangesAsync(cancellationToken);
+        await clientApplicationCommandService.UpdateAsync(clientApplication, true, ct);
     
         return clientApplication;
     }
@@ -72,9 +71,7 @@ public class ApplicationService(IClientApplicationQueryService clientApplication
 
         clientApplication.IsRevoked = true;
         
-        var repositoryRegisterApp = unitOfWork.GetRepository<ClientApplication>();
-        repositoryRegisterApp.Update(clientApplication);
-        await unitOfWork.SaveChangesAsync(ct);
+        await clientApplicationCommandService.UpdateAsync(clientApplication, true, ct);
         return true;
     }
 }

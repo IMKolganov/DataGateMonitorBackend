@@ -1,4 +1,5 @@
 ﻿using Mapster;
+using OpenVPNGateMonitor.DataBase.Services.Command;
 using OpenVPNGateMonitor.DataBase.Services.Query.LocalizationTextTable;
 using OpenVPNGateMonitor.DataBase.Services.Query.TelegramUserLanguagePreferenceTable;
 using OpenVPNGateMonitor.Models;
@@ -9,18 +10,17 @@ namespace OpenVPNGateMonitor.Services.TelegramBot;
 
 public class LocalizationService(ILogger<LocalizationService> logger,
     ITelegramUserLanguagePreferenceQueryService telegramUserLanguagePreferenceQueryService,
+    ICommandService<TelegramUserLanguagePreference, int> telegramUserLanguagePreferenceCommandService,
+
     ILocalizationTextQueryService localizationTextQueryService) : ILocalizationService
 {
     public async Task<TelegramUserLanguagePreference> SetTelegramUserLanguageAsync(
-        TelegramUserLanguagePreference request, CancellationToken cancellationToken)
+        TelegramUserLanguagePreference request, CancellationToken ct)
     {
         logger.LogInformation($"Attempting to set language for TelegramId: " +
                               $"{request.TelegramId} to {request.PreferredLanguage}.");
 
-        var userLanguagePreferenceRepository = unitOfWork.GetRepository<TelegramUserLanguagePreference>();
-        var userPreference = await userLanguagePreferenceRepository.Query
-            .FirstOrDefaultAsync(x => x.TelegramId == request.TelegramId, 
-                cancellationToken: cancellationToken);
+        var userPreference = await telegramUserLanguagePreferenceQueryService.GetByTelegramId(request.TelegramId, ct);
         
         if (userPreference == null)
         {
@@ -28,10 +28,11 @@ public class LocalizationService(ILogger<LocalizationService> logger,
                                   "Creating a new record.");
         
             userPreference = request.Adapt<TelegramUserLanguagePreference>();
-            await userLanguagePreferenceRepository.AddAsync(userPreference, cancellationToken);
-        
             logger.LogInformation($"New language preference created for TelegramId: {userPreference.TelegramId} " +
                                   $"with language: {userPreference.PreferredLanguage}.");
+            await telegramUserLanguagePreferenceCommandService.AddAsync(userPreference, true, ct);
+        
+
         }
         else
         {
@@ -39,14 +40,13 @@ public class LocalizationService(ILogger<LocalizationService> logger,
                                   $"Updating language to: {request.PreferredLanguage}.");
         
             userPreference.PreferredLanguage = request.PreferredLanguage;
+            await telegramUserLanguagePreferenceCommandService.UpdateAsync(userPreference, true, ct);
+
         }
         
-        await unitOfWork.SaveChangesAsync(cancellationToken);
         logger.LogInformation($"Language preference saved for TelegramId: {request.TelegramId}.");
         
-        userPreference = await userLanguagePreferenceRepository.Query
-            .FirstOrDefaultAsync(x => x.TelegramId == request.TelegramId, 
-                cancellationToken: cancellationToken);
+        userPreference = await telegramUserLanguagePreferenceQueryService.GetByTelegramId(request.TelegramId, ct);
 
         return userPreference ?? throw new InvalidOperationException($"Language preference not found for TelegramId: " +
                                                                      $"{request.TelegramId}.");
