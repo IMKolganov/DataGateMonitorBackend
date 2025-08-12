@@ -1,9 +1,9 @@
 ﻿using System.Collections.Concurrent;
 using Microsoft.AspNetCore.SignalR;
+using OpenVPNGateMonitor.DataBase.Services.Query.OpenVpnServerTable;
 using OpenVPNGateMonitor.Hubs;
 using OpenVPNGateMonitor.Models;
 using OpenVPNGateMonitor.Services.Api.Auth.Interfaces;
-using OpenVPNGateMonitor.Services.Api.Interfaces;
 
 namespace OpenVPNGateMonitor.Services.DataGateCertManager.Events;
 
@@ -23,14 +23,14 @@ public class OpenVpnEventClientFactory(IServiceProvider serviceProvider) : IOpen
         });
     }
 
-    public async Task<OpenVpnEventClient?> TryCreateByServerIdAsync(int serverId, CancellationToken ct)
+    public async Task<OpenVpnEventClient?> TryCreateByServerIdAsync(int serverId, CancellationToken cancellationToken)
     {
         if (_clientCache.TryGetValue(serverId, out var cached))
             return cached;
 
         using var scope = serviceProvider.CreateScope();
-        var vpnDataService = scope.ServiceProvider.GetRequiredService<IVpnDataService>();
-        var server = await vpnDataService.GetOpenVpnServer(serverId, ct);
+        var openVpnOverviewQuery = scope.ServiceProvider.GetRequiredService<IOpenVpnServerQueryService>();
+        var server = await openVpnOverviewQuery.GetByIdAsync(serverId, cancellationToken);
         if (server is null) throw new Exception($"OpenVPN server not found with id {serverId}");
 
         return Create(server);
