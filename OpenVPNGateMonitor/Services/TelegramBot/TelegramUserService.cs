@@ -1,33 +1,31 @@
 ﻿using Mapster;
-using Microsoft.EntityFrameworkCore;
-using OpenVPNGateMonitor.DataBase.UnitOfWork;
+using OpenVPNGateMonitor.DataBase.Services.Query.TelegramBotUserTable;
 using OpenVPNGateMonitor.Models;
 using OpenVPNGateMonitor.Services.TelegramBot.Interfaces;
 
 namespace OpenVPNGateMonitor.Services.TelegramBot;
 
-public class TelegramUserService(ILogger<TelegramUserService> logger) : ITelegramUserService
+public class TelegramUserService(ILogger<TelegramUserService> logger,
+    ITelegramBotUserQueryService telegramBotUserQueryService) : ITelegramUserService
 {
     public async Task<TelegramBotUser> RegisterUserAsync(TelegramBotUser telegramBotUserRequest, 
-        CancellationToken cancellationToken)
+        CancellationToken ct)
     {
         var telegramUserRepository = unitOfWork.GetRepository<TelegramBotUser>();
-        var telegramBotUser = await telegramUserRepository.Query
-            .FirstOrDefaultAsync(u => u.TelegramId == telegramBotUserRequest.TelegramId, 
-                cancellationToken: cancellationToken);
+        var telegramBotUser = await telegramBotUserQueryService.GetByTelegramIdAsync(
+            telegramBotUserRequest.TelegramId, ct);
 
         if (telegramBotUser == null)
         {
             var user = telegramBotUserRequest.Adapt<TelegramBotUser>();
 
-            await telegramUserRepository.AddAsync(user, cancellationToken);
-            await unitOfWork.SaveChangesAsync(cancellationToken);
+            await telegramUserRepository.AddAsync(user, ct);
+            await unitOfWork.SaveChangesAsync(ct);
             logger.LogInformation($"User {telegramBotUserRequest.Username} registered");
         }
         
-        telegramBotUser = await telegramUserRepository.Query
-            .FirstOrDefaultAsync(u => u.TelegramId == telegramBotUserRequest.TelegramId, 
-                cancellationToken: cancellationToken);
+        telegramBotUser = await telegramBotUserQueryService.GetByTelegramIdAsync(
+            telegramBotUserRequest.TelegramId, ct);
 
         return telegramBotUser ?? 
                throw new InvalidOperationException($"Something went wrong when " + 
@@ -41,10 +39,9 @@ public class TelegramUserService(ILogger<TelegramUserService> logger) : ITelegra
         throw new NotImplementedException();
     }
 
-    public async Task<List<TelegramBotUser>?> GetAdminsAsync(CancellationToken cancellationToken)
+    public async Task<List<TelegramBotUser>?> GetAdminsAsync(CancellationToken ct)
     {
-        var telegramBotUser = await unitOfWork.GetQuery<TelegramBotUser>().AsQueryable()
-            .Where(u => u.IsAdmin).ToListAsync(cancellationToken: cancellationToken);
+        var telegramBotUser = await telegramBotUserQueryService.GetAllAdminsAsync(ct);
         
         if (telegramBotUser is { Count: 0 })
         {
@@ -55,29 +52,23 @@ public class TelegramUserService(ILogger<TelegramUserService> logger) : ITelegra
         return telegramBotUser;
     }
     
-    public async Task<List<TelegramBotUser>?> GetAllUsersAsync(CancellationToken cancellationToken)
+    public async Task<List<TelegramBotUser>?> GetAllUsersAsync(CancellationToken ct)
     {
-        var telegramBotUser = await unitOfWork.GetQuery<TelegramBotUser>().AsQueryable()
-            .OrderBy(x=>x.Id)
-            .ToListAsync(cancellationToken: cancellationToken);
-        
-        return telegramBotUser;
+        var telegramBotUser = await telegramBotUserQueryService.GetAllAsync(ct);
+        return telegramBotUser.OrderBy(x=>x.Id).ToList();
     }
     
-    public async Task<TelegramBotUser?> GetUserByTelegramIdAsync(long telegramId, CancellationToken cancellationToken)
+    public async Task<TelegramBotUser?> GetUserByTelegramIdAsync(long telegramId, CancellationToken ct)
     {
-        var user = await unitOfWork.GetQuery<TelegramBotUser>().AsQueryable()
-            .Where(x => x.TelegramId == telegramId)
-            .FirstOrDefaultAsync(cancellationToken);
+        var user = await telegramBotUserQueryService.GetByTelegramIdAsync(telegramId, ct);
 
         return user;
     }
     
-    public async Task<bool> BlockUserAsync(long telegramId, CancellationToken cancellationToken)
+    public async Task<bool> BlockUserAsync(long telegramId, CancellationToken ct)
     {
         var repo = unitOfWork.GetRepository<TelegramBotUser>();
-        var user = await repo.Query.FirstOrDefaultAsync(x => x.TelegramId == telegramId, 
-            cancellationToken);
+        var user = await telegramBotUserQueryService.GetByTelegramIdAsync(telegramId, ct);
         
         if (user == null)
         {
@@ -92,16 +83,15 @@ public class TelegramUserService(ILogger<TelegramUserService> logger) : ITelegra
         }
 
         user.IsBlocked = true;
-        await unitOfWork.SaveChangesAsync(cancellationToken);
+        await unitOfWork.SaveChangesAsync(ct);
         logger.LogInformation($"User {telegramId} has been blocked.");
         return true;
     }
 
-    public async Task<bool> UnblockUserAsync(long telegramId, CancellationToken cancellationToken)
+    public async Task<bool> UnblockUserAsync(long telegramId, CancellationToken ct)
     {
         var repo = unitOfWork.GetRepository<TelegramBotUser>();
-        var user = await repo.Query.FirstOrDefaultAsync(x => x.TelegramId == telegramId, 
-            cancellationToken);
+        var user = await telegramBotUserQueryService.GetByTelegramIdAsync(telegramId, ct);
         
         if (user == null)
         {
@@ -116,15 +106,15 @@ public class TelegramUserService(ILogger<TelegramUserService> logger) : ITelegra
         }
 
         user.IsBlocked = false;
-        await unitOfWork.SaveChangesAsync(cancellationToken);
+        await unitOfWork.SaveChangesAsync(ct);
         logger.LogInformation($"User {telegramId} has been unblocked.");
         return true;
     }
     
-    public async Task<bool> SetAdminAsync(long telegramId, CancellationToken cancellationToken)
+    public async Task<bool> SetAdminAsync(long telegramId, CancellationToken ct)
     {
         var repo = unitOfWork.GetRepository<TelegramBotUser>();
-        var user = await repo.Query.FirstOrDefaultAsync(x => x.TelegramId == telegramId, cancellationToken);
+        var user = await telegramBotUserQueryService.GetByTelegramIdAsync(telegramId, ct);
 
         if (user == null)
         {
@@ -144,10 +134,10 @@ public class TelegramUserService(ILogger<TelegramUserService> logger) : ITelegra
         return true;
     }
 
-    public async Task<bool> UnsetAdminAsync(long telegramId, CancellationToken cancellationToken)
+    public async Task<bool> UnsetAdminAsync(long telegramId, CancellationToken ct)
     {
         var repo = unitOfWork.GetRepository<TelegramBotUser>();
-        var user = await repo.Query.FirstOrDefaultAsync(x => x.TelegramId == telegramId, cancellationToken);
+        var user = await telegramBotUserQueryService.GetByTelegramIdAsync(telegramId, ct);
 
         if (user == null)
         {
