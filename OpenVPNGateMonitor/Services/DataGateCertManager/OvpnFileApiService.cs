@@ -1,6 +1,7 @@
 ﻿using System.Text.RegularExpressions;
 using Mapster;
 using Microsoft.EntityFrameworkCore;
+using OpenVPNGateMonitor.DataBase.Services.Query.OpenVpnServerOvpnFileConfigTable;
 using OpenVPNGateMonitor.DataBase.Services.Query.OpenVpnServerTable;
 using OpenVPNGateMonitor.DataBase.UnitOfWork;
 using OpenVPNGateMonitor.Models;
@@ -13,7 +14,7 @@ namespace OpenVPNGateMonitor.Services.DataGateCertManager;
 
 public class OvpnFileApiService(IOvpnFileApiClient ovpnFileApiClient, 
     ILogger<OvpnFileApiClient> logger, IConfiguration configuration,
-    
+    IOpenVpnServerOvpnFileConfigQueryService openVpnServerOvpnFileConfigQueryService,
     IOpenVpnServerQueryService openVpnServerQueryService) : IOvpnFileApiService
 {
     private const int DefaultTokenExpireDays = 1;
@@ -275,11 +276,10 @@ public class OvpnFileApiService(IOvpnFileApiClient ovpnFileApiClient,
     }
 
     private async Task<OpenVpnServerOvpnFileConfig> GetOpenVpnServerOvpnFileConfig(int vpnServerId, 
-        CancellationToken cancellationToken)
+        CancellationToken ct)
     {
-        return await unitOfWork.GetQuery<OpenVpnServerOvpnFileConfig>().AsQueryable()
-            .Where(x => x.VpnServerId == vpnServerId)
-            .OrderDescending().FirstAsync(cancellationToken);
+        return await openVpnServerOvpnFileConfigQueryService.GetByVpnServerIdIdAsync(vpnServerId, ct) 
+               ?? throw new InvalidOperationException("OpenVPN File Server Config not found");
     }
     
     private async Task<string> MakeFriendlyName(int vpnServerId, string commonName, CancellationToken ct)
