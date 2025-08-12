@@ -1,4 +1,4 @@
-﻿using OpenVPNGateMonitor.DataBase.Services.Query.OpenVpnServerOvpnFileConfigTable;
+﻿using OpenVPNGateMonitor.DataBase.Services.Command;
 using OpenVPNGateMonitor.DataBase.Services.Query.OpenVpnServerTable;
 using OpenVPNGateMonitor.Models;
 using OpenVPNGateMonitor.Services.Api.Interfaces;
@@ -9,8 +9,8 @@ namespace OpenVPNGateMonitor.Services.Api;
 public class VpnDataService(
     ILogger<IVpnDataService> logger,
     IExternalIpAddressService externalIpAddressService,
-    IOpenVpnServerQueryService openVpnServerQueryService)
-    : IVpnDataService
+    IOpenVpnServerQueryService openVpnServerQueryService,
+    ICommandService<OpenVpnServer, int> openVpnServerCommandService) : IVpnDataService
 {
     public async Task<OpenVpnServer> AddOpenVpnServer(OpenVpnServer openVpnServer, CancellationToken ct)
     {
@@ -63,10 +63,9 @@ public class VpnDataService(
 
     public async Task<bool> DeleteOpenVpnServer(int vpnServerId, CancellationToken ct)
     {
-        var openVpnServerRepository = unitOfWork.GetRepository<OpenVpnServer>();
         var openVpnServer = await openVpnServerQueryService.GetByIdAsync(vpnServerId, ct);
-        openVpnServerRepository.Delete(openVpnServer ?? throw new InvalidOperationException("OpenVpnServer not found"));
-        await unitOfWork.SaveChangesAsync(ct); 
+        await openVpnServerCommandService.DeleteAsync(//todo: refactor
+            openVpnServer?? throw new InvalidOperationException("OpenVpnServer not found"), true, ct);
         return true;
     }
 
@@ -95,12 +94,11 @@ public class VpnDataService(
         if (servers.Count == 0)
             return;
 
-        var repo = unitOfWork.GetRepository<OpenVpnServer>();
 
         foreach (var server in servers)
         {
             server.IsDefault = false;
-            repo.Update(server);
+            await openVpnServerCommandService.UpdateAsync(server, false,ct);
         }
     }
 }

@@ -1,5 +1,5 @@
 ﻿using Mapster;
-using OpenVPNGateMonitor.DataBase.UnitOfWork;
+using OpenVPNGateMonitor.DataBase.Services.Command;
 using OpenVPNGateMonitor.Models;
 using OpenVPNGateMonitor.Services.TelegramBot.Interfaces;
 using OpenVPNGateMonitor.SharedModels.DataGateMonitorBackend.TelegramBotIncomingMessageLog.Dto;
@@ -8,18 +8,17 @@ using OpenVPNGateMonitor.SharedModels.DataGateMonitorBackend.TelegramBotIncoming
 
 namespace OpenVPNGateMonitor.Services.TelegramBot;
 
-public class IncomingMessageLogService(ILogger<IncomingMessageLogService> logger) : IIncomingMessageLogService
+public class IncomingMessageLogService(ILogger<IncomingMessageLogService> logger,
+    ICommandService<IncomingMessageLog, int> incomingMessageLogCommandService) : IIncomingMessageLogService
 {
-    public async Task<AddMessageResponse> SaveMessageAsync(AddMessageRequest request, CancellationToken cancellationToken)
+    public async Task<AddMessageResponse> SaveMessageAsync(AddMessageRequest request, CancellationToken ct)
     {
-        var incomingMessageLogRepository = unitOfWork.GetRepository<IncomingMessageLog>();
 
         // Adapt request to entity
         var incomingMessageLog = request.Message.Adapt<IncomingMessageLog>();
 
         // Save message to DB
-        await incomingMessageLogRepository.AddAsync(incomingMessageLog, cancellationToken);
-        await unitOfWork.SaveChangesAsync(cancellationToken);
+        await incomingMessageLogCommandService.AddAsync(incomingMessageLog, true, ct);
     
         logger.LogInformation($"Saved incoming message from TelegramId: {request.Message!.TelegramId}");
 

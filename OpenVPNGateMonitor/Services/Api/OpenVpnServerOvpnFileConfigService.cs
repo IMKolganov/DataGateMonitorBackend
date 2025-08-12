@@ -1,4 +1,5 @@
-﻿using OpenVPNGateMonitor.DataBase.Services.Query.OpenVpnServerOvpnFileConfigTable;
+﻿using OpenVPNGateMonitor.DataBase.Services.Command;
+using OpenVPNGateMonitor.DataBase.Services.Query.OpenVpnServerOvpnFileConfigTable;
 using OpenVPNGateMonitor.Models;
 using OpenVPNGateMonitor.Services.Api.Interfaces;
 
@@ -6,7 +7,8 @@ namespace OpenVPNGateMonitor.Services.Api;
 
 public class OpenVpnServerOvpnFileConfigService(
     ILogger<OpenVpnServerOvpnFileConfigService> logger, 
-    IOpenVpnServerOvpnFileConfigQueryService  openVpnServerOvpnFileConfigQueryService)
+    IOpenVpnServerOvpnFileConfigQueryService  openVpnServerOvpnFileConfigQueryService,
+    ICommandService<OpenVpnServerOvpnFileConfig, int> openVpnServerOvpnFileConfigCommandService)
     : IOpenVpnServerOvpnFileConfigService
 {
     private readonly ILogger<OpenVpnServerOvpnFileConfigService> _logger = logger;
@@ -22,7 +24,6 @@ public class OpenVpnServerOvpnFileConfigService(
     public async Task<OpenVpnServerOvpnFileConfig> AddOrUpdateOpenVpnServerOvpnFileConfigByServerId(
         OpenVpnServerOvpnFileConfig openVpnServerOvpnFileConfig, CancellationToken ct)
     {
-        var openVpnServerOvpnFileConfigRepository = unitOfWork.GetRepository<OpenVpnServerOvpnFileConfig>();
 
         var existingConfig = await openVpnServerOvpnFileConfigQueryService.GetByVpnServerIdIdAsync(
             openVpnServerOvpnFileConfig.VpnServerId, ct);
@@ -34,18 +35,16 @@ public class OpenVpnServerOvpnFileConfigService(
             existingConfig.ConfigTemplate = openVpnServerOvpnFileConfig.ConfigTemplate;
             existingConfig.LastUpdate = DateTime.UtcNow;
 
-            openVpnServerOvpnFileConfigRepository.Update(existingConfig);
+            await openVpnServerOvpnFileConfigCommandService.UpdateAsync(existingConfig, true, ct);
         }
         else
         {
             openVpnServerOvpnFileConfig.CreateDate = DateTime.UtcNow;
             openVpnServerOvpnFileConfig.LastUpdate = DateTime.UtcNow;
-
-            await openVpnServerOvpnFileConfigRepository.AddAsync(openVpnServerOvpnFileConfig, ct);
+            
+            await openVpnServerOvpnFileConfigCommandService.AddAsync(openVpnServerOvpnFileConfig, true, ct);
         }
-
-        await unitOfWork.SaveChangesAsync(ct);
-
+        
         return await openVpnServerOvpnFileConfigQueryService.GetByVpnServerIdIdAsync(
                    openVpnServerOvpnFileConfig.VpnServerId, ct)
                ?? throw new InvalidOperationException($"OpenVPN server OVPN file configuration not found for " +
