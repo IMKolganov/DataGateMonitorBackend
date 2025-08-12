@@ -12,5 +12,6 @@ public static class QueryConfiguration
 
         services.AddScoped(typeof(IQueryService<,>), typeof(EfQueryService<,>));
         services.AddScoped<IOpenVpnServerOverviewQuery, OpenVpnServerOverviewQuery>();
+        services.AddScoped<ITransactionRunner, EfTransactionRunner>();
     }
 }
