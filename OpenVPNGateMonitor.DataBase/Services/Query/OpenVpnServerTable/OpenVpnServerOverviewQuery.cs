@@ -7,7 +7,7 @@ using OpenVPNGateMonitor.SharedModels.DataGateMonitorBackend.OpenVpnServers.Resp
 
 namespace OpenVPNGateMonitor.DataBase.Services.Query.OpenVpnServerTable;
 
-public class OpenVpnOverviewQuery(IUnitOfWork uow) : IOpenVpnOverviewQuery
+public class OpenVpnServerOverviewQuery(IUnitOfWork uow) : IOpenVpnServerOverviewQuery
 {
     // Reusable DB-side projection to DTO
     private static readonly Expression<Func<OpenVpnServerClient, VpnClientInfoResponse>> VpnClientSelect =

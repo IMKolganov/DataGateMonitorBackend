@@ -228,22 +228,6 @@ public class VpnDataService(
             TotalBytesOut = trafficSummary?.TotalBytesOut ?? 0
         };
     }
-
-    public async Task<OpenVpnServer> GetOpenVpnServer(int vpnServerId, CancellationToken cancellationToken)
-    {
-        // return await unitOfWork.GetQuery<OpenVpnServer>()
-        //     .AsQueryable()
-        //     .Where(x=> x.Id == vpnServerId)
-        //     .OrderBy(x=>x.Id)
-        //     .FirstOrDefaultAsync(cancellationToken) ?? throw new InvalidOperationException("OpenVPN Server not found");
-    }
-
-    public async Task<List<OpenVpnServer>> GetAllServers(CancellationToken cancellationToken)
-    {
-        // return await unitOfWork.GetQuery<OpenVpnServer>()
-        //     .AsQueryable()
-        //     .OrderBy(x=>x.Id).ToListAsync(cancellationToken);
-    }
     
     public async Task<OpenVpnServer> AddOpenVpnServer(OpenVpnServer openVpnServer, CancellationToken cancellationToken)
     {
