@@ -1,79 +1,72 @@
-﻿using Mapster;
-using Microsoft.EntityFrameworkCore;
+﻿using OpenVPNGateMonitor.DataBase.Services.Query.OpenVpnServerOvpnFileConfigTable;
 using OpenVPNGateMonitor.DataBase.Services.Query.OpenVpnServerTable;
-using OpenVPNGateMonitor.DataBase.UnitOfWork;
 using OpenVPNGateMonitor.Models;
-using OpenVPNGateMonitor.Models.Helpers.Services;
 using OpenVPNGateMonitor.Services.Api.Interfaces;
 using OpenVPNGateMonitor.Services.Helpers.Interfaces;
-using OpenVPNGateMonitor.SharedModels.DataGateMonitorBackend.OpenVpnServers.Responses;
 
 namespace OpenVPNGateMonitor.Services.Api;
 
 public class VpnDataService(
     ILogger<IVpnDataService> logger,
-    IExternalIpAddressService externalIpAddressService)
+    IExternalIpAddressService externalIpAddressService,
+    IOpenVpnServerQueryService openVpnServerQueryService)
     : IVpnDataService
 {
-    public async Task<OpenVpnServer> AddOpenVpnServer(OpenVpnServer openVpnServer, CancellationToken cancellationToken)
+    public async Task<OpenVpnServer> AddOpenVpnServer(OpenVpnServer openVpnServer, CancellationToken ct)
     {
-        await using var transaction = await unitOfWork.BeginTransactionAsync(cancellationToken);
+        await using var transaction = await unitOfWork.BeginTransactionAsync(ct);
         var openVpnServerRepository = unitOfWork.GetRepository<OpenVpnServer>();
 
         if (openVpnServer.IsDefault)
         {
-            await UnsetPreviousDefaultServer(cancellationToken);
+            await UnsetPreviousDefaultServer(ct);
         }
 
-        await openVpnServerRepository.AddAsync(openVpnServer, cancellationToken);
-        await unitOfWork.SaveChangesAsync(cancellationToken);
+        await openVpnServerRepository.AddAsync(openVpnServer, ct);
+        await unitOfWork.SaveChangesAsync(ct);
         
-        if (!await CheckAndPutDefaultExpiredSettings(openVpnServer, cancellationToken))
+        if (!await CheckAndPutDefaultExpiredSettings(openVpnServer, ct))
         {
             logger.LogWarning("Something went wrong when try to add OpenVPN Server settings");
         }
 
-        await unitOfWork.SaveChangesAsync(cancellationToken);
-        await transaction.CommitAsync(cancellationToken);
+        await unitOfWork.SaveChangesAsync(ct);
+        await transaction.CommitAsync(ct);
 
-        // return await unitOfWork.GetQuery<OpenVpnServer>()
-        //     .AsQueryable()
-        //     .Where(x => x.Id == openVpnServer.Id)
-        //     .FirstOrDefaultAsync(cancellationToken: cancellationToken) ?? throw new InvalidOperationException();
+        return await openVpnServerQueryService.GetByIdAsync(openVpnServer.Id, ct) 
+               ?? throw new InvalidOperationException("OpenVPN server not found");
     }
 
-    public async Task<OpenVpnServer> UpdateOpenVpnServer(OpenVpnServer openVpnServer, CancellationToken cancellationToken)
+    public async Task<OpenVpnServer> UpdateOpenVpnServer(OpenVpnServer openVpnServer, CancellationToken ct)
     {
-        await using var transaction = await unitOfWork.BeginTransactionAsync(cancellationToken);
+        await using var transaction = await unitOfWork.BeginTransactionAsync(ct);
         var openVpnServerRepository = unitOfWork.GetRepository<OpenVpnServer>();
 
         if (openVpnServer.IsDefault)
         {
-            await UnsetPreviousDefaultServer(cancellationToken, openVpnServer.Id);
+            await UnsetPreviousDefaultServer(ct, openVpnServer.Id);
         }
 
         openVpnServerRepository.Update(openVpnServer);
 
-        if (!await CheckAndPutDefaultExpiredSettings(openVpnServer, cancellationToken))
+        if (!await CheckAndPutDefaultExpiredSettings(openVpnServer, ct))
         {
             logger.LogWarning("Something went wrong when try to add OpenVPN Server settings");
         }
         
-        await unitOfWork.SaveChangesAsync(cancellationToken);
-        await transaction.CommitAsync(cancellationToken);
+        await unitOfWork.SaveChangesAsync(ct);
+        await transaction.CommitAsync(ct);
 
-        // return await unitOfWork.GetQuery<OpenVpnServer>()
-        //     .AsQueryable()
-        //     .Where(x => x.Id == openVpnServer.Id)
-        //     .FirstOrDefaultAsync(cancellationToken: cancellationToken) ?? throw new InvalidOperationException();
+        return await openVpnServerQueryService.GetByIdAsync(openVpnServer.Id, ct) 
+               ?? throw new InvalidOperationException("OpenVPN server not found");
     }
 
-    public async Task<bool> DeleteOpenVpnServer(int vpnServerId, CancellationToken cancellationToken)
+    public async Task<bool> DeleteOpenVpnServer(int vpnServerId, CancellationToken ct)
     {
         var openVpnServerRepository = unitOfWork.GetRepository<OpenVpnServer>();
-        var openVpnServer = await openVpnServerRepository.GetByIdAsync(vpnServerId);
+        var openVpnServer = await openVpnServerQueryService.GetByIdAsync(vpnServerId, ct);
         openVpnServerRepository.Delete(openVpnServer ?? throw new InvalidOperationException("OpenVpnServer not found"));
-        await unitOfWork.SaveChangesAsync(cancellationToken); 
+        await unitOfWork.SaveChangesAsync(ct); 
         return true;
     }
 
@@ -82,7 +75,7 @@ public class VpnDataService(
         var ovpnRepo = unitOfWork.GetRepository<OpenVpnServerOvpnFileConfig>();
         var changesMade = false;
 
-        if (!await ovpnRepo.Query.AnyAsync(x => x.VpnServerId == openVpnServer.Id, cancellationToken))
+        if (!await ovpnRepo.Query.AnyAsync(x => x.VpnServerId == openVpnServer.Id, cancellationToken))//todo: fixed
         {
             await ovpnRepo.AddAsync(new OpenVpnServerOvpnFileConfig
             {
@@ -95,12 +88,9 @@ public class VpnDataService(
         return changesMade;
     }
     
-    private async Task UnsetPreviousDefaultServer(CancellationToken cancellationToken, int exceptId = 0)
+    private async Task UnsetPreviousDefaultServer(CancellationToken ct, int exceptId = 0)
     {
-        // var servers = await unitOfWork.GetQuery<OpenVpnServer>()
-        //     .AsQueryable()
-        //     .Where(x => x.IsDefault && x.Id != exceptId)
-        //     .ToListAsync(cancellationToken);
+        var servers = await openVpnServerQueryService.GetDefaultExceptAsync(exceptId, ct);
 
         if (servers.Count == 0)
             return;
