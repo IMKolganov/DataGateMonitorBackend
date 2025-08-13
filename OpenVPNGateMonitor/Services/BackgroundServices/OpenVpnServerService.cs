@@ -19,7 +19,7 @@ public class OpenVpnServerService(
     IOpenVpnVersionService openVpnVersionService,
     IOpenVpnStateService openVpnStateService,
     IOpenVpnServerClientQueryService openVpnServerClientQueryService,
-    IssuedOvpnFileQueryService openVpnFileQueryService,
+    IIssuedOvpnFileQueryService openVpnFileQueryService,
     IOpenVpnServerStatusLogQueryService openVpnServerStatusLogQueryService,
     IExternalIpAddressService externalIpAddressService,
     ITransactionRunner transactionRunner,
