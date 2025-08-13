@@ -1,6 +1,5 @@
 ﻿using System.Security.Cryptography;
 using System.Text;
-using System.Text.RegularExpressions;
 using OpenVPNGateMonitor.DataBase.Services.Command;
 using OpenVPNGateMonitor.DataBase.Services.Query.IssuedOvpnFileTable;
 using OpenVPNGateMonitor.DataBase.Services.Query.OpenVpnServerClientTable;
@@ -219,6 +218,7 @@ public class OpenVpnServerService(
         return sessionId;
     }
 
+    //todo: should be found where we need this method
     private async Task SetDisconnectForAllUsers(int vpnServerId, CancellationToken ct)
     {
         var existingAllOpenVpnServerClient = 
