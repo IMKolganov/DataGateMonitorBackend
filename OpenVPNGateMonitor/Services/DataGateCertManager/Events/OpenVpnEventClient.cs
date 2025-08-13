@@ -1,3 +1,4 @@
+using System.Diagnostics;
 using Microsoft.AspNetCore.SignalR;
 using Microsoft.AspNetCore.SignalR.Client;
 using Newtonsoft.Json;
@@ -6,6 +7,19 @@ using OpenVPNGateMonitor.Models;
 using OpenVPNGateMonitor.Services.Api.Auth.Interfaces;
 
 namespace OpenVPNGateMonitor.Services.DataGateCertManager.Events;
+
+public record OpenVpnEventConnectionStatus(
+    int ServerId,
+    string Url,
+    string Host,
+    int Port,
+    HubConnectionState State,
+    string? ConnectionId,
+    DateTimeOffset LastStateChangedUtc,
+    DateTimeOffset? LastReconnectedUtc,
+    DateTimeOffset? LastClosedUtc,
+    string? LastError
+);
 
 public class OpenVpnEventClient(
     OpenVpnServer server,
@@ -16,35 +30,56 @@ public class OpenVpnEventClient(
 {
     private HubConnection? _connection;
     private readonly SemaphoreSlim _connectionLock = new(1, 1);
-    private PeriodicTimer? _heartbeat;
-
-    // Reconnect loop guard
-    private Task? _reconnectLoopTask;
-    private CancellationTokenSource? _reconnectCts;
-
     private bool _handlersRegistered;
+
+    // ---- diag fields ----
+    private string _fullUrl = "";
+    private string _host = "";
+    private int _port;
+    private HubConnectionState _lastState = HubConnectionState.Disconnected;
+    private DateTimeOffset _lastStateChangedUtc = DateTimeOffset.MinValue;
+    private DateTimeOffset? _lastReconnectedUtc;
+    private DateTimeOffset? _lastClosedUtc;
+    private string? _lastError;
 
     public async Task StartListeningAsync(CancellationToken cancellationToken)
     {
         await EnsureConnectionAsync(cancellationToken);
+        var s = GetStatus();
+        logger.LogInformation("OpenVpnEventClient started. Status={State}, ConnId={ConnId}, Url={Url}, Host={Host}, Port={Port}",
+            s.State, s.ConnectionId, s.Url, s.Host, s.Port);
+    }
 
-        // Heartbeat to remote hub for liveness (lightweight)
-        _heartbeat ??= new PeriodicTimer(TimeSpan.FromSeconds(30));
-        _ = Task.Run(async () =>
-        {
-            while (await _heartbeat.WaitForNextTickAsync(cancellationToken))
-            {
-                try
-                {
-                    if (_connection?.State == HubConnectionState.Connected)
-                        await _connection.SendAsync("Ping", $"ovpn-srv-{server.Id}", cancellationToken);
-                }
-                catch (Exception ex)
-                {
-                    logger.LogDebug(ex, "Heartbeat failed (ServerId={ServerId})", server.Id);
-                }
-            }
-        }, cancellationToken);
+    public OpenVpnEventConnectionStatus GetStatus()
+        => new(
+            ServerId: server.Id,
+            Url: _fullUrl,
+            Host: _host,
+            Port: _port,
+            State: _connection?.State ?? HubConnectionState.Disconnected,
+            ConnectionId: _connection?.ConnectionId,
+            LastStateChangedUtc: _lastStateChangedUtc,
+            LastReconnectedUtc: _lastReconnectedUtc,
+            LastClosedUtc: _lastClosedUtc,
+            LastError: _lastError
+        );
+
+    private void InitTargetUrl()
+    {
+        if (!string.IsNullOrEmpty(_fullUrl)) return;
+        _fullUrl = $"{server.ApiUrl.TrimEnd('/')}/hubs/openvpn-event";
+        var uri = new Uri(_fullUrl);
+        _host = uri.Host;
+        _port = uri.IsDefaultPort ? (uri.Scheme == Uri.UriSchemeHttps ? 443 : 80) : uri.Port;
+    }
+
+    private void Stamp(HubConnectionState state, Exception? error = null)
+    {
+        _lastState = state;
+        _lastStateChangedUtc = DateTimeOffset.UtcNow;
+        _lastError = error?.Message;
+        if (state == HubConnectionState.Connected) _lastReconnectedUtc = _lastStateChangedUtc;
+        if (error != null) _lastClosedUtc = _lastStateChangedUtc;
     }
 
     private async Task<HubConnection> EnsureConnectionAsync(CancellationToken cancellationToken)
@@ -52,87 +87,100 @@ public class OpenVpnEventClient(
         await _connectionLock.WaitAsync(cancellationToken);
         try
         {
-            if (_connection is { State: HubConnectionState.Connected })
+            if (_connection is not null && _connection.State == HubConnectionState.Connected)
                 return _connection;
 
-            if (_connection is null)
+            if (_connection == null)
             {
-                var fullUrl = $"{server.ApiUrl.TrimEnd('/')}/hubs/openvpn-event";
-                logger.LogInformation("Creating SignalR connection: {Url} (ServerId={ServerId})", fullUrl, server.Id);
+                InitTargetUrl();
+                logger.LogInformation("Creating SignalR connection for server {ServerId} (Url={Url}, Host={Host}, Port={Port})",
+                    server.Id, _fullUrl, _host, _port);
 
                 _connection = new HubConnectionBuilder()
-                    .WithUrl(fullUrl, options =>
+                    .WithUrl(_fullUrl, options =>
                     {
                         options.AccessTokenProvider = () =>
-                        {
-                            try
-                            {
-                                var token = tokenService.GenerateToken(
-                                    "vpn-cert-issuer", "cert-create", "backend", "DataGateCertManager");
-                                if (string.IsNullOrWhiteSpace(token))
-                                    logger.LogError("Generated empty token (ServerId={ServerId})", server.Id);
-                                return Task.FromResult<string?>(token);
-                            }
-                            catch (Exception ex)
-                            {
-                                logger.LogError(ex, "Token generation failed (ServerId={ServerId})", server.Id);
-                                return Task.FromResult<string?>(null);
-                            }
-                        };
+                            Task.FromResult<string?>(tokenService.GenerateToken(
+                                "vpn-cert-issuer", "cert-create", "backend", "DataGateCertManager"));
                     })
-                    // NOTE: no WithAutomaticReconnect to avoid races; we handle reconnect ourselves.
+                    .WithAutomaticReconnect(new[] { // понятный backoff
+                        TimeSpan.Zero, TimeSpan.FromSeconds(2),
+                        TimeSpan.FromSeconds(5), TimeSpan.FromSeconds(15),
+                        TimeSpan.FromSeconds(30), TimeSpan.FromSeconds(60)
+                    })
                     .Build();
-
-                // Only log lifecycle; do not call Start/Stop inside these
-                _connection.Closed += error =>
-                {
-                    logger.LogWarning(error, "SignalR closed (ServerId={ServerId}); starting reconnect loop", server.Id);
-                    StartReconnectLoop();
-                    return Task.CompletedTask;
-                };
 
                 if (!_handlersRegistered)
                 {
-                    _connection.On<OpenVpnServerEventLog>("ClientConnected", data => HandleEvent("ClientConnected", data));
-                    _connection.On<OpenVpnServerEventLog>("ClientDisconnected", data => HandleEvent("ClientDisconnected", data));
-                    _connection.On<OpenVpnServerEventLog>("ClientAttempted", data => HandleEvent("ClientAttempted", data));
-                    _connection.On<OpenVpnServerEventLog>("TlsVerified", data => HandleEvent("TlsVerified", data));
+                    // события от удалённого хоста
+                    _connection.On<OpenVpnServerEventLog>("ClientConnected", async data => await HandleEvent("ClientConnected", data));
+                    _connection.On<OpenVpnServerEventLog>("ClientDisconnected", async data => await HandleEvent("ClientDisconnected", data));
+                    _connection.On<OpenVpnServerEventLog>("ClientAttempted", async data => await HandleEvent("ClientAttempted", data));
+                    _connection.On<OpenVpnServerEventLog>("TlsVerified", async data => await HandleEvent("TlsVerified", data));
+
+                    // жизненный цикл коннекта
+                    _connection.Reconnecting += ex =>
+                    {
+                        Stamp(HubConnectionState.Reconnecting, ex);
+                        logger.LogWarning(ex, "SignalR reconnecting (ServerId={ServerId}, Host={Host}, Port={Port})",
+                            server.Id, _host, _port);
+                        return Task.CompletedTask;
+                    };
+                    _connection.Reconnected += connId =>
+                    {
+                        Stamp(HubConnectionState.Connected);
+                        logger.LogInformation("SignalR reconnected (ServerId={ServerId}, ConnId={ConnId}, Host={Host}, Port={Port})",
+                            server.Id, connId, _host, _port);
+                        return Task.CompletedTask;
+                    };
+                    _connection.Closed += ex =>
+                    {
+                        Stamp(HubConnectionState.Disconnected, ex);
+                        logger.LogError(ex, "SignalR closed (ServerId={ServerId}, Host={Host}, Port={Port})",
+                            server.Id, _host, _port);
+                        return Task.CompletedTask;
+                    };
+
                     _handlersRegistered = true;
                 }
             }
 
-            if (_connection.State == HubConnectionState.Disconnected)
+            if (_connection.State != HubConnectionState.Connected)
             {
-                try
-                {
-                    await _connection.StartAsync(cancellationToken);
-                    logger.LogInformation("SignalR connected (ServerId={ServerId}, ConnId={ConnId})",
-                        server.Id, _connection.ConnectionId);
-                }
-                catch (Exception ex)
-                {
-                    logger.LogWarning(ex, "Initial StartAsync failed (ServerId={ServerId})", server.Id);
-                    StartReconnectLoop(); // fire background reconnect loop
-                }
+                await _connection.StartAsync(cancellationToken);
+                Stamp(HubConnectionState.Connected);
+                logger.LogInformation("Started OpenVpnEventClient SignalR connection for server {ServerId}. ConnId={ConnId}, Host={Host}, Port={Port}",
+                    server.Id, _connection.ConnectionId, _host, _port);
             }
 
-            return _connection!;
+            return _connection;
         }
         finally
         {
             _connectionLock.Release();
         }
     }
-
+    
     private async Task HandleEvent(string eventType, OpenVpnServerEventLog data)
     {
+        var swTotal = Stopwatch.StartNew();
+        var group = server.Id.ToString();
+
         try
         {
+            logger.LogInformation(
+                "Handling event {EventType} for ServerId={ServerId}; CN={CommonName}; Real={Real}; Virt={Virt}; Since={Since}",
+                eventType, server.Id, data.CommonName, data.RealAddress, data.VirtualAddress, data.ConnectedSince);
+
             using var scope = serviceProvider.CreateScope();
             var logService = scope.ServiceProvider.GetRequiredService<IVpnEventLogService>();
 
             var rawJson = JsonConvert.SerializeObject(data);
+            var jsonLen = rawJson?.Length ?? 0;
+            logger.LogDebug("Serialized event {EventType} for ServerId={ServerId}; JsonLength={JsonLen}",
+                eventType, server.Id, jsonLen);
 
+            var swSave = Stopwatch.StartNew();
             var log = new OpenVpnServerEventLog
             {
                 CommonName = data.CommonName,
@@ -140,102 +188,46 @@ public class OpenVpnEventClient(
                 VirtualAddress = data.VirtualAddress,
                 ConnectedSince = data.ConnectedSince,
                 Message = data.Message,
-                RawJson = rawJson
+                RawJson = rawJson ?? string.Empty
             };
 
             await logService.SaveEventAsync(server.Id, eventType, log, rawJson, CancellationToken.None);
+            swSave.Stop();
+            logger.LogInformation(
+                "Saved event {EventType} for ServerId={ServerId}; SaveMs={ElapsedMs}",
+                eventType, server.Id, swSave.ElapsedMilliseconds);
 
-            // Fan-out to local UI hub group for this server
-            await eventHub.Clients.Group(server.Id.ToString())
-                .SendAsync(eventType, data);
+            var swHub = Stopwatch.StartNew();
+            await eventHub.Clients.Group(group).SendAsync(eventType, data);
+            swHub.Stop();
+            logger.LogInformation(
+                "Broadcasted {EventType} to group {Group} (ServerId={ServerId}); HubMs={ElapsedMs}",
+                eventType, group, server.Id, swHub.ElapsedMilliseconds);
         }
         catch (Exception ex)
         {
-            logger.LogError(ex, "Failed to handle event {EventType} (ServerId={ServerId})", eventType, server.Id);
+            logger.LogError(ex,
+                "Failed to handle SignalR event {EventType} from ServerId={ServerId}; CN={CommonName}",
+                eventType, server.Id, data.CommonName);
         }
-    }
-
-    // Starts a single reconnect loop if not already running
-    private void StartReconnectLoop()
-    {
-        if (_reconnectLoopTask is { IsCompleted: false }) return;
-
-        _reconnectCts?.Cancel();
-        _reconnectCts?.Dispose();
-        _reconnectCts = new CancellationTokenSource();
-
-        _reconnectLoopTask = Task.Run(async () =>
+        finally
         {
-            var ct = _reconnectCts.Token;
-
-            // Exponential backoff with jitter, capped at 60s
-            var delay = TimeSpan.FromSeconds(2);
-            while (!ct.IsCancellationRequested)
-            {
-                try
-                {
-                    // If connection object not built yet, EnsureConnectionAsync will build it
-                    await _connectionLock.WaitAsync(ct);
-                    try
-                    {
-                        if (_connection is null)
-                        {
-                            // Build connection lazily if somehow null
-                            await EnsureConnectionAsync(ct);
-                        }
-                        else if (_connection.State == HubConnectionState.Disconnected)
-                        {
-                            await _connection.StartAsync(ct);
-                            logger.LogInformation("SignalR reconnected (ServerId={ServerId}, ConnId={ConnId})",
-                                server.Id, _connection.ConnectionId);
-                            return; // exit loop on success
-                        }
-                        else if (_connection.State == HubConnectionState.Connected)
-                        {
-                            return; // already connected
-                        }
-                    }
-                    finally
-                    {
-                        _connectionLock.Release();
-                    }
-                }
-                catch (OperationCanceledException)
-                {
-                    return;
-                }
-                catch (Exception ex)
-                {
-                    // Throttle to warning; this can be noisy on large fleets
-                    logger.LogWarning(ex, "Reconnect attempt failed (ServerId={ServerId})", server.Id);
-                }
-
-                // Backoff + jitter (0.8–1.2x)
-                var jitter = 0.8 + (Random.Shared.NextDouble() * 0.4);
-                var next = TimeSpan.FromSeconds(Math.Min(delay.TotalSeconds * 2 * jitter, 60));
-                try { await Task.Delay(delay, ct); } catch (OperationCanceledException) { return; }
-                delay = next;
-            }
-        }, _reconnectCts.Token);
+            swTotal.Stop();
+            logger.LogDebug("HandleEvent finished for {EventType} (ServerId={ServerId}); TotalMs={ElapsedMs}",
+                eventType, server.Id, swTotal.ElapsedMilliseconds);
+        }
     }
 
     public async Task StopAsync(CancellationToken ct = default)
     {
-        _heartbeat?.Dispose();
-        _reconnectCts?.Cancel();
-
-        if (_reconnectLoopTask is not null)
-        {
-            try { await _reconnectLoopTask; } catch { /* ignore */ }
-        }
+        var s = GetStatus();
+        logger.LogInformation("Stopping OpenVpnEventClient (ServerId={ServerId}, State={State}, ConnId={ConnId}, Host={Host}, Port={Port})",
+            s.ServerId, s.State, s.ConnectionId, s.Host, s.Port);
 
         if (_connection is not null)
         {
             try { await _connection.StopAsync(ct); } catch { /* ignore */ }
             try { await _connection.DisposeAsync(); } catch { /* ignore */ }
         }
-
-        _reconnectCts?.Dispose();
-        _reconnectCts = null;
     }
 }
