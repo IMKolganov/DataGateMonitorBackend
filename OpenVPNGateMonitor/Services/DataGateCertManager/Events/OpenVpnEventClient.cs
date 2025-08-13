@@ -191,7 +191,7 @@ public class OpenVpnEventClient(
                 RawJson = rawJson ?? string.Empty
             };
 
-            await logService.SaveEventAsync(server.Id, eventType, log, rawJson, CancellationToken.None);
+            await logService.SaveEventAsync(server.Id, eventType, log, rawJson ?? string.Empty, CancellationToken.None);
             swSave.Stop();
             logger.LogInformation(
                 "Saved event {EventType} for ServerId={ServerId}; SaveMs={ElapsedMs}",
