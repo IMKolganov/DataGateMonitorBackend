@@ -4,6 +4,8 @@ using Mapster;
 using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Mvc;
 using Newtonsoft.Json;
+using OpenVPNGateMonitor.DataBase.Services.Query.OpenVpnServerClientTable;
+using OpenVPNGateMonitor.DataBase.Services.Query.OpenVpnServerClientTable.Dto;
 using OpenVPNGateMonitor.DataBase.Services.Query.OpenVpnServerTable;
 using OpenVPNGateMonitor.Models;
 using OpenVPNGateMonitor.Services.Api.Interfaces;
@@ -20,14 +22,16 @@ namespace OpenVPNGateMonitor.Controllers;
 [Authorize]
 public class OpenVpnServersController(ILogger<OpenVpnServersController> logger, IVpnDataService vpnDataService,
     IOpenVpnServerOverviewQuery openVpnServerOverviewQuery,
+    IOpenVpnServerClientOverviewQuery openVpnServerClientOverviewQuery,
     IOpenVpnServerQueryService openVpnServerQueryService,
+    IOpenVpnOverviewSeriesQuery openVpnOverviewSeriesQuery,
     IOpenVpnBackgroundService openVpnBackgroundService) : ControllerBase
 {
     [HttpGet("GetAllConnectedClients")]
     public async Task<ActionResult<ApiResponse<ConnectedClientsResponse>>> GetAllConnectedClients(
         [FromQuery] GetConnectedClientsRequest request, CancellationToken cancellationToken)
     {
-        var result = await openVpnServerOverviewQuery.GetAllConnectedOpenVpnServerClientsAsync(
+        var result = await openVpnServerClientOverviewQuery.GetAllConnectedOpenVpnServerClientsAsync(
             request.VpnServerId, request.Page, request.PageSize, cancellationToken);
 
         return Ok(ApiResponse<ConnectedClientsResponse>.SuccessResponse(result.Adapt<ConnectedClientsResponse>()));
@@ -37,7 +41,7 @@ public class OpenVpnServersController(ILogger<OpenVpnServersController> logger, 
     public async Task<ActionResult<ApiResponse<ConnectedClientsResponse>>> GetAllHistoryClients(
         [FromQuery] GetHistoryClientsRequest request, CancellationToken cancellationToken)
     {
-        var result = await openVpnServerOverviewQuery.GetAllHistoryOpenVpnServerClientsAsync(
+        var result = await openVpnServerClientOverviewQuery.GetAllHistoryOpenVpnServerClientsAsync(
             request.VpnServerId, request.Page, request.PageSize, cancellationToken);
 
         return Ok(ApiResponse<ConnectedClientsResponse>.SuccessResponse(result.Adapt<ConnectedClientsResponse>()));
@@ -183,5 +187,20 @@ public class OpenVpnServersController(ILogger<OpenVpnServersController> logger, 
             }
             logger.LogInformation("WebSocket closed.");
         }
+    }
+
+    [HttpGet("series")]
+    public async Task<ActionResult<OverviewSeriesResponse>> GetSeries(
+        [FromQuery] DateTimeOffset from,
+        [FromQuery] DateTimeOffset to,
+        [FromQuery] OverviewGrouping grouping = OverviewGrouping.Auto,
+        [FromQuery] int? vpnServerId = null,
+        [FromQuery] string? externalId = null,
+        CancellationToken ct = default)
+    {
+        var result =
+            await openVpnOverviewSeriesQuery.GetOverviewSeriesFromSessionsAsync(
+                from, to, grouping, vpnServerId, externalId, ct);
+        return Ok(result);
     }
 }
