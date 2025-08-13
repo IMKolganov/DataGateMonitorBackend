@@ -9,7 +9,7 @@
       "applicationUrl": "http://localhost:5581",
       "environmentVariables": {
         "ASPNETCORE_ENVIRONMENT": "Development",
-        "OPEN_VPN_BACKGROUND_SERVICE_DISABLED": "true"
+        "OPEN_VPN_BACKGROUND_SERVICE_DISABLED": "false"
       }
     },
     "OpenVPNGateMonitor Release": {
