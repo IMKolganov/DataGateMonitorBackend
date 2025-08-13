@@ -15,8 +15,6 @@ public class OpenVpnEventClient(
     IMicroserviceTokenService tokenService,
     IServiceProvider serviceProvider)
 {
-    private readonly OpenVpnServer _server = server;
-    private readonly ConcurrentDictionary<string, TaskCompletionSource<string>> _pendingCommands = new();
     private HubConnection? _connection;
     private readonly SemaphoreSlim _connectionLock = new(1, 1);
     private bool _handlersRegistered = false;
@@ -36,9 +34,9 @@ public class OpenVpnEventClient(
 
             if (_connection == null)
             {
-                logger.LogInformation("Creating SignalR connection for server {ServerId}", _server.Id);
+                logger.LogInformation("Creating SignalR connection for server {ServerId}", server.Id);
                 
-                var fullUrl = $"{_server.ApiUrl.TrimEnd('/')}/hubs/openvpn-event";
+                var fullUrl = $"{server.ApiUrl.TrimEnd('/')}/hubs/openvpn-event";
 
                 _connection = new HubConnectionBuilder()
                     .WithUrl(fullUrl, options =>
@@ -79,7 +77,7 @@ public class OpenVpnEventClient(
             if (_connection.State != HubConnectionState.Connected)
             {
                 await _connection.StartAsync(cancellationToken);
-                logger.LogInformation("Started OpenVpnEventClient SignalR connection for server {ServerId}", _server.Id);
+                logger.LogInformation("Started OpenVpnEventClient SignalR connection for server {ServerId}", server.Id);
             }
 
             return _connection;
@@ -109,14 +107,14 @@ public class OpenVpnEventClient(
                 RawJson = rawJson
             };
 
-            await logService.SaveEventAsync(_server.Id, eventType, log, rawJson, CancellationToken.None);
+            await logService.SaveEventAsync(server.Id, eventType, log, rawJson, CancellationToken.None);
 
-            await eventHub.Clients.Group(_server.Id.ToString())
+            await eventHub.Clients.Group(server.Id.ToString())
                 .SendAsync(eventType, data);
         }
         catch (Exception ex)
         {
-            logger.LogError(ex, "Failed to handle SignalR event {EventType} from server {ServerId}", eventType, _server.Id);
+            logger.LogError(ex, "Failed to handle SignalR event {EventType} from server {ServerId}", eventType, server.Id);
         }
     }
 
@@ -127,12 +125,12 @@ public class OpenVpnEventClient(
         {
             await connection.StopAsync();
             await connection.StartAsync();
-            logger.LogInformation("Reconnected OpenVpnEventClient to SignalR for server {ServerId}", _server.Id);
+            logger.LogInformation("Reconnected OpenVpnEventClient to SignalR for server {ServerId}", server.Id);
         }
         catch (Exception ex)
         {
             logger.LogError(ex, "Failed OpenVpnEventClient to reconnect " +
-                                "to SignalR for server {ServerId}", _server.Id);
+                                "to SignalR for server {ServerId}", server.Id);
             throw;
         }
     }
