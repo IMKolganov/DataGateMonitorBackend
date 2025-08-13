@@ -2,9 +2,9 @@
 using System.Text;
 using System.Text.RegularExpressions;
 using OpenVPNGateMonitor.DataBase.Services.Command;
+using OpenVPNGateMonitor.DataBase.Services.Query.IssuedOvpnFileTable;
 using OpenVPNGateMonitor.DataBase.Services.Query.OpenVpnServerClientTable;
 using OpenVPNGateMonitor.DataBase.Services.Query.OpenVpnServerStatusLogTable;
-using OpenVPNGateMonitor.DataBase.Services.Query.TelegramBotUserTable;
 using OpenVPNGateMonitor.Models;
 using OpenVPNGateMonitor.Models.Helpers.Services;
 using OpenVPNGateMonitor.Services.BackgroundServices.Interfaces;
@@ -20,7 +20,7 @@ public class OpenVpnServerService(
     IOpenVpnVersionService openVpnVersionService,
     IOpenVpnStateService openVpnStateService,
     IOpenVpnServerClientQueryService openVpnServerClientQueryService,
-    ITelegramBotUserQueryService telegramBotUserQueryService,
+    IssuedOvpnFileQueryService openVpnFileQueryService,
     IOpenVpnServerStatusLogQueryService openVpnServerStatusLogQueryService,
     IExternalIpAddressService externalIpAddressService,
     ITransactionRunner transactionRunner,
@@ -61,7 +61,8 @@ public class OpenVpnServerService(
                 {
                     existing.CommonName = openVpnClient.CommonName;
                     existing.VpnServerId = openVpnServer.Id;
-                    existing.ExternalId = await TryParseExternalIdAsync(openVpnClient.CommonName, ct) ?? string.Empty;
+                    existing.ExternalId = await GetExternalIdByCommonNameFromOvpnFile(
+                        openVpnClient.CommonName, openVpnServer.Id, ct) ?? string.Empty;
                     existing.BytesReceived = openVpnClient.BytesReceived;
                     existing.BytesSent = openVpnClient.BytesSent;
                     existing.LastUpdate = DateTime.UtcNow;
@@ -81,7 +82,8 @@ public class OpenVpnServerService(
                     var newClient = new OpenVpnServerClient
                     {
                         VpnServerId = openVpnServer.Id,
-                        ExternalId = await TryParseExternalIdAsync(openVpnClient.CommonName, ct) ?? string.Empty,
+                        ExternalId = await GetExternalIdByCommonNameFromOvpnFile(
+                            openVpnClient.CommonName, openVpnServer.Id, ct) ?? string.Empty,
                         SessionId = sessionId,
                         CommonName = openVpnClient.CommonName,
                         RemoteIp = openVpnClient.RemoteIp,
@@ -230,23 +232,29 @@ public class OpenVpnServerService(
                                $"Marked {existingAllOpenVpnServerClient.Count} existing clients as disconnected.");
     }
 
-    private async Task<string?> TryParseExternalIdAsync(string commonName, CancellationToken ct = default)
+    private async Task<string?> GetExternalIdByCommonNameFromOvpnFile(string commonName, int vpnServerId, 
+        CancellationToken ct)
     {
-        var digitParts = Regex.Matches(commonName, @"\d+")
-            .Select(m => m.Value)
-            .Distinct();
-
-        foreach (var candidate in digitParts)
-        {
-            if (!long.TryParse(candidate, out var id))
-                continue;
-
-            var exists = await telegramBotUserQueryService.AnyByTelegramIdAsync(id, ct);
-
-            if (exists)
-                return candidate;
-        }
-
-        return null;
+        return await openVpnFileQueryService.GetExternalIdByCommonName(commonName, vpnServerId, false, ct);
     }
+
+    // private async Task<string?> TryParseExternalIdAsync(string commonName, CancellationToken ct = default)
+    // {
+    //     var digitParts = Regex.Matches(commonName, @"\d+")
+    //         .Select(m => m.Value)
+    //         .Distinct();
+    //     
+    //     foreach (var candidate in digitParts)
+    //     {
+    //         if (!long.TryParse(candidate, out var id))
+    //             continue;
+    //     
+    //         var exists = await telegramBotUserQueryService.AnyByTelegramIdAsync(id, ct);
+    //     
+    //         if (exists)
+    //             return candidate;
+    //     }
+    //     
+    //     return null;
+    // }
 }
