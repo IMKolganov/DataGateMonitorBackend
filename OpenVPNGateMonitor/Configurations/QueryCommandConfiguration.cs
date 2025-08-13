@@ -27,6 +27,8 @@ public static class QueryCommandConfiguration
         services.AddScoped<IIssuedOvpnFileQueryService, IssuedOvpnFileQueryService>();
         services.AddScoped<IIssuedOvpnFileTokenQueryService, IssuedOvpnFileTokenQueryService>();
         services.AddScoped<ILocalizationTextQueryService, LocalizationTextQueryService>();
+        services.AddScoped<IOpenVpnOverviewSeriesQuery, OpenVpnOverviewSeriesQuery>();
+        services.AddScoped<IOpenVpnServerClientOverviewQuery, OpenVpnServerClientOverviewQuery>();
         services.AddScoped<IOpenVpnServerClientQueryService, OpenVpnServerClientQueryService>();
         services.AddScoped<IOpenVpnServerEventLogQueryService, OpenVpnServerEventLogQueryService>();
         services.AddScoped<IOpenVpnServerOvpnFileConfigQueryService, OpenVpnServerOvpnFileConfigQueryService>();
