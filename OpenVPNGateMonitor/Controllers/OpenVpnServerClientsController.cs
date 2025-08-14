@@ -12,8 +12,7 @@ namespace OpenVPNGateMonitor.Controllers;
 [ApiController]
 [Route("api/[controller]")]
 [Authorize]
-public class OpenVpnServerClientsController(ILogger<OpenVpnServerClientsController> logger,
-    IOpenVpnServerClientOverviewQuery openVpnServerClientOverviewQuery,
+public class OpenVpnServerClientsController(IOpenVpnServerClientOverviewQuery openVpnServerClientOverviewQuery,
     IOpenVpnGeoQueryService openVpnGeoQueryService,
     IOpenVpnOverviewSeriesQuery openVpnOverviewSeriesQuery) : ControllerBase
 {
