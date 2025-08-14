@@ -28,6 +28,7 @@ public class OpenVpnServerClientConfiguration : BaseEntityConfiguration<OpenVpnS
             .IsRequired();
         entity.Property(e => e.ConnectedSince)
             .IsRequired();
+        entity.Property(e => e.DisconnectedAt);
         entity.Property(e => e.Username)
             .IsRequired()
             .HasMaxLength(255);
