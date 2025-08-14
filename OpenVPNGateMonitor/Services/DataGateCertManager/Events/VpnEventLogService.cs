@@ -1,46 +1,67 @@
-﻿using Mapster;
+﻿using System.Text.Json;
+using Mapster;
 using OpenVPNGateMonitor.DataBase.Services.Command;
 using OpenVPNGateMonitor.DataBase.Services.Query.OpenVpnServerEventLogTable;
 using OpenVPNGateMonitor.Models;
+using OpenVPNGateMonitor.Models.Helpers;
 using OpenVPNGateMonitor.SharedModels.DataGateMonitorBackend.OpenVpnServerEvent.Dto;
 using OpenVPNGateMonitor.SharedModels.DataGateMonitorBackend.OpenVpnServerEvent.Responses;
 
 namespace OpenVPNGateMonitor.Services.DataGateCertManager.Events;
 
 public class VpnEventLogService(
-    IOpenVpnServerEventLogQueryService openVpnServerEventLogQueryService,
-    ICommandService<OpenVpnServerEventLog, int> openVpnServerEventLogCommandService) : IVpnEventLogService
+    IOpenVpnServerEventLogQueryService query,
+    ICommandService<OpenVpnServerEventLog, int> cmd
+) : IVpnEventLogService
 {
-    public async Task SaveEventAsync(
-        int vpnServerId,
-        string eventType,
-        OpenVpnServerEventLog data,
-        string rawJson,
-        CancellationToken ct)
+    // Accepts unified payload and persists it to the log
+    public async Task SaveEventAsync(VpnEventRequest e, CancellationToken ct)
     {
-        var now = DateTime.UtcNow;
-        var eventLog = new OpenVpnServerEventLog
+        var now = DateTimeOffset.UtcNow;
+
+        // Ensure event time (fallback to "now" if not provided)
+        var eventTime = e.EventTimeUtc ?? now;
+
+        // Compute DisconnectedAt if missing but start+duration are present
+        var disconnectedAt = e.DisconnectedAt;
+        if (disconnectedAt is null && e.ConnectedSince is not null && e.DurationSec is not null)
+            disconnectedAt = e.ConnectedSince.Value.AddSeconds(e.DurationSec.Value);
+
+        // Direct 1:1 mapping to the table (table mirrors request)
+        var row = new OpenVpnServerEventLog
         {
-            VpnServerId     = vpnServerId,
-            EventType       = eventType,
-            CommonName      = data.CommonName,
-            RealAddress     = data.RealAddress,
-            VirtualAddress  = data.VirtualAddress,
-            ConnectedSince  = data.ConnectedSince,
-            Message         = data.Message,
-            RawJson         = rawJson,
-            CreateDate      = now,
-            LastUpdate      = now
+            VpnServerId     = e.VpnServerId,
+            EventType       = e.EventType,
+            CommonName      = e.CommonName,
+            RealAddress     = e.RealAddress,      // "ip:port" as-is
+            VirtualAddress  = e.VirtualAddress,
+
+            ConnectedSince  = e.ConnectedSince,
+            ScriptType      = e.ScriptType,
+            Action          = e.Action,
+            EventTimeUtc    = eventTime,
+
+            BytesReceived   = e.BytesReceived,
+            BytesSent       = e.BytesSent,
+            SampleBytesIn   = e.SampleBytesIn,
+            SampleBytesOut  = e.SampleBytesOut,
+
+            DurationSec     = e.DurationSec,
+            DisconnectedAt  = disconnectedAt,
+
+            IvVer           = e.IvVer,
+            IvGuiVer        = e.IvGuiVer,
+            IvPlat          = e.IvPlat,
+            Message         = e.Message
         };
 
-        await openVpnServerEventLogCommandService.AddAsync(eventLog, saveChanges: true, ct);
+        await cmd.AddAsync(row, saveChanges: true, ct);
     }
-    
+
     public async Task<VpnServerEventResponse> GetEventByVpnServerIdAsync(
-        int vpnServerId, int page, int pageSize, CancellationToken cancellationToken)
+        int vpnServerId, int page, int pageSize, CancellationToken ct)
     {
-        var pageResult = await openVpnServerEventLogQueryService
-            .GetByVpnServerIdAsync(vpnServerId, page, pageSize, cancellationToken);
+        var pageResult = await query.GetByVpnServerIdAsync(vpnServerId, page, pageSize, ct);
 
         return new VpnServerEventResponse
         {

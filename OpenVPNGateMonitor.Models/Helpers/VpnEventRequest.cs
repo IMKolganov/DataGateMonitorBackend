@@ -1,9 +1,9 @@
-﻿namespace OpenVPNGateMonitor.Models;
-
-public class OpenVpnServerEventLog : BaseEntity<int>
+﻿namespace OpenVPNGateMonitor.Models.Helpers;
+//todo: move to nuget
+public class VpnEventRequest
 {
-    public int VpnServerId { get; init; }
-    public string EventType { get; init; } = default!; // "ClientConnect", "ClientDisconnect", ...
+    public int VpnServerId { get; set; }
+    public string EventType { get; set; } = default!; // "ClientConnect", "ClientDisconnect", ...
 
     public string? CommonName { get; init; }
     public string? RealAddress { get; init; }       // "ip:port"
