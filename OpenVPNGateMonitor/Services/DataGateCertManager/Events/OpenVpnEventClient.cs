@@ -128,6 +128,8 @@ public class OpenVpnEventClient(
                         async data => await HandleEvent("ClientAttempted", data));
                     _connection.On<OpenVpnServerEventLog>("TlsVerified",
                         async data => await HandleEvent("TlsVerified", data));
+                    _connection.On<OpenVpnServerEventLog>("AuthFailed",
+                        async data => await HandleEvent("AuthFailed", data));
 
                     _connection.Reconnecting += ex =>
                     {
