@@ -38,12 +38,19 @@ public class OpenVpnServerService(
             logger.LogInformation(
                 "VpnServerId: {Id}. Retrieved {Count} clients from OpenVPN.",
                 openVpnServer.Id, openVpnClients.Count);
+            
+            var nowUtc = DateTime.UtcNow;
+            var currentSessionIds = new HashSet<Guid>(
+                openVpnClients.Select(c => GenerateSessionId(c.CommonName, c.RemoteIp, c.ConnectedSince)));
 
             await openVpnServerClientCommandService.UpdateWhereAsync(
-                x => x.VpnServerId == openVpnServer.Id,
+                x => x.VpnServerId == openVpnServer.Id
+                     && x.IsConnected
+                     && !currentSessionIds.Contains(x.SessionId),
                 s => s
                     .SetProperty(c => c.IsConnected, false)
-                    .SetProperty(c => c.LastUpdate, DateTime.UtcNow),
+                    .SetProperty(c => c.DisconnectedAt, nowUtc)
+                    .SetProperty(c => c.LastUpdate, nowUtc),
                 ct);
 
             foreach (var openVpnClient in openVpnClients)
@@ -72,6 +79,7 @@ public class OpenVpnServerService(
                     existing.Latitude = openVpnClient.Latitude;
                     existing.Longitude = openVpnClient.Longitude;
                     existing.IsConnected = true;
+                    existing.DisconnectedAt = null;
 
                     await openVpnServerClientCommandService.UpdateAsync(existing, saveChanges: false, ct);
                     logger.LogDebug("Updated client session {SessionId}.", sessionId);
@@ -90,6 +98,7 @@ public class OpenVpnServerService(
                         BytesReceived = openVpnClient.BytesReceived,
                         BytesSent = openVpnClient.BytesSent,
                         ConnectedSince = openVpnClient.ConnectedSince,
+                        DisconnectedAt = null,//todo: make!
                         Username = openVpnClient.Username,
                         Country = openVpnClient.Country,
                         Region = openVpnClient.Region,
@@ -216,20 +225,6 @@ public class OpenVpnServerService(
         logger.LogDebug($"Generated SessionId: {sessionId}");
 
         return sessionId;
-    }
-
-    //todo: should be found where we need this method
-    private async Task SetDisconnectForAllUsers(int vpnServerId, CancellationToken ct)
-    {
-        var existingAllOpenVpnServerClient = 
-            await openVpnServerClientQueryService.GetAllConnectedByVpnServerIdAsync(vpnServerId, ct);
-
-        foreach (var client in existingAllOpenVpnServerClient)
-        {
-            client.IsConnected = false;
-        }
-        logger.LogInformation($"VpnServerId: {vpnServerId}. " +
-                               $"Marked {existingAllOpenVpnServerClient.Count} existing clients as disconnected.");
     }
 
     private async Task<string?> GetExternalIdByCommonNameFromOvpnFile(string commonName, int vpnServerId, 
