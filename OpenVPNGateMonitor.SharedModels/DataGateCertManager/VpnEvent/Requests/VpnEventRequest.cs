@@ -1,9 +1,8 @@
-﻿namespace OpenVPNGateMonitor.Models.Helpers;
-//todo: move to nuget
-public class VpnEventRequest
+﻿namespace OpenVPNGateMonitor.SharedModels.DataGateCertManager.VpnEvent.Requests;
+
+public sealed class VpnEventRequest
 {
-    public int VpnServerId { get; set; }
-    public string EventType { get; set; } = default!; // "ClientConnect", "ClientDisconnect", ...
+    public string EventType { get; init; } = default!; // "ClientConnect", "ClientDisconnect", ...
 
     public string? CommonName { get; init; }
     public string? RealAddress { get; init; }       // "ip:port"
@@ -16,8 +15,6 @@ public class VpnEventRequest
 
     public long? BytesReceived { get; init; }            // final (disconnect)
     public long? BytesSent { get; init; }
-    public long? SampleBytesIn { get; init; }            // status 3 snapshot cumulative
-    public long? SampleBytesOut { get; init; }
 
     public long? DurationSec { get; init; }              // time_duration
     public DateTimeOffset? DisconnectedAt { get; init; } // start + duration (optional precomputed)
@@ -25,5 +22,6 @@ public class VpnEventRequest
     public string? IvVer { get; init; }
     public string? IvGuiVer { get; init; }
     public string? IvPlat { get; init; }
+
     public string? Message { get; init; }
 }
