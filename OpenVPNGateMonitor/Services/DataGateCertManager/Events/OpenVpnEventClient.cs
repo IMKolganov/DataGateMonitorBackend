@@ -4,24 +4,10 @@ using Microsoft.AspNetCore.SignalR;
 using Microsoft.AspNetCore.SignalR.Client;
 using OpenVPNGateMonitor.Hubs;
 using OpenVPNGateMonitor.Models;
+using OpenVPNGateMonitor.Models.Helpers;
 using OpenVPNGateMonitor.Services.Api.Auth.Interfaces;
-using OpenVPNGateMonitor.Services.DataGateCertManager.Events;
 
-// NOTE: add using for your DTO coming from backend API:
-using OpenVPNGateMonitor.Models.Helpers; // contains VpnEventRequest
-
-public record OpenVpnEventConnectionStatus(
-    int ServerId,
-    string Url,
-    string Host,
-    int Port,
-    HubConnectionState State,
-    string? ConnectionId,
-    DateTimeOffset LastStateChangedUtc,
-    DateTimeOffset? LastReconnectedUtc,
-    DateTimeOffset? LastClosedUtc,
-    string? LastError
-);
+namespace OpenVPNGateMonitor.Services.DataGateCertManager.Events;
 
 public class OpenVpnEventClient(
     OpenVpnServer server,
@@ -53,7 +39,7 @@ public class OpenVpnEventClient(
             s.State, s.ConnectionId, s.Url, s.Host, s.Port);
     }
 
-    public OpenVpnEventConnectionStatus GetStatus()
+    private OpenVpnEventConnectionStatus GetStatus()
         => new(
             ServerId: server.Id,
             Url: _fullUrl,
@@ -230,8 +216,7 @@ public class OpenVpnEventClient(
             var req = data.Adapt<VpnEventRequest>();
             req.VpnServerId = server.Id;
             req.EventType = eventType;
-            await logService.SaveEventAsync(req, CancellationToken.None);
-
+            
             var swSave = Stopwatch.StartNew();
             await logService.SaveEventAsync(req, CancellationToken.None);
             swSave.Stop();
@@ -258,20 +243,6 @@ public class OpenVpnEventClient(
             swTotal.Stop();
             logger.LogDebug("HandleEvent finished for {EventType} (ServerId={ServerId}); TotalMs={ElapsedMs}",
                 eventType, server.Id, swTotal.ElapsedMilliseconds);
-        }
-    }
-
-    public async Task StopAsync(CancellationToken ct = default)
-    {
-        var s = GetStatus();
-        logger.LogInformation(
-            "Stopping OpenVpnEventClient (ServerId={ServerId}, State={State}, ConnId={ConnId}, Host={Host}, Port={Port})",
-            s.ServerId, s.State, s.ConnectionId, s.Host, s.Port);
-
-        if (_connection is not null)
-        {
-            try { await _connection.StopAsync(ct); } catch { /* ignore */ }
-            try { await _connection.DisposeAsync(); } catch { /* ignore */ }
         }
     }
 }
