@@ -39,8 +39,6 @@ public class OpenVpnServerEventLogConfiguration : BaseEntityConfiguration<OpenVp
         // Big numeric traffic counters (PostgreSQL maps long -> bigint)
         entity.Property(e => e.BytesReceived);
         entity.Property(e => e.BytesSent);
-        entity.Property(e => e.SampleBytesIn);
-        entity.Property(e => e.SampleBytesOut);
 
         // Duration (sec)
         entity.Property(e => e.DurationSec);

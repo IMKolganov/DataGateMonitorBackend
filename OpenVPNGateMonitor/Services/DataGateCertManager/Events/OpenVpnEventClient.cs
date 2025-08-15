@@ -4,8 +4,8 @@ using Microsoft.AspNetCore.SignalR;
 using Microsoft.AspNetCore.SignalR.Client;
 using OpenVPNGateMonitor.Hubs;
 using OpenVPNGateMonitor.Models;
-using OpenVPNGateMonitor.Models.Helpers;
 using OpenVPNGateMonitor.Services.Api.Auth.Interfaces;
+using OpenVPNGateMonitor.SharedModels.DataGateCertManager.VpnEvent.Requests;
 
 namespace OpenVPNGateMonitor.Services.DataGateCertManager.Events;
 
@@ -93,12 +93,11 @@ public class OpenVpnEventClient(
                             Task.FromResult<string?>(tokenService.GenerateToken(
                                 "vpn-cert-issuer", "cert-create", "backend", "DataGateCertManager"));
                     })
-                    .WithAutomaticReconnect(new[]
-                    {
+                    .WithAutomaticReconnect([
                         TimeSpan.Zero, TimeSpan.FromSeconds(2),
                         TimeSpan.FromSeconds(5), TimeSpan.FromSeconds(15),
                         TimeSpan.FromSeconds(30), TimeSpan.FromSeconds(60)
-                    })
+                    ])
                     .Build();
 
                 _connection.ServerTimeout = TimeSpan.FromSeconds(30);
@@ -214,11 +213,9 @@ public class OpenVpnEventClient(
 
             // Build request that mirrors the table and overrides ServerId/EventType
             var req = data.Adapt<VpnEventRequest>();
-            req.VpnServerId = server.Id;
-            req.EventType = eventType;
             
             var swSave = Stopwatch.StartNew();
-            await logService.SaveEventAsync(req, CancellationToken.None);
+            await logService.SaveEventAsync(server.Id, eventType, req, CancellationToken.None);
             swSave.Stop();
             logger.LogInformation(
                 "Saved event {EventType} for ServerId={ServerId}; SaveMs={ElapsedMs}",

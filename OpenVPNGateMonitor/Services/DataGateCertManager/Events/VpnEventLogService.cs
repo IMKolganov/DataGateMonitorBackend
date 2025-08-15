@@ -1,9 +1,8 @@
-﻿using System.Text.Json;
-using Mapster;
+﻿using Mapster;
 using OpenVPNGateMonitor.DataBase.Services.Command;
 using OpenVPNGateMonitor.DataBase.Services.Query.OpenVpnServerEventLogTable;
 using OpenVPNGateMonitor.Models;
-using OpenVPNGateMonitor.Models.Helpers;
+using OpenVPNGateMonitor.SharedModels.DataGateCertManager.VpnEvent.Requests;
 using OpenVPNGateMonitor.SharedModels.DataGateMonitorBackend.OpenVpnServerEvent.Dto;
 using OpenVPNGateMonitor.SharedModels.DataGateMonitorBackend.OpenVpnServerEvent.Responses;
 
@@ -15,7 +14,7 @@ public class VpnEventLogService(
 ) : IVpnEventLogService
 {
     // Accepts unified payload and persists it to the log
-    public async Task SaveEventAsync(VpnEventRequest e, CancellationToken ct)
+    public async Task SaveEventAsync(int vpnServerId, string eventType, VpnEventRequest e, CancellationToken ct)
     {
         var now = DateTimeOffset.UtcNow;
 
@@ -30,8 +29,8 @@ public class VpnEventLogService(
         // Direct 1:1 mapping to the table (table mirrors request)
         var row = new OpenVpnServerEventLog
         {
-            VpnServerId     = e.VpnServerId,
-            EventType       = e.EventType,
+            VpnServerId     = vpnServerId,
+            EventType       = eventType,
             CommonName      = e.CommonName,
             RealAddress     = e.RealAddress,      // "ip:port" as-is
             VirtualAddress  = e.VirtualAddress,
@@ -43,8 +42,6 @@ public class VpnEventLogService(
 
             BytesReceived   = e.BytesReceived,
             BytesSent       = e.BytesSent,
-            SampleBytesIn   = e.SampleBytesIn,
-            SampleBytesOut  = e.SampleBytesOut,
 
             DurationSec     = e.DurationSec,
             DisconnectedAt  = disconnectedAt,

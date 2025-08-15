@@ -1,5 +1,4 @@
 ﻿using OpenVPNGateMonitor.Models;
-using OpenVPNGateMonitor.Services.DataGateCertManager.OpenVpnProxy;
 
 namespace OpenVPNGateMonitor.Services.DataGateCertManager.Events;
 

@@ -16,9 +16,6 @@ public class OpenVpnServerEventLog : BaseEntity<int>
 
     public long? BytesReceived { get; init; }            // final (disconnect)
     public long? BytesSent { get; init; }
-    public long? SampleBytesIn { get; init; }            // status 3 snapshot cumulative
-    public long? SampleBytesOut { get; init; }
-
     public long? DurationSec { get; init; }              // time_duration
     public DateTimeOffset? DisconnectedAt { get; init; } // start + duration (optional precomputed)
 
