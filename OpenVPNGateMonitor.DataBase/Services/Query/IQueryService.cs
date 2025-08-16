@@ -1,4 +1,5 @@
 ﻿using OpenVPNGateMonitor.Models;
+using OpenVPNGateMonitor.SharedModels.Responses;
 
 namespace OpenVPNGateMonitor.DataBase.Services.Query;
 
@@ -23,7 +24,7 @@ public interface IQueryService<TEntity, TKey> where TEntity : BaseEntity<TKey>
         CancellationToken ct = default,
         params Expression<Func<TEntity, object>>[] includes);
 
-    Task<PagedResult<TEntity>> PageAsync(
+    Task<IPagedResult<TEntity>> PageAsync(
         int page,
         int pageSize,
         Expression<Func<TEntity, bool>>? predicate = null,

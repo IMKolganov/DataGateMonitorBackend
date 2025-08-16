@@ -2,6 +2,7 @@
 using Microsoft.EntityFrameworkCore;
 using OpenVPNGateMonitor.DataBase.UnitOfWork;
 using OpenVPNGateMonitor.Models;
+using OpenVPNGateMonitor.SharedModels.Responses;
 
 namespace OpenVPNGateMonitor.DataBase.Services.Query;
 
@@ -44,7 +45,7 @@ public class EfQueryService<TEntity, TKey> : IQueryService<TEntity, TKey>
         return await q.ToListAsync(ct);
     }
 
-    public async Task<PagedResult<TEntity>> PageAsync(
+    public async Task<IPagedResult<TEntity>> PageAsync(
         int page,
         int pageSize,
         Expression<Func<TEntity, bool>>? predicate = null,
@@ -66,7 +67,7 @@ public class EfQueryService<TEntity, TKey> : IQueryService<TEntity, TKey>
 
         var items = await q.Skip((page - 1) * pageSize).Take(pageSize).ToListAsync(ct);
 
-        return new PagedResult<TEntity>
+        return new PagedResponse<TEntity>
         {
             Page = page,
             PageSize = pageSize,

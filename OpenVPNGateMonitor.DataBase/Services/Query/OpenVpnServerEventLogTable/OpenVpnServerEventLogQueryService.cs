@@ -1,5 +1,6 @@
 ﻿using Microsoft.EntityFrameworkCore;
 using OpenVPNGateMonitor.Models;
+using OpenVPNGateMonitor.SharedModels.Responses;
 
 namespace OpenVPNGateMonitor.DataBase.Services.Query.OpenVpnServerEventLogTable;
 
@@ -12,7 +13,7 @@ public class OpenVpnServerEventLogQueryService(IQueryService<OpenVpnServerEventL
     public Task<OpenVpnServerEventLog?> GetByIdAsync(int id, CancellationToken ct)
         => q.FindByIdAsync(id, ct: ct);
 
-    public async Task<PagedResult<OpenVpnServerEventLog>> GetByVpnServerIdAsync(
+    public async Task<IPagedResult<OpenVpnServerEventLog>> GetByVpnServerIdAsync(
         int vpnServerId, int page, int pageSize, CancellationToken ct)
     {
         if (page < 1) page = 1;
@@ -30,7 +31,7 @@ public class OpenVpnServerEventLogQueryService(IQueryService<OpenVpnServerEventL
             .AsNoTracking()
             .ToListAsync(ct);
 
-        return new PagedResult<OpenVpnServerEventLog>
+        return new PagedResponse<OpenVpnServerEventLog>
         {
             Page = page,
             PageSize = pageSize,
@@ -39,6 +40,6 @@ public class OpenVpnServerEventLogQueryService(IQueryService<OpenVpnServerEventL
         };
     }
 
-    public Task<PagedResult<OpenVpnServerEventLog>> GetPageAsync(int page, int pageSize, CancellationToken ct)
-        => q.PageAsync(page, pageSize, ct: ct);
+    public async Task<IPagedResult<OpenVpnServerEventLog>> GetPageAsync(int page, int pageSize, CancellationToken ct)
+        => await q.PageAsync(page, pageSize, ct: ct);
 }

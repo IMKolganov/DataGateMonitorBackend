@@ -1,15 +1,10 @@
-﻿using Mapster;
-using OpenVPNGateMonitor.DataBase.Services.Command;
-using OpenVPNGateMonitor.DataBase.Services.Query.OpenVpnServerEventLogTable;
+﻿using OpenVPNGateMonitor.DataBase.Services.Command;
 using OpenVPNGateMonitor.Models;
 using OpenVPNGateMonitor.SharedModels.DataGateCertManager.VpnEvent.Requests;
-using OpenVPNGateMonitor.SharedModels.DataGateMonitorBackend.OpenVpnServerEvent.Dto;
-using OpenVPNGateMonitor.SharedModels.DataGateMonitorBackend.OpenVpnServerEvent.Responses;
 
 namespace OpenVPNGateMonitor.Services.DataGateCertManager.Events;
 
 public class VpnEventLogService(
-    IOpenVpnServerEventLogQueryService query,
     ICommandService<OpenVpnServerEventLog, int> cmd
 ) : IVpnEventLogService
 {
@@ -53,17 +48,5 @@ public class VpnEventLogService(
         };
 
         await cmd.AddAsync(row, saveChanges: true, ct);
-    }
-
-    public async Task<VpnServerEventResponse> GetEventByVpnServerIdAsync(
-        int vpnServerId, int page, int pageSize, CancellationToken ct)
-    {
-        var pageResult = await query.GetByVpnServerIdAsync(vpnServerId, page, pageSize, ct);
-
-        return new VpnServerEventResponse
-        {
-            TotalCount = pageResult.TotalCount,
-            Events = pageResult.Items.Adapt<List<OpenVpnServerEventLogDto>>()
-        };
     }
 }

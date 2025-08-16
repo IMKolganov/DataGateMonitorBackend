@@ -1,5 +1,6 @@
 ﻿using Microsoft.EntityFrameworkCore;
 using OpenVPNGateMonitor.Models;
+using OpenVPNGateMonitor.SharedModels.Responses;
 
 namespace OpenVPNGateMonitor.DataBase.Services.Query.OpenVpnServerClientTable;
 
@@ -18,6 +19,6 @@ public class OpenVpnServerClientQueryService(IQueryService<OpenVpnServerClient, 
     => q.Query().AsNoTracking().FirstOrDefaultAsync(
         x=>x.SessionId == session && x.VpnServerId == vpnServerId, ct);
 
-    public Task<PagedResult<OpenVpnServerClient>> GetPageAsync(int page, int pageSize, CancellationToken ct)
+    public Task<IPagedResult<OpenVpnServerClient>> GetPageAsync(int page, int pageSize, CancellationToken ct)
         => q.PageAsync(page, pageSize, ct: ct);
 }

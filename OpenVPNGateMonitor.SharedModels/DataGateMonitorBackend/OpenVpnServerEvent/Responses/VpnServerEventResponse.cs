@@ -1,9 +1,9 @@
 ﻿using OpenVPNGateMonitor.SharedModels.DataGateMonitorBackend.OpenVpnServerEvent.Dto;
+using OpenVPNGateMonitor.SharedModels.Responses;
 
 namespace OpenVPNGateMonitor.SharedModels.DataGateMonitorBackend.OpenVpnServerEvent.Responses;
 
 public class VpnServerEventResponse
 {
-    public int TotalCount { get; set; }
-    public List<OpenVpnServerEventLogDto> Events { get; set; } = new();
+    public PagedResponse<OpenVpnServerEventLogDto> Events { get; set; } = new();
 }

@@ -1,4 +1,5 @@
 ﻿using OpenVPNGateMonitor.Models;
+using OpenVPNGateMonitor.SharedModels.Responses;
 
 namespace OpenVPNGateMonitor.DataBase.Services.Query.IssuedOvpnFileTable;
 
@@ -26,5 +27,5 @@ public interface IIssuedOvpnFileQueryService
     
     Task<bool> ExistsActiveByVpnServerIdAndCommonNameAsync(int vpnServerId, string commonName, CancellationToken ct);
 
-    Task<PagedResult<IssuedOvpnFile>> GetPageAsync(int page, int pageSize, CancellationToken ct);
+    Task<IPagedResult<IssuedOvpnFile>> GetPageAsync(int page, int pageSize, CancellationToken ct);
 }
