@@ -18,9 +18,10 @@ public class OpenVpnServerEventController(
     public async Task<ActionResult<ApiResponse<VpnServerEventResponse>>> GetEventByVpnServerId(
         [FromQuery] GetConnectedClientsRequest request, CancellationToken cancellationToken)
     {
-        var response = await openVpnServerEventLogQueryService.GetByVpnServerIdAsync(
+        var page = await openVpnServerEventLogQueryService.GetByVpnServerIdAsync(
             request.VpnServerId, request.Page, request.PageSize, cancellationToken);
 
-        return Ok(ApiResponse<VpnServerEventResponse>.SuccessResponse(response.Adapt<VpnServerEventResponse>()));
+        var dto = page.Adapt<VpnServerEventResponse>();
+        return Ok(ApiResponse<VpnServerEventResponse>.SuccessResponse(dto));
     }
 }

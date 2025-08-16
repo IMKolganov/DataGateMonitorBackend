@@ -1,5 +1,6 @@
 ﻿using Microsoft.EntityFrameworkCore;
 using OpenVPNGateMonitor.Models;
+using OpenVPNGateMonitor.SharedModels.Responses;
 
 namespace OpenVPNGateMonitor.DataBase.Services.Query.TelegramBotUserTable;
 
@@ -20,6 +21,6 @@ public class TelegramBotUserQueryService(IQueryService<TelegramBotUser, int> q) 
     public Task<TelegramBotUser?> GetByTelegramIdAsync(long telegramId, CancellationToken ct)
         => q.Query().FirstOrDefaultAsync(x => x.TelegramId == telegramId, ct);
     
-    public Task<PagedResult<TelegramBotUser>> GetPageAsync(int page, int pageSize, CancellationToken ct)
+    public Task<IPagedResult<TelegramBotUser>> GetPageAsync(int page, int pageSize, CancellationToken ct)
         => q.PageAsync(page, pageSize, ct: ct);
 }

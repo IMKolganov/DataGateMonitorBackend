@@ -1,5 +1,6 @@
 ﻿using Microsoft.EntityFrameworkCore;
 using OpenVPNGateMonitor.Models;
+using OpenVPNGateMonitor.SharedModels.Responses;
 
 namespace OpenVPNGateMonitor.DataBase.Services.Query.ClientApplicationTable;
 
@@ -25,6 +26,6 @@ public class ClientApplicationQueryService(IQueryService<ClientApplication, int>
             x.ClientId == clientId && x.IsSystem && x.IsRevoked == false, ct);
     public Task<ClientApplication?> IsSystemConfiguredAsync(CancellationToken ct)
         => q.Query().FirstOrDefaultAsync(x => x.IsSystem, ct);
-    public Task<PagedResult<ClientApplication>> GetPageAsync(int page, int pageSize, CancellationToken ct)
+    public Task<IPagedResult<ClientApplication>> GetPageAsync(int page, int pageSize, CancellationToken ct)
         => q.PageAsync(page, pageSize, ct: ct);
 }

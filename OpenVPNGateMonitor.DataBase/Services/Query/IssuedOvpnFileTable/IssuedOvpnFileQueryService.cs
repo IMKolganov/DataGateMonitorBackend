@@ -1,5 +1,6 @@
 ﻿using Microsoft.EntityFrameworkCore;
 using OpenVPNGateMonitor.Models;
+using OpenVPNGateMonitor.SharedModels.Responses;
 
 namespace OpenVPNGateMonitor.DataBase.Services.Query.IssuedOvpnFileTable;
 
@@ -79,6 +80,6 @@ public class IssuedOvpnFileQueryService(IQueryService<IssuedOvpnFile, int> q) : 
                 && x.CommonName == commonName
                 && !x.IsRevoked, ct);
     
-    public Task<PagedResult<IssuedOvpnFile>> GetPageAsync(int page, int pageSize, CancellationToken ct)
+    public Task<IPagedResult<IssuedOvpnFile>> GetPageAsync(int page, int pageSize, CancellationToken ct)
         => q.PageAsync(page, pageSize, ct: ct);
 }

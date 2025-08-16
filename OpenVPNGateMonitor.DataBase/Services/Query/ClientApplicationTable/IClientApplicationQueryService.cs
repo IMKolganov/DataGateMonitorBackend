@@ -1,4 +1,5 @@
 ﻿using OpenVPNGateMonitor.Models;
+using OpenVPNGateMonitor.SharedModels.Responses;
 
 namespace OpenVPNGateMonitor.DataBase.Services.Query.ClientApplicationTable;
 
@@ -11,5 +12,5 @@ public interface IClientApplicationQueryService
     Task<ClientApplication?> GetByClientIdAsync(string clientId, CancellationToken ct);
     Task<ClientApplication?> GetBySystemByClientIdAsync(string clientId, CancellationToken ct);
     Task<ClientApplication?> IsSystemConfiguredAsync(CancellationToken ct);
-    Task<PagedResult<ClientApplication>> GetPageAsync(int page, int pageSize, CancellationToken ct);
+    Task<IPagedResult<ClientApplication>> GetPageAsync(int page, int pageSize, CancellationToken ct);
 }
