@@ -11,7 +11,7 @@ public class OvpnFileMetadata
 
     public string FilePath { get; set; } = null!;
 
-    public DateTime IssuedAt { get; set; }
+    public DateTimeOffset IssuedAt { get; set; }
 
     public string IssuedTo { get; set; } = null!;
 

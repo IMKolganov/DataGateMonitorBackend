@@ -39,7 +39,7 @@ public class OpenVpnServerService(
                 "VpnServerId: {Id}. Retrieved {Count} clients from OpenVPN.",
                 openVpnServer.Id, openVpnClients.Count);
             
-            var nowUtc = DateTime.UtcNow;
+            var nowUtc = DateTimeOffset.UtcNow;
             var currentSessionIds = new HashSet<Guid>(
                 openVpnClients.Select(c => GenerateSessionId(c.CommonName, c.RemoteIp, c.ConnectedSince)));
 
@@ -67,11 +67,11 @@ public class OpenVpnServerService(
                 {
                     existing.CommonName = openVpnClient.CommonName;
                     existing.VpnServerId = openVpnServer.Id;
-                    existing.ExternalId = await GetExternalIdByCommonNameFromOvpnFile(
-                        openVpnClient.CommonName, openVpnServer.Id, ct) ?? string.Empty;
+                    existing.ExternalId = await openVpnFileQueryService.GetExternalIdByCommonName(
+                        openVpnClient.CommonName, openVpnServer.Id, false, ct) ?? string.Empty;
                     existing.BytesReceived = openVpnClient.BytesReceived;
                     existing.BytesSent = openVpnClient.BytesSent;
-                    existing.LastUpdate = DateTime.UtcNow;
+                    existing.LastUpdate = DateTimeOffset.UtcNow;
                     existing.Username = openVpnClient.Username;
                     existing.Country = openVpnClient.Country;
                     existing.Region = openVpnClient.Region;
@@ -89,8 +89,8 @@ public class OpenVpnServerService(
                     var newClient = new OpenVpnServerClient
                     {
                         VpnServerId = openVpnServer.Id,
-                        ExternalId = await GetExternalIdByCommonNameFromOvpnFile(
-                            openVpnClient.CommonName, openVpnServer.Id, ct) ?? string.Empty,
+                        ExternalId = await openVpnFileQueryService.GetExternalIdByCommonName(
+                            openVpnClient.CommonName, openVpnServer.Id, false, ct) ?? string.Empty,
                         SessionId = sessionId,
                         CommonName = openVpnClient.CommonName,
                         RemoteIp = openVpnClient.RemoteIp,
@@ -106,8 +106,8 @@ public class OpenVpnServerService(
                         Latitude = openVpnClient.Latitude,
                         Longitude = openVpnClient.Longitude,
                         IsConnected = true,
-                        LastUpdate = DateTime.UtcNow,
-                        CreateDate = DateTime.UtcNow
+                        LastUpdate = DateTimeOffset.UtcNow,
+                        CreateDate = DateTimeOffset.UtcNow
                     };
 
                     await openVpnServerClientCommandService.AddAsync(newClient, saveChanges: false, ct);
@@ -134,7 +134,7 @@ public class OpenVpnServerService(
         try
         {
             serverInfo.OpenVpnState = await openVpnStateService.GetStateAsync(openVpnServer, ct);
-            if (serverInfo.OpenVpnState.UpSince <= DateTime.MinValue)
+            if (serverInfo.OpenVpnState.UpSince <= DateTimeOffset.MinValue)
             {
                 throw new Exception($"VpnServerId: {openVpnServer.Id}. UpSince is not set. " +
                                     $"Check your configuration or server.");
@@ -166,7 +166,7 @@ public class OpenVpnServerService(
         }
 
         var sessionId = GenerateSessionId(
-            openVpnServer.ServerName, // TODO: make server name
+            $"{openVpnServer.Id}{openVpnServer.ServerName}",
             serverInfo.OpenVpnState.ServerLocalIp ?? 
             throw new InvalidOperationException($"VpnServerId: {openVpnServer.Id}. LocalIp cannot be null"),
             serverInfo.OpenVpnState.UpSince
@@ -184,7 +184,7 @@ public class OpenVpnServerService(
             existingStatusLog.BytesIn = serverInfo.OpenVpnSummaryStats?.BytesIn ?? 0;
             existingStatusLog.BytesOut = serverInfo.OpenVpnSummaryStats?.BytesOut ?? 0;
             existingStatusLog.Version = serverInfo.Version;
-            existingStatusLog.LastUpdate = DateTime.UtcNow;
+            existingStatusLog.LastUpdate = DateTimeOffset.UtcNow;
 
             await openVpnServerStatusLogCommandService.UpdateAsync(existingStatusLog, true, ct);
             logger.LogInformation($"VpnServerId: {openVpnServer.Id}. Updated existing status log {sessionId}.");
@@ -201,8 +201,8 @@ public class OpenVpnServerService(
                 BytesIn = serverInfo.OpenVpnSummaryStats?.BytesIn ?? 0,
                 BytesOut = serverInfo.OpenVpnSummaryStats?.BytesOut ?? 0,
                 Version = serverInfo.Version,
-                LastUpdate = DateTime.UtcNow,
-                CreateDate = DateTime.UtcNow
+                LastUpdate = DateTimeOffset.UtcNow,
+                CreateDate = DateTimeOffset.UtcNow
             };
 
             await openVpnServerStatusLogCommandService.AddAsync(newStatusLog, true, ct);
@@ -212,7 +212,7 @@ public class OpenVpnServerService(
                               $"SaveOpenVpnServerStatusLogAsync completed successfully.");
     }
     
-    private Guid GenerateSessionId(string commonName, string realAddress, DateTime connectedSince)
+    private Guid GenerateSessionId(string commonName, string realAddress, DateTimeOffset connectedSince)
     {
         logger.LogDebug($"Generating SessionId for CommonName: {commonName}, RealAddress: {realAddress}," +
                          $" ConnectedSince: {connectedSince}");
@@ -226,30 +226,4 @@ public class OpenVpnServerService(
 
         return sessionId;
     }
-
-    private async Task<string?> GetExternalIdByCommonNameFromOvpnFile(string commonName, int vpnServerId, 
-        CancellationToken ct)
-    {
-        return await openVpnFileQueryService.GetExternalIdByCommonName(commonName, vpnServerId, false, ct);
-    }
-
-    // private async Task<string?> TryParseExternalIdAsync(string commonName, CancellationToken ct = default)
-    // {
-    //     var digitParts = Regex.Matches(commonName, @"\d+")
-    //         .Select(m => m.Value)
-    //         .Distinct();
-    //     
-    //     foreach (var candidate in digitParts)
-    //     {
-    //         if (!long.TryParse(candidate, out var id))
-    //             continue;
-    //     
-    //         var exists = await telegramBotUserQueryService.AnyByTelegramIdAsync(id, ct);
-    //     
-    //         if (exists)
-    //             return candidate;
-    //     }
-    //     
-    //     return null;
-    // }
 }

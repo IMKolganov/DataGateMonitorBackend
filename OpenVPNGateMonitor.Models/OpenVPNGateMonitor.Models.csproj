@@ -8,7 +8,7 @@
 
     <ItemGroup>
       <PackageReference Include="Microsoft.AspNetCore.Diagnostics.HealthChecks" Version="2.2.0" />
-      <PackageReference Include="OpenVPNGateMonitor.SharedModels" Version="1.0.40" />
+      <PackageReference Include="OpenVPNGateMonitor.SharedModels" Version="1.0.41" />
     </ItemGroup>
 
 </Project>

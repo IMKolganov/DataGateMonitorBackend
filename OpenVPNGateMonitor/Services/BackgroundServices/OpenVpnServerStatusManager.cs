@@ -18,7 +18,7 @@ public class OpenVpnServerStatusManager
                 VpnServerId = vpnServerId,
                 Status = status, 
                 ErrorMessage = errorMessage, 
-                NextRunTime = DateTime.UtcNow.AddSeconds(nextRunSeconds),
+                NextRunTime = DateTimeOffset.UtcNow.AddSeconds(nextRunSeconds),
                 CountConnectedClients = countConnectedClients,
                 CountSessions = countSessions,
                 TotalBytesIn = totalBytesIn,
@@ -29,7 +29,7 @@ public class OpenVpnServerStatusManager
                 existing.VpnServerId = vpnServerId;
                 existing.Status = status;
                 existing.ErrorMessage = errorMessage;
-                existing.NextRunTime = DateTime.UtcNow.AddSeconds(nextRunSeconds);
+                existing.NextRunTime = DateTimeOffset.UtcNow.AddSeconds(nextRunSeconds);
                 return existing;
             });
     }

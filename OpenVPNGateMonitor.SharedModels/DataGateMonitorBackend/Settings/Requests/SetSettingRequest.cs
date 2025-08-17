@@ -11,6 +11,7 @@ public class SetSettingRequest
     public string Value { get; set; } = string.Empty;
 
     [Required(ErrorMessage = "Type is required.")]
-    [RegularExpression("^(int|bool|double|datetime|string)$", ErrorMessage = "Type must be one of: int, bool, double, datetime, string.")]
+    [RegularExpression("^(int|bool|double|datetimeoffset|string)$",
+        ErrorMessage = "Type must be one of: int, bool, double, datetimeoffset, string.")]
     public string Type { get; set; } = string.Empty;
 }

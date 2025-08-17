@@ -29,6 +29,6 @@ public class OpenVpnServerEventLogDto
     public string? IvPlat { get; init; }
 
     public string? Message { get; init; }
-    public DateTime CreateDate { get; set; }
-    public DateTime LastUpdate { get; set; }
+    public DateTimeOffset CreateDate { get; set; }
+    public DateTimeOffset LastUpdate { get; set; }
 }

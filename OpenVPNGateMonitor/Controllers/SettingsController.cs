@@ -27,7 +27,7 @@ public class SettingsController(ISettingsService settingsService) : ControllerBa
             "int" => await settingsService.GetValueAsync<int>(request.Key, cancellationToken),
             "bool" => await settingsService.GetValueAsync<bool>(request.Key, cancellationToken),
             "double" => await settingsService.GetValueAsync<double>(request.Key, cancellationToken),
-            "datetime" => await settingsService.GetValueAsync<DateTime>(request.Key, cancellationToken),
+            "datetime" => await settingsService.GetValueAsync<DateTimeOffset>(request.Key, cancellationToken),
             "string" => await settingsService.GetValueAsync<string>(request.Key, cancellationToken),
             _ => null
         };
@@ -53,7 +53,7 @@ public class SettingsController(ISettingsService settingsService) : ControllerBa
             "int" => int.TryParse(request.Value, out var intValue) ? intValue : null,
             "bool" => bool.TryParse(request.Value, out var boolValue) ? boolValue : null,
             "double" => double.TryParse(request.Value, out var doubleValue) ? doubleValue : null,
-            "datetime" => DateTime.TryParse(request.Value, out var dateTimeValue) ? dateTimeValue : null,
+            "datetime" => DateTimeOffset.TryParse(request.Value, out var dateTimeValue) ? dateTimeValue : null,
             "string" => request.Value,
             _ => null
         };

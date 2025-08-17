@@ -8,7 +8,8 @@ using OpenVPNGateMonitor.Services.OpenVpnManagementInterfaces.Interfaces;
 
 namespace OpenVPNGateMonitor.Services.OpenVpnManagementInterfaces;
 
-public class OpenVpnClientService(ILogger<IOpenVpnClientService> logger, 
+public class OpenVpnClientService(
+    ILogger<IOpenVpnClientService> logger,
     IOpenVpnMicroserviceClientFactory openVpnMicroserviceClientFactory,
     IGeoLiteQueryService geoLiteQueryService)
     : IOpenVpnClientService
@@ -35,37 +36,32 @@ public class OpenVpnClientService(ILogger<IOpenVpnClientService> logger,
     private async Task<List<OpenVpnServerClient>> ParseStatus(string data, CancellationToken cancellationToken)
     {
         var clients = new List<OpenVpnServerClient>();
-        var lines = data.Split("\n", StringSplitOptions.RemoveEmptyEntries);
+        var lines = data.Split('\n', StringSplitOptions.RemoveEmptyEntries | StringSplitOptions.TrimEntries);
 
         foreach (var line in lines)
         {
-            if (line.StartsWith("CLIENT_LIST"))
+            if (!line.StartsWith("CLIENT_LIST", StringComparison.Ordinal)) continue;
+
+            var parts = line.Split('\t');
+            if (parts.Length < 8) continue; // defensive: ensure required columns exist
+
+            var client = TryParseClient(parts);
+            if (client is null) continue;
+
+            var geoInfo = await geoLiteQueryService.GetGeoInfoAsync(client.RemoteIp, cancellationToken);
+            if (geoInfo is not null)
             {
-                var parts = line.Split("\t");
-                if (parts.Length < 8) continue;
-
-                var client = TryParseClient(parts);
-                
-                if (client != null)
-                {
-                    var geoInfo = await geoLiteQueryService.GetGeoInfoAsync(client.RemoteIp, cancellationToken);//todo: add mapper for project
-                    if (geoInfo != null)
-                    {
-                        client.Country = geoInfo.Country;
-                        client.Region = geoInfo.Region;
-                        client.City = geoInfo.City;
-                        client.Latitude = geoInfo.Latitude;
-                        client.Longitude = geoInfo.Longitude;
-                    }
-
-                    var sessionId = GenerateSessionId(client.CommonName, 
-                        client.RemoteIp, client.ConnectedSince);
-                    
-                    client.SessionId = sessionId;
-                    clients.Add(client);
-                }
+                client.Country = geoInfo.Country;
+                client.Region = geoInfo.Region;
+                client.City = geoInfo.City;
+                client.Latitude = geoInfo.Latitude;
+                client.Longitude = geoInfo.Longitude;
             }
+
+            client.SessionId = GenerateSessionId(client.CommonName, client.RemoteIp, client.ConnectedSince);
+            clients.Add(client);
         }
+
         return clients;
     }
 
@@ -73,15 +69,21 @@ public class OpenVpnClientService(ILogger<IOpenVpnClientService> logger,
     {
         try
         {
-            return new OpenVpnServerClient()
+            // Columns (status 3) can vary by version; the indexes below match the common format:
+            // 0: CLIENT_LIST, 1: CommonName, 2: RealAddress, 3: VirtualAddress, 4: Virtual6 (optional),
+            // 5: BytesReceived, 6: BytesSent, 7: ConnectedSince (unix), ... , 9: Username (may be UNDEF)
+            var realAddress = parts[2];
+            var remoteIp = ExtractIpHost(realAddress);
+
+            return new OpenVpnServerClient
             {
                 CommonName = parts[1],
-                RemoteIp = parts[2].Split(":")[0],
+                RemoteIp = remoteIp,
                 LocalIp = parts[3],
                 BytesReceived = TryParseLong(parts[5], "BytesReceived"),
                 BytesSent = TryParseLong(parts[6], "BytesSent"),
-                ConnectedSince = TryParseDateTime(parts[7], "ConnectedSince"),
-                Username = parts[9] == "UNDEF" ? parts[1] : parts[9]
+                ConnectedSince = TryParseInstantUtc(parts[7], "ConnectedSince"),
+                Username = parts.Length > 9 && parts[9] != "UNDEF" ? parts[9] : parts[1]
             };
         }
         catch (Exception ex)
@@ -90,7 +92,7 @@ public class OpenVpnClientService(ILogger<IOpenVpnClientService> logger,
             return null;
         }
     }
-    
+
     private long TryParseLong(string value, string fieldName)
     {
         if (string.IsNullOrWhiteSpace(value))
@@ -99,69 +101,68 @@ public class OpenVpnClientService(ILogger<IOpenVpnClientService> logger,
             return 0;
         }
 
-        if (long.TryParse(value, out var result))
+        if (long.TryParse(value, NumberStyles.Integer, CultureInfo.InvariantCulture, out var result))
             return result;
 
         logger.LogError("Failed to parse {FieldName}. Value: '{Value}'", fieldName, value);
         throw new FormatException($"Invalid long format in field {fieldName}: '{value}'");
     }
-    
-    private DateTimeOffset TryParseDateTimeOffset(string value, string fieldName)
+
+    // Parse instant as UTC. Supports Unix seconds and ISO-8601 with or without offset.
+    private DateTimeOffset TryParseInstantUtc(string value, string fieldName)
     {
         if (string.IsNullOrWhiteSpace(value))
         {
-            logger.LogWarning("{FieldName} is empty. Using default DateTimeOffset.MinValue.", fieldName);
+            logger.LogWarning("{FieldName} is empty. Using DateTimeOffset.MinValue.", fieldName);
             return DateTimeOffset.MinValue;
         }
 
-        if (long.TryParse(value, out var unixTime))
+        // Unix seconds
+        if (long.TryParse(value, NumberStyles.Integer, CultureInfo.InvariantCulture, out var unix))
         {
             try
             {
-                var dateTimeOffset = DateTimeOffset.FromUnixTimeSeconds(unixTime);
-                logger.LogInformation("Parsed {FieldName} as Unix Timestamp: {DateTime}", fieldName, dateTimeOffset);
-                return dateTimeOffset;
+                return DateTimeOffset.FromUnixTimeSeconds(unix); // already UTC
             }
             catch (Exception ex)
             {
-                logger.LogError(ex, "Failed to parse {FieldName} as Unix Timestamp. Value: '{Value}'", fieldName, value);
+                logger.LogError(ex, "Failed to parse {FieldName} as Unix seconds. Value: '{Value}'", fieldName, value);
             }
         }
 
+        // ISO-8601 / RFC3339
+        if (DateTimeOffset.TryParse(value, CultureInfo.InvariantCulture,
+                DateTimeStyles.AdjustToUniversal | DateTimeStyles.AssumeUniversal, out var dto))
+        {
+            return dto; // normalized to UTC
+        }
+
         logger.LogError("Failed to parse {FieldName}. Value: '{Value}'", fieldName, value);
-        throw new FormatException($"Invalid DateTimeOffset format in field {fieldName}: '{value}'");
+        throw new FormatException($"Invalid instant format in field {fieldName}: '{value}'");
     }
 
-
-    private DateTime TryParseDateTime(string value, string fieldName)
+    // Extract host from "real address" handling IPv4, [IPv6]:port, and bare IPv6.
+    private static string ExtractIpHost(string realAddress)
     {
-        if (string.IsNullOrWhiteSpace(value))
+        if (string.IsNullOrWhiteSpace(realAddress)) return realAddress;
+
+        var s = realAddress.Trim();
+
+        // [IPv6]:port
+        if (s.Length > 2 && s[0] == '[')
         {
-            logger.LogWarning("{FieldName} is empty. Using default DateTime.MinValue.", fieldName);
-            return DateTime.MinValue;
+            var rb = s.IndexOf(']');
+            if (rb > 0) return s.Substring(1, rb - 1);
         }
 
-        if (DateTime.TryParse(value, CultureInfo.InvariantCulture, DateTimeStyles.None, out var result))
-            return result;
+        // IPv4:port or unbracketed host:port (take before last ':')
+        var idx = s.LastIndexOf(':');
+        if (idx > 0) return s[..idx];
 
-        if (long.TryParse(value, out var unixTime))
-        {
-            try
-            {
-                var dateTime = DateTimeOffset.FromUnixTimeSeconds(unixTime).UtcDateTime;
-                logger.LogInformation("Parsed {FieldName} as Unix Timestamp: {DateTime}", fieldName, dateTime);
-                return dateTime;
-            }
-            catch (Exception ex)
-            {
-                logger.LogError(ex, "Failed to parse {FieldName} as Unix Timestamp. Value: '{Value}'", fieldName, value);
-            }
-        }
-
-        logger.LogError("Failed to parse {FieldName}. Value: '{Value}'", fieldName, value);
-        throw new FormatException($"Invalid DateTime format in field {fieldName}: '{value}'");
+        // Bare IPv6 or host without port
+        return s;
     }
-    
+
     private Guid GenerateSessionId(string commonName, string realAddress, DateTimeOffset connectedSince)
     {
         var sessionString = $"{commonName}-{realAddress}-{connectedSince:o}";

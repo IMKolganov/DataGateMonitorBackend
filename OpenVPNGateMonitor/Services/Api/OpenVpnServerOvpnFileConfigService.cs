@@ -33,14 +33,14 @@ public class OpenVpnServerOvpnFileConfigService(
             existingConfig.VpnServerIp = openVpnServerOvpnFileConfig.VpnServerIp;
             existingConfig.VpnServerPort = openVpnServerOvpnFileConfig.VpnServerPort;
             existingConfig.ConfigTemplate = openVpnServerOvpnFileConfig.ConfigTemplate;
-            existingConfig.LastUpdate = DateTime.UtcNow;
+            existingConfig.LastUpdate = DateTimeOffset.UtcNow;
 
             await openVpnServerOvpnFileConfigCommandService.UpdateAsync(existingConfig, true, ct);
         }
         else
         {
-            openVpnServerOvpnFileConfig.CreateDate = DateTime.UtcNow;
-            openVpnServerOvpnFileConfig.LastUpdate = DateTime.UtcNow;
+            openVpnServerOvpnFileConfig.CreateDate = DateTimeOffset.UtcNow;
+            openVpnServerOvpnFileConfig.LastUpdate = DateTimeOffset.UtcNow;
             
             await openVpnServerOvpnFileConfigCommandService.AddAsync(openVpnServerOvpnFileConfig, true, ct);
         }

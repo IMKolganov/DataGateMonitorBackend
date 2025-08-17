@@ -19,7 +19,7 @@ public class TelegramUserService(
         var telegramBotUser = await telegramBotUserQueryService
             .GetByTelegramIdAsync(telegramBotUserRequest.TelegramId, ct);
 
-        var now = DateTime.UtcNow;
+        var now = DateTimeOffset.UtcNow;
 
         if (telegramBotUser == null)
         {
@@ -89,7 +89,7 @@ public class TelegramUserService(
         }
 
         user.IsBlocked = true;
-        user.LastUpdate = DateTime.UtcNow;
+        user.LastUpdate = DateTimeOffset.UtcNow;
         await telegramBotUserCommandService.UpdateAsync(user, saveChanges: true, ct);
         logger.LogInformation("User {TelegramId} has been blocked.", telegramId);
         return true;
@@ -111,7 +111,7 @@ public class TelegramUserService(
         }
 
         user.IsBlocked = false;
-        user.LastUpdate = DateTime.UtcNow;
+        user.LastUpdate = DateTimeOffset.UtcNow;
         await telegramBotUserCommandService.UpdateAsync(user, saveChanges: true, ct);
         logger.LogInformation("User {TelegramId} has been unblocked.", telegramId);
         return true;
@@ -133,7 +133,7 @@ public class TelegramUserService(
         }
 
         user.IsAdmin = true;
-        user.LastUpdate = DateTime.UtcNow;
+        user.LastUpdate = DateTimeOffset.UtcNow;
         await telegramBotUserCommandService.UpdateAsync(user, saveChanges: true, ct);
         logger.LogInformation("User {TelegramId} has been set as admin.", telegramId);
         return true;
@@ -156,7 +156,7 @@ public class TelegramUserService(
         }
 
         user.IsAdmin = false;
-        user.LastUpdate = DateTime.UtcNow;
+        user.LastUpdate = DateTimeOffset.UtcNow;
         await telegramBotUserCommandService.UpdateAsync(user, saveChanges: true, ct);
         logger.LogInformation("Admin rights removed from user {TelegramId}.", telegramId);
         return true;

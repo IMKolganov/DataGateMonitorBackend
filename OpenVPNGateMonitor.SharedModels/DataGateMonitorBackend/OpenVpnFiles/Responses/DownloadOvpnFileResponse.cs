@@ -6,6 +6,6 @@ public class DownloadOvpnFileResponse
     public string FileName { get; set; } = string.Empty;
     public string FullPath { get; set; } = string.Empty;
     public long FileSizeBytes { get; set; }
-    public DateTime CreatedAtUtc { get; set; }
+    public DateTimeOffset CreatedAtUtc { get; set; }
     public byte[] Content { get; set; } = [];
 }

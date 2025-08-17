@@ -1,5 +1,6 @@
 ﻿using System.Collections.Concurrent;
 using Microsoft.AspNetCore.SignalR;
+using OpenVPNGateMonitor.DataBase.Services.Query.IssuedOvpnFileTable;
 using OpenVPNGateMonitor.DataBase.Services.Query.OpenVpnServerTable;
 using OpenVPNGateMonitor.Hubs;
 using OpenVPNGateMonitor.Models;
@@ -19,7 +20,10 @@ public class OpenVpnEventClientFactory(IServiceProvider serviceProvider) : IOpen
             var logger = scope.ServiceProvider.GetRequiredService<ILogger<OpenVpnEventClient>>();
             var eventHub = scope.ServiceProvider.GetRequiredService<IHubContext<OpenVpnEventHub>>();
             var tokenService = scope.ServiceProvider.GetRequiredService<IMicroserviceTokenService>();
-            return new OpenVpnEventClient(server, logger, eventHub, tokenService, serviceProvider);
+            var openVpnFileQueryService = scope.ServiceProvider.GetRequiredService<IIssuedOvpnFileQueryService>();
+            
+            return new OpenVpnEventClient(server, logger, eventHub, tokenService, openVpnFileQueryService, 
+                serviceProvider);
         });
     }
 

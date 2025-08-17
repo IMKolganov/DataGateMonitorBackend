@@ -10,20 +10,18 @@ public class OpenVpnServerClient : BaseEntity<int>
     public string LocalIp { get; set; } = string.Empty;
     public long BytesReceived { get; set; }
     public long BytesSent { get; set; }
-    private DateTime? _disconnectedAt;
-    /// <summary>Actual disconnection time (UTC). null — session is active/not yet terminated.</summary>
-    public DateTime? DisconnectedAt
-    {
-        get => _disconnectedAt;
-        set => _disconnectedAt = value.HasValue
-            ? DateTime.SpecifyKind(value.Value, DateTimeKind.Utc)
-            : null;
-    }
-    private DateTime _connectedSince;
-    public DateTime ConnectedSince
+    private DateTimeOffset _connectedSince;
+    public DateTimeOffset ConnectedSince
     {
         get => _connectedSince;
-        set => _connectedSince = DateTime.SpecifyKind(value, DateTimeKind.Utc);
+        set => _connectedSince = value.ToUniversalTime();
+    }
+
+    private DateTimeOffset? _disconnectedAt;
+    public DateTimeOffset? DisconnectedAt
+    {
+        get => _disconnectedAt;
+        set => _disconnectedAt = value?.ToUniversalTime();
     }
     public string Username { get; set; } = string.Empty;
     public string? Country { get; set; }

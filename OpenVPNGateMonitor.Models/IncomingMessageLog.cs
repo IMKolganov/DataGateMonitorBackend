@@ -16,5 +16,5 @@ public class IncomingMessageLog: BaseEntity<int>
     public string? FileName { get; set; }
     public long? FileSize { get; set; }
     public string? FilePath { get; set; }
-    public DateTime ReceivedAt { get; set; }
+    public DateTimeOffset ReceivedAt { get; set; }
 }
