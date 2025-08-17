@@ -15,9 +15,9 @@ public class IssuedOvpnFileToken : BaseEntity<int>
     public string Token { get; set; } = null!;
 
     [Required]
-    public DateTime CreatedAt { get; set; }
+    public DateTimeOffset CreatedAt { get; set; }
 
-    public DateTime? ExpiresAt { get; set; }
+    public DateTimeOffset? ExpiresAt { get; set; }
 
     [Required]
     public bool IsUsed { get; set; } = false;

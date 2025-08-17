@@ -37,7 +37,7 @@ public class SettingsService(
             .Where(x => x.Key == key)
             .FirstOrDefaultAsync(ct);
 
-        var now = DateTime.UtcNow;
+        var now = DateTimeOffset.UtcNow;
 
         if (setting is null)
         {
@@ -70,7 +70,7 @@ public class SettingsService(
                 setting.ValueType = "double";
                 setting.DoubleValue = d;
                 break;
-            case DateTime dt:
+            case DateTimeOffset dt:
                 setting.ValueType = "datetime";
                 setting.DateTimeValue = dt;
                 break;

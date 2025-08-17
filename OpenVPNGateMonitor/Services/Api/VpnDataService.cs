@@ -19,7 +19,7 @@ public class VpnDataService(
     public Task<OpenVpnServer> AddOpenVpnServer(OpenVpnServer server, CancellationToken ct)
         => transactionRunner.RunAsync(async _ =>
         {
-            var now = DateTime.UtcNow;
+            var now = DateTimeOffset.UtcNow;
 
             if (server.IsDefault)
             {
@@ -49,7 +49,7 @@ public class VpnDataService(
     public Task<OpenVpnServer> UpdateOpenVpnServer(OpenVpnServer server, CancellationToken ct)
         => transactionRunner.RunAsync(async _ =>
         {
-            var now = DateTime.UtcNow;
+            var now = DateTimeOffset.UtcNow;
 
             if (server.IsDefault)
             {

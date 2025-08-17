@@ -46,12 +46,15 @@ public class MicroserviceTokenService : IMicroserviceTokenService
             new Claim(ClaimTypes.Role, role)
         };
 
+        var now = DateTimeOffset.UtcNow;
         var descriptor = new SecurityTokenDescriptor
         {
             Subject = new ClaimsIdentity(claims),
-            Expires = DateTime.UtcNow.AddMinutes(10),
             Issuer = "OpenVPNGateBackend",
             Audience = audience,
+            NotBefore = now.UtcDateTime,
+            IssuedAt  = now.UtcDateTime,
+            Expires   = now.AddMinutes(10).UtcDateTime,
             SigningCredentials = new SigningCredentials(_rsaSecurityKey, SecurityAlgorithms.RsaSha256)
         };
 

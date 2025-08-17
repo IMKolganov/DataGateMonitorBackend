@@ -216,7 +216,7 @@ public class OvpnFileApiService(IOvpnFileApiClient ovpnFileApiClient,
             IssuedOvpnFileId = request.IssuedOvpnFileId,
             FileName = result.FileName,
             FullPath = issuedOvpnFile.FilePath,
-            CreatedAtUtc = DateTime.UtcNow,
+            CreatedAtUtc = DateTimeOffset.UtcNow,
             FileSizeBytes = result.Content.LongLength,
             Content = result.Content
         };
@@ -229,8 +229,8 @@ public class OvpnFileApiService(IOvpnFileApiClient ovpnFileApiClient,
         {
             IssuedOvpnFileId = issuedOvpnFile.Id,
             Token = Guid.NewGuid().ToString("N"),
-            CreatedAt = DateTime.UtcNow,
-            ExpiresAt = DateTime.UtcNow.AddDays(TokenExpireDays),
+            CreatedAt = DateTimeOffset.UtcNow,
+            ExpiresAt = DateTimeOffset.UtcNow.AddDays(TokenExpireDays),
             IsUsed = false,
             Purpose = "download"
         };

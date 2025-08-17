@@ -9,13 +9,13 @@ using OpenVPNGateMonitor.Models;
 namespace OpenVPNGateMonitor.DataBase.Services.Query.OpenVpnServerClientTable;
 
 /// <summary>
-/// Overview series without relying on LastUpdate/end-of-session.
-/// Each DB row is treated as a whole session, and ALL session bytes are
-/// attributed to the bucket where the session started (ConnectedSince).
-/// "ActiveClients" per bucket is the number of sessions that started in that bucket.
-/// Buckets are aligned by the offset of 'fromUtc' so days/months/years match local calendar.
-/// Always returns a continuous (gap-filled) series.
-/// </summary>
+// — Overview series without relying on LastUpdate/end-of-session.
+// — Each DB row is treated as a whole session, and ALL session bytes are
+// — attributed to the bucket where the session started (ConnectedSince).
+// — "ActiveClients" per bucket is the number of sessions that started in that bucket.
+// — Buckets are aligned by the offset of 'fromUtc' so days/months/years match local calendar.
+// — Always returns a continuous (gap-filled) series.
+// </summary>
 public sealed class OpenVpnOverviewSeriesQuery(IUnitOfWork uow) : IOpenVpnOverviewSeriesQuery
 {
     // Backward-compatible signature (no externalId)
@@ -52,8 +52,7 @@ public sealed class OpenVpnOverviewSeriesQuery(IUnitOfWork uow) : IOpenVpnOvervi
             : grouping;
 
         // Filter: sessions that START inside [from; to)
-        var q = uow.GetQuery<OpenVpnServerClient>()
-            .AsQueryable();
+        var q = uow.GetQuery<OpenVpnServerClient>().AsQueryable();
 
         if (vpnServerId.HasValue)
             q = q.Where(s => s.VpnServerId == vpnServerId.Value);
@@ -61,16 +60,17 @@ public sealed class OpenVpnOverviewSeriesQuery(IUnitOfWork uow) : IOpenVpnOvervi
         if (!string.IsNullOrWhiteSpace(externalId))
             q = q.Where(s => s.ExternalId == externalId!); // exact match; change to EF.Functions.ILike if needed
 
+        // IMPORTANT: compare DateTimeOffset to DateTimeOffset (no .UtcDateTime)
         q = q.Where(s =>
-                s.ConnectedSince >= fromUtc.UtcDateTime &&
-                s.ConnectedSince <  toUtc.UtcDateTime)
+                s.ConnectedSince >= fromUtc &&
+                s.ConnectedSince <  toUtc)
              .AsNoTracking();
 
         // Project minimal fields
         var sessions = await q.Select(s => new SessionStartRow
         {
             VpnServerId       = s.VpnServerId,
-            ConnectedSinceUtc = DateTime.SpecifyKind(s.ConnectedSince, DateTimeKind.Utc),
+            ConnectedSinceUtc = s.ConnectedSince, // already an instant (timestamptz -> DateTimeOffset)
             BytesIn           = s.BytesReceived,
             BytesOut          = s.BytesSent
         }).ToListAsync(ct);
@@ -80,7 +80,8 @@ public sealed class OpenVpnOverviewSeriesQuery(IUnitOfWork uow) : IOpenVpnOvervi
 
         foreach (var s in sessions)
         {
-            var startUtc = new DateTimeOffset(s.ConnectedSinceUtc, TimeSpan.Zero);
+            // enforce offset = 0 for the bucket keys
+            var startUtc = s.ConnectedSinceUtc.ToOffset(TimeSpan.Zero);
             var startBucket = AlignToBucketStartWithOffset(mode, startUtc, offset);
 
             ref var acc = ref GetOrAddRef(buckets, startBucket);
@@ -131,7 +132,7 @@ public sealed class OpenVpnOverviewSeriesQuery(IUnitOfWork uow) : IOpenVpnOvervi
     private sealed class SessionStartRow
     {
         public int VpnServerId { get; set; }
-        public DateTime ConnectedSinceUtc { get; set; }
+        public DateTimeOffset ConnectedSinceUtc { get; set; } // use DTO for an instant
         public long BytesIn { get; set; }
         public long BytesOut { get; set; }
     }

@@ -8,7 +8,7 @@ public class OpenVpnServerStatusLog : BaseEntity<int>
     public int VpnServerId { get; set; }
     [Required]
     public Guid SessionId { get; set; }
-    public DateTime UpSince { get; set; }
+    public DateTimeOffset UpSince { get; set; }
     [MaxLength(255)]
     public string ServerLocalIp { get; set; } = string.Empty;
     [MaxLength(255)]

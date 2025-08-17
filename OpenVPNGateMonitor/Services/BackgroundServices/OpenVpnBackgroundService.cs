@@ -142,9 +142,9 @@ public class OpenVpnBackgroundService : BackgroundService, IOpenVpnBackgroundSer
             var statuses = _statusManager.GetAllStatuses().Values.ToList();
             var nextRunTime = statuses.Any()
                 ? statuses.Select(status => status.NextRunTime).Min()
-                : DateTime.UtcNow.AddSeconds(120);
+                : DateTimeOffset.UtcNow.AddSeconds(120);
 
-            var now = DateTime.UtcNow;
+            var now = DateTimeOffset.UtcNow;
             if (now < nextRunTime)
             {
                 var waitTime = (nextRunTime - now).TotalMilliseconds;

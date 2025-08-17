@@ -69,14 +69,14 @@ public class ApplicationDbContext(DbContextOptions<ApplicationDbContext> options
 
             if (entry.State == EntityState.Added)
             {
-                var now = DateTime.UtcNow;
+                var now = DateTimeOffset.UtcNow;
                 entity.CreateDate = now;
                 entity.LastUpdate = now;
             }
             else if (entry.State == EntityState.Modified)
             {
                 entry.Property(nameof(IBaseEntity.CreateDate)).IsModified = false;
-                entity.LastUpdate = DateTime.UtcNow;
+                entity.LastUpdate = DateTimeOffset.UtcNow;
             }
         }
     }

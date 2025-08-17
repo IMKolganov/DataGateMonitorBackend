@@ -17,7 +17,7 @@ public class PasswordGenerator
         if (length < 4) throw new ArgumentException("Password length must be at least 4 characters.");
 
         // make hash - key - time - guid
-        var hashSeed = GetSha256Hash(SecretKey + DateTime.UtcNow.ToString("yyyyMMddHHmmss") + Guid.NewGuid());
+        var hashSeed = GetSha256Hash(SecretKey + DateTimeOffset.UtcNow.ToString("yyyyMMddHHmmss") + Guid.NewGuid());
         
         var charPool = Uppercase + Lowercase + Digits + SpecialChars;
         var password = new char[length];
