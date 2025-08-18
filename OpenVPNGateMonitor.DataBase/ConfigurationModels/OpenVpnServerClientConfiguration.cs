@@ -1,3 +1,4 @@
+using Microsoft.EntityFrameworkCore;
 using OpenVPNGateMonitor.Models;
 using Microsoft.EntityFrameworkCore.Metadata.Builders;
 
@@ -28,6 +29,7 @@ public class OpenVpnServerClientConfiguration : BaseEntityConfiguration<OpenVpnS
             .IsRequired();
         entity.Property(e => e.ConnectedSince)
             .IsRequired();
+        entity.Property(e => e.DisconnectedAt);
         entity.Property(e => e.Username)
             .IsRequired()
             .HasMaxLength(255);
@@ -40,5 +42,9 @@ public class OpenVpnServerClientConfiguration : BaseEntityConfiguration<OpenVpnS
         entity.Property(e => e.Latitude);
         entity.Property(e => e.Longitude);
         entity.Property(e => e.IsConnected);
+        
+        entity.HasIndex(e => new { e.VpnServerId, e.SessionId })
+            .IsUnique()
+            .HasDatabaseName("UX_OpenVpnServerClients_Server_Session");
     }
 }

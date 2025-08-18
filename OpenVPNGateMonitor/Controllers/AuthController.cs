@@ -70,21 +70,29 @@ public class AuthController(IConfiguration config, IApplicationService appServic
         var tokenHandler = new JwtSecurityTokenHandler();
         var key = Encoding.ASCII.GetBytes(config["Jwt:Secret"]
                                           ?? throw new InvalidOperationException("Jwt:Secret"));
+        
+        var now = DateTimeOffset.UtcNow;
         var tokenDescriptor = new SecurityTokenDescriptor
         {
             Subject = new ClaimsIdentity([
                 new Claim(ClaimTypes.Name, request.ClientId),
                 new Claim(ClaimTypes.Role, "App")
             ]),
-            Expires = DateTime.UtcNow.AddHours(1),
-            SigningCredentials = new SigningCredentials(new SymmetricSecurityKey(key), SecurityAlgorithms.HmacSha256Signature)
+            Issuer    = "OpenVPNGateBackend",
+            Audience  = "OpenVPNGateFrontend",
+            NotBefore = now.UtcDateTime,
+            IssuedAt  = now.UtcDateTime,
+            Expires   = now.AddHours(1).UtcDateTime,
+            SigningCredentials = new SigningCredentials(
+                new SymmetricSecurityKey(key),
+                SecurityAlgorithms.HmacSha256Signature)
         };
         var token = tokenHandler.CreateToken(tokenDescriptor);
 
         return Ok(new TokenResponse
         {
             Token = tokenHandler.WriteToken(token),
-            Expiration = tokenDescriptor.Expires ?? DateTime.UtcNow
+            Expiration = tokenDescriptor.Expires ?? DateTimeOffset.UtcNow
         });
     }
     

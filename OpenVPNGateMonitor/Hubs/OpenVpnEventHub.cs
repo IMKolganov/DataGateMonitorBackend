@@ -1,5 +1,4 @@
 using Microsoft.AspNetCore.SignalR;
-using OpenVPNGateMonitor.Services.DataGateCertManager.Events;
 
 namespace OpenVPNGateMonitor.Hubs;
 

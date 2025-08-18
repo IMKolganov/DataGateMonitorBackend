@@ -1,7 +1,7 @@
 ﻿using System.Net.Http.Headers;
 using System.Text.Json;
+using OpenVPNGateMonitor.DataBase.Services.Query.OpenVpnServerTable;
 using OpenVPNGateMonitor.Services.Api.Auth.Interfaces;
-using OpenVPNGateMonitor.Services.Api.Interfaces;
 using OpenVPNGateMonitor.Services.DataGateCertManager.Interfaces;
 using OpenVPNGateMonitor.SharedModels.DataGateCertManager.Cert.Responses;
 using OpenVPNGateMonitor.SharedModels.DataGateMonitorBackend.OpenVpnServerCerts.Requests;
@@ -11,8 +11,8 @@ namespace OpenVPNGateMonitor.Services.DataGateCertManager;
 
 public class CertApiClient(
     IHttpClientFactory httpClientFactory,
-    IVpnDataService vpnDataService,
     IMicroserviceTokenService tokenService,
+    IOpenVpnServerQueryService openVpnServerQueryService,
     ILogger<CertApiClient> logger)
     : ICertApiClient
 {
@@ -40,7 +40,8 @@ public class CertApiClient(
 
     private async Task<HttpClient> GetClientForServerAsync(int vpnServerId, CancellationToken cancellationToken)
     {
-        var server = await vpnDataService.GetOpenVpnServer(vpnServerId, cancellationToken);
+        var server = await openVpnServerQueryService.GetByIdAsync(vpnServerId, cancellationToken) 
+            ?? throw new InvalidOperationException("OpenVPN server not found");
         var client = httpClientFactory.CreateClient();
         client.BaseAddress = new Uri(server.ApiUrl);
         return client;

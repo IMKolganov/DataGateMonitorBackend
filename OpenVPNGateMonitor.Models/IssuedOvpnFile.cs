@@ -12,7 +12,7 @@ public class IssuedOvpnFile : BaseEntity<int>
     public string? CertId { get; set; } = string.Empty;
     public string FileName { get; set; } = null!;
     public string FilePath { get; set; } = null!;
-    public DateTime IssuedAt { get; set; }
+    public DateTimeOffset IssuedAt { get; set; }
     public string IssuedTo { get; set; } = null!;
     [Required]
     public string PemFilePath { get; set; } = null!;

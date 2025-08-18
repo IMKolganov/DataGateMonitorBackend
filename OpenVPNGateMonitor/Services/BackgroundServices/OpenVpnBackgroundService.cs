@@ -1,4 +1,5 @@
-﻿using OpenVPNGateMonitor.DataBase.UnitOfWork;
+﻿using OpenVPNGateMonitor.DataBase.Services.Query.OpenVpnServerTable;
+using OpenVPNGateMonitor.DataBase.UnitOfWork;
 using OpenVPNGateMonitor.Models;
 using OpenVPNGateMonitor.Models.Helpers.Background;
 using OpenVPNGateMonitor.Services.BackgroundServices.Interfaces;
@@ -63,8 +64,8 @@ public class OpenVpnBackgroundService : BackgroundService, IOpenVpnBackgroundSer
         {
             _logger.LogInformation("Starting OpenVPN task execution...");
             using var scope = _serviceProvider.CreateScope();
-            var unitOfWork = scope.ServiceProvider.GetRequiredService<IUnitOfWork>();
-            var openVpnServers = unitOfWork.GetQuery<OpenVpnServer>().AsQueryable().ToList();
+            var openVpnServerQueryService = scope.ServiceProvider.GetRequiredService<IOpenVpnServerQueryService>();
+            var openVpnServers = await openVpnServerQueryService.GetAllAsync(cancellationToken);
             _statusManager.ClearAllStatuses();
 
             await Parallel.ForEachAsync(openVpnServers, cancellationToken, async (server, ct) =>
@@ -141,9 +142,9 @@ public class OpenVpnBackgroundService : BackgroundService, IOpenVpnBackgroundSer
             var statuses = _statusManager.GetAllStatuses().Values.ToList();
             var nextRunTime = statuses.Any()
                 ? statuses.Select(status => status.NextRunTime).Min()
-                : DateTime.UtcNow.AddSeconds(120);
+                : DateTimeOffset.UtcNow.AddSeconds(120);
 
-            var now = DateTime.UtcNow;
+            var now = DateTimeOffset.UtcNow;
             if (now < nextRunTime)
             {
                 var waitTime = (nextRunTime - now).TotalMilliseconds;
@@ -176,8 +177,7 @@ public class OpenVpnBackgroundService : BackgroundService, IOpenVpnBackgroundSer
         using var scope = _serviceProvider.CreateScope();
         try
         {
-            var unitOfWork = scope.ServiceProvider.GetRequiredService<IUnitOfWork>();
-            var settingsService = new SettingsService(unitOfWork);
+            var settingsService = scope.ServiceProvider.GetRequiredService<ISettingsService>();
             return await GetPollingIntervalSecondsAsync(settingsService, cancellationToken);
         }
         catch (Exception ex)

@@ -1,61 +1,52 @@
-﻿using Microsoft.EntityFrameworkCore;
-using OpenVPNGateMonitor.DataBase.UnitOfWork;
+﻿using OpenVPNGateMonitor.DataBase.Services.Command;
+using OpenVPNGateMonitor.DataBase.Services.Query.OpenVpnServerOvpnFileConfigTable;
 using OpenVPNGateMonitor.Models;
 using OpenVPNGateMonitor.Services.Api.Interfaces;
 
 namespace OpenVPNGateMonitor.Services.Api;
 
 public class OpenVpnServerOvpnFileConfigService(
-    ILogger<OpenVpnServerOvpnFileConfigService> logger,
-    IUnitOfWork unitOfWork)
+    ILogger<OpenVpnServerOvpnFileConfigService> logger, 
+    IOpenVpnServerOvpnFileConfigQueryService  openVpnServerOvpnFileConfigQueryService,
+    ICommandService<OpenVpnServerOvpnFileConfig, int> openVpnServerOvpnFileConfigCommandService)
     : IOpenVpnServerOvpnFileConfigService
 {
     private readonly ILogger<OpenVpnServerOvpnFileConfigService> _logger = logger;
 
 
     public async Task<OpenVpnServerOvpnFileConfig> GetOpenVpnServerOvpnFileConfigByServerId(int vpnServerId, 
-        CancellationToken cancellationToken)
+        CancellationToken ct)
     {
-        
-        return await unitOfWork.GetQuery<OpenVpnServerOvpnFileConfig>()
-            .AsQueryable()
-            .Where(x => x.VpnServerId == vpnServerId)
-            .FirstOrDefaultAsync(cancellationToken) ?? throw new InvalidOperationException("OvpnFileConfig not found");
+        return await openVpnServerOvpnFileConfigQueryService.GetByVpnServerIdIdAsync(vpnServerId, ct)
+               ?? throw new InvalidOperationException("OvpnFileConfig not found");
     }
     
     public async Task<OpenVpnServerOvpnFileConfig> AddOrUpdateOpenVpnServerOvpnFileConfigByServerId(
-        OpenVpnServerOvpnFileConfig openVpnServerOvpnFileConfig, CancellationToken cancellationToken)
+        OpenVpnServerOvpnFileConfig openVpnServerOvpnFileConfig, CancellationToken ct)
     {
-        var openVpnServerOvpnFileConfigRepository = unitOfWork.GetRepository<OpenVpnServerOvpnFileConfig>();
 
-        var existingConfig = await unitOfWork.GetQuery<OpenVpnServerOvpnFileConfig>()
-            .AsQueryable()
-            .FirstOrDefaultAsync(x => x.VpnServerId == openVpnServerOvpnFileConfig.VpnServerId, 
-                cancellationToken);
+        var existingConfig = await openVpnServerOvpnFileConfigQueryService.GetByVpnServerIdIdAsync(
+            openVpnServerOvpnFileConfig.VpnServerId, ct);
 
         if (existingConfig != null)
         {
             existingConfig.VpnServerIp = openVpnServerOvpnFileConfig.VpnServerIp;
             existingConfig.VpnServerPort = openVpnServerOvpnFileConfig.VpnServerPort;
             existingConfig.ConfigTemplate = openVpnServerOvpnFileConfig.ConfigTemplate;
-            existingConfig.LastUpdate = DateTime.UtcNow;
+            existingConfig.LastUpdate = DateTimeOffset.UtcNow;
 
-            openVpnServerOvpnFileConfigRepository.Update(existingConfig);
+            await openVpnServerOvpnFileConfigCommandService.UpdateAsync(existingConfig, true, ct);
         }
         else
         {
-            openVpnServerOvpnFileConfig.CreateDate = DateTime.UtcNow;
-            openVpnServerOvpnFileConfig.LastUpdate = DateTime.UtcNow;
-
-            await openVpnServerOvpnFileConfigRepository.AddAsync(openVpnServerOvpnFileConfig, cancellationToken);
+            openVpnServerOvpnFileConfig.CreateDate = DateTimeOffset.UtcNow;
+            openVpnServerOvpnFileConfig.LastUpdate = DateTimeOffset.UtcNow;
+            
+            await openVpnServerOvpnFileConfigCommandService.AddAsync(openVpnServerOvpnFileConfig, true, ct);
         }
-
-        await unitOfWork.SaveChangesAsync(cancellationToken);
-
-        return await unitOfWork.GetQuery<OpenVpnServerOvpnFileConfig>()
-                   .AsQueryable()
-                   .FirstOrDefaultAsync(x => x.VpnServerId == openVpnServerOvpnFileConfig.VpnServerId,
-                       cancellationToken)
+        
+        return await openVpnServerOvpnFileConfigQueryService.GetByVpnServerIdIdAsync(
+                   openVpnServerOvpnFileConfig.VpnServerId, ct)
                ?? throw new InvalidOperationException($"OpenVPN server OVPN file configuration not found for " +
                                                       $"server ID {openVpnServerOvpnFileConfig.VpnServerId}.");
     }
