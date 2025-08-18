@@ -1,6 +1,4 @@
-﻿// OpenVPNGateMonitor.DataBase.Services.Query.Overview/OpenVpnOverviewSeriesQuery.cs
-
-using System.Runtime.InteropServices;
+﻿using System.Runtime.InteropServices;
 using Microsoft.EntityFrameworkCore;
 using OpenVPNGateMonitor.DataBase.Services.Query.OpenVpnServerClientTable.Dto;
 using OpenVPNGateMonitor.DataBase.UnitOfWork;
@@ -9,13 +7,13 @@ using OpenVPNGateMonitor.Models;
 namespace OpenVPNGateMonitor.DataBase.Services.Query.OpenVpnServerClientTable;
 
 /// <summary>
-// — Overview series without relying on LastUpdate/end-of-session.
-// — Each DB row is treated as a whole session, and ALL session bytes are
-// — attributed to the bucket where the session started (ConnectedSince).
-// — "ActiveClients" per bucket is the number of sessions that started in that bucket.
-// — Buckets are aligned by the offset of 'fromUtc' so days/months/years match local calendar.
-// — Always returns a continuous (gap-filled) series.
-// </summary>
+/// Overview series over traffic samples:
+/// - Uses OpenVpnServerClientTraffic (cumulative counters).
+/// - Per session, computes deltas between consecutive samples inside [from;to).
+/// - Aggregates deltas into time buckets (Hours/Days/Months/Years) using the offset of 'fromUtc'.
+/// - ActiveClients per bucket = number of distinct sessions that had at least one sample in that bucket.
+/// - Always returns a continuous (gap-filled) series.
+/// </summary>
 public sealed class OpenVpnOverviewSeriesQuery(IUnitOfWork uow) : IOpenVpnOverviewSeriesQuery
 {
     // Backward-compatible signature (no externalId)
@@ -36,13 +34,9 @@ public sealed class OpenVpnOverviewSeriesQuery(IUnitOfWork uow) : IOpenVpnOvervi
         string? externalId,
         CancellationToken ct = default)
     {
-        // Normalize bounds
         if (toUtc < fromUtc) (fromUtc, toUtc) = (toUtc, fromUtc);
 
-        // Define bucket grid using the offset of 'fromUtc' (e.g. +03:00)
         var offset = fromUtc.Offset;
-
-        // Decide grouping (mirrors frontend auto logic)
         var span = toUtc - fromUtc;
         var mode = grouping == OverviewGrouping.Auto
             ? span <= TimeSpan.FromDays(2)       ? OverviewGrouping.Hours
@@ -51,59 +45,78 @@ public sealed class OpenVpnOverviewSeriesQuery(IUnitOfWork uow) : IOpenVpnOvervi
             : OverviewGrouping.Years
             : grouping;
 
-        // Filter: sessions that START inside [from; to)
-        var q = uow.GetQuery<OpenVpnServerClient>().AsQueryable();
+        // ---- Query traffic samples inside window ----
+        var q = uow.GetQuery<OpenVpnServerClientTraffic>().AsQueryable();
 
         if (vpnServerId.HasValue)
             q = q.Where(s => s.VpnServerId == vpnServerId.Value);
 
         if (!string.IsNullOrWhiteSpace(externalId))
-            q = q.Where(s => s.ExternalId == externalId!); // exact match; change to EF.Functions.ILike if needed
+            q = q.Where(s => s.ExternalId == externalId!);
 
-        // IMPORTANT: compare DateTimeOffset to DateTimeOffset (no .UtcDateTime)
-        q = q.Where(s =>
-                s.ConnectedSince >= fromUtc &&
-                s.ConnectedSince <  toUtc)
+        // Important: compare DateTimeOffset to DateTimeOffset (keep tz info)
+        q = q.Where(s => s.MeasuredAt >= fromUtc && s.MeasuredAt < toUtc)
              .AsNoTracking();
 
-        // Project minimal fields
-        var sessions = await q.Select(s => new SessionStartRow
+        var samples = await q
+            .Select(s => new TrafficSampleRow
+            {
+                VpnServerId = s.VpnServerId,
+                SessionId   = s.SessionId,
+                MeasuredAt  = s.MeasuredAt,                 // timestamptz -> DateTimeOffset
+                BytesIn     = s.BytesReceived,
+                BytesOut    = s.BytesSent
+            })
+            .OrderBy(s => s.SessionId)
+            .ThenBy(s => s.MeasuredAt)
+            .ToListAsync(ct);
+
+        // ---- Aggregate deltas into buckets ----
+        var buckets = new Dictionary<DateTimeOffset, Accum>(capacity: 1024);
+
+        // Keep previous sample per session to compute deltas
+        var lastBySession = new Dictionary<Guid, (DateTimeOffset ts, long inTot, long outTot)>(capacity: 1024);
+
+        foreach (var s in samples)
         {
-            VpnServerId       = s.VpnServerId,
-            ConnectedSinceUtc = s.ConnectedSince, // already an instant (timestamptz -> DateTimeOffset)
-            BytesIn           = s.BytesReceived,
-            BytesOut          = s.BytesSent
-        }).ToListAsync(ct);
+            var tsUtc = s.MeasuredAt.ToOffset(TimeSpan.Zero);
+            var bucket = AlignToBucketStartWithOffset(mode, tsUtc, offset);
 
-        // Aggregate into buckets (anchor-at-start)
-        var buckets = new Dictionary<DateTimeOffset, Accum>(capacity: 512);
+            ref var acc = ref GetOrAddRef(buckets, bucket);
+            acc.SeenSessions ??= new HashSet<Guid>();
+            acc.SeenSessions.Add(s.SessionId);
 
-        foreach (var s in sessions)
-        {
-            // enforce offset = 0 for the bucket keys
-            var startUtc = s.ConnectedSinceUtc.ToOffset(TimeSpan.Zero);
-            var startBucket = AlignToBucketStartWithOffset(mode, startUtc, offset);
+            if (lastBySession.TryGetValue(s.SessionId, out var prev))
+            {
+                // cumulative -> delta (protect against resets)
+                var dIn  = s.BytesIn  >= prev.inTot  ? (s.BytesIn  - prev.inTot)  : s.BytesIn;
+                var dOut = s.BytesOut >= prev.outTot ? (s.BytesOut - prev.outTot) : s.BytesOut;
 
-            ref var acc = ref GetOrAddRef(buckets, startBucket);
-            acc.SessionStarts += 1;                   // count a start in this bucket
-            acc.In  += Math.Max(0, s.BytesIn);        // sum bytes
-            acc.Out += Math.Max(0, s.BytesOut);
+                if (dIn  < 0) dIn  = 0;
+                if (dOut < 0) dOut = 0;
+
+                acc.In  += dIn;
+                acc.Out += dOut;
+            }
+
+            // move window
+            lastBySession[s.SessionId] = (s.MeasuredAt, s.BytesIn, s.BytesOut);
         }
 
-        // Build series
+        // ---- Build series rows ----
         var series = buckets
             .OrderBy(kv => kv.Key)
             .Select(kv => new OverviewSeriesRow
             {
                 Ts                = kv.Key,
-                ActiveClients     = kv.Value.SessionStarts,   // number of starts in bucket
+                ActiveClients     = kv.Value.SeenSessions?.Count ?? 0,
                 TrafficInBytes    = kv.Value.In,
                 TrafficOutBytes   = kv.Value.Out,
                 TrafficTotalBytes = kv.Value.In + kv.Value.Out
             })
             .ToList();
 
-        // Zero-fill gaps so X axis is continuous
+        // Zero-fill to continuous X-axis
         series = FillMissingBuckets(series, fromUtc, toUtc, mode, offset);
 
         return new OverviewSeriesResponse
@@ -113,7 +126,7 @@ public sealed class OpenVpnOverviewSeriesQuery(IUnitOfWork uow) : IOpenVpnOvervi
                 From        = fromUtc,
                 To          = toUtc,
                 Grouping    = mode.ToString().ToLowerInvariant(),
-                Timezone    = "UTC",   // timestamps remain in UTC; bucket grid uses 'offset'
+                Timezone    = "UTC",   // timestamps are UTC; grid is aligned by 'offset'
                 TrafficUnit = "bytes",
                 VpnServerId = vpnServerId
             },
@@ -129,19 +142,20 @@ public sealed class OpenVpnOverviewSeriesQuery(IUnitOfWork uow) : IOpenVpnOvervi
 
     /* ---------- internal helpers/types ---------- */
 
-    private sealed class SessionStartRow
+    private sealed class TrafficSampleRow
     {
         public int VpnServerId { get; set; }
-        public DateTimeOffset ConnectedSinceUtc { get; set; } // use DTO for an instant
+        public Guid SessionId { get; set; }
+        public DateTimeOffset MeasuredAt { get; set; }
         public long BytesIn { get; set; }
         public long BytesOut { get; set; }
     }
 
-    private struct Accum
+    private sealed class Accum
     {
-        public int  SessionStarts;
         public long In;
         public long Out;
+        public HashSet<Guid>? SeenSessions;
     }
 
     // Offset-aware helpers: align/advance using the chosen offset (bucket grid in local time)
@@ -228,7 +242,7 @@ public sealed class OpenVpnOverviewSeriesQuery(IUnitOfWork uow) : IOpenVpnOvervi
     private static ref Accum GetOrAddRef(Dictionary<DateTimeOffset, Accum> dict, DateTimeOffset key)
     {
         ref var entry = ref CollectionsMarshal.GetValueRefOrAddDefault(dict, key, out var exists);
-        if (!exists) entry = default;
+        if (!exists) entry = new Accum();
         return ref entry;
     }
 }
