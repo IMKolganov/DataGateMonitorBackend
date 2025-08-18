@@ -14,7 +14,8 @@ public class OpenVpnClientService(
     IGeoLiteQueryService geoLiteQueryService)
     : IOpenVpnClientService
 {
-    public async Task<List<OpenVpnServerClient>> GetClientsAsync(OpenVpnServer openVpnServer, CancellationToken cancellationToken)
+    public async Task<List<OpenVpnServerClient>> GetClientsFromManagementAsync(OpenVpnServer openVpnServer, 
+        CancellationToken cancellationToken)
     {
         var client = openVpnMicroserviceClientFactory.Create(openVpnServer);
         var response = await client.SendCommandWithResponseAsync("status 3", cancellationToken);

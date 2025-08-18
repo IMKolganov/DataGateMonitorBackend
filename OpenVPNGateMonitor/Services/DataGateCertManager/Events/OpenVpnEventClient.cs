@@ -1,11 +1,15 @@
 using System.Diagnostics;
+using System.Security.Cryptography;
+using System.Text;
 using Mapster;
 using Microsoft.AspNetCore.SignalR;
 using Microsoft.AspNetCore.SignalR.Client;
+using OpenVPNGateMonitor.DataBase.Services.Command;
 using OpenVPNGateMonitor.DataBase.Services.Query.IssuedOvpnFileTable;
 using OpenVPNGateMonitor.Hubs;
 using OpenVPNGateMonitor.Models;
 using OpenVPNGateMonitor.Services.Api.Auth.Interfaces;
+using OpenVPNGateMonitor.Services.GeoLite.Interfaces;
 using OpenVPNGateMonitor.SharedModels.DataGateCertManager.VpnEvent.Requests;
 
 namespace OpenVPNGateMonitor.Services.DataGateCertManager.Events;
@@ -16,6 +20,8 @@ public class OpenVpnEventClient(
     IHubContext<OpenVpnEventHub> eventHub,
     IMicroserviceTokenService tokenService,
     IIssuedOvpnFileQueryService openVpnFileQueryService,
+    IGeoLiteQueryService geoLiteQueryService,
+    ICommandService<OpenVpnServerClient, int> openVpnServerClientCommandService,
     IServiceProvider serviceProvider)
 {
     private HubConnection? _connection;
@@ -221,34 +227,60 @@ public class OpenVpnEventClient(
             var swSave = Stopwatch.StartNew();
             await logService.SaveEventAsync(openVpnServer.Id, eventType, req, CancellationToken.None);
 
-            // if (string.IsNullOrEmpty(req.CommonName) && req.CommonName != null)
-            // {
-            //     var newClient = new OpenVpnServerClient
-            //     {
-            //         VpnServerId = openVpnServer.Id,
-            //         ExternalId = await openVpnFileQueryService.GetExternalIdByCommonName(
-            //             req.CommonName, openVpnServer.Id, false, CancellationToken.None) ?? string.Empty,
-            //         SessionId = sessionId,
-            //         CommonName = req.CommonName,
-            //         RemoteIp = req.RealAddress ?? string.Empty,
-            //         LocalIp = req.VirtualAddress ?? string.Empty,
-            //         BytesReceived = req.BytesReceived ?? 0,
-            //         BytesSent = req.BytesSent ?? 0,
-            //         ConnectedSince = req.ConnectedSince ?? DateTimeOffset.UtcNow,
-            //         DisconnectedAt = req.DisconnectedAt,
-            //         Username = req.CommonName,
-            //         Country = openVpnClient.Country,
-            //         Region = openVpnClient.Region,
-            //         City = openVpnClient.City,
-            //         Latitude = openVpnClient.Latitude,
-            //         Longitude = openVpnClient.Longitude,
-            //         IsConnected = true,
-            //         LastUpdate = DateTimeOffset.UtcNow,
-            //         CreateDate = DateTimeOffset.UtcNow
-            //     };
-            // }
+            if (eventType.ToLower() == "clientconnected" && !string.IsNullOrEmpty(req.CommonName))
+            {
+                var openVpnServerClient = new OpenVpnServerClient
+                {
+                    VpnServerId = openVpnServer.Id,
+                    ExternalId = await openVpnFileQueryService.GetExternalIdByCommonName(
+                        req.CommonName, openVpnServer.Id, false, CancellationToken.None) ?? string.Empty,
+                    CommonName = req.CommonName,
+                    RemoteIp = req.RealAddress ?? string.Empty,
+                    LocalIp = req.VirtualAddress ?? string.Empty,
+                    BytesReceived = req.BytesReceived ?? 0,
+                    BytesSent = req.BytesSent ?? 0,
+                    ConnectedSince = req.ConnectedSince ?? DateTimeOffset.UtcNow,
+                    DisconnectedAt = req.DisconnectedAt,
+                    Username = req.CommonName,
+                    IsConnected = true,
+                    LastUpdate = DateTimeOffset.UtcNow,
+                    CreateDate = DateTimeOffset.UtcNow
+                };
+                var geoInfo = await geoLiteQueryService.GetGeoInfoAsync(
+                    openVpnServerClient.RemoteIp, CancellationToken.None);
+                if (geoInfo is not null)
+                {
+                    openVpnServerClient.Country = geoInfo.Country;
+                    openVpnServerClient.Region = geoInfo.Region;
+                    openVpnServerClient.City = geoInfo.City;
+                    openVpnServerClient.Latitude = geoInfo.Latitude;
+                    openVpnServerClient.Longitude = geoInfo.Longitude;
+                }
+                openVpnServerClient.SessionId = GenerateSessionId(openVpnServerClient.CommonName,
+                    openVpnServerClient.RemoteIp, openVpnServerClient.ConnectedSince);
+                
+                await openVpnServerClientCommandService.AddAsync(openVpnServerClient, saveChanges: false, 
+                    CancellationToken.None);
+                logger.LogInformation(
+                    "VpnServerId: {Id}. Added new client session {SessionId}.",
+                    openVpnServer.Id, openVpnServerClient.SessionId);
+            }else if (eventType.ToLower() == "clientdisconnected" && !string.IsNullOrEmpty(req.CommonName))
+            {
+                var nowUtc = DateTimeOffset.UtcNow;
+                await openVpnServerClientCommandService.UpdateWhereAsync(
+                    x => x.VpnServerId == openVpnServer.Id 
+                         && x.IsConnected
+                         && x.CommonName == req.CommonName
+                         && x.ConnectedSince == req.ConnectedSince
+                         && x.RemoteIp == req.RealAddress,
+                    s => s
+                        .SetProperty(c => c.IsConnected, false)
+                        .SetProperty(c => c.DisconnectedAt, nowUtc)
+                        .SetProperty(c => c.LastUpdate, nowUtc),
+                    CancellationToken.None);
+            }
 
-            
+            await openVpnServerClientCommandService.SaveChangesAsync(CancellationToken.None);
             swSave.Stop();
             logger.LogInformation(
                 "Saved event {EventType} for ServerId={ServerId}; SaveMs={ElapsedMs}",
@@ -274,5 +306,13 @@ public class OpenVpnEventClient(
             logger.LogDebug("HandleEvent finished for {EventType} (ServerId={ServerId}); TotalMs={ElapsedMs}",
                 eventType, openVpnServer.Id, swTotal.ElapsedMilliseconds);
         }
+    }
+    
+    private Guid GenerateSessionId(string commonName, string realAddress, DateTimeOffset connectedSince)
+    {
+        var sessionString = $"{commonName}-{realAddress}-{connectedSince:o}";
+        using var sha256 = SHA256.Create();
+        var hashBytes = sha256.ComputeHash(Encoding.UTF8.GetBytes(sessionString));
+        return new Guid(hashBytes.Take(16).ToArray());
     }
 }
