@@ -1,6 +1,7 @@
 ﻿using System.Net.Http.Headers;
 using Newtonsoft.Json;
 using Newtonsoft.Json.Linq;
+using OpenVPNGateMonitor.DataBase.Services.Query.OpenVpnServerTable;
 using OpenVPNGateMonitor.Services.Api.Auth.Interfaces;
 using OpenVPNGateMonitor.Services.Api.Interfaces;
 using OpenVPNGateMonitor.Services.DataGateCertManager.Interfaces;
@@ -11,16 +12,27 @@ namespace OpenVPNGateMonitor.Services.DataGateCertManager;
 
 public class OvpnFileApiClient(
     IHttpClientFactory httpClientFactory,
-    IVpnDataService vpnDataService,
+    IOpenVpnServerQueryService openVpnServerQueryService,
     IMicroserviceTokenService tokenService,
     ILogger<OvpnFileApiClient> logger)
     : IOvpnFileApiClient
 {
     private async Task<HttpClient> GetClientForServerAsync(int serverId, CancellationToken cancellationToken)
     {
-        var server = await vpnDataService.GetOpenVpnServer(serverId, cancellationToken);
+        var server = await openVpnServerQueryService.GetByIdAsync(serverId, cancellationToken);
         var client = httpClientFactory.CreateClient();
-        client.BaseAddress = new Uri(server.ApiUrl);
+        if (server != null)
+        {
+            if (string.IsNullOrEmpty(server.ApiUrl))
+            {
+                throw new InvalidOperationException("API url is missing");
+            }
+            client.BaseAddress = new Uri(server.ApiUrl);
+        }
+        else
+        {
+            throw new Exception("Server not found");
+        }
         return client;
     }
 

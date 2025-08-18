@@ -11,4 +11,5 @@ public class RevokeClientOvpnFileRequest
     public int OvpnFileId { get; set; }
     [Required(ErrorMessage = "commonName is required.")]
     public string CommonName { get; set; } = string.Empty;
+    public bool IsRevoked { get; set; } = false;
 }

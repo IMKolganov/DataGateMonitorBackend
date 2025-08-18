@@ -13,6 +13,6 @@ public class ServerCertificate
     public string Message { get; set; } = string.Empty;
     public string CertificatePath { get; set; } = string.Empty;
     public string KeyPath { get; set; } = string.Empty;
-    public DateTime ExpiryDate { get; set; } = DateTime.MinValue;
-    public DateTime? RevokeDate { get; set; }
+    public DateTimeOffset ExpiryDate { get; set; } = DateTimeOffset.MinValue;
+    public DateTimeOffset? RevokeDate { get; set; }
 }

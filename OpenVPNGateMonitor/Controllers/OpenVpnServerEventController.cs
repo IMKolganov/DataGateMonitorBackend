@@ -1,6 +1,7 @@
-﻿using Microsoft.AspNetCore.Authorization;
+﻿using Mapster;
+using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Mvc;
-using OpenVPNGateMonitor.Services.DataGateCertManager.Events;
+using OpenVPNGateMonitor.DataBase.Services.Query.OpenVpnServerEventLogTable;
 using OpenVPNGateMonitor.SharedModels.DataGateMonitorBackend.OpenVpnServerEvent.Responses;
 using OpenVPNGateMonitor.SharedModels.DataGateMonitorBackend.OpenVpnServers.Requests;
 using OpenVPNGateMonitor.SharedModels.Responses;
@@ -10,15 +11,17 @@ namespace OpenVPNGateMonitor.Controllers;
 [ApiController]
 [Route("api/[controller]")]
 [Authorize]
-public class OpenVpnServerEventController(IVpnEventLogService eventLogService) : ControllerBase
+public class OpenVpnServerEventController(
+    IOpenVpnServerEventLogQueryService openVpnServerEventLogQueryService) : ControllerBase
 {
     [HttpGet("GetEventByVpnServerId")]
     public async Task<ActionResult<ApiResponse<VpnServerEventResponse>>> GetEventByVpnServerId(
         [FromQuery] GetConnectedClientsRequest request, CancellationToken cancellationToken)
     {
-        var response = await eventLogService.GetEventByVpnServerIdAsync(
+        var page = await openVpnServerEventLogQueryService.GetByVpnServerIdAsync(
             request.VpnServerId, request.Page, request.PageSize, cancellationToken);
 
-        return Ok(ApiResponse<VpnServerEventResponse>.SuccessResponse(response));
+        var dto = page.Adapt<VpnServerEventResponse>();
+        return Ok(ApiResponse<VpnServerEventResponse>.SuccessResponse(dto));
     }
 }

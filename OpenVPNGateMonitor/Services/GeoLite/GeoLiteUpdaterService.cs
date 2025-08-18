@@ -26,7 +26,7 @@ public class GeoLiteUpdaterService(
 
             // Step 1: Load configuration
             await ReportStepProgressAsync(1, totalSteps, "Load configuration", 0, cancellationToken);
-            var timestamp = DateTime.UtcNow.ToString("yyyyMMdd_HHmmss");
+            var timestamp = DateTimeOffset.UtcNow.ToString("yyyyMMdd_HHmmss");
             var dbPath =
                 await GeoLiteLoadConfigs.GetStringParamFromSettings("GeoIp_Db_Path", serviceProvider,
                     cancellationToken);

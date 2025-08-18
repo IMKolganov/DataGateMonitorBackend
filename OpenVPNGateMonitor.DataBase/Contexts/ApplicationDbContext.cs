@@ -36,6 +36,7 @@ public class ApplicationDbContext(DbContextOptions<ApplicationDbContext> options
     public DbSet<LocalizationText> LocalizationTexts { get; set; } = null!;
     public DbSet<IncomingMessageLog> IncomingMessageLogs { get; set; } = null!;
     public DbSet<OpenVpnServerEventLog> OpenVpnServerEventLogs { get; set; } = null!;
+    public DbSet<OpenVpnServerClientTraffic> OpenVpnServerClientTraffics { get; set; } = null!;
 
     
     protected override void OnModelCreating(ModelBuilder modelBuilder)
@@ -55,6 +56,7 @@ public class ApplicationDbContext(DbContextOptions<ApplicationDbContext> options
         modelBuilder.ApplyConfiguration(new LocalizationTextConfiguration());
         modelBuilder.ApplyConfiguration(new IncomingMessageLogConfiguration());
         modelBuilder.ApplyConfiguration(new OpenVpnServerEventLogConfiguration());
+        modelBuilder.ApplyConfiguration(new OpenVpnServerClientTrafficConfiguration());
     }
     
     private void UpdateTimestamps()
@@ -69,14 +71,14 @@ public class ApplicationDbContext(DbContextOptions<ApplicationDbContext> options
 
             if (entry.State == EntityState.Added)
             {
-                var now = DateTime.UtcNow;
+                var now = DateTimeOffset.UtcNow;
                 entity.CreateDate = now;
                 entity.LastUpdate = now;
             }
             else if (entry.State == EntityState.Modified)
             {
                 entry.Property(nameof(IBaseEntity.CreateDate)).IsModified = false;
-                entity.LastUpdate = DateTime.UtcNow;
+                entity.LastUpdate = DateTimeOffset.UtcNow;
             }
         }
     }

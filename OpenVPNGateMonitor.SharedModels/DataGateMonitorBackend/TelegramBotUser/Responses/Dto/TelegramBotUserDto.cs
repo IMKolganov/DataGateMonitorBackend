@@ -9,6 +9,6 @@ public class TelegramBotUserDto
     public string? LastName { get; set; } = string.Empty;
     public bool IsAdmin { get; set; } = false;
     public bool IsBlocked { get; set; } = false;
-    public DateTime CreateDate { get; set; }
-    public DateTime LastUpdate { get; set; }
+    public DateTimeOffset CreateDate { get; set; }
+    public DateTimeOffset LastUpdate { get; set; }
 }

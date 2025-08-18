@@ -1,4 +1,5 @@
 ﻿using Microsoft.EntityFrameworkCore;
+using OpenVPNGateMonitor.DataBase.Services.Query.OpenVpnServerTable;
 using OpenVPNGateMonitor.DataBase.UnitOfWork;
 using OpenVPNGateMonitor.Models;
 using OpenVPNGateMonitor.Services.BackgroundServices.Interfaces;
@@ -41,11 +42,9 @@ public class OpenVpnEventBackgroundService(
         try
         {
             using var scope = scopeFactory.CreateScope();
-            var unitOfWork = scope.ServiceProvider.GetRequiredService<IUnitOfWork>();
+            var openVpnOverviewQuery = scope.ServiceProvider.GetRequiredService<IOpenVpnServerQueryService>();
+            var servers = await openVpnOverviewQuery.GetAllAsync(cancellationToken);
 
-            var servers = await unitOfWork.GetQuery<OpenVpnServer>()
-                .AsQueryable()
-                .ToListAsync(cancellationToken);
 
             foreach (var server in servers)
             {

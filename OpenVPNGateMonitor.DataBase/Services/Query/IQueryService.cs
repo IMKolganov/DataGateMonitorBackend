@@ -1,0 +1,47 @@
+﻿using OpenVPNGateMonitor.Models;
+using OpenVPNGateMonitor.SharedModels.Responses;
+
+namespace OpenVPNGateMonitor.DataBase.Services.Query;
+
+using System.Linq.Expressions;
+
+public interface IQueryService<TEntity, TKey> where TEntity : BaseEntity<TKey>
+{
+    Task<List<TEntity>> GetAllAsync(
+        bool asNoTracking = true,
+        CancellationToken ct = default);
+
+    Task<TEntity?> FindByIdAsync(
+        TKey id,
+        bool asNoTracking = true,
+        CancellationToken ct = default,
+        params Expression<Func<TEntity, object>>[] includes);
+
+    Task<List<TEntity>> WhereAsync(
+        Expression<Func<TEntity, bool>> predicate,
+        Func<IQueryable<TEntity>, IOrderedQueryable<TEntity>>? orderBy = null,
+        bool asNoTracking = true,
+        CancellationToken ct = default,
+        params Expression<Func<TEntity, object>>[] includes);
+
+    Task<IPagedResult<TEntity>> PageAsync(
+        int page,
+        int pageSize,
+        Expression<Func<TEntity, bool>>? predicate = null,
+        Func<IQueryable<TEntity>, IOrderedQueryable<TEntity>>? orderBy = null,
+        bool asNoTracking = true,
+        CancellationToken ct = default,
+        params Expression<Func<TEntity, object>>[] includes);
+
+    Task<int> CountAsync(
+        Expression<Func<TEntity, bool>>? predicate = null,
+        CancellationToken ct = default);
+
+    Task<bool> AnyAsync(
+        Expression<Func<TEntity, bool>> predicate,
+        CancellationToken ct = default);
+
+    IQueryable<TEntity> Query(
+        bool asNoTracking = true,
+        params Expression<Func<TEntity, object>>[] includes);
+}

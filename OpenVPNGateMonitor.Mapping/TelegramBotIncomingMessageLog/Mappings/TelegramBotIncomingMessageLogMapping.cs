@@ -26,7 +26,7 @@ public class TelegramBotIncomingMessageLogMapping : IRegister
            
         TypeAdapterConfig<Models.IncomingMessageLog, MessageDto>
             .NewConfig()
-            .Map(dest => dest.CreateDate, src => DateTime.UtcNow)
-            .Map(dest => dest.LastUpdate, src => DateTime.UtcNow);
+            .Map(dest => dest.CreateDate, src => DateTimeOffset.UtcNow)
+            .Map(dest => dest.LastUpdate, src => DateTimeOffset.UtcNow);
     }
 }
