@@ -19,7 +19,6 @@ public class OpenVpnServerService(
     IOpenVpnSummaryStatService openVpnSummaryStatService,
     IOpenVpnVersionService openVpnVersionService,
     IOpenVpnStateService openVpnStateService,
-    IOpenVpnServerClientQueryService openVpnServerClientQueryService,
     IIssuedOvpnFileQueryService openVpnFileQueryService,
     IOpenVpnServerStatusLogQueryService openVpnServerStatusLogQueryService,
     IExternalIpAddressService externalIpAddressService,
@@ -29,23 +28,22 @@ public class OpenVpnServerService(
 {
     public async Task SaveConnectedClientsAsync(OpenVpnServer openVpnServer, CancellationToken ct)
     {
-        logger.LogInformation(
-            "VpnServerId: {Id}. Starting SaveConnectedClientsAsync...",
-            openVpnServer.Id);
+        logger.LogInformation("VpnServerId: {Id}. Starting SaveConnectedClientsAsync...", openVpnServer.Id);
 
         await transactionRunner.RunAsync(async _ =>
         {
-            var openVpnClientsFromMng = 
-                await openVpnClientService.GetClientsFromManagementAsync(openVpnServer, ct);
-            logger.LogInformation(
-                "VpnServerId: {Id}. Retrieved {Count} clients from OpenVPN.",
+            var openVpnClientsFromMng = await openVpnClientService.GetClientsFromManagementAsync(openVpnServer, ct);
+            logger.LogInformation("VpnServerId: {Id}. Retrieved {Count} clients from OpenVPN.",
                 openVpnServer.Id, openVpnClientsFromMng.Count);
-            
+
             var nowUtc = DateTimeOffset.UtcNow;
+
+            // Build current sessions set to mark stale ones as disconnected
             var currentSessionIds = new HashSet<Guid>(
-                openVpnClientsFromMng.Select(c => 
+                openVpnClientsFromMng.Select(c =>
                     GenerateSessionId(c.CommonName, c.RemoteIp, c.ConnectedSince)));
 
+            // Mark not-present sessions as disconnected
             await openVpnServerClientCommandService.UpdateWhereAsync(
                 x => x.VpnServerId == openVpnServer.Id
                      && x.IsConnected
@@ -56,54 +54,62 @@ public class OpenVpnServerService(
                     .SetProperty(c => c.LastUpdate, nowUtc),
                 ct);
 
+            // Upsert for each currently connected client
             foreach (var openVpnClientFromMng in openVpnClientsFromMng)
             {
-                var sessionId = GenerateSessionId(
-                    openVpnClientFromMng.CommonName,
-                    openVpnClientFromMng.RemoteIp,
-                    openVpnClientFromMng.ConnectedSince);
+                var sessionId = GenerateSessionId(openVpnClientFromMng.CommonName, 
+                    openVpnClientFromMng.RemoteIp, openVpnClientFromMng.ConnectedSince);
 
-                var existing = await openVpnServerClientQueryService
-                    .GetBySessionAndServerIdAsync(sessionId, openVpnServer.Id, ct);
+                // ExternalId may appear later or change; always refresh
+                var externalId = await openVpnFileQueryService.GetExternalIdByCommonName(
+                    openVpnClientFromMng.CommonName, openVpnServer.Id, false, ct) ?? string.Empty;
 
-                if (existing != null)
+                // Try UPDATE first
+                var rows = await openVpnServerClientCommandService.UpdateWhereAsync(
+                    x => x.VpnServerId == openVpnServer.Id && x.SessionId == sessionId,
+                    s => s
+                        .SetProperty(c => c.CommonName, openVpnClientFromMng.CommonName)
+                        .SetProperty(c => c.RemoteIp, openVpnClientFromMng.RemoteIp)
+                        .SetProperty(c => c.LocalIp, openVpnClientFromMng.LocalIp)
+                        .SetProperty(c => c.BytesReceived, openVpnClientFromMng.BytesReceived)
+                        .SetProperty(c => c.BytesSent, openVpnClientFromMng.BytesSent)
+                        .SetProperty(c => c.ConnectedSince, openVpnClientFromMng.ConnectedSince) // idempotent
+                        .SetProperty(c => c.Username, openVpnClientFromMng.Username)
+                        .SetProperty(c => c.Country, openVpnClientFromMng.Country)
+                        .SetProperty(c => c.Region, openVpnClientFromMng.Region)
+                        .SetProperty(c => c.City, openVpnClientFromMng.City)
+                        .SetProperty(c => c.Latitude, openVpnClientFromMng.Latitude)
+                        .SetProperty(c => c.Longitude, openVpnClientFromMng.Longitude)
+                        .SetProperty(c => c.ExternalId, externalId)
+                        .SetProperty(c => c.IsConnected, true)
+                        .SetProperty(c => c.DisconnectedAt, _ => (DateTimeOffset?)null) // pick lambda overload
+                        .SetProperty(c => c.LastUpdate, nowUtc),
+                    ct);
+
+                if (rows > 0)
                 {
-                    openVpnClientFromMng.Adapt(existing);
-
-                    existing.VpnServerId = openVpnServer.Id;
-                    existing.ExternalId = await openVpnFileQueryService.GetExternalIdByCommonName(
-                        openVpnClientFromMng.CommonName, openVpnServer.Id, false, ct) ?? string.Empty;
-                    existing.LastUpdate = DateTimeOffset.UtcNow;
-                    existing.IsConnected = true;
-                    existing.DisconnectedAt = null;
-
-                    await openVpnServerClientCommandService.UpdateAsync(existing, saveChanges: false, ct);
                     logger.LogDebug("Updated client session {SessionId}.", sessionId);
+                    continue;
                 }
-                else
-                {
-                    var newClient = openVpnClientFromMng.Adapt<OpenVpnServerClient>();
 
-                    newClient.VpnServerId = openVpnServer.Id;
-                    newClient.SessionId = sessionId;
-                    newClient.ExternalId = await openVpnFileQueryService.GetExternalIdByCommonName(
-                        openVpnClientFromMng.CommonName, openVpnServer.Id, false, ct) ?? string.Empty;
-                    newClient.DisconnectedAt = null;
-                    newClient.IsConnected = true;
-                    newClient.LastUpdate = DateTimeOffset.UtcNow;
-                    newClient.CreateDate = DateTimeOffset.UtcNow;
+                // INSERT new
+                var newClient = openVpnClientFromMng.Adapt<OpenVpnServerClient>(); // ensure Mapster doesn't overwrite PKs on reuse
+                newClient.VpnServerId = openVpnServer.Id;
+                newClient.SessionId = sessionId;
+                newClient.ExternalId = externalId;
+                newClient.IsConnected = true;
+                newClient.DisconnectedAt = null;
+                newClient.LastUpdate = nowUtc;
+                newClient.CreateDate = nowUtc;
 
-                    await openVpnServerClientCommandService.AddAsync(newClient, saveChanges: false, ct);
-                    logger.LogInformation(
-                        "VpnServerId: {Id}. Added new client session {SessionId}.",
-                        openVpnServer.Id, sessionId);
-                }
+                await openVpnServerClientCommandService.AddAsync(newClient, saveChanges: false, ct);
+                logger.LogInformation("VpnServerId: {Id}. Added new client session {SessionId}.",
+                    openVpnServer.Id, sessionId);
             }
 
             await openVpnServerClientCommandService.SaveChangesAsync(ct);
 
-            logger.LogInformation(
-                "VpnServerId: {Id}. SaveConnectedClientsAsync completed successfully.",
+            logger.LogInformation("VpnServerId: {Id}. SaveConnectedClientsAsync completed successfully.",
                 openVpnServer.Id);
 
         }, ct);
