@@ -1,10 +1,12 @@
 ﻿using System.Collections.Concurrent;
 using Microsoft.AspNetCore.SignalR;
+using OpenVPNGateMonitor.DataBase.Services.Command;
 using OpenVPNGateMonitor.DataBase.Services.Query.IssuedOvpnFileTable;
 using OpenVPNGateMonitor.DataBase.Services.Query.OpenVpnServerTable;
 using OpenVPNGateMonitor.Hubs;
 using OpenVPNGateMonitor.Models;
 using OpenVPNGateMonitor.Services.Api.Auth.Interfaces;
+using OpenVPNGateMonitor.Services.GeoLite.Interfaces;
 
 namespace OpenVPNGateMonitor.Services.DataGateCertManager.Events;
 
@@ -21,9 +23,13 @@ public class OpenVpnEventClientFactory(IServiceProvider serviceProvider) : IOpen
             var eventHub = scope.ServiceProvider.GetRequiredService<IHubContext<OpenVpnEventHub>>();
             var tokenService = scope.ServiceProvider.GetRequiredService<IMicroserviceTokenService>();
             var openVpnFileQueryService = scope.ServiceProvider.GetRequiredService<IIssuedOvpnFileQueryService>();
+            var geoLiteQueryService = scope.ServiceProvider.GetRequiredService<IGeoLiteQueryService>();
+
+            var openVpnServerClientCommandService = 
+                scope.ServiceProvider.GetRequiredService<ICommandService<OpenVpnServerClient, int>>();
             
             return new OpenVpnEventClient(server, logger, eventHub, tokenService, openVpnFileQueryService, 
-                serviceProvider);
+                geoLiteQueryService, openVpnServerClientCommandService, serviceProvider);
         });
     }
 
