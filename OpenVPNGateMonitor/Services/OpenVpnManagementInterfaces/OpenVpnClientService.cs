@@ -74,7 +74,7 @@ public class OpenVpnClientService(
             // 0: CLIENT_LIST, 1: CommonName, 2: RealAddress, 3: VirtualAddress, 4: Virtual6 (optional),
             // 5: BytesReceived, 6: BytesSent, 7: ConnectedSince (unix), ... , 9: Username (may be UNDEF)
             var realAddress = parts[2];
-            var remoteIp = ExtractIpHost(realAddress);
+            var remoteIp = realAddress;// ExtractIpHost(realAddress);
 
             return new OpenVpnServerClient
             {
