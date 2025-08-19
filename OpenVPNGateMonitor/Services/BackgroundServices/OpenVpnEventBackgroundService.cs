@@ -1,7 +1,4 @@
-﻿using Microsoft.EntityFrameworkCore;
-using OpenVPNGateMonitor.DataBase.Services.Query.OpenVpnServerTable;
-using OpenVPNGateMonitor.DataBase.UnitOfWork;
-using OpenVPNGateMonitor.Models;
+﻿using OpenVPNGateMonitor.DataBase.Services.Query.OpenVpnServerTable;
 using OpenVPNGateMonitor.Services.BackgroundServices.Interfaces;
 using OpenVPNGateMonitor.Services.DataGateCertManager.Events;
 

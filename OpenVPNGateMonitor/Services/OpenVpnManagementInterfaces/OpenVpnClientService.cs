@@ -142,27 +142,7 @@ public class OpenVpnClientService(
         throw new FormatException($"Invalid instant format in field {fieldName}: '{value}'");
     }
 
-    // Extract host from "real address" handling IPv4, [IPv6]:port, and bare IPv6.
-    private static string ExtractIpHost(string realAddress)
-    {
-        if (string.IsNullOrWhiteSpace(realAddress)) return realAddress;
 
-        var s = realAddress.Trim();
-
-        // [IPv6]:port
-        if (s.Length > 2 && s[0] == '[')
-        {
-            var rb = s.IndexOf(']');
-            if (rb > 0) return s.Substring(1, rb - 1);
-        }
-
-        // IPv4:port or unbracketed host:port (take before last ':')
-        var idx = s.LastIndexOf(':');
-        if (idx > 0) return s[..idx];
-
-        // Bare IPv6 or host without port
-        return s;
-    }
 
     private Guid GenerateSessionId(string commonName, string realAddress, DateTimeOffset connectedSince)
     {

@@ -21,6 +21,9 @@ public class OpenVpnEventClient(
     IMicroserviceTokenService tokenService,
     IServiceScopeFactory scopeFactory)
 {
+    private readonly int _serverId = openVpnServer.Id;
+    private readonly string _apiUrl = openVpnServer.ApiUrl;
+    
     private HubConnection? _connection;
     private readonly SemaphoreSlim _connectionLock = new(1, 1);
     private bool _handlersRegistered;
@@ -46,7 +49,7 @@ public class OpenVpnEventClient(
 
     private OpenVpnEventConnectionStatus GetStatus()
         => new(
-            ServerId: openVpnServer.Id,
+            ServerId: _serverId,
             Url: _fullUrl,
             Host: _host,
             Port: _port,
@@ -61,7 +64,7 @@ public class OpenVpnEventClient(
     private void InitTargetUrl()
     {
         if (!string.IsNullOrEmpty(_fullUrl)) return;
-        _fullUrl = $"{openVpnServer.ApiUrl.TrimEnd('/')}/hubs/openvpn-event";
+        _fullUrl = $"{_apiUrl.TrimEnd('/')}/hubs/openvpn-event";
         var uri = new Uri(_fullUrl);
         _host = uri.Host;
         _port = uri.IsDefaultPort ? (uri.Scheme == Uri.UriSchemeHttps ? 443 : 80) : uri.Port;
@@ -89,7 +92,7 @@ public class OpenVpnEventClient(
                 InitTargetUrl();
                 logger.LogInformation(
                     "Creating SignalR connection for server {ServerId} (Url={Url}, Host={Host}, Port={Port})",
-                    openVpnServer.Id, _fullUrl, _host, _port);
+                    _serverId, _fullUrl, _host, _port);
 
                 _connection = new HubConnectionBuilder()
                     .WithUrl(_fullUrl, options =>
@@ -141,7 +144,7 @@ public class OpenVpnEventClient(
                         Stamp(HubConnectionState.Reconnecting, ex);
                         logger.LogWarning(ex,
                             "SignalR reconnecting (ServerId={ServerId}, Host={Host}, Port={Port})",
-                            openVpnServer.Id, _host, _port);
+                            _serverId, _host, _port);
                         return Task.CompletedTask;
                     };
                     _connection.Reconnected += connId =>
@@ -149,7 +152,7 @@ public class OpenVpnEventClient(
                         Stamp(HubConnectionState.Connected);
                         logger.LogInformation(
                             "SignalR reconnected (ServerId={ServerId}, ConnId={ConnId}, Host={Host}, Port={Port})",
-                            openVpnServer.Id, connId, _host, _port);
+                            _serverId, connId, _host, _port);
                         return Task.CompletedTask;
                     };
                     _connection.Closed += ex =>
@@ -157,7 +160,7 @@ public class OpenVpnEventClient(
                         Stamp(HubConnectionState.Disconnected, ex);
                         logger.LogError(ex,
                             "SignalR closed (ServerId={ServerId}, Host={Host}, Port={Port})",
-                            openVpnServer.Id, _host, _port);
+                            _serverId, _host, _port);
                         return Task.CompletedTask;
                     };
 
@@ -180,14 +183,14 @@ public class OpenVpnEventClient(
                         Stamp(HubConnectionState.Connected);
                         logger.LogInformation(
                             "Started OpenVpnEventClient SignalR connection for server {ServerId}. ConnId={ConnId}, Host={Host}, Port={Port}",
-                            openVpnServer.Id, _connection.ConnectionId, _host, _port);
+                            _serverId, _connection.ConnectionId, _host, _port);
                         break;
                     }
                     catch (Exception ex)
                     {
                         logger.LogWarning(ex,
                             "SignalR start failed (attempt {Attempt}) for server {ServerId}. Retrying in 5s...",
-                            attempt, openVpnServer.Id);
+                            attempt, _serverId);
 
                         await Task.Delay(TimeSpan.FromSeconds(5), cancellationToken);
                     }
@@ -205,13 +208,13 @@ public class OpenVpnEventClient(
     private async Task HandleEvent(string eventType, VpnEventRequest data)
     {
         var swTotal = Stopwatch.StartNew();
-        var group = openVpnServer.Id.ToString();
+        var group = _serverId.ToString();
 
         try
         {
             logger.LogInformation(
                 "Handling event {EventType} for ServerId={ServerId}; CN={CommonName}; Real={Real}; Virt={Virt}; Since={Since}",
-                eventType, openVpnServer.Id, data.CommonName, data.RealAddress, data.VirtualAddress,
+                eventType, _serverId, data.CommonName, data.RealAddress, data.VirtualAddress,
                 data.ConnectedSince);
 
             using var scope = scopeFactory.CreateScope();
@@ -224,16 +227,16 @@ public class OpenVpnEventClient(
             var req = data.Adapt<VpnEventRequest>();
 
             var swSave = Stopwatch.StartNew();
-            await logService.SaveEventAsync(openVpnServer.Id, eventType, req, CancellationToken.None);
+            await logService.SaveEventAsync(_serverId, eventType, req, CancellationToken.None);
 
             if (eventType.Equals("ClientConnected", StringComparison.OrdinalIgnoreCase)
                 && !string.IsNullOrWhiteSpace(req.CommonName))
             {
                 var openVpnServerClient = new OpenVpnServerClient
                 {
-                    VpnServerId = openVpnServer.Id,
+                    VpnServerId = _serverId,
                     ExternalId = await fileQuery.GetExternalIdByCommonName(
-                        req.CommonName, openVpnServer.Id, false, CancellationToken.None) ?? string.Empty,
+                        req.CommonName, _serverId, false, CancellationToken.None) ?? string.Empty,
                     CommonName = req.CommonName!,
                     RemoteIp = req.RealAddress ?? string.Empty,
                     LocalIp = req.VirtualAddress ?? string.Empty,
@@ -262,7 +265,7 @@ public class OpenVpnEventClient(
 
                 await clientCmd.AddAsync(openVpnServerClient, saveChanges: false, CancellationToken.None);
                 logger.LogInformation("VpnServerId: {Id}. Added new client session {SessionId}.",
-                    openVpnServer.Id, openVpnServerClient.SessionId);
+                    _serverId, openVpnServerClient.SessionId);
             }
             else if (eventType.Equals("ClientDisconnected", StringComparison.OrdinalIgnoreCase)
                      && !string.IsNullOrWhiteSpace(req.CommonName))
@@ -270,7 +273,7 @@ public class OpenVpnEventClient(
                 var nowUtc = DateTimeOffset.UtcNow;
 
                 await clientCmd.UpdateWhereAsync(
-                    x => x.VpnServerId == openVpnServer.Id
+                    x => x.VpnServerId == _serverId
                          && x.IsConnected
                          && x.CommonName == req.CommonName
                          && x.ConnectedSince == req.ConnectedSince
@@ -287,25 +290,25 @@ public class OpenVpnEventClient(
 
             swSave.Stop();
             logger.LogInformation("Saved event {EventType} for ServerId={ServerId}; SaveMs={ElapsedMs}",
-                eventType, openVpnServer.Id, swSave.ElapsedMilliseconds);
+                eventType, _serverId, swSave.ElapsedMilliseconds);
 
             var swHub = Stopwatch.StartNew();
             await eventHub.Clients.Group(group).SendAsync(eventType, data);
             swHub.Stop();
             logger.LogInformation("Broadcasted {EventType} to group {Group} (ServerId={ServerId}); HubMs={ElapsedMs}",
-                eventType, group, openVpnServer.Id, swHub.ElapsedMilliseconds);
+                eventType, group, _serverId, swHub.ElapsedMilliseconds);
         }
         catch (Exception ex)
         {
             logger.LogError(ex,
                 "Failed to handle SignalR event {EventType} from ServerId={ServerId}; CN={CommonName}",
-                eventType, openVpnServer.Id, data.CommonName);
+                eventType, _serverId, data.CommonName);
         }
         finally
         {
             swTotal.Stop();
             logger.LogDebug("HandleEvent finished for {EventType} (ServerId={ServerId}); TotalMs={ElapsedMs}",
-                eventType, openVpnServer.Id, swTotal.ElapsedMilliseconds);
+                eventType, _serverId, swTotal.ElapsedMilliseconds);
         }
     }
 
