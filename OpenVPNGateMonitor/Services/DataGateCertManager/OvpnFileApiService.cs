@@ -147,9 +147,15 @@ public class OvpnFileApiService(IOvpnFileApiClient ovpnFileApiClient,
     {
         logger.LogInformation("Attempting to revoke OVPN file: CommonName={CommonName}, VpnServerId={VpnServerId}",
             request.CommonName, request.VpnServerId);
-        //todo: get from request request.IsRevoked
         var issuedOvpnFile = await issuedOvpnFileQueryService.GetByVpnServerIdAndCommonNameAndIsRevokedAsync(
-            request.VpnServerId, request.OvpnFileId, request.CommonName, false, ct);
+            request.VpnServerId, request.OvpnFileId, request.CommonName, request.IsRevoked, ct);
+        
+        if (issuedOvpnFile == null)
+        {
+            logger.LogWarning("Issued OVPN file not found for revocation: CommonName={CommonName}, VpnServerId={VpnServerId}",
+                request.CommonName, request.VpnServerId);
+            throw new InvalidOperationException("Issued OVPN file not found.");
+        }
         
         var revokeOvpnFileRequest = request.Adapt<RevokeOvpnFileRequest>();
         revokeOvpnFileRequest.OvpnFileName = issuedOvpnFile?.FileName ?? 
@@ -161,12 +167,7 @@ public class OvpnFileApiService(IOvpnFileApiClient ovpnFileApiClient,
             revokeOvpnFileRequest,
             ct);
 
-        if (issuedOvpnFile == null)
-        {
-            logger.LogWarning("Issued OVPN file not found for revocation: CommonName={CommonName}, VpnServerId={VpnServerId}",
-                request.CommonName, request.VpnServerId);
-            throw new InvalidOperationException("Issued OVPN file not found.");
-        }
+
 
         issuedOvpnFile.IsRevoked = result;
         

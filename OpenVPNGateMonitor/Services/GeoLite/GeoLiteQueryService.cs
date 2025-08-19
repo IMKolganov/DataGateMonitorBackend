@@ -44,6 +44,7 @@ public class GeoLiteQueryService : IGeoLiteQueryService
     {
         try
         {
+            ip = ExtractIpHost(ip);
             if (string.IsNullOrWhiteSpace(ip))
                 return null;
 
@@ -91,7 +92,28 @@ public class GeoLiteQueryService : IGeoLiteQueryService
             return null;
         }
     }
+    // Extract host from "real address" handling IPv4, [IPv6]:port, and bare IPv6.
+    private static string ExtractIpHost(string realAddress)
+    {
+        if (string.IsNullOrWhiteSpace(realAddress)) return realAddress;
 
+        var s = realAddress.Trim();
+
+        // [IPv6]:port
+        if (s.Length > 2 && s[0] == '[')
+        {
+            var rb = s.IndexOf(']');
+            if (rb > 0) return s.Substring(1, rb - 1);
+        }
+
+        // IPv4:port or unbracketed host:port (take before last ':')
+        var idx = s.LastIndexOf(':');
+        if (idx > 0) return s[..idx];
+
+        // Bare IPv6 or host without port
+        return s;
+    }
+    
     private bool IsPrivateIp(IPAddress ip)
     {
         byte[] bytes = ip.GetAddressBytes();
