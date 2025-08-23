@@ -133,6 +133,15 @@ public class OpenVpnServersController(ILogger<OpenVpnServersController> logger, 
                     .Select(x => x.Adapt<ServiceStatusResponse>())
                     .ToList();
                 
+                foreach (var status in statuses)
+                {
+                    var (connectedClients, sessions) =
+                        await openVpnServerOverviewQuery.GetClientCountersAsync(status.VpnServerId, ct);
+
+                    status.CountConnectedClients = connectedClients;
+                    status.CountSessions = sessions;
+                }
+
                 var json = JsonConvert.SerializeObject(statuses);
 
                 await webSocket.SendAsync(
