@@ -51,9 +51,7 @@ public static class ServiceConfiguration
         
         services.AddScoped<IVpnEventLogService, VpnEventLogService>();
         services.AddSingleton<IOpenVpnEventClientFactory, OpenVpnEventClientFactory>();
-        services.AddSingleton<OpenVpnEventBackgroundService>();
-        services.AddSingleton<IOpenVpnEventBackgroundService>(provider => provider.GetRequiredService<OpenVpnEventBackgroundService>());
-        services.AddHostedService(provider => provider.GetRequiredService<OpenVpnEventBackgroundService>());
+        services.AddHostedService<OpenVpnEventBackgroundService>();
 
         services.AddScoped<IOpenVpnServerOvpnFileConfigService, OpenVpnServerOvpnFileConfigService>();
         services.AddScoped<ISettingsService, SettingsService>();
