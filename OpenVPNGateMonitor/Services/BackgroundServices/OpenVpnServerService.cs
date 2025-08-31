@@ -59,7 +59,7 @@ public class OpenVpnServerService(
             {
                 var sessionId = GenerateSessionId(m.CommonName, m.RemoteIp, m.ConnectedSince);
                 var externalId = await openVpnFileQueryService.GetExternalIdByCommonName(
-                    m.CommonName, openVpnServer.Id, false, ct) ?? string.Empty;
+                    m.CommonName, openVpnServer.Id, ct) ?? string.Empty;
 
                 // ---- Upsert main client row ----
                 var rows = await openVpnServerClientCommandService.UpdateWhereAsync(
