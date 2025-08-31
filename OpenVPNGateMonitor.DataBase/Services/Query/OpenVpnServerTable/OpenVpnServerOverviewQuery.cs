@@ -89,4 +89,25 @@ public class OpenVpnServerOverviewQuery(IUnitOfWork uow) : IOpenVpnServerOvervie
         if (result is null) throw new NullReferenceException("OpenVPN Server not found");
         return result;
     }
+    
+    public async Task<(int CountConnectedClients, int CountSessions)> GetClientCountersAsync(
+        int vpnServerId, CancellationToken ct)
+    {
+        var clients = uow.GetQuery<OpenVpnServerClient>().AsQueryable();
+
+        var counters = await clients
+            .Where(c => c.VpnServerId == vpnServerId)
+            .GroupBy(_ => 1)
+            .Select(g => new
+            {
+                CountConnectedClients = g.Count(c => c.IsConnected),
+                CountSessions = g.Count()
+            })
+            .AsNoTracking()
+            .FirstOrDefaultAsync(ct);
+
+        return counters is null
+            ? (0, 0)
+            : (counters.CountConnectedClients, counters.CountSessions);
+    }
 }
