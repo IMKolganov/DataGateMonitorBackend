@@ -14,6 +14,7 @@ namespace OpenVPNGateMonitor.Controllers;
 [Authorize]
 public class OpenVpnServerClientsController(IOpenVpnServerClientOverviewQuery openVpnServerClientOverviewQuery,
     IOpenVpnGeoQueryService openVpnGeoQueryService,
+    IOpenVpnOverviewTotalsQuery openVpnOverviewTotalsQuery,
     IOpenVpnOverviewSeriesQuery openVpnOverviewSeriesQuery) : ControllerBase
 {
     [HttpGet("GetAllConnectedClients")]
@@ -37,6 +38,7 @@ public class OpenVpnServerClientsController(IOpenVpnServerClientOverviewQuery op
     }
     
     
+    
     [HttpGet("overview/series")]
     public async Task<ActionResult<OverviewSeriesResponse>> GetOverview(
         [FromQuery] DateTimeOffset from,
@@ -48,6 +50,20 @@ public class OpenVpnServerClientsController(IOpenVpnServerClientOverviewQuery op
     {
         var result = await openVpnOverviewSeriesQuery.GetOverviewSeriesFromSessionsAsync(
             from, to, grouping, vpnServerId, externalId, ct);
+
+        return Ok(result);
+    }
+    
+    [HttpGet("overview/summary")]
+    public async Task<ActionResult<OverviewTotalsResponse>> GetOverviewSummary(
+        [FromQuery] DateTimeOffset from,
+        [FromQuery] DateTimeOffset to,
+        [FromQuery] int? vpnServerId = null,
+        [FromQuery] string? externalId = null,
+        CancellationToken ct = default)
+    {
+        var result = await openVpnOverviewTotalsQuery.GetOverviewTotalsAsync(
+            from, to, vpnServerId, externalId, ct);
 
         return Ok(result);
     }
