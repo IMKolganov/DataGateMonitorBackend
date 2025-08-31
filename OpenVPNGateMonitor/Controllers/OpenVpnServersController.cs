@@ -110,12 +110,12 @@ public class OpenVpnServersController(ILogger<OpenVpnServersController> logger, 
     }
 
     [HttpGet("status-stream")]
-    public async Task StatusStream()
+    public async Task StatusStream(CancellationToken cancellationToken)
     {
         if (HttpContext.WebSockets.IsWebSocketRequest)
         {
             using WebSocket webSocket = await HttpContext.WebSockets.AcceptWebSocketAsync();
-            await SendStatusUpdates(webSocket);
+            await SendStatusUpdates(webSocket, cancellationToken);
         }
         else
         {
@@ -123,7 +123,7 @@ public class OpenVpnServersController(ILogger<OpenVpnServersController> logger, 
         }
     }
 
-    private async Task SendStatusUpdates(WebSocket webSocket)
+    private async Task SendStatusUpdates(WebSocket webSocket, CancellationToken ct)
     {
         try
         {
@@ -132,6 +132,15 @@ public class OpenVpnServersController(ILogger<OpenVpnServersController> logger, 
                 var statuses = openVpnBackgroundService.GetStatus().Values
                     .Select(x => x.Adapt<ServiceStatusResponse>())
                     .ToList();
+                
+                foreach (var status in statuses)
+                {
+                    var (connectedClients, sessions) =
+                        await openVpnServerOverviewQuery.GetClientCountersAsync(status.VpnServerId, ct);
+
+                    status.CountConnectedClients = connectedClients;
+                    status.CountSessions = sessions;
+                }
 
                 var json = JsonConvert.SerializeObject(statuses);
 
@@ -139,9 +148,9 @@ public class OpenVpnServersController(ILogger<OpenVpnServersController> logger, 
                     Encoding.UTF8.GetBytes(json),
                     WebSocketMessageType.Text,
                     true,
-                    CancellationToken.None);
+                    ct);
 
-                await Task.Delay(1000);
+                await Task.Delay(1000, ct);
             }
         }
         catch (Exception ex)
@@ -155,7 +164,7 @@ public class OpenVpnServersController(ILogger<OpenVpnServersController> logger, 
                 await webSocket.CloseAsync(
                     WebSocketCloseStatus.NormalClosure,
                     "Closing",
-                    CancellationToken.None);
+                    ct);
             }
             catch (Exception ex)
             {

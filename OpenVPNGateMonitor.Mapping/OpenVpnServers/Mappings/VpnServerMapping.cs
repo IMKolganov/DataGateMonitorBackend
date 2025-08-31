@@ -60,6 +60,8 @@ public class VpnServerMapping : IRegister
         config.NewConfig<KeyValuePair<string, BackgroundServerStatus>, ServiceStatusResponse>()
             .Map(dest => dest.VpnServerId, src => src.Value.VpnServerId)
             .Map(dest => dest.Status, src => src.Value.Status.ToString())
+            .Map(dest => dest.CountConnectedClients, src => src.Value.CountConnectedClients)
+            .Map(dest => dest.CountSessions, src => src.Value.CountSessions)
             .Map(dest => dest.ErrorMessage, src => src.Value.ErrorMessage)
             .Map(dest => dest.NextRunTime, src => src.Value.NextRunTime);
 

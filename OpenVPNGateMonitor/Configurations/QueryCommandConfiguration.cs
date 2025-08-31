@@ -30,6 +30,7 @@ public static class QueryCommandConfiguration
         
         services.AddScoped<IOpenVpnGeoQueryService, OpenVpnGeoQueryService>();
         services.AddScoped<IOpenVpnOverviewSeriesQuery, OpenVpnOverviewSeriesQuery>();
+        services.AddScoped<IOpenVpnOverviewTotalsQuery, OpenVpnOverviewTotalsQuery>();
         services.AddScoped<IOpenVpnServerClientOverviewQuery, OpenVpnServerClientOverviewQuery>();
         services.AddScoped<IOpenVpnServerClientQueryService, OpenVpnServerClientQueryService>();
         services.AddScoped<IOpenVpnServerEventLogQueryService, OpenVpnServerEventLogQueryService>();

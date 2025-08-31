@@ -16,8 +16,7 @@ public interface IIssuedOvpnFileQueryService
     Task<IssuedOvpnFile?> GetByIdAndVpnServerIdAndIsRevokedAsync(int id, int vpnServerId, bool isRevoked,
         CancellationToken ct);
 
-    Task<string?> GetExternalIdByCommonName(string commonName, int vpnServerId, bool isRevoked,
-        CancellationToken ct);
+    Task<string?> GetExternalIdByCommonName(string commonName, int vpnServerId, CancellationToken ct);
     
     Task<IssuedOvpnFile?> GetByVpnServerIdAndCommonNameAndIsRevokedAsync(
         int vpnServerId, int ovpnFileId, string commonName, bool isRevoked, CancellationToken ct);

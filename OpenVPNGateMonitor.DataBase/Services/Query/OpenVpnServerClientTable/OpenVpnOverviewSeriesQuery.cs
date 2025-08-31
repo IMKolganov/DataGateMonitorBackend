@@ -243,6 +243,6 @@ public sealed class OpenVpnOverviewSeriesQuery(IUnitOfWork uow) : IOpenVpnOvervi
     {
         ref var entry = ref CollectionsMarshal.GetValueRefOrAddDefault(dict, key, out var exists);
         if (!exists) entry = new Accum();
-        return ref entry;
+        return ref entry!;
     }
 }

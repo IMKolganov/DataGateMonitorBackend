@@ -15,12 +15,9 @@ public class OpenVpnEventClientFactory(IServiceProvider rootProvider) : IOpenVpn
     {
         return _clientCache.GetOrAdd(server.Id, _ =>
         {
-            // Resolve only non-scoped services from the root container
             var logger       = rootProvider.GetRequiredService<ILogger<OpenVpnEventClient>>();
             var eventHub     = rootProvider.GetRequiredService<IHubContext<OpenVpnEventHub>>();
-            // should be Singleton/Transient
             var tokenService = rootProvider.GetRequiredService<IMicroserviceTokenService>();
-            // for resolving scoped services inside the client
             var scopeFactory = rootProvider.GetRequiredService<IServiceScopeFactory>();
 
             return new OpenVpnEventClient(server, logger, eventHub, tokenService, scopeFactory);
@@ -32,7 +29,6 @@ public class OpenVpnEventClientFactory(IServiceProvider rootProvider) : IOpenVpn
         if (_clientCache.TryGetValue(serverId, out var cached))
             return cached;
 
-        // Scoped query is OK here because we don't keep the scope
         using var scope = rootProvider.CreateScope();
         var serverQuery = scope.ServiceProvider.GetRequiredService<IOpenVpnServerQueryService>();
         var server = await serverQuery.GetByIdAsync(serverId, cancellationToken);
@@ -42,4 +38,22 @@ public class OpenVpnEventClientFactory(IServiceProvider rootProvider) : IOpenVpn
     }
 
     public bool Remove(int serverId) => _clientCache.TryRemove(serverId, out _);
+    
+    public IReadOnlyCollection<OpenVpnEventClient> GetAllClients()
+        => _clientCache.Values.ToArray();
+
+    public IReadOnlyCollection<OpenVpnEventConnectionStatus> GetAllClientStatuses()
+        => _clientCache.Values.Select(c => c.GetStatus()).ToArray();
+
+    public bool TryGetClientStatus(int serverId, out OpenVpnEventConnectionStatus? status)
+    {
+        if (_clientCache.TryGetValue(serverId, out var client))
+        {
+            status = client.GetStatus();
+            return true;
+        }
+
+        status = null;
+        return false;
+    }
 }

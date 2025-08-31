@@ -47,7 +47,7 @@ public class OpenVpnEventClient(
             s.State, s.ConnectionId, s.Url, s.Host, s.Port);
     }
 
-    private OpenVpnEventConnectionStatus GetStatus()
+    public  OpenVpnEventConnectionStatus GetStatus()
         => new(
             ServerId: _serverId,
             Url: _fullUrl,
@@ -236,7 +236,7 @@ public class OpenVpnEventClient(
                 {
                     VpnServerId = _serverId,
                     ExternalId = await fileQuery.GetExternalIdByCommonName(
-                        req.CommonName, _serverId, false, CancellationToken.None) ?? string.Empty,
+                        req.CommonName, _serverId, CancellationToken.None) ?? string.Empty,
                     CommonName = req.CommonName!,
                     RemoteIp = req.RealAddress ?? string.Empty,
                     LocalIp = req.VirtualAddress ?? string.Empty,
