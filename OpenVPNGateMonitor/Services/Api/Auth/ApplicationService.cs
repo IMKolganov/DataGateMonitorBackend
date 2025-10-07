@@ -11,7 +11,7 @@ public class ApplicationService(IClientApplicationQueryService clientApplication
 {
     public async Task<ClientApplication> RegisterApplicationAsync(string name, CancellationToken ct)
     {
-        var existClientApplication = clientApplicationQueryService.GetByNameAsync(name, ct);
+        var existClientApplication = await clientApplicationQueryService.GetByNameAsync(name, ct);
         
         if (existClientApplication != null)
         {
