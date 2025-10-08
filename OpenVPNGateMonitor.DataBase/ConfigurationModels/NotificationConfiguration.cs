@@ -37,8 +37,6 @@ public class NotificationConfiguration : BaseEntityConfiguration<Notification, i
             .IsRequired();
 
         // Indexes
-        entity.HasIndex(e => e.CreatedAt)
-            .HasDatabaseName("ix_notifications_created_at");
         entity.HasIndex(e => e.Type)
             .HasDatabaseName("ix_notifications_type");
         entity.HasIndex(e => e.Severity)

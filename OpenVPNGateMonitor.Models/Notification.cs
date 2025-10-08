@@ -4,8 +4,6 @@ namespace OpenVPNGateMonitor.Models;
 
 public class Notification : BaseEntity<int>
 {
-    public DateTimeOffset CreatedAt { get; set; } = DateTimeOffset.UtcNow;
-
     // e.g. "server.down", "server.up", "cert.issued", "user.created"
     public string Type { get; set; } = default!;
 
