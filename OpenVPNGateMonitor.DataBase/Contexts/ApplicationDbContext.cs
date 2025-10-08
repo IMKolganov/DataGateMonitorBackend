@@ -37,7 +37,8 @@ public class ApplicationDbContext(DbContextOptions<ApplicationDbContext> options
     public DbSet<IncomingMessageLog> IncomingMessageLogs { get; set; } = null!;
     public DbSet<OpenVpnServerEventLog> OpenVpnServerEventLogs { get; set; } = null!;
     public DbSet<OpenVpnServerClientTraffic> OpenVpnServerClientTraffics { get; set; } = null!;
-
+    public DbSet<Notification> Notifications { get; set; } = null!;
+    public DbSet<NotificationRecipient> NotificationRecipients { get; set; } = null!;
     
     protected override void OnModelCreating(ModelBuilder modelBuilder)
     {
@@ -57,6 +58,9 @@ public class ApplicationDbContext(DbContextOptions<ApplicationDbContext> options
         modelBuilder.ApplyConfiguration(new IncomingMessageLogConfiguration());
         modelBuilder.ApplyConfiguration(new OpenVpnServerEventLogConfiguration());
         modelBuilder.ApplyConfiguration(new OpenVpnServerClientTrafficConfiguration());
+        modelBuilder.ApplyConfiguration(new NotificationConfiguration());
+        modelBuilder.ApplyConfiguration(new NotificationRecipientConfiguration());
+
     }
     
     private void UpdateTimestamps()
