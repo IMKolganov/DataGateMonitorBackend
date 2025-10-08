@@ -38,14 +38,18 @@ public class NotificationConfiguration : BaseEntityConfiguration<Notification, i
 
         // Indexes
         entity.HasIndex(e => e.Type)
-            .HasDatabaseName("ix_notifications_type");
+            .HasDatabaseName("IX_Notification_Type");
+
         entity.HasIndex(e => e.Severity)
-            .HasDatabaseName("ix_notifications_severity");
+            .HasDatabaseName("IX_Notification_Severity");
+
         entity.HasIndex(e => e.ServerId)
-            .HasDatabaseName("ix_notifications_server");
+            .HasDatabaseName("IX_Notification_ServerId");
+
         entity.HasIndex(e => e.ActorUserId)
-            .HasDatabaseName("ix_notifications_actor");
+            .HasDatabaseName("IX_Notification_ActorUserId");
+
         entity.HasIndex(e => new { e.Type, e.ServerId, e.DedupKey })
-            .HasDatabaseName("ix_notifications_dedup");
+            .HasDatabaseName("IX_Notification_Type_ServerId_DedupKey");
     }
 }

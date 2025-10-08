@@ -27,13 +27,16 @@ public class NotificationRecipientConfiguration : BaseEntityConfiguration<Notifi
 
         // Indexes
         entity.HasIndex(e => e.NotificationId)
-            .HasDatabaseName("ix_notificationrecipients_notification");
+            .HasDatabaseName("IX_NotificationRecipient_NotificationId");
+
         entity.HasIndex(e => e.AdminUserId)
-            .HasDatabaseName("ix_notificationrecipients_admin");
+            .HasDatabaseName("IX_NotificationRecipient_AdminUserId");
+
         entity.HasIndex(e => new { e.AdminUserId, e.DeliveryStatus })
-            .HasDatabaseName("ix_notificationrecipients_admin_status");
+            .HasDatabaseName("IX_NotificationRecipient_AdminUserId_DeliveryStatus");
+
         entity.HasIndex(e => new { e.NotificationId, e.AdminUserId, e.DeliveryChannel })
             .IsUnique()
-            .HasDatabaseName("ux_notificationrecipients_unique");
+            .HasDatabaseName("UX_NotificationRecipient_NotificationId_AdminUserId_DeliveryChannel");
     }
 }
