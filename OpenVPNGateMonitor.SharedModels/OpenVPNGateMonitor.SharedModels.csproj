@@ -31,9 +31,8 @@
         <EmbedUntrackedSources>true</EmbedUntrackedSources>
         <PublishRepositoryUrl>true</PublishRepositoryUrl>
         <SymbolPackageFormat>snupkg</SymbolPackageFormat>
-        <SignAssembly>true</SignAssembly>
-        <AssemblyOriginatorKeyFile>OpenVPNGateMonitorKey.snk</AssemblyOriginatorKeyFile>
-        <PublicSign>true</PublicSign>
+        <SignAssembly>false</SignAssembly>
+        <PublicSign>false</PublicSign>
     </PropertyGroup>
 
     <ItemGroup>
