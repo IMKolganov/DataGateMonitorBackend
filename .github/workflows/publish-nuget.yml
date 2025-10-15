@@ -1,4 +1,4 @@
-name: Publish NuGet (release by branch)
+﻿name: Publish NuGet (release by branch)
 
 on:
   push:

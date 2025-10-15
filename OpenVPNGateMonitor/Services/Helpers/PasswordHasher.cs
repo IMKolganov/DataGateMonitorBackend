@@ -1,4 +1,4 @@
-using System.Security.Cryptography;
+﻿using System.Security.Cryptography;
 using Microsoft.AspNetCore.Cryptography.KeyDerivation;
 
 namespace OpenVPNGateMonitor.Services.Helpers;

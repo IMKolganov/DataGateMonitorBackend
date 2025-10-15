@@ -1,4 +1,4 @@
-using System.Collections.Concurrent;
+﻿using System.Collections.Concurrent;
 using OpenVPNGateMonitor.DataBase.Contexts;
 using OpenVPNGateMonitor.DataBase.Repositories.Interfaces;
 
