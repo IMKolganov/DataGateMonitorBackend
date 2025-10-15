@@ -1,4 +1,4 @@
-namespace OpenVPNGateMonitor.DataBase.Repositories.Queries.Interfaces;
+﻿namespace OpenVPNGateMonitor.DataBase.Repositories.Queries.Interfaces;
 
 public interface IQuery<T> where T : class
 {

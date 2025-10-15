@@ -1,4 +1,4 @@
-# OpenVPNGateMonitor.SharedModels
+﻿# OpenVPNGateMonitor.SharedModels
 
 Shared models for the OpenVPNGateMonitor project.  
 These models are used for API communication between backend services and consumers.

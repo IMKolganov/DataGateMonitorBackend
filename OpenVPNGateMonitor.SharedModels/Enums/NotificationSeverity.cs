@@ -1,4 +1,4 @@
-namespace OpenVPNGateMonitor.SharedModels.Enums;
+﻿namespace OpenVPNGateMonitor.SharedModels.Enums;
 
 public enum NotificationSeverity
 {
