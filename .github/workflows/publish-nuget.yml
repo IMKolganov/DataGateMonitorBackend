@@ -1,0 +1,93 @@
+name: Publish NuGet (release by branch)
+
+on:
+  push:
+    branches:
+      - 'nuget/release/v*'
+  workflow_dispatch:
+
+concurrency:
+  group: nuget-publish-${{ github.ref_name }}
+  cancel-in-progress: true
+
+permissions:
+  contents: read
+
+env:
+  DOTNET_NOLOGO: true
+  DOTNET_SKIP_FIRST_TIME_EXPERIENCE: true
+
+jobs:
+  build-pack-publish:
+    runs-on: ubuntu-latest
+
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+      - name: Setup .NET
+        uses: actions/setup-dotnet@v4
+        with:
+          dotnet-version: '8.0.x'
+          cache: true
+          cache-dependency-path: |
+            **/*.csproj
+            **/packages.lock.json
+
+      - name: Get version from branch
+        id: get_version
+        shell: bash
+        run: |
+          set -euo pipefail
+          ref="${GITHUB_REF_NAME}"
+          echo "Current ref_name: $ref"
+          
+          # Expected format: nuget/release/v<SemVer2> (no build metadata '+...')
+          # Examples: nuget/release/v1.2.3 or nuget/release/v1.2.3-beta.1
+          if [[ "$ref" =~ ^nuget/release/v([0-9]+\.[0-9]+\.[0-9]+(-[0-9A-Za-z.-]+)?)$ ]]; then
+            version="${BASH_REMATCH[1]}"
+            echo "version=$version" >> "$GITHUB_OUTPUT"
+            echo "Package version: $version"
+          else
+            echo "::error::Branch name must be 'nuget/release/v<SemVer2>', e.g.: nuget/release/v1.2.3 or nuget/release/v1.2.3-beta.1"
+            exit 1
+          fi
+
+      - name: Restore (project)
+        run: dotnet restore OpenVPNGateMonitor.SharedModels/OpenVPNGateMonitor.SharedModels.csproj
+
+      - name: Build (project)
+        run: dotnet build OpenVPNGateMonitor.SharedModels/OpenVPNGateMonitor.SharedModels.csproj -c Release --no-restore /p:ContinuousIntegrationBuild=true
+
+      - name: Pack
+        run: |
+          dotnet pack OpenVPNGateMonitor.SharedModels/OpenVPNGateMonitor.SharedModels.csproj \
+            -c Release \
+            --no-build \
+            -o ./artifacts \
+            /p:PackageVersion=${{ steps.get_version.outputs.version }} \
+            /p:ContinuousIntegrationBuild=true \
+            /p:IncludeSymbols=true \
+            /p:SymbolPackageFormat=snupkg
+
+      - name: Publish to nuget.org
+        shell: bash
+        env:
+          NUGET_API_KEY: ${{ secrets.NUGET_API_KEY }}
+        run: |
+          dotnet nuget push artifacts/*.nupkg \
+            --skip-duplicate \
+            --source https://api.nuget.org/v3/index.json \
+            --api-key "$NUGET_API_KEY"
+
+          shopt -s nullglob
+          files=(artifacts/*.snupkg)
+          if (( ${#files[@]} )); then
+            dotnet nuget push artifacts/*.snupkg \
+              --skip-duplicate \
+              --source https://api.nuget.org/v3/index.json \
+              --api-key "$NUGET_API_KEY"
+          else
+            echo "No .snupkg files to publish."
+          fi
