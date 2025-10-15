@@ -9,7 +9,7 @@ public class ApplicationDbContext(DbContextOptions<ApplicationDbContext> options
     : DbContext(options)
 {
     private readonly string _defaultSchema = (Environment.GetEnvironmentVariable("DB_DEFAULT_SCHEMA") 
-                                              ?? configuration["DataBaseSettings:DefaultSchema"]) ?? "public";
+                                              ?? configuration["DataBaseSettings:DefaultSchema"]) ?? "xgb_dashopnvpn";
 
     public override int SaveChanges()
     {
