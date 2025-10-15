@@ -1,4 +1,5 @@
-﻿using OpenVPNGateMonitor.Models.Enums;
+﻿// using OpenVPNGateMonitor.Models.Enums;
+using OpenVPNGateMonitor.SharedModels.Enums;
 
 namespace OpenVPNGateMonitor.Models;
 
@@ -13,6 +14,6 @@ public class NotificationRecipient : BaseEntity<int>
     public string DeliveryChannel { get; set; } = "web";
 
     public DateTimeOffset? DeliveredAt { get; set; }
-    public DeliveryStatus DeliveryStatus { get; set; } = DeliveryStatus.Pending;
+    public OpenVPNGateMonitor.SharedModels.Enums.DeliveryStatus DeliveryStatus { get; set; } = DeliveryStatus.Pending;
     public DateTimeOffset? ReadAt { get; set; }
 }
