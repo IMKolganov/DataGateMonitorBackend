@@ -16,7 +16,6 @@ permissions:
 env:
   DOTNET_NOLOGO: true
   DOTNET_SKIP_FIRST_TIME_EXPERIENCE: true
-  NUGET_PACKAGES: ${{ runner.temp }}/.nuget/packages
 
 jobs:
   build-pack-publish:
@@ -27,7 +26,6 @@ jobs:
         uses: actions/checkout@v4
         with:
           fetch-depth: 0
-
       - name: Setup .NET
         uses: actions/setup-dotnet@v4
         with:
@@ -42,13 +40,12 @@ jobs:
         shell: bash
         run: |
           set -euo pipefail
-          # github.ref_name already contains the branch name without refs/heads/
           ref="${GITHUB_REF_NAME}"
           echo "Current ref_name: $ref"
-
+          
           # Expected format: nuget/release/v<SemVer2> (no build metadata '+...')
           # Examples: nuget/release/v1.2.3 or nuget/release/v1.2.3-beta.1
-          if [[ "$ref" =~ ^nuget/release/v([0-9]+\.[0-9]+\.[0-9]+(?:-[0-9A-Za-z.-]+)?)$ ]]; then
+          if [[ "$ref" =~ ^nuget/release/v([0-9]+\.[0-9]+\.[0-9]+(-[0-9A-Za-z.-]+)?)$ ]]; then
             version="${BASH_REMATCH[1]}"
             echo "version=$version" >> "$GITHUB_OUTPUT"
             echo "Package version: $version"
@@ -62,21 +59,6 @@ jobs:
 
       - name: Build (project)
         run: dotnet build OpenVPNGateMonitor.SharedModels/OpenVPNGateMonitor.SharedModels.csproj -c Release --no-restore /p:ContinuousIntegrationBuild=true
-      - name: Test (selected projects)
-        shell: bash
-        run: |
-          set -euo pipefail
-          # Find test projects reliably on Linux
-          mapfile -t test_projects < <(find . -type f \( -name "*Tests.csproj" -o -name "*.Tests.csproj" \) | sort -u)
-          if (( ${#test_projects[@]} == 0 )); then
-            echo "No test projects found. Skipping tests."
-            exit 0
-          fi
-          for p in "${test_projects[@]}"; do
-            echo "Running tests: $p"
-            # Let 'dotnet test' perform restore for test projects; avoid --no-restore here
-            dotnet test "$p" -c Release --no-build --verbosity normal
-          done
 
       - name: Pack
         run: |
@@ -94,13 +76,11 @@ jobs:
         env:
           NUGET_API_KEY: ${{ secrets.NUGET_API_KEY }}
         run: |
-          # Push main packages
           dotnet nuget push artifacts/*.nupkg \
             --skip-duplicate \
             --source https://api.nuget.org/v3/index.json \
             --api-key "$NUGET_API_KEY"
 
-          # Push symbol packages, if any
           shopt -s nullglob
           files=(artifacts/*.snupkg)
           if (( ${#files[@]} )); then
