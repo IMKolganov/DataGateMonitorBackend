@@ -1,4 +1,4 @@
-namespace OpenVPNGateMonitor.Models.Enums;
+namespace OpenVPNGateMonitor.SharedModels.Enums;
 
 public enum DeliveryStatus
 {
