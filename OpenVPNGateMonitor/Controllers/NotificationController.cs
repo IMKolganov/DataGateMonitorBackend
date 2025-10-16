@@ -3,41 +3,57 @@ using Microsoft.AspNetCore.Mvc;
 using OpenVPNGateMonitor.Services.Others;
 using OpenVPNGateMonitor.Services.Others.Models;
 using OpenVPNGateMonitor.SharedModels.Responses;
-using OpenVPNGateMonitor.SharedModels.DataGateMonitorBackend.TelegramBotUser.Requests;
-using OpenVPNGateMonitor.SharedModels.DataGateMonitorBackend.TelegramBotUser.Responses;
 
 namespace OpenVPNGateMonitor.Controllers;
 
 [ApiController]
 [Route("api/[controller]")]
 [Authorize]
-public class NotificationController(INotificationService notificationService) : ControllerBase
+public class NotificationController : ControllerBase
 {
+    private readonly INotificationService _notificationService;
 
-    [HttpGet("NotifyAdmins")]
-    public async Task<ActionResult<ApiResponse<int>>> NotifyAdminsAsync(NotificationRequest request,
+    public NotificationController(INotificationService notificationService)
+    {
+        _notificationService = notificationService;
+    }
+
+    /// <summary>
+    /// Creates and sends a test notification to all admins via the web channel.
+    /// </summary>
+    [HttpPost("notify-admins")]
+    public async Task<ActionResult<ApiResponse<int>>> NotifyAdminsAsync(
+        [FromBody] NotificationRequest request,
         CancellationToken cancellationToken)
     {
-        var result = await notificationService.NotifyAdminsAsync(request, ["web"], cancellationToken);
-        // throw new NotImplementedException();
-        // var telegramBotUsers = await notificationService.NotifyAdminsAsync(cancellationToken);
+        var result = await _notificationService.NotifyAdminsAsync(request, new[] { "web" }, cancellationToken);
         return Ok(ApiResponse<int>.SuccessResponse(result));
     }
-    
-    [HttpGet("GetAllUsers")]
-    public async Task<ActionResult<ApiResponse<GetAllUsersResponse>>> GetAllUsers(CancellationToken cancellationToken)
-    {
-        throw new NotImplementedException();
-        // var telegramBotUsers = await notificationService.GetAllUsersAsync(cancellationToken);
-        // return Ok(ApiResponse<GetAllUsersResponse>.SuccessResponse(telegramBotUsers.Adapt<GetAllUsersResponse>()));
-    }
-    
-    [HttpPost("BlockUser")]
-    public async Task<ActionResult<ApiResponse<bool>>> BlockUser([FromBody] TelegramUserActionRequest request,
+
+    /// <summary>
+    /// Marks a specific notification as delivered (sent) for an admin and channel.
+    /// </summary>
+    [HttpPost("{notificationId:int}/delivered")]
+    public async Task<ActionResult<ApiResponse<bool>>> MarkDeliveredAsync(
+        int notificationId,
+        [FromQuery] int adminUserId,
+        [FromQuery] string channel,
         CancellationToken cancellationToken)
     {
-        throw new NotImplementedException();
-        // var result = await notificationService.BlockUserAsync(request.TelegramId, cancellationToken);
-        // return Ok(ApiResponse<bool>.SuccessResponse(result));
+        await _notificationService.MarkDeliveredAsync(notificationId, adminUserId, channel, cancellationToken);
+        return Ok(ApiResponse<bool>.SuccessResponse(true));
+    }
+
+    /// <summary>
+    /// Marks a specific notification as read by an admin.
+    /// </summary>
+    [HttpPost("{notificationId:int}/read")]
+    public async Task<ActionResult<ApiResponse<bool>>> MarkReadAsync(
+        int notificationId,
+        [FromQuery] int adminUserId,
+        CancellationToken cancellationToken)
+    {
+        await _notificationService.MarkReadAsync(notificationId, adminUserId, cancellationToken);
+        return Ok(ApiResponse<bool>.SuccessResponse(true));
     }
 }
