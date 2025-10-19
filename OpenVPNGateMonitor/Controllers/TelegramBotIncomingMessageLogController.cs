@@ -1,8 +1,5 @@
-﻿using Mapster;
-using Microsoft.AspNetCore.Authorization;
+﻿using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Mvc;
-using OpenVPNGateMonitor.Models;
-using OpenVPNGateMonitor.Services.TelegramBot;
 using OpenVPNGateMonitor.Services.TelegramBot.Interfaces;
 using OpenVPNGateMonitor.SharedModels.DataGateMonitorBackend.TelegramBotIncomingMessageLog.Requests;
 using OpenVPNGateMonitor.SharedModels.DataGateMonitorBackend.TelegramBotIncomingMessageLog.Responses;
@@ -25,4 +22,34 @@ public class TelegramBotIncomingMessageLogController(
 
         return Ok(ApiResponse<AddMessageResponse>.SuccessResponse(response));
     }
+    
+    // [HttpGet("GetAllMessages")]
+    // public async Task<ActionResult<ApiResponse<AddMessageResponse>>> GetAllMessages(
+    //     [FromBody] AddMessageRequest request,
+    //     CancellationToken cancellationToken)
+    // {
+    //     var response = await incomingMessageLogService.GetAllAsync();
+    //
+    //     return Ok(ApiResponse<AddMessageResponse>.SuccessResponse(response));
+    // }
+    
+    // [HttpGet("GetByTelegramUserId")]
+    // public async Task<ActionResult<ApiResponse<AddMessageResponse>>> GetAllMessages(
+    //     [FromBody] AddMessageRequest request,
+    //     CancellationToken cancellationToken)
+    // {
+    //     var response = await incomingMessageLogService.GetByTelegramIdAsync
+    //
+    //     return Ok(ApiResponse<AddMessageResponse>.SuccessResponse(response));
+    // }
+    //
+    // [HttpGet("GetById")]
+    // public async Task<ActionResult<ApiResponse<AddMessageResponse>>> GetAllMessages(
+    //     [FromBody] AddMessageRequest request,
+    //     CancellationToken cancellationToken)
+    // {
+    //     var response = await incomingMessageLogService.GetByIdAsync();
+    //
+    //     return Ok(ApiResponse<AddMessageResponse>.SuccessResponse(response));
+    // }
 }

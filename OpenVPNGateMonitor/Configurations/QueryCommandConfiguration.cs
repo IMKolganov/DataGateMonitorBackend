@@ -1,6 +1,7 @@
 ﻿using OpenVPNGateMonitor.DataBase.Services.Command;
 using OpenVPNGateMonitor.DataBase.Services.Query;
 using OpenVPNGateMonitor.DataBase.Services.Query.ClientApplicationTable;
+using OpenVPNGateMonitor.DataBase.Services.Query.IncomingMessageLogTable;
 using OpenVPNGateMonitor.DataBase.Services.Query.IssuedOvpnFileTable;
 using OpenVPNGateMonitor.DataBase.Services.Query.IssuedOvpnFileTokenTable;
 using OpenVPNGateMonitor.DataBase.Services.Query.LocalizationTextTable;
@@ -24,6 +25,7 @@ public static class QueryCommandConfiguration
         services.AddScoped<ITransactionRunner, EfTransactionRunner>();
         
         services.AddScoped<IClientApplicationQueryService, ClientApplicationQueryService>();
+        services.AddScoped<IIncomingMessageLogQueryService, IncomingMessageLogQueryService>();
         services.AddScoped<IIssuedOvpnFileQueryService, IssuedOvpnFileQueryService>();
         services.AddScoped<IIssuedOvpnFileTokenQueryService, IssuedOvpnFileTokenQueryService>();
         services.AddScoped<ILocalizationTextQueryService, LocalizationTextQueryService>();
