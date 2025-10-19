@@ -25,6 +25,7 @@ builder.Services.ConfigureAuthServices();
 builder.Services.DataBaseServices(builder.Configuration, logger);
 builder.Services.ConfigureJwt(builder.Configuration);
 builder.Services.ConfigureMapster();
+builder.Services.ConfigureNotificationServices();
 builder.Services.ConfigureHealthCheckServices(builder.Configuration);
 
 builder.ConfigureWebHost();

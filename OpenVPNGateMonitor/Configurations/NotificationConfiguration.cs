@@ -1,4 +1,5 @@
 ﻿using OpenVPNGateMonitor.Services.Others.Notifications;
+using OpenVPNGateMonitor.Services.Others.Notifications.OvpnFileApi;
 
 namespace OpenVPNGateMonitor.Configurations;
 
@@ -8,5 +9,7 @@ public static class NotificationConfiguration
     {
         services.AddSingleton<INotificationCatalog, NotificationCatalog>();
         services.AddScoped<IAppNotificationFacade, AppNotificationFacade>();
+        
+        services.AddScoped<IOvpnFileNotificationService, OvpnFileNotificationService>();
     }
 }
