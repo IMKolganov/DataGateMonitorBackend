@@ -55,7 +55,7 @@ public static class DatabaseMigrationExtensions
                         if (pg is not null)
                         {
                             app.Logger.LogError(ex,
-                                "Migration FAILED: {Migration}. PostgreSQL SqlState={SqlState}, Message={MessageText}, Severity={Severity}, Routine={Routine}",
+                                "Migration FAILED: {Migration}. PostgresSQL SqlState={SqlState}, Message={MessageText}, Severity={Severity}, Routine={Routine}",
                                 migration, pg.SqlState, pg.MessageText, pg.Severity, pg.Routine);
                         }
                         else
@@ -77,7 +77,7 @@ public static class DatabaseMigrationExtensions
             if (pg is not null)
             {
                 app.Logger.LogError(ex,
-                    "An error occurred while applying migrations. PostgreSQL SqlState={SqlState}, Message={MessageText}",
+                    "An error occurred while applying migrations. PostgresSQL SqlState={SqlState}, Message={MessageText}",
                     pg.SqlState, pg.MessageText);
             }
             else
