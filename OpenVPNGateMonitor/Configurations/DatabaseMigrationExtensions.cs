@@ -89,8 +89,15 @@ public static class DatabaseMigrationExtensions
 
         static PostgresException? FindPostgresException(Exception ex)
         {
-            for (var cur = ex; cur is not null; cur = cur.InnerException!)
-                if (cur is Npgsql.PostgresException pge) return pge;
+            var cur = ex;
+            while (cur != null)
+            {
+                if (cur is PostgresException pge)
+                    return pge;
+
+                cur = cur.InnerException;
+            }
+
             return null;
         }
     }
