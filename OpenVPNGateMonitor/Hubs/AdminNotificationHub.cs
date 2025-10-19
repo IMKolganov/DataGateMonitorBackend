@@ -1,10 +1,12 @@
 ﻿using Microsoft.AspNetCore.SignalR;
-using OpenVPNGateMonitor.Models;
 
 namespace OpenVPNGateMonitor.Hubs;
 
 public class AdminNotificationHub : Hub
 {
-    // Called when an admin connects, you could store their UserId -> ConnectionId mapping here
-}
+    public Task JoinAdminGroup(int adminUserId)
+        => Groups.AddToGroupAsync(Context.ConnectionId, $"admin-{adminUserId}");
 
+    public Task LeaveAdminGroup(int adminUserId)
+        => Groups.RemoveFromGroupAsync(Context.ConnectionId, $"admin-{adminUserId}");
+}
