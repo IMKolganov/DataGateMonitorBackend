@@ -1,0 +1,16 @@
+﻿{
+  "ConnectionStrings": {
+    "DefaultConnection": "Host=localhost;Port=5432;Database=datagate_local;Username=postgres;Password=YOUR_PASSWORD;Pooling=true;Trust Server Certificate=true"
+  },
+  "DataBaseSettings":{
+    "DefaultSchema": "xgb_dashopnvpn",
+    "MigrationTable": "__EFMigrationsHistoryDashboardVpn"
+  },
+  "Logging": {
+    "LogLevel": {
+      "Default": "Information",
+      "Microsoft.AspNetCore": "Warning"
+    }
+  },
+  "AllowedHosts": "*"
+}
