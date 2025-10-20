@@ -30,8 +30,7 @@ public class NotificationConfiguration : BaseEntityConfiguration<Notification, i
         entity.Property(e => e.CorrelationId);
         entity.Property(e => e.DedupKey);
         entity.Property(e => e.ServerId);
-        entity.Property(e => e.ActorUserId)
-            .IsRequired();
+        entity.Property(e => e.ActorUserId);
         entity.Property(e => e.RelatedClientId);
         entity.Property(e => e.IsArchived)
             .IsRequired();
