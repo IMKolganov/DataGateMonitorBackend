@@ -1,4 +1,4 @@
-﻿#!/bin/sh
+#!/bin/sh
 
 echo "[entrypoint] Current UID: $(id -u), GID: $(id -g)"
 
