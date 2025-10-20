@@ -1,4 +1,4 @@
-﻿# Use the .NET SDK for building
+# Use the .NET SDK for building
 FROM mcr.microsoft.com/dotnet/sdk:9.0 AS build
 
 # Set the working directory
