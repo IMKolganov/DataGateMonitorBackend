@@ -18,7 +18,7 @@ namespace OpenVPNGateMonitor.DataBase.Migrations
 #pragma warning disable 612, 618
             modelBuilder
                 .HasDefaultSchema("xgb_dashopnvpn")
-                .HasAnnotation("ProductVersion", "9.0.8")
+                .HasAnnotation("ProductVersion", "9.0.10")
                 .HasAnnotation("Relational:MaxIdentifierLength", 63);
 
             NpgsqlModelBuilderExtensions.UseIdentityByDefaultColumns(modelBuilder);
@@ -927,6 +927,139 @@ namespace OpenVPNGateMonitor.DataBase.Migrations
                         });
                 });
 
+            modelBuilder.Entity("OpenVPNGateMonitor.Models.Notification", b =>
+                {
+                    b.Property<int>("Id")
+                        .ValueGeneratedOnAdd()
+                        .HasColumnType("integer");
+
+                    NpgsqlPropertyBuilderExtensions.UseIdentityByDefaultColumn(b.Property<int>("Id"));
+
+                    b.Property<int?>("ActorUserId")
+                        .HasColumnType("integer");
+
+                    b.Property<string>("CorrelationId")
+                        .HasColumnType("text");
+
+                    b.Property<DateTimeOffset>("CreateDate")
+                        .ValueGeneratedOnAdd()
+                        .HasColumnType("timestamp with time zone")
+                        .HasDefaultValueSql("CURRENT_TIMESTAMP");
+
+                    b.Property<string>("DedupKey")
+                        .HasColumnType("text");
+
+                    b.Property<bool>("IsArchived")
+                        .HasColumnType("boolean");
+
+                    b.Property<DateTimeOffset>("LastUpdate")
+                        .ValueGeneratedOnAdd()
+                        .HasColumnType("timestamp with time zone")
+                        .HasDefaultValueSql("CURRENT_TIMESTAMP");
+
+                    b.Property<string>("Message")
+                        .IsRequired()
+                        .HasColumnType("text");
+
+                    b.Property<int?>("RelatedClientId")
+                        .HasColumnType("integer");
+
+                    b.Property<int?>("ServerId")
+                        .HasColumnType("integer");
+
+                    b.Property<int>("Severity")
+                        .HasColumnType("integer");
+
+                    b.Property<string>("Source")
+                        .IsRequired()
+                        .HasMaxLength(64)
+                        .HasColumnType("character varying(64)");
+
+                    b.Property<string>("Title")
+                        .IsRequired()
+                        .HasColumnType("text");
+
+                    b.Property<string>("Type")
+                        .IsRequired()
+                        .HasMaxLength(128)
+                        .HasColumnType("character varying(128)");
+
+                    b.HasKey("Id");
+
+                    b.HasIndex("ActorUserId")
+                        .HasDatabaseName("IX_Notification_ActorUserId");
+
+                    b.HasIndex("ServerId")
+                        .HasDatabaseName("IX_Notification_ServerId");
+
+                    b.HasIndex("Severity")
+                        .HasDatabaseName("IX_Notification_Severity");
+
+                    b.HasIndex("Type")
+                        .HasDatabaseName("IX_Notification_Type");
+
+                    b.HasIndex("Type", "ServerId", "DedupKey")
+                        .HasDatabaseName("IX_Notification_Type_ServerId_DedupKey");
+
+                    b.ToTable("Notifications", "xgb_dashopnvpn");
+                });
+
+            modelBuilder.Entity("OpenVPNGateMonitor.Models.NotificationRecipient", b =>
+                {
+                    b.Property<int>("Id")
+                        .ValueGeneratedOnAdd()
+                        .HasColumnType("integer");
+
+                    NpgsqlPropertyBuilderExtensions.UseIdentityByDefaultColumn(b.Property<int>("Id"));
+
+                    b.Property<int>("AdminUserId")
+                        .HasColumnType("integer");
+
+                    b.Property<DateTimeOffset>("CreateDate")
+                        .ValueGeneratedOnAdd()
+                        .HasColumnType("timestamp with time zone")
+                        .HasDefaultValueSql("CURRENT_TIMESTAMP");
+
+                    b.Property<DateTimeOffset?>("DeliveredAt")
+                        .HasColumnType("timestamp with time zone");
+
+                    b.Property<string>("DeliveryChannel")
+                        .IsRequired()
+                        .HasMaxLength(32)
+                        .HasColumnType("character varying(32)");
+
+                    b.Property<int>("DeliveryStatus")
+                        .HasColumnType("integer");
+
+                    b.Property<DateTimeOffset>("LastUpdate")
+                        .ValueGeneratedOnAdd()
+                        .HasColumnType("timestamp with time zone")
+                        .HasDefaultValueSql("CURRENT_TIMESTAMP");
+
+                    b.Property<int>("NotificationId")
+                        .HasColumnType("integer");
+
+                    b.Property<DateTimeOffset?>("ReadAt")
+                        .HasColumnType("timestamp with time zone");
+
+                    b.HasKey("Id");
+
+                    b.HasIndex("AdminUserId")
+                        .HasDatabaseName("IX_NotificationRecipient_AdminUserId");
+
+                    b.HasIndex("NotificationId")
+                        .HasDatabaseName("IX_NotificationRecipient_NotificationId");
+
+                    b.HasIndex("AdminUserId", "DeliveryStatus")
+                        .HasDatabaseName("IX_NotificationRecipient_AdminUserId_DeliveryStatus");
+
+                    b.HasIndex("NotificationId", "AdminUserId", "DeliveryChannel")
+                        .IsUnique()
+                        .HasDatabaseName("UX_NotificationRecipient_NotificationId_AdminUserId_DeliveryChannel");
+
+                    b.ToTable("NotificationRecipients", "xgb_dashopnvpn");
+                });
+
             modelBuilder.Entity("OpenVPNGateMonitor.Models.OpenVpnServer", b =>
                 {
                     b.Property<int>("Id")
@@ -1571,6 +1704,161 @@ namespace OpenVPNGateMonitor.DataBase.Migrations
                     b.ToTable("TelegramUserLanguagePreferences", "xgb_dashopnvpn");
                 });
 
+            modelBuilder.Entity("OpenVPNGateMonitor.Models.User", b =>
+                {
+                    b.Property<int>("Id")
+                        .ValueGeneratedOnAdd()
+                        .HasColumnType("integer");
+
+                    NpgsqlPropertyBuilderExtensions.UseIdentityByDefaultColumn(b.Property<int>("Id"));
+
+                    b.Property<DateTimeOffset>("CreateDate")
+                        .ValueGeneratedOnAdd()
+                        .HasColumnType("timestamp with time zone")
+                        .HasDefaultValueSql("CURRENT_TIMESTAMP");
+
+                    b.Property<string>("DisplayName")
+                        .IsRequired()
+                        .HasMaxLength(128)
+                        .HasColumnType("character varying(128)");
+
+                    b.Property<string>("Email")
+                        .HasMaxLength(256)
+                        .HasColumnType("character varying(256)");
+
+                    b.Property<bool>("HasDashboardAccess")
+                        .HasColumnType("boolean");
+
+                    b.Property<bool>("IsAdmin")
+                        .HasColumnType("boolean");
+
+                    b.Property<bool>("IsBlocked")
+                        .HasColumnType("boolean");
+
+                    b.Property<DateTimeOffset>("LastUpdate")
+                        .ValueGeneratedOnAdd()
+                        .HasColumnType("timestamp with time zone")
+                        .HasDefaultValueSql("CURRENT_TIMESTAMP");
+
+                    b.HasKey("Id");
+
+                    b.HasIndex("Email");
+
+                    b.HasIndex("HasDashboardAccess");
+
+                    b.ToTable("Users", "xgb_dashopnvpn");
+                });
+
+            modelBuilder.Entity("OpenVPNGateMonitor.Models.UserCredential", b =>
+                {
+                    b.Property<int>("Id")
+                        .ValueGeneratedOnAdd()
+                        .HasColumnType("integer");
+
+                    NpgsqlPropertyBuilderExtensions.UseIdentityByDefaultColumn(b.Property<int>("Id"));
+
+                    b.Property<DateTimeOffset>("CreateDate")
+                        .ValueGeneratedOnAdd()
+                        .HasColumnType("timestamp with time zone")
+                        .HasDefaultValueSql("CURRENT_TIMESTAMP");
+
+                    b.Property<int>("FailedCount")
+                        .HasColumnType("integer");
+
+                    b.Property<DateTimeOffset>("LastUpdate")
+                        .ValueGeneratedOnAdd()
+                        .HasColumnType("timestamp with time zone")
+                        .HasDefaultValueSql("CURRENT_TIMESTAMP");
+
+                    b.Property<DateTime?>("LockoutUntilUtc")
+                        .HasColumnType("timestamp with time zone");
+
+                    b.Property<string>("Login")
+                        .IsRequired()
+                        .HasMaxLength(128)
+                        .HasColumnType("character varying(128)");
+
+                    b.Property<string>("NormalizedLogin")
+                        .IsRequired()
+                        .HasMaxLength(128)
+                        .HasColumnType("character varying(128)");
+
+                    b.Property<string>("PasswordAlgo")
+                        .IsRequired()
+                        .ValueGeneratedOnAdd()
+                        .HasMaxLength(32)
+                        .HasColumnType("character varying(32)")
+                        .HasDefaultValue("AspNetCoreV3");
+
+                    b.Property<string>("PasswordHash")
+                        .IsRequired()
+                        .HasColumnType("text");
+
+                    b.Property<DateTime>("PasswordUpdatedAt")
+                        .ValueGeneratedOnAdd()
+                        .HasColumnType("timestamp with time zone")
+                        .HasDefaultValueSql("CURRENT_TIMESTAMP");
+
+                    b.Property<int>("UserId")
+                        .HasColumnType("integer");
+
+                    b.HasKey("Id");
+
+                    b.HasIndex("Login")
+                        .IsUnique();
+
+                    b.HasIndex("NormalizedLogin")
+                        .IsUnique();
+
+                    b.HasIndex("UserId");
+
+                    b.ToTable("UserCredentials", "xgb_dashopnvpn");
+                });
+
+            modelBuilder.Entity("OpenVPNGateMonitor.Models.UserIdentityLink", b =>
+                {
+                    b.Property<int>("Id")
+                        .ValueGeneratedOnAdd()
+                        .HasColumnType("integer");
+
+                    NpgsqlPropertyBuilderExtensions.UseIdentityByDefaultColumn(b.Property<int>("Id"));
+
+                    b.Property<DateTimeOffset>("CreateDate")
+                        .ValueGeneratedOnAdd()
+                        .HasColumnType("timestamp with time zone")
+                        .HasDefaultValueSql("CURRENT_TIMESTAMP");
+
+                    b.Property<string>("ExternalId")
+                        .IsRequired()
+                        .HasMaxLength(128)
+                        .HasColumnType("character varying(128)");
+
+                    b.Property<DateTimeOffset>("LastUpdate")
+                        .ValueGeneratedOnAdd()
+                        .HasColumnType("timestamp with time zone")
+                        .HasDefaultValueSql("CURRENT_TIMESTAMP");
+
+                    b.Property<string>("Provider")
+                        .IsRequired()
+                        .HasMaxLength(32)
+                        .HasColumnType("character varying(32)");
+
+                    b.Property<int?>("ProviderRowId")
+                        .HasColumnType("integer");
+
+                    b.Property<int>("UserId")
+                        .HasColumnType("integer");
+
+                    b.HasKey("Id");
+
+                    b.HasIndex("UserId");
+
+                    b.HasIndex("Provider", "ExternalId")
+                        .IsUnique();
+
+                    b.ToTable("UserIdentityLinks", "xgb_dashopnvpn");
+                });
+
             modelBuilder.Entity("OpenVPNGateMonitor.Models.IssuedOvpnFileToken", b =>
                 {
                     b.HasOne("OpenVPNGateMonitor.Models.IssuedOvpnFile", "IssuedOvpnFile")
@@ -1580,6 +1868,17 @@ namespace OpenVPNGateMonitor.DataBase.Migrations
                         .IsRequired();
 
                     b.Navigation("IssuedOvpnFile");
+                });
+
+            modelBuilder.Entity("OpenVPNGateMonitor.Models.NotificationRecipient", b =>
+                {
+                    b.HasOne("OpenVPNGateMonitor.Models.Notification", "Notification")
+                        .WithMany()
+                        .HasForeignKey("NotificationId")
+                        .OnDelete(DeleteBehavior.Cascade)
+                        .IsRequired();
+
+                    b.Navigation("Notification");
                 });
 #pragma warning restore 612, 618
         }

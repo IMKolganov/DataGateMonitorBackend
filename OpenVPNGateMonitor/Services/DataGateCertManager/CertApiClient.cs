@@ -3,6 +3,7 @@ using System.Text.Json;
 using OpenVPNGateMonitor.DataBase.Services.Query.OpenVpnServerTable;
 using OpenVPNGateMonitor.Services.Api.Auth.Interfaces;
 using OpenVPNGateMonitor.Services.DataGateCertManager.Interfaces;
+using OpenVPNGateMonitor.Services.Others.Notifications.CertApiClient;
 using OpenVPNGateMonitor.SharedModels.DataGateCertManager.Cert.Responses;
 using OpenVPNGateMonitor.SharedModels.DataGateMonitorBackend.OpenVpnServerCerts.Requests;
 using AddServerCertificateRequest = OpenVPNGateMonitor.SharedModels.DataGateCertManager.Cert.Requests.AddServerCertificateRequest;
@@ -13,6 +14,7 @@ public class CertApiClient(
     IHttpClientFactory httpClientFactory,
     IMicroserviceTokenService tokenService,
     IOpenVpnServerQueryService openVpnServerQueryService,
+    ICertificateNotificationService certificateNotificationService,
     ILogger<CertApiClient> logger)
     : ICertApiClient
 {
@@ -44,6 +46,7 @@ public class CertApiClient(
             ?? throw new InvalidOperationException("OpenVPN server not found");
         var client = httpClientFactory.CreateClient();
         client.BaseAddress = new Uri(server.ApiUrl);
+        
         return client;
     }
 
@@ -70,7 +73,9 @@ public class CertApiClient(
 
             var certificates =
                 await response.Content.ReadFromJsonAsync<List<ServerCertificate>>(cancellationToken: cancellationToken);
-            return certificates ?? new List<ServerCertificate>();
+            
+            await certificateNotificationService.NotifyReadAllAsync(vpnServerId, certificates!.Count, cancellationToken);
+            return certificates;
         }
         catch (HttpRequestException ex)
         {
@@ -115,14 +120,16 @@ public class CertApiClient(
                 throw new HttpRequestException(message, null, response.StatusCode);
             }
 
-            var result =
+            var certificate =
                 await response.Content.ReadFromJsonAsync<ServerCertificate>(cancellationToken: cancellationToken);
-            if (result == null)
+            if (certificate == null)
                 throw new InvalidOperationException("Received null response when building certificate");
 
             logger.LogInformation("Successfully built certificate for {CommonName} on server {VpnServerId}", commonName,
                 vpnServerId);
-            return result;
+
+            await certificateNotificationService.NotifyBuiltAsync(vpnServerId, certificate, cancellationToken);
+            return certificate;
         }
         catch (HttpRequestException ex)
         {
@@ -167,16 +174,19 @@ public class CertApiClient(
                 throw new HttpRequestException(message, null, response.StatusCode);
             }
 
-            var result =
+            var certificate =
                 await response.Content.ReadFromJsonAsync<ServerCertificate>(cancellationToken: cancellationToken);
-            if (result == null)
+            if (certificate == null)
                 throw new InvalidOperationException("Received null response when revoking certificate");
 
             logger.LogInformation(
                 "Certificate revocation completed for {CommonName} on server {VpnServerId}." +
                 " IsRevoked: {IsRevoked}, Message: {Message}",
-                request.CommonName, request.VpnServerId, result.IsRevoked, result.Message);
-            return result;
+                request.CommonName, request.VpnServerId, certificate.IsRevoked, certificate.Message);
+            
+            await certificateNotificationService.NotifyRevokedAsync(request.VpnServerId, request, certificate, 
+                cancellationToken);
+            return certificate;
         }
         catch (HttpRequestException ex)
         {

@@ -1,4 +1,4 @@
-using OpenVPNGateMonitor.DataBase.Repositories.Queries.Interfaces;
+﻿using OpenVPNGateMonitor.DataBase.Repositories.Queries.Interfaces;
 
 namespace OpenVPNGateMonitor.DataBase.Repositories.Interfaces;
 

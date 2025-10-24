@@ -1,5 +1,6 @@
 ﻿using Mapster;
 using OpenVPNGateMonitor.DataBase.Services.Command;
+using OpenVPNGateMonitor.DataBase.Services.Query.IncomingMessageLogTable;
 using OpenVPNGateMonitor.Models;
 using OpenVPNGateMonitor.Services.TelegramBot.Interfaces;
 using OpenVPNGateMonitor.SharedModels.DataGateMonitorBackend.TelegramBotIncomingMessageLog.Dto;
@@ -9,7 +10,8 @@ using OpenVPNGateMonitor.SharedModels.DataGateMonitorBackend.TelegramBotIncoming
 namespace OpenVPNGateMonitor.Services.TelegramBot;
 
 public class IncomingMessageLogService(ILogger<IncomingMessageLogService> logger,
-    ICommandService<IncomingMessageLog, int> incomingMessageLogCommandService) : IIncomingMessageLogService
+    ICommandService<IncomingMessageLog, int> incomingMessageLogCommandService,
+    IIncomingMessageLogQueryService incomingMessageLogQueryService) : IIncomingMessageLogService
 {
     public async Task<AddMessageResponse> SaveMessageAsync(AddMessageRequest request, CancellationToken ct)
     {
@@ -30,6 +32,29 @@ public class IncomingMessageLogService(ILogger<IncomingMessageLogService> logger
             Message = messageDto
         };
     }
+    
+    public async Task<List<MessageDto>> GetAllAsync(CancellationToken ct)
+    {
+        var messages = await incomingMessageLogQueryService.GetAllAsync(ct);
+
+        return messages.Adapt<List<MessageDto>>();
+    }
+
+    public async Task<MessageDto?> GetByIdAsync(int id, CancellationToken ct)
+    {
+        var message = await incomingMessageLogQueryService.GetByIdAsync(id, ct);
+        if (message == null)
+            return null;
 
 
+        return message.Adapt<MessageDto>();
+    }
+    
+    public async Task<List<MessageDto>> GetByTelegramIdAsync(long telegramId, CancellationToken ct)
+    {
+        var messages = await incomingMessageLogQueryService.GetByTelegramIdAsync(telegramId, ct);
+
+
+        return messages.Adapt<List<MessageDto>>();
+    }
 }

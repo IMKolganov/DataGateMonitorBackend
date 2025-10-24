@@ -1,4 +1,4 @@
-using OpenVPNGateMonitor.DataBase.Contexts;
+﻿using OpenVPNGateMonitor.DataBase.Contexts;
 using OpenVPNGateMonitor.DataBase.Repositories.Interfaces;
 using Microsoft.EntityFrameworkCore;
 using OpenVPNGateMonitor.DataBase.Repositories.Queries.Interfaces;

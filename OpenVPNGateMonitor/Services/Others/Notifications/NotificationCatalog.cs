@@ -1,0 +1,81 @@
+using OpenVPNGateMonitor.Models.Helpers;
+using OpenVPNGateMonitor.Services.Others.Models;
+using OpenVPNGateMonitor.SharedModels.Enums;
+
+namespace OpenVPNGateMonitor.Services.Others.Notifications;
+
+public class NotificationCatalog : INotificationCatalog
+{
+    private static readonly string[] WebOnly        = ["web"];
+    private static readonly string[] WebAndTelegram = ["web", "telegram"];
+
+    public NotificationEnvelope SystemException(Exception ex)
+    {
+        var req = new NotificationRequest
+        {
+            Type = NotificationTypes.SystemException,
+            Title = "Unhandled exception occurred",
+            Message = $"{ex.GetType().Name}: {ex.Message}",
+            Severity = NotificationSeverity.Error,
+            Source = "middleware"
+        };
+        return new NotificationEnvelope(req, WebAndTelegram);
+    }
+
+    public NotificationEnvelope FileCreated(int actorUserId, string fileName)
+    {
+        var req = new NotificationRequest
+        {
+            Type = NotificationTypes.FileCreated,
+            Title = "New file created",
+            Message = $"User #{actorUserId} created file \"{fileName}\".",
+            Severity = NotificationSeverity.Info,
+            Source = "backend",
+            ActorUserId = actorUserId
+        };
+        return new NotificationEnvelope(req, WebOnly);
+    }
+
+    public NotificationEnvelope CertIssued(int actorUserId, string commonName, int? serverId = null)
+    {
+        var req = new NotificationRequest
+        {
+            Type = NotificationTypes.CertIssued,
+            Title = "Certificate issued",
+            Message = $"Certificate for \"{commonName}\" has been issued.",
+            Severity = NotificationSeverity.Info,
+            Source = "backend",
+            ActorUserId = actorUserId,
+            ServerId = serverId
+        };
+        return new NotificationEnvelope(req, WebAndTelegram);
+    }
+
+    public NotificationEnvelope ServerDown(int serverId, string serverName)
+    {
+        var req = new NotificationRequest
+        {
+            Type = NotificationTypes.ServerDown,
+            Title = "Server is DOWN",
+            Message = $"OpenVPN server \"{serverName}\" (id={serverId}) is unreachable.",
+            Severity = NotificationSeverity.Critical,
+            Source = "monitor",
+            ServerId = serverId
+        };
+        return new NotificationEnvelope(req, WebAndTelegram);
+    }
+
+    public NotificationEnvelope ServerUp(int serverId, string serverName)
+    {
+        var req = new NotificationRequest
+        {
+            Type = NotificationTypes.ServerUp,
+            Title = "Server is UP",
+            Message = $"OpenVPN server \"{serverName}\" (id={serverId}) is reachable again.",
+            Severity = NotificationSeverity.Info,
+            Source = "monitor",
+            ServerId = serverId
+        };
+        return new NotificationEnvelope(req, WebAndTelegram);
+    }
+}
