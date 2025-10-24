@@ -40,7 +40,7 @@ public class OpenVpnServerClientsController(IOpenVpnServerClientOverviewQuery op
     
     
     [HttpGet("overview/series")]
-    public async Task<ActionResult<OverviewSeriesResponse>> GetOverview(
+    public async Task<ActionResult<ApiResponse<OverviewSeriesResponse>>> GetOverview(
         [FromQuery] DateTimeOffset from,
         [FromQuery] DateTimeOffset to,
         [FromQuery] OverviewGrouping grouping = OverviewGrouping.Auto,
@@ -51,11 +51,11 @@ public class OpenVpnServerClientsController(IOpenVpnServerClientOverviewQuery op
         var result = await openVpnOverviewSeriesQuery.GetOverviewSeriesFromSessionsAsync(
             from, to, grouping, vpnServerId, externalId, ct);
 
-        return Ok(result);
+        return Ok(ApiResponse<OverviewSeriesResponse>.SuccessResponse(result));
     }
     
     [HttpGet("overview/summary")]
-    public async Task<ActionResult<OverviewTotalsResponse>> GetOverviewSummary(
+    public async Task<ActionResult<ApiResponse<OverviewTotalsResponse>>> GetOverviewSummary(
         [FromQuery] DateTimeOffset from,
         [FromQuery] DateTimeOffset to,
         [FromQuery] int? vpnServerId = null,
@@ -64,12 +64,12 @@ public class OpenVpnServerClientsController(IOpenVpnServerClientOverviewQuery op
     {
         var result = await openVpnOverviewTotalsQuery.GetOverviewTotalsAsync(
             from, to, vpnServerId, externalId, ct);
-
-        return Ok(result);
+        
+        return Ok(ApiResponse<OverviewTotalsResponse>.SuccessResponse(result));
     }
     
     [HttpGet("overview/points")]
-    public async Task<ActionResult<IReadOnlyList<GeoPointAggDto>>> GetPoints(
+    public async Task<ActionResult<ApiResponse<IReadOnlyList<GeoPointAggDto>>>> GetPoints(
         [FromQuery] DateTimeOffset from,
         [FromQuery] DateTimeOffset to,
         [FromQuery] int? vpnServerId = null,
@@ -79,6 +79,7 @@ public class OpenVpnServerClientsController(IOpenVpnServerClientOverviewQuery op
     {
         var points =
             await openVpnGeoQueryService.GetGeoPointsAsync(from, to, vpnServerId, externalId, onlyWithCoordinates, ct);
-        return Ok(points);
+
+        return Ok(ApiResponse<IReadOnlyList<GeoPointAggDto>>.SuccessResponse(points));
     }
 }
