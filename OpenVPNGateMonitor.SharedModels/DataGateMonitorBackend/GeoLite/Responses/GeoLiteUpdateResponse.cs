@@ -1,4 +1,4 @@
-﻿namespace OpenVPNGateMonitor.Models.Helpers.Api;
+﻿namespace OpenVPNGateMonitor.SharedModels.DataGateMonitorBackend.GeoLite.Responses;
 
 public class GeoLiteUpdateResponse
 {
