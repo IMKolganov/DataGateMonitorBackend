@@ -1,4 +1,4 @@
-using Microsoft.EntityFrameworkCore;
+﻿using Microsoft.EntityFrameworkCore;
 using OpenVPNGateMonitor.Models;
 using Microsoft.EntityFrameworkCore.Metadata.Builders;
 

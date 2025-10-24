@@ -1,4 +1,4 @@
-using OpenVPNGateMonitor.DataBase.Services.Command;
+﻿using OpenVPNGateMonitor.DataBase.Services.Command;
 using OpenVPNGateMonitor.DataBase.Services.Query.ClientApplicationTable;
 using OpenVPNGateMonitor.Models;
 using OpenVPNGateMonitor.Services.Api.Auth.Interfaces;

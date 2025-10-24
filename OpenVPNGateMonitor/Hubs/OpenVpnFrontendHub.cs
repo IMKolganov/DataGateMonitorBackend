@@ -1,4 +1,4 @@
-using Microsoft.AspNetCore.SignalR;
+﻿using Microsoft.AspNetCore.SignalR;
 using OpenVPNGateMonitor.Services.DataGateCertManager.OpenVpnProxy;
 
 namespace OpenVPNGateMonitor.Hubs;

@@ -1,4 +1,4 @@
-﻿# Use the .NET SDK for building
+# Use the .NET SDK for building
 FROM mcr.microsoft.com/dotnet/sdk:9.0 AS build
 
 # Set the working directory
@@ -37,7 +37,7 @@ COPY entrypoint.sh /entrypoint.sh
 
 # 🔧 Convert CRLF to LF just in case
 RUN sed -i 's/\r$//' /entrypoint.sh
-
+RUN sed -i '1s/^\xEF\xBB\xBF//' /entrypoint.sh
 RUN chmod +x /entrypoint.sh
 
 # Don't switch to app here — entrypoint.sh will drop privileges

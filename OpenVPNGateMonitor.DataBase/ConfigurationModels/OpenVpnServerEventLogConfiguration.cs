@@ -1,4 +1,4 @@
-using OpenVPNGateMonitor.Models;
+﻿using OpenVPNGateMonitor.Models;
 using Microsoft.EntityFrameworkCore;
 using Microsoft.EntityFrameworkCore.Metadata.Builders;
 
@@ -49,7 +49,7 @@ public class OpenVpnServerEventLogConfiguration : BaseEntityConfiguration<OpenVp
         // ---------- Indexes ----------
         // Most used timeline queries per server
         entity.HasIndex(e => new { e.VpnServerId, e.EventTimeUtc })
-              .HasDatabaseName("ix_ovpn_events_server_time");
+              .HasDatabaseName("ix_ovpn_events_server_time");//todo: rename like IX_OpenVpnServerEventLog_VpnServerId_EventTimeUtc
 
         // Filter by server + type + time
         entity.HasIndex(e => new { e.VpnServerId, e.EventType, e.EventTimeUtc })

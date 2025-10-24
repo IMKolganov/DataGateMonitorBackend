@@ -9,7 +9,7 @@ public class ApplicationDbContext(DbContextOptions<ApplicationDbContext> options
     : DbContext(options)
 {
     private readonly string _defaultSchema = (Environment.GetEnvironmentVariable("DB_DEFAULT_SCHEMA") 
-                                              ?? configuration["DataBaseSettings:DefaultSchema"]) ?? "public";
+                                              ?? configuration["DataBaseSettings:DefaultSchema"]) ?? "xgb_dashopnvpn";
 
     public override int SaveChanges()
     {
@@ -17,7 +17,7 @@ public class ApplicationDbContext(DbContextOptions<ApplicationDbContext> options
         return base.SaveChanges();
     }
 
-    public override async Task<int> SaveChangesAsync(CancellationToken cancellationToken)
+    public override async Task<int> SaveChangesAsync(CancellationToken cancellationToken = default)
     {
         UpdateTimestamps();
         return await base.SaveChangesAsync(cancellationToken);
@@ -37,7 +37,11 @@ public class ApplicationDbContext(DbContextOptions<ApplicationDbContext> options
     public DbSet<IncomingMessageLog> IncomingMessageLogs { get; set; } = null!;
     public DbSet<OpenVpnServerEventLog> OpenVpnServerEventLogs { get; set; } = null!;
     public DbSet<OpenVpnServerClientTraffic> OpenVpnServerClientTraffics { get; set; } = null!;
-
+    public DbSet<Notification> Notifications { get; set; } = null!;
+    public DbSet<NotificationRecipient> NotificationRecipients { get; set; } = null!;
+    public DbSet<User> Users { get; set; } = null!;
+    public DbSet<UserCredential> UserCredentials { get; set; } = null!;
+    public DbSet<UserIdentityLink> UserIdentityLinks { get; set; } = null!;
     
     protected override void OnModelCreating(ModelBuilder modelBuilder)
     {
@@ -57,6 +61,12 @@ public class ApplicationDbContext(DbContextOptions<ApplicationDbContext> options
         modelBuilder.ApplyConfiguration(new IncomingMessageLogConfiguration());
         modelBuilder.ApplyConfiguration(new OpenVpnServerEventLogConfiguration());
         modelBuilder.ApplyConfiguration(new OpenVpnServerClientTrafficConfiguration());
+        modelBuilder.ApplyConfiguration(new NotificationConfiguration());
+        modelBuilder.ApplyConfiguration(new NotificationRecipientConfiguration());
+        modelBuilder.ApplyConfiguration(new UserConfiguration());
+        modelBuilder.ApplyConfiguration(new UserCredentialConfiguration());
+        modelBuilder.ApplyConfiguration(new UserIdentityLinkConfiguration());
+
     }
     
     private void UpdateTimestamps()

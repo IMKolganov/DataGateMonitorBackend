@@ -1,4 +1,4 @@
-using OpenVPNGateMonitor.Models;
+﻿using OpenVPNGateMonitor.Models;
 using Microsoft.EntityFrameworkCore;
 using Microsoft.EntityFrameworkCore.Metadata.Builders;
 using OpenVPNGateMonitor.DataBase.ConfigurationModels.Seeds;
