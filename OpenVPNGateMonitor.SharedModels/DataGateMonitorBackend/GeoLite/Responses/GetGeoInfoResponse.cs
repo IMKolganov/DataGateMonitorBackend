@@ -4,5 +4,5 @@ namespace OpenVPNGateMonitor.SharedModels.DataGateMonitorBackend.GeoLite.Respons
 
 public class GetGeoInfoResponse
 {
-    public OpenVpnGeoInfo DatabasePath { get; set; } = new();
+    public OpenVpnGeoInfo GeoInfo { get; set; } = new();
 }

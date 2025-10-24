@@ -5,5 +5,5 @@ namespace OpenVPNGateMonitor.SharedModels.DataGateMonitorBackend.GeoLite.Request
 public class GetGeoInfoRequest
 {
     [Required(ErrorMessage = "IpAddress is required.")]
-    public int IpAddress { get; set; }
+    public string IpAddress { get; set; } = string.Empty;
 }
