@@ -1,10 +1,8 @@
-﻿// English-only comments in code
-using OpenVPNGateMonitor.Services.Others;
+﻿using OpenVPNGateMonitor.Services.Others;
 using OpenVPNGateMonitor.Services.Others.Notifications;
 using OpenVPNGateMonitor.Services.Others.Notifications.CertApiClient;
 using OpenVPNGateMonitor.Services.Others.Notifications.OvpnFileApi;
 using OpenVPNGateMonitor.Hubs;
-using Microsoft.Extensions.DependencyInjection;
 
 namespace OpenVPNGateMonitor.Configurations;
 
