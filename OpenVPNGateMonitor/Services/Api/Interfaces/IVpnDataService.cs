@@ -1,6 +1,4 @@
 ﻿using OpenVPNGateMonitor.Models;
-using OpenVPNGateMonitor.Models.Helpers.Api;
-using OpenVPNGateMonitor.Models.Helpers.Services;
 
 namespace OpenVPNGateMonitor.Services.Api.Interfaces;
 
