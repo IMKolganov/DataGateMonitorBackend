@@ -2,6 +2,7 @@
 using MaxMind.GeoIP2.Exceptions;
 using OpenVPNGateMonitor.Models.Helpers.OpenVpnManagementInterfaces;
 using OpenVPNGateMonitor.Services.GeoLite.Interfaces;
+using OpenVPNGateMonitor.SharedModels.DataGateMonitorBackend.GeoLite.Dto;
 
 namespace OpenVPNGateMonitor.Services.GeoLite;
 

@@ -1,4 +1,4 @@
-﻿using OpenVPNGateMonitor.Models.Helpers.Api;
+﻿using OpenVPNGateMonitor.SharedModels.DataGateMonitorBackend.GeoLite.Responses;
 
 namespace OpenVPNGateMonitor.Services.GeoLite.Interfaces;
 

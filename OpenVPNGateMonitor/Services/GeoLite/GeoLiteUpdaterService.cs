@@ -2,10 +2,10 @@
 using System.Net.Http.Headers;
 using Microsoft.AspNetCore.SignalR;
 using OpenVPNGateMonitor.Hubs;
-using OpenVPNGateMonitor.Models.Helpers.Api;
 using OpenVPNGateMonitor.Services.GeoLite.Helpers;
 using OpenVPNGateMonitor.Services.GeoLite.Interfaces;
 using OpenVPNGateMonitor.Services.Helpers;
+using OpenVPNGateMonitor.SharedModels.DataGateMonitorBackend.GeoLite.Responses;
 
 namespace OpenVPNGateMonitor.Services.GeoLite;
 
