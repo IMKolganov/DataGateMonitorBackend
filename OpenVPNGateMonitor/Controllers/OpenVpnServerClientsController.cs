@@ -82,4 +82,18 @@ public class OpenVpnServerClientsController(IOpenVpnServerClientOverviewQuery op
 
         return Ok(ApiResponse<IReadOnlyList<GeoPointAggDto>>.SuccessResponse(points));
     }
+    
+    [HttpGet("overview/users")]
+    public async Task<ActionResult<ApiResponse<List<OverviewUserItem>>>> GetOverviewUsers(
+        [FromQuery] DateTimeOffset from,
+        [FromQuery] DateTimeOffset to,
+        [FromQuery] int? vpnServerId = null,
+        [FromQuery] string? externalId = null,
+        CancellationToken ct = default)
+    {
+        var users = await openVpnOverviewSeriesQuery
+            .GetOverviewUsersFromSessionsAsync(from, to, vpnServerId, externalId, ct);
+
+        return Ok(ApiResponse<List<OverviewUserItem>>.SuccessResponse(users));
+    }
 }

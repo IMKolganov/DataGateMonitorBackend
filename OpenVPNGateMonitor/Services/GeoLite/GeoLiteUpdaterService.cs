@@ -170,7 +170,7 @@ public class GeoLiteUpdaterService(
 
             // ETag
             if (headersResponse.Headers.ETag is not null)
-                resp.RemoteETag = headersResponse.Headers.ETag.Tag?.Trim('"');
+                resp.RemoteETag = headersResponse.Headers.ETag.Tag?.Trim('"') ?? throw new InvalidOperationException();
 
             // Content-Length
             if (headersResponse.Content?.Headers?.ContentLength is not null)
