@@ -47,14 +47,18 @@ public class GeoLiteController(
     }
 
     [HttpPost("UpdateDatabase")]
-    public async Task<ActionResult<ApiResponse<GeoLiteUpdateResponse>>> UpdateDatabase(CancellationToken cancellationToken)
+    public async Task<ActionResult<ApiResponse<GeoLiteUpdateResponse>>> UpdateDatabase(
+        CancellationToken cancellationToken)
     {
         var updateResult = await geoLiteUpdaterService.DownloadAndUpdateDatabaseAsync(cancellationToken);
-
-        if (!updateResult.Success)
-            return BadRequest(ApiResponse<GeoLiteUpdateResponse>.ErrorResponse(
-                $"Database update failed. Details: {updateResult.ErrorMessage}"));
-        
         return Ok(ApiResponse<GeoLiteUpdateResponse>.SuccessResponse(updateResult));
+    }
+    
+    [HttpGet("CheckNewVersion")]
+    public async Task<ActionResult<ApiResponse<GeoLiteVersionCheckResponse>>> CheckNewVersion(
+        CancellationToken cancellationToken)
+    {
+        var checkResult = await geoLiteUpdaterService.CheckNewVersionAsync(cancellationToken);
+        return Ok(ApiResponse<GeoLiteVersionCheckResponse>.SuccessResponse(checkResult));
     }
 }

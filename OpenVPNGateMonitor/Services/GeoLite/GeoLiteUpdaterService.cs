@@ -110,7 +110,6 @@ public class GeoLiteUpdaterService(
         }
         catch (Exception ex)
         {
-            result.ErrorMessage = ex.Message;
             logger.LogError(ex, "Error updating GeoLite2 database.{Error}", ex.Message);
             throw;
         }
@@ -200,7 +199,6 @@ public class GeoLiteUpdaterService(
             }
 
             resp.IsUpdateAvailable = shouldUpdate;
-            resp.Success = true;
 
             return resp;
         }
