@@ -115,7 +115,7 @@ public class GeoLiteUpdaterService(
         }
     }
     
-        public async Task<GeoLiteVersionCheckResponse> CheckNewVersionAsync(CancellationToken cancellationToken)
+    public async Task<GeoLiteVersionCheckResponse> CheckNewVersionAsync(CancellationToken cancellationToken)
     {
         var resp = new GeoLiteVersionCheckResponse();
 
