@@ -7,6 +7,7 @@ using OpenVPNGateMonitor.Models;
 using OpenVPNGateMonitor.Models.Helpers.Auth;
 using OpenVPNGateMonitor.Services.Api.Auth.Interfaces;
 using OpenVPNGateMonitor.SharedModels.DataGateMonitorBackend.Auth.Responses;
+using OpenVPNGateMonitor.SharedModels.Responses;
 
 namespace OpenVPNGateMonitor.Controllers;
 
@@ -16,14 +17,15 @@ public class AuthController(IConfiguration config, IApplicationService appServic
     IMicroserviceTokenService microserviceTokenService) : ControllerBase
 {
     [HttpGet("system-secret-status")]
-    public async Task<ActionResult<SystemSecretStatusResponse>> GetSystemStatus(CancellationToken cancellationToken)
+    public async Task<ActionResult<ApiResponse<SystemSecretStatusResponse>>> GetSystemStatus(CancellationToken cancellationToken)
     {
         var isSet = await appService.IsSystemApplicationSetAsync(cancellationToken);
-        return Ok(new SystemSecretStatusResponse { SystemSet = isSet });
+        return Ok(ApiResponse<SystemSecretStatusResponse>.SuccessResponse(
+            new SystemSecretStatusResponse { SystemSet = isSet }));
     }
 
     [HttpPost("set-system-secret")]
-    public async Task<ActionResult<AuthResponse>> SetSystemSecret([FromBody] SetSecretRequest request,
+    public async Task<ActionResult<ApiResponse<AuthResponse>>> SetSystemSecret([FromBody] SetSecretRequest request,
         CancellationToken cancellationToken)
     {
         var systemApp = await appService.GetApplicationSystemByClientIdAsync(request.ClientId, 
@@ -31,7 +33,7 @@ public class AuthController(IConfiguration config, IApplicationService appServic
 
         if (systemApp is { ClientSecret: not null })
         {
-            return BadRequest(new AuthResponse { Message = "System application is already set" });
+            return BadRequest(ApiResponse<AuthResponse>.ErrorResponse("System application is already set"));
         }
 
         var hashedSecret = BCrypt.Net.BCrypt.HashPassword(request.ClientSecret);
@@ -46,16 +48,17 @@ public class AuthController(IConfiguration config, IApplicationService appServic
 
         await appService.UpdateApplicationAsync(systemApp, cancellationToken);
 
-        return Ok(new AuthResponse { Message = "ClientSecret set successfully" });
+        return Ok(ApiResponse<AuthResponse>.SuccessResponse(
+            new AuthResponse { Message = "ClientSecret set successfully" }));
     }
 
     [HttpPost("token")]
-    public async Task<ActionResult<TokenResponse>> GenerateToken([FromBody] TokenRequest request, CancellationToken cancellationToken)
+    public async Task<ActionResult<ApiResponse<TokenResponse>>> GenerateToken([FromBody] TokenRequest request, CancellationToken cancellationToken)
     {
         var app = await appService.GetApplicationByClientIdAsync(request.ClientId, cancellationToken);
         if (app == null)
         {
-            return Unauthorized(new AuthResponse { Message = "Invalid credentials" });
+            return Unauthorized(ApiResponse<TokenResponse>.ErrorResponse("Invalid credentials"));
         }
 
         var isValid = app.IsSystem
@@ -64,7 +67,7 @@ public class AuthController(IConfiguration config, IApplicationService appServic
 
         if (!isValid)
         {
-            return Unauthorized(new AuthResponse { Message = "Invalid credentials" });
+            return Unauthorized(ApiResponse<TokenResponse>.ErrorResponse("Invalid credentials"));
         }
 
         var tokenHandler = new JwtSecurityTokenHandler();
@@ -89,20 +92,23 @@ public class AuthController(IConfiguration config, IApplicationService appServic
         };
         var token = tokenHandler.CreateToken(tokenDescriptor);
 
-        return Ok(new TokenResponse
-        {
-            Token = tokenHandler.WriteToken(token),
-            Expiration = tokenDescriptor.Expires ?? DateTimeOffset.UtcNow
-        });
+        return Ok(ApiResponse<TokenResponse>.SuccessResponse(
+            new TokenResponse
+            {
+                Token = tokenHandler.WriteToken(token),
+                Expiration = tokenDescriptor.Expires ?? DateTimeOffset.UtcNow
+            }));
     }
     
     [HttpGet("public-key/{pin}")]
-    public IActionResult GetPublicKeyForMicroservice([FromRoute(Name = "pin")] int pin)
+    public ActionResult<ApiResponse<string>> GetPublicKeyForMicroservice([FromRoute(Name = "pin")] int pin)
     {
         if (pin > 10000)
         {
-            return Content(microserviceTokenService.GetPublicKeyPem(), "text/plain");
+            var key = microserviceTokenService.GetPublicKeyPem();
+            return Ok(ApiResponse<string>.SuccessResponse(key));
         }
-        throw new InvalidOperationException("Invalid pin");
+
+        return BadRequest(ApiResponse<string>.ErrorResponse("Invalid pin"));
     }
 }
