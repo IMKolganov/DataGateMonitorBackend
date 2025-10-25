@@ -9,9 +9,8 @@ public class GeoLiteConfigProvider(IServiceProvider sp) : IGeoLiteConfigProvider
     {
         // Reads "GeoIp_Db_Path" from settings
         var dbPath = await GeoLiteLoadConfigs.GetStringParamFromSettings("GeoIp_Db_Path", sp, ct);
-        if (string.IsNullOrWhiteSpace(dbPath))
-            throw new InvalidOperationException("GeoIp_Db_Path is not configured.");
-        return dbPath!;
+        return string.IsNullOrWhiteSpace(dbPath) ? 
+            throw new InvalidOperationException("GeoIp_Db_Path is not configured.") : dbPath;
     }
 
     public string CreateTimestamp()
