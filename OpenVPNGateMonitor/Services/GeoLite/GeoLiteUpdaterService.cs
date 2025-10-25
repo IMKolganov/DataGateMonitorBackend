@@ -1,4 +1,5 @@
-﻿using System.Net.Http.Headers;
+﻿using System.Net;
+using System.Net.Http.Headers;
 using OpenVPNGateMonitor.Services.GeoLite.Interfaces;
 using OpenVPNGateMonitor.Services.Helpers;
 using OpenVPNGateMonitor.SharedModels.DataGateMonitorBackend.GeoLite.Responses;
@@ -50,9 +51,9 @@ public class GeoLiteUpdaterService(
             using var response = await httpClient.SendAsync(request, HttpCompletionOption.ResponseHeadersRead, cancellationToken);
             if (!response.IsSuccessStatusCode)
             {
-                result.ErrorMessage = httpErrorMapper.Map(response);
-                logger.LogError("Failed to download database: {ErrorMessage}", result.ErrorMessage);
-                return result;
+                var errorMessage = httpErrorMapper.Map(response);
+                logger.LogError("Failed to download database: {ErrorMessage}", errorMessage);
+                throw new Exception($"Failed to download database: {errorMessage}");
             }
 
             var totalBytes = response.Content.Headers.ContentLength ?? -1;
@@ -75,14 +76,14 @@ public class GeoLiteUpdaterService(
             await progress.ReportStepAsync(6, totalSteps, "Find .mmdb file", 0, cancellationToken);
             var extractedDirs = Directory.GetDirectories(extractDir);
             if (extractedDirs.Length == 0)
-                return Fail("Extraction failed: No directories found.");
+                throw new Exception("Extraction failed: No directories found.");
 
             var extractedPath = extractedDirs.First();
             result.ExtractedPath = extractedPath;
 
             var mmdbFile = Directory.GetFiles(extractedPath, "*.mmdb", SearchOption.AllDirectories).FirstOrDefault();
             if (mmdbFile is null)
-                return Fail("Database file not found after extraction.");
+                throw new Exception("Extraction failed: No .mmdb file found.");
 
             await progress.ReportStepAsync(6, totalSteps, "Find .mmdb file", 100, cancellationToken);
 
@@ -110,15 +111,103 @@ public class GeoLiteUpdaterService(
         catch (Exception ex)
         {
             result.ErrorMessage = ex.Message;
-            logger.LogError(ex, "Error updating GeoLite2 database.");
-            return result;
+            logger.LogError(ex, "Error updating GeoLite2 database.{Error}", ex.Message);
+            throw;
         }
+    }
+    
+        public async Task<GeoLiteVersionCheckResponse> CheckNewVersionAsync(CancellationToken cancellationToken)
+    {
+        var resp = new GeoLiteVersionCheckResponse();
 
-        GeoLiteUpdateResponse Fail(string msg)
+        try
         {
-            var r = new GeoLiteUpdateResponse { ErrorMessage = msg };
-            logger.LogError(msg);
-            return r;
+            // 1) Resolve local db path and local file info
+            var dbPath = await config.GetDatabasePathAsync(cancellationToken);
+            if (File.Exists(dbPath))
+            {
+                var fi = new FileInfo(dbPath);
+                resp.LocalLastWriteTimeUtc = fi.LastWriteTimeUtc;
+                resp.LocalFileSize = fi.Length;
+            }
+
+            // 2) Prepare remote request (prefer HEAD)
+            var url = await auth.GetDownloadUrlAsync(cancellationToken);
+            var basic = await auth.GetBasicAuthHeaderAsync(cancellationToken);
+            resp.CheckedUrl = url;
+
+            // Try HEAD first
+            var head = new HttpRequestMessage(HttpMethod.Head, url);
+            head.Headers.Authorization = new AuthenticationHeaderValue("Basic", basic);
+
+            using var headResponse = await httpClient.SendAsync(
+                head, HttpCompletionOption.ResponseHeadersRead, cancellationToken);
+
+            HttpResponseMessage headersResponse = headResponse;
+
+            // 3) Fallback to GET headers-only if HEAD not allowed
+            if (headResponse.StatusCode is HttpStatusCode.MethodNotAllowed or HttpStatusCode.NotFound)
+            {
+                var get = new HttpRequestMessage(HttpMethod.Get, url);
+                get.Headers.Authorization = new AuthenticationHeaderValue("Basic", basic);
+
+                var getResponse = await httpClient.SendAsync(
+                    get, HttpCompletionOption.ResponseHeadersRead, cancellationToken);
+
+                headersResponse = getResponse;
+            }
+
+            if (!headersResponse.IsSuccessStatusCode)
+            {
+                var errorMessage = httpErrorMapper.Map(headersResponse);
+                logger.LogWarning("GeoLite version check failed: {Error}", errorMessage);
+                throw new Exception($"GeoLite version check failed:{errorMessage}");
+            }
+
+            // 4) Extract remote headers
+            // Last-Modified
+            if (headersResponse.Content?.Headers?.LastModified is not null)
+                resp.RemoteLastModified = headersResponse.Content.Headers.LastModified;
+
+            // ETag
+            if (headersResponse.Headers.ETag is not null)
+                resp.RemoteETag = headersResponse.Headers.ETag.Tag?.Trim('"');
+
+            // Content-Length
+            if (headersResponse.Content?.Headers?.ContentLength is not null)
+                resp.RemoteContentLength = headersResponse.Content.Headers.ContentLength;
+
+            // 5) Decide if update is available
+            // Priority: Last-Modified > Content-Length > (fallback) Local not found
+            bool shouldUpdate = false;
+
+            if (resp.LocalLastWriteTimeUtc is null)
+            {
+                // No local file
+                shouldUpdate = true;
+            }
+            else if (resp.RemoteLastModified is not null)
+            {
+                // Compare remote "Last-Modified" to local write time
+                // Small skew tolerance of 1 minute
+                var tolerance = TimeSpan.FromMinutes(1);
+                shouldUpdate = resp.RemoteLastModified.Value.UtcDateTime - resp.LocalLastWriteTimeUtc.Value > tolerance;
+            }
+            else if (resp.RemoteContentLength is not null && resp.LocalFileSize is not null)
+            {
+                // If server doesn't provide Last-Modified, use size mismatch as heuristic
+                shouldUpdate = resp.RemoteContentLength.Value != resp.LocalFileSize.Value;
+            }
+
+            resp.IsUpdateAvailable = shouldUpdate;
+            resp.Success = true;
+
+            return resp;
+        }
+        catch (Exception ex)
+        {
+            logger.LogError(ex, "Error while checking GeoLite remote version. {ErrorMessage}", ex.Message);
+            throw new Exception($"Error while checking GeoLite remote version. {ex.Message}");
         }
     }
 }
