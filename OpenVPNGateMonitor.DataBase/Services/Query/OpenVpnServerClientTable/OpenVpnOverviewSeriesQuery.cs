@@ -140,6 +140,98 @@ public sealed class OpenVpnOverviewSeriesQuery(IUnitOfWork uow) : IOpenVpnOvervi
         };
     }
 
+    public async Task<List<OverviewUserItem>> GetOverviewUsersFromSessionsAsync(
+        DateTimeOffset fromUtc,
+        DateTimeOffset toUtc,
+        int? vpnServerId,
+        string? externalId,
+        CancellationToken ct = default)
+    {
+        if (toUtc < fromUtc) (fromUtc, toUtc) = (toUtc, fromUtc);
+
+        var q = uow.GetQuery<OpenVpnServerClientTraffic>().AsQueryable();
+
+        if (vpnServerId.HasValue)
+            q = q.Where(s => s.VpnServerId == vpnServerId.Value);
+
+        if (!string.IsNullOrWhiteSpace(externalId))
+            q = q.Where(s => s.ExternalId == externalId!);
+
+        q = q.Where(s => s.MeasuredAt >= fromUtc && s.MeasuredAt < toUtc)
+            .AsNoTracking();
+
+        var rows = await q
+            .Select(s => new
+            {
+                s.VpnServerId,
+                s.ExternalId,
+                s.SessionId,
+                s.MeasuredAt,
+                BytesIn = s.BytesReceived,
+                BytesOut = s.BytesSent
+            })
+            .OrderBy(s => s.ExternalId)
+            .ThenBy(s => s.SessionId)
+            .ThenBy(s => s.MeasuredAt)
+            .ToListAsync(ct);
+
+        // Accumulators per user
+        var users =
+            new Dictionary<string, (long In, long Out, HashSet<Guid> Sessions, DateTimeOffset First, DateTimeOffset
+                Last, int? SingleServerId)>();
+
+        // Last cumulative totals per session to compute deltas
+        var lastBySession = new Dictionary<Guid, (long In, long Out)>();
+
+        foreach (var r in rows)
+        {
+            if (!users.TryGetValue(r.ExternalId, out var acc))
+            {
+                acc = (0, 0, new HashSet<Guid>(), r.MeasuredAt, r.MeasuredAt, r.VpnServerId);
+            }
+
+            acc.Sessions.Add(r.SessionId);
+            if (r.MeasuredAt < acc.First) acc.First = r.MeasuredAt;
+            if (r.MeasuredAt > acc.Last) acc.Last = r.MeasuredAt;
+
+            // Track whether all samples come from the same serverId
+            if (acc.SingleServerId.HasValue && acc.SingleServerId.Value != r.VpnServerId)
+                acc.SingleServerId = null;
+
+            if (lastBySession.TryGetValue(r.SessionId, out var prev))
+            {
+                var dIn = r.BytesIn >= prev.In ? (r.BytesIn - prev.In) : r.BytesIn;
+                var dOut = r.BytesOut >= prev.Out ? (r.BytesOut - prev.Out) : r.BytesOut;
+
+                if (dIn < 0) dIn = 0;
+                if (dOut < 0) dOut = 0;
+
+                acc.In += dIn;
+                acc.Out += dOut;
+            }
+
+            lastBySession[r.SessionId] = (r.BytesIn, r.BytesOut);
+            users[r.ExternalId] = acc;
+        }
+
+        var result = users
+            .Select(kv => new OverviewUserItem
+            {
+                ExternalId = kv.Key,
+                VpnServerId = kv.Value.SingleServerId,
+                Sessions = kv.Value.Sessions.Count,
+                TrafficInBytes = kv.Value.In,
+                TrafficOutBytes = kv.Value.Out,
+                FirstSeen = kv.Value.First,
+                LastSeen = kv.Value.Last
+            })
+            .OrderByDescending(x => x.TrafficTotalBytes)
+            .ThenBy(x => x.ExternalId)
+            .ToList();
+
+        return result;
+    }
+
     /* ---------- internal helpers/types ---------- */
 
     private sealed class TrafficSampleRow
