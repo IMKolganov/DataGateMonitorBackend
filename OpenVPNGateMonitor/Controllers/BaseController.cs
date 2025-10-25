@@ -1,5 +1,6 @@
 ﻿using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Mvc;
+using OpenVPNGateMonitor.SharedModels.Responses;
 
 namespace OpenVPNGateMonitor.Controllers;
 
@@ -12,15 +13,17 @@ public class BaseController : ControllerBase
     }
 
     [HttpGet(Name = "healthcheck")]
-    public IActionResult Healthcheck()
+    [ProducesResponseType(typeof(ApiResponse<string>), StatusCodes.Status200OK)]
+    [AllowAnonymous]
+    public ActionResult<ApiResponse<string>> Healthcheck()
     {
-        return Ok(200);
+        return Ok(ApiResponse<string>.SuccessResponse("Ok"));
     }
     
     [HttpGet("HealthcheckWithJwt", Name = "HealthcheckWithJwt")]
     [Authorize]
-    public IActionResult HealthcheckWithJwt()
+    public ActionResult<ApiResponse<string>> HealthcheckWithJwt()
     {
-        return Ok(new { status = "Healthy" });
+        return Ok(ApiResponse<string>.SuccessResponse("Healthy" ));
     }
 }

@@ -226,7 +226,7 @@ public class OpenVpnFilesController(
         {
             logger.LogError(ex, "Failed to download raw OVPN file {IssuedOvpnFileId} for {VpnServerId}",
                 issuedOvpnFileId, vpnServerId);
-            return NotFound("OVPN file not found or error occurred.");
+            return NotFound(ApiResponse<string>.ErrorResponse("OVPN file not found or error occurred."));
         }
     }
 }

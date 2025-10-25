@@ -1,4 +1,4 @@
-﻿namespace OpenVPNGateMonitor.Models.Helpers.OpenVpnManagementInterfaces;
+﻿namespace OpenVPNGateMonitor.SharedModels.DataGateMonitorBackend.GeoLite.Dto;
 
 public class OpenVpnGeoInfo
 {

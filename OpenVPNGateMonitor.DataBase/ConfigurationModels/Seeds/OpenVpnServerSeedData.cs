@@ -12,7 +12,10 @@ public static class OpenVpnServerSeedData
             ServerName = "OpenVPN Server (udp)",
             IsOnline = false,
             IsDefault = true,
+            IsDisable = false,
             ApiUrl = "http://openvpn_udp:5010/",
+            Latitude = 35.1856,   // Nicosia, Cyprus
+            Longitude = 33.3823
         },
         new OpenVpnServer
         {
@@ -20,7 +23,10 @@ public static class OpenVpnServerSeedData
             ServerName = "OpenVPN Server (tcp)",
             IsOnline = false,
             IsDefault = false,
+            IsDisable = false,
             ApiUrl = "http://openvpn_tcp:5011/",
+            Latitude = 55.7558,   // Moscow, Russia
+            Longitude = 37.6173
         },
     };
 }

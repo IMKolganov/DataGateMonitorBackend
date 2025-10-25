@@ -1,41 +1,33 @@
 ﻿using System.Net;
 using MaxMind.GeoIP2.Exceptions;
-using OpenVPNGateMonitor.Models.Helpers.OpenVpnManagementInterfaces;
 using OpenVPNGateMonitor.Services.GeoLite.Interfaces;
+using OpenVPNGateMonitor.SharedModels.DataGateMonitorBackend.GeoLite.Dto;
 
 namespace OpenVPNGateMonitor.Services.GeoLite;
 
-public class GeoLiteQueryService : IGeoLiteQueryService
+public class GeoLiteQueryService(GeoLiteDatabaseFactory dbFactory, ILogger<GeoLiteQueryService> logger)
+    : IGeoLiteQueryService
 {
-    private readonly GeoLiteDatabaseFactory _dbFactory;
-    private readonly ILogger<GeoLiteQueryService> _logger;
-
-    public GeoLiteQueryService(GeoLiteDatabaseFactory dbFactory, ILogger<GeoLiteQueryService> logger)
-    {
-        _dbFactory = dbFactory;
-        _logger = logger;
-    }
-    
     public string GetDatabasePath()
     {
-        return _dbFactory.GetDatabasePath();
+        return dbFactory.GetDatabasePath();
     }
     
     public async Task<string> GetDatabaseVersionAsync(CancellationToken cancellationToken)
     {
         try
         {
-            var databaseReader = await _dbFactory.GetDatabaseAsync(cancellationToken);
+            var databaseReader = await dbFactory.GetDatabaseAsync(cancellationToken);
             var metadata = databaseReader.Metadata;
 
             var version = metadata.BuildDate.ToString("yyyy-MM-dd HH:mm:ss");
 
-            _logger.LogInformation("GeoLite2 database version (Build Date): {Version}", version);
+            logger.LogInformation("GeoLite2 database version (Build Date): {Version}", version);
             return version;
         }
         catch (Exception ex)
         {
-            _logger.LogError(ex, "Error retrieving database version.");
+            logger.LogError(ex, "Error retrieving database version.");
             return "Error retrieving version.";
         }
     }
@@ -65,30 +57,30 @@ public class GeoLiteQueryService : IGeoLiteQueryService
             if (ipAddress.IsIPv6LinkLocal || ipAddress.IsIPv6Multicast)
                 return null;
 
-            var databaseReader = await _dbFactory.GetDatabaseAsync(cancellationToken);
+            var databaseReader = await dbFactory.GetDatabaseAsync(cancellationToken);
             var cityResponse = databaseReader.City(ip);
 
             return new OpenVpnGeoInfo
             {
-                Country = cityResponse.RegisteredCountry?.IsoCode ?? cityResponse.Country?.IsoCode,
-                Region = cityResponse.MostSpecificSubdivision?.IsoCode
+                Country = cityResponse.RegisteredCountry.IsoCode ?? cityResponse.Country.IsoCode,
+                Region = cityResponse.MostSpecificSubdivision.IsoCode
                          ?? cityResponse.Subdivisions.LastOrDefault()?.IsoCode
-                         ?? cityResponse.RegisteredCountry?.IsoCode,
-                City = cityResponse.City?.Name
-                       ?? cityResponse.Location?.TimeZone
-                       ?? cityResponse.RegisteredCountry?.Name,
-                Latitude = cityResponse.Location?.Latitude,
-                Longitude = cityResponse.Location?.Longitude
+                         ?? cityResponse.RegisteredCountry.IsoCode,
+                City = cityResponse.City.Name
+                       ?? cityResponse.Location.TimeZone
+                       ?? cityResponse.RegisteredCountry.Name,
+                Latitude = cityResponse.Location.Latitude,
+                Longitude = cityResponse.Location.Longitude
             };
         }
         catch (AddressNotFoundException ex)
         {
-            _logger.LogWarning($"GeoIP not found for {ip}: {ex.Message}");
+            logger.LogWarning($"GeoIP not found for {ip}: {ex.Message}");
             return null;
         }
         catch (Exception ex)
         {
-            _logger.LogError(ex, $"Error getting GeoIP for {ip} Error: {ex.Message}");
+            logger.LogError(ex, $"Error getting GeoIP for {ip} Error: {ex.Message}");
             return null;
         }
     }

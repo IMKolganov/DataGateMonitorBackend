@@ -1,4 +1,4 @@
-﻿using OpenVPNGateMonitor.Models.Helpers.OpenVpnManagementInterfaces;
+﻿using OpenVPNGateMonitor.SharedModels.DataGateMonitorBackend.GeoLite.Dto;
 
 namespace OpenVPNGateMonitor.Services.GeoLite.Interfaces;
 
