@@ -19,7 +19,7 @@ public class UserQuotaPlanConfiguration : BaseEntityConfiguration<UserQuotaPlan,
         // One active plan per user (EffectiveTo == null)
         entity.HasIndex(e => e.UserId)
             .IsUnique()
-            .HasFilter("effective_to IS NULL");
+            .HasFilter("\"EffectiveTo\" IS NULL");
 
         entity.HasIndex(e => e.EffectiveFrom);
     }
