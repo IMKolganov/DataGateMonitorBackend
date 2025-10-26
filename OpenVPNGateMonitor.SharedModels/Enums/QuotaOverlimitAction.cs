@@ -1,6 +1,6 @@
 ﻿namespace OpenVPNGateMonitor.SharedModels.Enums;
 
-public enum QuotaOverlimitAction //todo: move to shared models
+public enum QuotaOverlimitAction
 {
     /// <summary>Continue normally, no restrictions.</summary>
     AllowContinue,
