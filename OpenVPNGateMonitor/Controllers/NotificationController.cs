@@ -9,15 +9,8 @@ namespace OpenVPNGateMonitor.Controllers;
 [ApiController]
 [Route("api/[controller]")]
 [Authorize]
-public class NotificationController : ControllerBase
+public class NotificationController(INotificationService notificationService) : ControllerBase
 {
-    private readonly INotificationService _notificationService;
-
-    public NotificationController(INotificationService notificationService)
-    {
-        _notificationService = notificationService;
-    }
-
     /// <summary>
     /// Creates and sends a test notification to all admins via the web channel.
     /// </summary>
@@ -26,7 +19,7 @@ public class NotificationController : ControllerBase
         [FromBody] NotificationRequest request,
         CancellationToken cancellationToken)
     {
-        var result = await _notificationService.NotifyAdminsAsync(request, new[] { "web" }, cancellationToken);
+        var result = await notificationService.NotifyAdminsAsync(request, new[] { "web" }, cancellationToken);
         return Ok(ApiResponse<int>.SuccessResponse(result));
     }
 
@@ -40,7 +33,7 @@ public class NotificationController : ControllerBase
         [FromQuery] string channel,
         CancellationToken cancellationToken)
     {
-        await _notificationService.MarkDeliveredAsync(notificationId, adminUserId, channel, cancellationToken);
+        await notificationService.MarkDeliveredAsync(notificationId, adminUserId, channel, cancellationToken);
         return Ok(ApiResponse<bool>.SuccessResponse(true));
     }
 
@@ -53,7 +46,7 @@ public class NotificationController : ControllerBase
         [FromQuery] int adminUserId,
         CancellationToken cancellationToken)
     {
-        await _notificationService.MarkReadAsync(notificationId, adminUserId, cancellationToken);
+        await notificationService.MarkReadAsync(notificationId, adminUserId, cancellationToken);
         return Ok(ApiResponse<bool>.SuccessResponse(true));
     }
 }
