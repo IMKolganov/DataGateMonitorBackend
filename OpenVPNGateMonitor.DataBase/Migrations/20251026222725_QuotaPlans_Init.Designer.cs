@@ -12,7 +12,7 @@ using OpenVPNGateMonitor.DataBase.Contexts;
 namespace OpenVPNGateMonitor.DataBase.Migrations
 {
     [DbContext(typeof(ApplicationDbContext))]
-    [Migration("20251026212845_QuotaPlans_Init")]
+    [Migration("20251026222725_QuotaPlans_Init")]
     partial class QuotaPlans_Init
     {
         /// <inheritdoc />
@@ -2102,7 +2102,7 @@ namespace OpenVPNGateMonitor.DataBase.Migrations
 
                     b.HasIndex("UserId")
                         .IsUnique()
-                        .HasFilter("effective_to IS NULL");
+                        .HasFilter("\"EffectiveTo\" IS NULL");
 
                     b.ToTable("UserQuotaPlans", "xgb_dashopnvpn");
                 });

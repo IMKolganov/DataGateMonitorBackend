@@ -131,7 +131,7 @@ namespace OpenVPNGateMonitor.DataBase.Migrations
                 table: "UserQuotaPlans",
                 column: "UserId",
                 unique: true,
-                filter: "effective_to IS NULL");
+                filter: "\"EffectiveTo\" IS NULL");
         }
 
         /// <inheritdoc />
