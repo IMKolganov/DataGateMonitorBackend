@@ -1,4 +1,5 @@
 ﻿using OpenVPNGateMonitor.Models;
+using OpenVPNGateMonitor.SharedModels.Enums;
 
 namespace OpenVPNGateMonitor.DataBase.ConfigurationModels.Seeds;
 
