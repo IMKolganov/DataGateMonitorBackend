@@ -12,13 +12,14 @@ public class UserIdentityLinkQueryService(IQueryService<UserIdentityLink, int> q
     public Task<UserIdentityLink?> GetByIdAsync(int id, CancellationToken ct)
         => q.FindByIdAsync(id, ct: ct);
 
-    public Task<UserIdentityLink?> GetByProviderAndExternalId(string provider, string externalId, CancellationToken ct)
+    public Task<UserIdentityLink?> GetByProviderAndExternalIdAsync(string provider, string externalId, 
+        CancellationToken ct)
         => q.Query().FirstOrDefaultAsync(x => x.Provider == provider && x.ExternalId == externalId, ct);
 
-    public Task<UserIdentityLink?> GetByUserId(int userId, CancellationToken ct)
+    public Task<UserIdentityLink?> GetByUserIdAsync(int userId, CancellationToken ct)
         => q.Query().FirstOrDefaultAsync(x => x.UserId == userId, ct);
 
-    public Task<bool> AnyByUserId(int userId, CancellationToken ct)
+    public Task<bool> AnyByUserIdAsync(int userId, CancellationToken ct)
         => q.AnyAsync(x => x.UserId == userId, ct: ct);
 
     public Task<IPagedResult<UserIdentityLink>> GetPageAsync(int page, int pageSize, CancellationToken ct)

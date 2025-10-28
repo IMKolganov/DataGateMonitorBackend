@@ -24,8 +24,7 @@ public sealed class IdentityProvisioner(
         externalId = externalId.Trim();
 
         // Fast path
-        var existing = await userIdentityLinkQueryService
-            .GetByProviderAndExternalId(provider, externalId, ct);
+        var existing = await userIdentityLinkQueryService.GetByProviderAndExternalIdAsync(provider, externalId, ct);
 
         if (existing is not null)
             return existing.UserId;
@@ -35,8 +34,7 @@ public sealed class IdentityProvisioner(
         try
         {
             // Double-check under tx (handles races)
-            existing = await userIdentityLinkQueryService
-                .GetByProviderAndExternalId(provider, externalId, ct);
+            existing = await userIdentityLinkQueryService.GetByProviderAndExternalIdAsync(provider, externalId, ct);
 
             if (existing is not null)
             {
@@ -73,8 +71,8 @@ public sealed class IdentityProvisioner(
         {
             await tx.RollbackAsync(ct);
             // Last try: someone else won the race
-            var winner = await userIdentityLinkQueryService
-                .GetByProviderAndExternalId(provider, externalId, ct);
+            var winner = await userIdentityLinkQueryService.GetByProviderAndExternalIdAsync(
+                provider, externalId, ct);
             if (winner is not null) return winner.UserId;
             throw;
         }
