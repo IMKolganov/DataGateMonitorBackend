@@ -11,6 +11,8 @@ using OpenVPNGateMonitor.Services.Helpers.Interfaces;
 using OpenVPNGateMonitor.Services.OpenVpnManagementInterfaces;
 using OpenVPNGateMonitor.Services.OpenVpnManagementInterfaces.Interfaces;
 using OpenVPNGateMonitor.Services.Others;
+using OpenVPNGateMonitor.Services.Users;
+using OpenVPNGateMonitor.Services.Users.Interfaces;
 
 namespace OpenVPNGateMonitor.Configurations;
 
@@ -58,6 +60,8 @@ public static class ServiceConfiguration
         
         services.AddScoped<IExternalIpAddressService, ExternalIpAddressService>();
 
+        services.AddScoped<IUserService, UserService>();
+        
         #region DataGateCertManager
 
         services.AddHttpClient();
