@@ -47,6 +47,7 @@
     </ItemGroup>
 
     <ItemGroup>
+      <Folder Include="DataGateMonitorBackend\User\Requests\" />
       <Folder Include="Requests\" />
     </ItemGroup>
 
