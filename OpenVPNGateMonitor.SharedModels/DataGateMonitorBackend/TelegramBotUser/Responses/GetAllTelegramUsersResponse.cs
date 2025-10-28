@@ -2,7 +2,7 @@
 
 namespace OpenVPNGateMonitor.SharedModels.DataGateMonitorBackend.TelegramBotUser.Responses;
 
-public class GetAllUsersResponse
+public class GetAllTelegramUsersResponse
 {
     public List<TelegramBotUserDto> TelegramBotUsers { get; set; } = new();
 }
