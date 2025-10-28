@@ -9,7 +9,7 @@
     <ItemGroup>
       <PackageReference Include="Mapster" Version="7.4.0" />
       <PackageReference Include="Newtonsoft.Json" Version="13.0.4" />
-      <PackageReference Include="OpenVPNGateMonitor.SharedModels" Version="1.0.50" />
+      <PackageReference Include="OpenVPNGateMonitor.SharedModels" Version="1.0.51" />
     </ItemGroup>
 
     <ItemGroup>

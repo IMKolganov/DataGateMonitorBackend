@@ -97,6 +97,19 @@ public class EfQueryService<TEntity, TKey> : IQueryService<TEntity, TKey>
         var q = ApplyIncludes(_uow.GetQuery<TEntity>().AsQueryable(), includes);
         return ApplyTracking(q, asNoTracking);
     }
+    
+    public async Task<TEntity?> FirstOrDefaultAsync(
+        Expression<Func<TEntity, bool>>? predicate = null,
+        Func<IQueryable<TEntity>, IOrderedQueryable<TEntity>>? orderBy = null,
+        bool asNoTracking = true,
+        CancellationToken ct = default,
+        params Expression<Func<TEntity, object>>[] includes)
+    {
+        var q = Query(asNoTracking, includes);
+        if (predicate != null) q = q.Where(predicate);
+        if (orderBy != null) q = orderBy(q);
+        return await q.FirstOrDefaultAsync(ct);
+    }
 
     private static IQueryable<TEntity> ApplyIncludes(
         IQueryable<TEntity> query,

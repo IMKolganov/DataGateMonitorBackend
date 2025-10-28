@@ -1,9 +1,6 @@
-﻿using OpenVPNGateMonitor.Models;
+﻿using System.Linq.Expressions;
+using OpenVPNGateMonitor.Models;
 using OpenVPNGateMonitor.SharedModels.Responses;
-
-namespace OpenVPNGateMonitor.DataBase.Services.Query;
-
-using System.Linq.Expressions;
 
 public interface IQueryService<TEntity, TKey> where TEntity : BaseEntity<TKey>
 {
@@ -43,5 +40,12 @@ public interface IQueryService<TEntity, TKey> where TEntity : BaseEntity<TKey>
 
     IQueryable<TEntity> Query(
         bool asNoTracking = true,
+        params Expression<Func<TEntity, object>>[] includes);
+
+    Task<TEntity?> FirstOrDefaultAsync(
+        Expression<Func<TEntity, bool>>? predicate = null,
+        Func<IQueryable<TEntity>, IOrderedQueryable<TEntity>>? orderBy = null,
+        bool asNoTracking = true,
+        CancellationToken ct = default,
         params Expression<Func<TEntity, object>>[] includes);
 }
