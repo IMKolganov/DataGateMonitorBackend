@@ -12,7 +12,7 @@ public class BaseController : ControllerBase
     {
     }
 
-    [HttpGet(Name = "healthcheck")]
+    [HttpGet]
     [ProducesResponseType(typeof(ApiResponse<string>), StatusCodes.Status200OK)]
     [AllowAnonymous]
     public ActionResult<ApiResponse<string>> Healthcheck()
@@ -20,7 +20,7 @@ public class BaseController : ControllerBase
         return Ok(ApiResponse<string>.SuccessResponse("Ok"));
     }
     
-    [HttpGet("HealthcheckWithJwt", Name = "HealthcheckWithJwt")]
+    [HttpGet("HealthcheckWithJwt")]
     [Authorize]
     public ActionResult<ApiResponse<string>> HealthcheckWithJwt()
     {

@@ -15,6 +15,9 @@ public class UserIdentityLinkQueryService(IQueryService<UserIdentityLink, int> q
     public Task<UserIdentityLink?> GetByProviderAndExternalIdAsync(string provider, string externalId, 
         CancellationToken ct)
         => q.Query().FirstOrDefaultAsync(x => x.Provider == provider && x.ExternalId == externalId, ct);
+    
+    public Task<UserIdentityLink?> GetByExternalIdAsync(string externalId, CancellationToken ct)
+        => q.Query().FirstOrDefaultAsync(x => x.ExternalId == externalId, ct);
 
     public Task<UserIdentityLink?> GetByUserIdAsync(int userId, CancellationToken ct)
         => q.Query().FirstOrDefaultAsync(x => x.UserId == userId, ct);

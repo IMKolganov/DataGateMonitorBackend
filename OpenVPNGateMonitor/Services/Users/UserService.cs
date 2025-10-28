@@ -12,7 +12,7 @@ using OpenVPNGateMonitor.SharedModels.DataGateMonitorBackend.User.Responses.Dto;
 
 namespace OpenVPNGateMonitor.Services.Users;
 
-public class UserServices(
+public class UserService(
     IUserQueryService userQueryService,
     ITelegramBotUserQueryService telegramBotUserQueryService,
     IUserIdentityLinkQueryService userIdentityLinkQueryService,
@@ -21,7 +21,7 @@ public class UserServices(
     ICommandService<UserIdentityLink, int> userIdentityLinkCommandService,
     ICommandService<UserQuotaPlan, int> userQuotaPlanCommandService,
     ICommandService<TelegramBotUser, int> telegramBotUserCommandService,
-    ILogger<UserServices> logger
+    ILogger<UserService> logger
 ) : IUserService
 {
     public async Task<UsersResponse> RegisterUserFromTgBot(
@@ -64,13 +64,16 @@ public class UserServices(
         if (link == null)
         {
             // Create dashboard User
-            var displayName = !string.IsNullOrWhiteSpace(request.Username)
-                ? request.Username!
-                : $"{request.FirstName} {request.LastName}".Trim();
+            var displayName =
+                !string.IsNullOrWhiteSpace(request.Username)
+                    ? request.Username!
+                    : !string.IsNullOrWhiteSpace(request.FirstName)
+                        ? $"{request.FirstName} {request.LastName}".Trim()
+                        : $"tg_{request.TelegramId}";
 
             user = new User
             {
-                DisplayName = string.IsNullOrWhiteSpace(displayName) ? $"tg_{request.TelegramId}" : displayName,
+                DisplayName = displayName,
                 Email = null,
                 IsAdmin = false,
                 IsBlocked = false,
@@ -123,30 +126,86 @@ public class UserServices(
         }
 
         // 3) Build response
-        var dto = user.Adapt<UserDto>();
+        var dto = await BuildUserDtoAsync(user, cancellationToken);
+        // override with telegram context for this specific flow
         dto.Provider = "telegram";
         dto.ExternalId = request.TelegramId.ToString();
         dto.ProviderRowId = telegramBotUser.Id;
 
         return new UsersResponse { User = dto };
     }
-    
-    public Task<GetAllUsersResponse> GetAllUsers(CancellationToken cancellationToken)
-    {
-        userQueryService.GetAllAsync(cancellationToken);
 
-        throw new NotImplementedException();
+    public async Task<GetAllUsersResponse> GetAllUsers(CancellationToken cancellationToken)
+    {
+        // Get all dashboard users
+        var users = await userQueryService.GetAllAsync(cancellationToken);
+
+        // NOTE: Simple and clear implementation.
+        // If needed, this can be optimized later by adding a batch query for identity links.
+        var dtos = new List<UserDto>(users.Count);
+        foreach (var u in users)
+        {
+            var dto = await BuildUserDtoAsync(u, cancellationToken);
+            dtos.Add(dto);
+        }
+
+        return new GetAllUsersResponse { Users = dtos };
     }
 
-    public Task<UsersResponse> GetUserById(GetUserByIdRequest request, CancellationToken cancellationToken)
+    public async Task<UsersResponse> GetUserById(GetUserByIdRequest request, CancellationToken cancellationToken)
     {
-        userQueryService.GetByIdAsync(request.Id, cancellationToken);
-        
-        throw new NotImplementedException();
+        // Load user by id or fail fast
+        var user = await userQueryService.GetByIdAsync(request.Id, cancellationToken)
+                   ?? throw new KeyNotFoundException($"User {request.Id} not found");
+
+        var dto = await BuildUserDtoAsync(user, cancellationToken);
+        return new UsersResponse { User = dto };
     }
 
-    public Task<UsersResponse> GetUserByExternalId(GetUserByExternalIdRequest request, CancellationToken cancellationToken)
+    public async Task<UsersResponse> GetUserByExternalId(GetUserByExternalIdRequest request,
+        CancellationToken cancellationToken)
     {
-        throw new NotImplementedException();
+        // Resolve link first (provider + external id)
+        var link = await userIdentityLinkQueryService
+            .GetByExternalIdAsync(request.ExternalId, cancellationToken);
+
+        if (link == null)
+            throw new KeyNotFoundException(
+                $"Identity link not found for externalId '{request.ExternalId}'");
+
+        // Load user by link
+        var user = await userQueryService.GetByIdAsync(link.UserId, cancellationToken)
+                   ?? throw new InvalidOperationException($"Linked user not found: {link.UserId}");
+
+        var dto = await BuildUserDtoAsync(user, cancellationToken);
+        return new UsersResponse { User = dto };
+    }
+
+    // === Helpers ===
+
+    private async Task<UserDto> BuildUserDtoAsync(User user, CancellationToken ct)
+    {
+        // Map base fields
+        var dto = user.Adapt<UserDto>();
+
+        // Try enrich with identity link (first link if multiple)
+        // Requires IUserIdentityLinkQueryService.GetByUserIdAsync(int userId, CancellationToken ct)
+        var link = await userIdentityLinkQueryService.GetByUserIdAsync(user.Id, ct);
+
+        if (link != null)
+        {
+            dto.Provider = link.Provider;
+            dto.ExternalId = link.ExternalId;
+            dto.ProviderRowId = link.ProviderRowId;
+        }
+        else
+        {
+            // No link found — keep provider-related fields empty/neutral
+            dto.Provider = string.Empty;
+            dto.ExternalId = string.Empty;
+            dto.ProviderRowId = null;
+        }
+
+        return dto;
     }
 }
