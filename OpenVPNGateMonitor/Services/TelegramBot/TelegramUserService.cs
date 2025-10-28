@@ -41,6 +41,13 @@ public class TelegramUserService(
         return telegramBotUser;
     }
 
+    public async Task<TelegramBotUser> GetUserAsync(long telegramId, CancellationToken cancellationToken)
+    {
+        return await telegramBotUserQueryService
+            .GetByTelegramIdAsync(telegramId, cancellationToken) 
+               ?? throw new InvalidOperationException("Telegram user not found");
+    }
+
     public Task<TelegramBotUser> DeleteUserAsync(TelegramBotUser telegramBotUserRequest,
         CancellationToken cancellationToken)
     {
