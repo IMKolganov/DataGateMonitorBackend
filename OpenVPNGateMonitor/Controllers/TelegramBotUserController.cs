@@ -1,7 +1,6 @@
 ﻿using Mapster;
 using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Mvc;
-using OpenVPNGateMonitor.Models;
 using OpenVPNGateMonitor.Services.TelegramBot.Interfaces;
 using OpenVPNGateMonitor.SharedModels.Responses;
 using OpenVPNGateMonitor.SharedModels.DataGateMonitorBackend.TelegramBotUser.Requests;
@@ -14,16 +13,6 @@ namespace OpenVPNGateMonitor.Controllers;
 [Authorize]
 public class TelegramBotUserController(ITelegramUserService telegramUserService) : ControllerBase
 {
-    [HttpPost("RegisterUser")]
-    public async Task<ActionResult<ApiResponse<RegisterUserResponse>>> RegisterUser([FromBody] RegisterUserRequest request, 
-        CancellationToken cancellationToken)
-    {
-        var telegramBotUser = await telegramUserService.RegisterUserAsync(request.Adapt<TelegramBotUser>(), 
-            cancellationToken);
-        
-        return Ok(ApiResponse<RegisterUserResponse>.SuccessResponse(telegramBotUser.Adapt<RegisterUserResponse>()));
-    }
-    
     [HttpGet("UserExists/{telegramId}")]
     public async Task<ActionResult<ApiResponse<bool>>> UserExists([FromRoute] TelegramUserActionRequest request, 
         CancellationToken cancellationToken)
@@ -40,10 +29,12 @@ public class TelegramBotUserController(ITelegramUserService telegramUserService)
     }
     
     [HttpGet("GetAllUsers")]
-    public async Task<ActionResult<ApiResponse<GetAllUsersResponse>>> GetAllUsers(CancellationToken cancellationToken)
+    public async Task<ActionResult<ApiResponse<GetAllTelegramUsersResponse>>> GetAllUsers(
+        CancellationToken cancellationToken)
     {
         var telegramBotUsers = await telegramUserService.GetAllUsersAsync(cancellationToken);
-        return Ok(ApiResponse<GetAllUsersResponse>.SuccessResponse(telegramBotUsers.Adapt<GetAllUsersResponse>()));
+        return Ok(ApiResponse<GetAllTelegramUsersResponse>.SuccessResponse(
+            telegramBotUsers.Adapt<GetAllTelegramUsersResponse>()));
     }
     
     [HttpPost("BlockUser")]

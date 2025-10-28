@@ -7,5 +7,6 @@ public interface IQuotaPlanQueryService
 {
     Task<List<QuotaPlan>> GetAllAsync(CancellationToken ct);
     Task<QuotaPlan?> GetByIdAsync(int id, CancellationToken ct);
+    Task<QuotaPlan?> GetDefaultAsync(CancellationToken ct);
     Task<IPagedResult<QuotaPlan>> GetPageAsync(int page, int pageSize, CancellationToken ct);
 }

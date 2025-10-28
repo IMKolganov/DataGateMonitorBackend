@@ -26,39 +26,6 @@ public class TelegramBotUserControllerTests
     }
 
     [Fact]
-    public async Task RegisterUser_ReturnsOkResult_WithRegisterUserResponse()
-    {
-        // Arrange
-        var request = new RegisterUserRequest
-        {
-            TelegramId = 123456789,
-            Username = "testuser",
-            FirstName = "Test",
-            LastName = "User"
-        };
-
-        var createdUser = request.Adapt<TelegramBotUser>();
-        createdUser.Id = 1;
-
-        _telegramUserServiceMock
-            .Setup(s => s.RegisterUserAsync(It.IsAny<TelegramBotUser>(), It.IsAny<CancellationToken>()))
-            .ReturnsAsync(createdUser); 
-        
-        // Act
-        var result = await _controller.RegisterUser(request, CancellationToken.None);
-
-        // Assert
-        var okResult = result.Result as OkObjectResult;
-        okResult.Should().NotBeNull();
-
-
-        var apiResponse = okResult!.Value as ApiResponse<RegisterUserResponse>;
-        apiResponse.Should().NotBeNull();
-        apiResponse!.Data!.TelegramId.Should().Be(request.TelegramId);
-        apiResponse.Data.Username.Should().Be(request.Username);
-    }
-
-    [Fact]
     public async Task GetAdmins_ReturnsOkResult_WithListOfAdmins()
     {
         // Arrange
