@@ -21,6 +21,15 @@ public class TelegramBotUserController(ITelegramUserService telegramUserService)
         return Ok(ApiResponse<bool>.SuccessResponse(user != null));
     }
 
+    [HttpGet("GetUser/{telegramId}")]
+    public async Task<ActionResult<ApiResponse<UserRequest>>> GetUser(
+        [FromRoute] UserRequest request, CancellationToken cancellationToken)
+    {
+        var telegramBotUsers = await telegramUserService.GetUserAsync(request.TelegramId,cancellationToken);
+        return Ok(ApiResponse<UserResponse>.SuccessResponse(telegramBotUsers.Adapt<UserResponse>()));
+    }
+
+    
     [HttpGet("GetAdmins")]
     public async Task<ActionResult<ApiResponse<GetAdminsResponse>>> GetAdmins(CancellationToken cancellationToken)
     {
