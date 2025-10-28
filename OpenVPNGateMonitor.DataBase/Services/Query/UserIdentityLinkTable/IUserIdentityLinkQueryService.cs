@@ -8,6 +8,7 @@ public interface IUserIdentityLinkQueryService
     Task<List<UserIdentityLink>> GetAllAsync(CancellationToken ct);
     Task<UserIdentityLink?> GetByIdAsync(int id, CancellationToken ct);
     Task<UserIdentityLink?> GetByProviderAndExternalIdAsync(string provider, string externalId, CancellationToken ct);
+    public Task<UserIdentityLink?> GetByExternalIdAsync(string externalId, CancellationToken ct);
     Task<UserIdentityLink?> GetByUserIdAsync(int userId, CancellationToken ct);
     Task<bool> AnyByUserIdAsync(int userId, CancellationToken ct);
 
