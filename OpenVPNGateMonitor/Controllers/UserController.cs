@@ -31,7 +31,7 @@ public class UserController(IUserService userService) : BaseController
     }
     
     [HttpGet("GetUserById")]
-    public async Task<ActionResult<ApiResponse<UsersResponse>>> GetUserById(GetUserByIdRequest request, 
+    public async Task<ActionResult<ApiResponse<UsersResponse>>> GetUserById([FromQuery]GetUserByIdRequest request, 
         CancellationToken cancellationToken)
     {
         var telegramBotUsers = await userService.GetUserById(request, cancellationToken);
@@ -39,8 +39,8 @@ public class UserController(IUserService userService) : BaseController
     }
     
     [HttpGet("GetUserByExternalId")]
-    public async Task<ActionResult<ApiResponse<UsersResponse>>> GetUserByExternalId(GetUserByExternalIdRequest request,
-        CancellationToken cancellationToken)
+    public async Task<ActionResult<ApiResponse<UsersResponse>>> GetUserByExternalId(
+        [FromQuery]GetUserByExternalIdRequest request, CancellationToken cancellationToken)
     {
         var telegramBotUsers = await userService.GetUserByExternalId(request, cancellationToken);
         return Ok(ApiResponse<UsersResponse>.SuccessResponse(telegramBotUsers.Adapt<UsersResponse>()));
