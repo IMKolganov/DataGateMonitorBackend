@@ -40,7 +40,8 @@ public class OpenVpnFilesController(
     {
         try
         {
-            var result = await ovpnFileApiService.GetAllByVpnServerIdAsync(request.VpnServerId, cancellationToken);
+            var result = await ovpnFileApiService.GetAllByVpnServerIdAsync(request.VpnServerId, 
+                cancellationToken);
             var response = result.Adapt<OvpnFilesResponse>();
             return Ok(ApiResponse<OvpnFilesResponse>.SuccessResponse(response));
         }
@@ -136,8 +137,7 @@ public class OpenVpnFilesController(
 
     [HttpPost("add")]
     public async Task<ActionResult<ApiResponse<OvpnFileResponse>>> AddFile(
-        [FromBody] AddClientOvpnFileRequest request,
-        CancellationToken cancellationToken)
+        [FromBody] AddClientOvpnFileRequest request, CancellationToken cancellationToken)
     {
         try
         {
@@ -155,8 +155,7 @@ public class OpenVpnFilesController(
     
     [HttpPost("add-with-token")]
     public async Task<ActionResult<ApiResponse<OvpnFileWithTokenResponse>>> AddFileWithToken(
-        [FromBody] AddClientOvpnFileRequest request,
-        CancellationToken cancellationToken)
+        [FromBody] AddClientOvpnFileRequest request, CancellationToken cancellationToken)
     {
         try
         {
@@ -175,8 +174,7 @@ public class OpenVpnFilesController(
     }
 
     [HttpPost("revoke-file")]
-    public async Task<ActionResult<ApiResponse<OvpnFileResponse>>> RevokeFile(
-        [FromBody] RevokeFileRequest request,
+    public async Task<ActionResult<ApiResponse<OvpnFileResponse>>> RevokeFile([FromBody] RevokeFileRequest request,
         CancellationToken cancellationToken)
     {
         try
@@ -195,8 +193,7 @@ public class OpenVpnFilesController(
 
     [HttpPost("download-file")]
     public async Task<ActionResult<ApiResponse<DownloadFileResponse>>> DownloadFile(
-        [FromBody] DownloadClientOvpnFileRequest request,
-        CancellationToken cancellationToken)
+        [FromBody] DownloadClientOvpnFileRequest request, CancellationToken cancellationToken)
     {
         try
         {
