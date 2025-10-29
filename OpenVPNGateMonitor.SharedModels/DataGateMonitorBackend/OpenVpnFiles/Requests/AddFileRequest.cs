@@ -2,7 +2,7 @@
 
 namespace OpenVPNGateMonitor.SharedModels.DataGateMonitorBackend.OpenVpnFiles.Requests;
 
-public class AddClientOvpnFileRequest
+public class AddFileRequest
 {
     [Required(ErrorMessage = "externalId is required.")]
     public string ExternalId { get; set; } = string.Empty;

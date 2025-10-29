@@ -2,7 +2,7 @@
 
 namespace OpenVPNGateMonitor.SharedModels.DataGateMonitorBackend.OpenVpnFiles.Requests;
 
-public class RevokeClientOvpnFileRequest
+public class RevokeFileRequest
 {
     [Required(ErrorMessage = "serverId is required.")]
     [Range(1, int.MaxValue, ErrorMessage = "serverId must be greater than 0.")]
