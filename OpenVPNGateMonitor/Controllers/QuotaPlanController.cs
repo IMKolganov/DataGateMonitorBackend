@@ -10,27 +10,28 @@ using OpenVPNGateMonitor.SharedModels.Responses;
 namespace OpenVPNGateMonitor.Controllers;
 
 [ApiController]
-[Route("api/[controller]")]
+[Route("api/quota-plans")]
 [Authorize]
 public class QuotaPlanController(IQuotaPlanService quotaPlanService) : ControllerBase
 {
     /// <summary>Get all quota plans.</summary>
-    [HttpPost("GetAll")]
-    public async Task<ActionResult<ApiResponse<List<QuotaPlanResponse>>>> GetAll(
-        [FromBody] GetQuotaPlansRequest request,
-        CancellationToken ct)
-    {
-        var entities = await quotaPlanService.GetAllAsync(ct);
-
-        if (!request.IncludeInactive)
-            entities = entities.Where(x => x.IsActive).ToList();
-
-        var dto = entities.Adapt<List<QuotaPlanResponse>>();
-        return Ok(ApiResponse<List<QuotaPlanResponse>>.SuccessResponse(dto));
-    }
+    // todo: update shared models
+    // [HttpPost("get-all")]
+    // public async Task<ActionResult<ApiResponse<QuotaPlansResponse>>> GetAll(
+    //     [FromBody] GetQuotaPlansRequest request,
+    //     CancellationToken ct)
+    // {
+    //     var entities = await quotaPlanService.GetAllAsync(ct);
+    //
+    //     if (!request.IncludeInactive)
+    //         entities = entities.Where(x => x.IsActive).ToList();
+    //
+    //     var dto = entities.Adapt<QuotaPlansResponse>();
+    //     return Ok(ApiResponse<QuotaPlansResponse>.SuccessResponse(dto));
+    // }
 
     /// <summary>Get a quota plan by id.</summary>
-    [HttpGet("{id:int}")]
+    [HttpGet("get/{id:int}")]
     public async Task<ActionResult<ApiResponse<QuotaPlanResponse>>> GetById(int id, CancellationToken ct)
     {
         var entity = await quotaPlanService.GetByIdAsync(id, ct);
@@ -42,7 +43,7 @@ public class QuotaPlanController(IQuotaPlanService quotaPlanService) : Controlle
     }
 
     /// <summary>Create a new quota plan.</summary>
-    [HttpPost("Create")]
+    [HttpPost("create")]
     public async Task<ActionResult<ApiResponse<QuotaPlanResponse>>> Create(
         [FromBody] CreateOrUpdateQuotaPlanRequest request,
         CancellationToken ct)
@@ -54,7 +55,7 @@ public class QuotaPlanController(IQuotaPlanService quotaPlanService) : Controlle
     }
 
     /// <summary>Update an existing quota plan.</summary>
-    [HttpPut("Update")]
+    [HttpPut("update")]
     public async Task<ActionResult<ApiResponse<string>>> Update(
         [FromBody] CreateOrUpdateQuotaPlanRequest request,
         CancellationToken ct)
@@ -65,7 +66,7 @@ public class QuotaPlanController(IQuotaPlanService quotaPlanService) : Controlle
     }
 
     /// <summary>Delete a quota plan by id.</summary>
-    [HttpDelete("{id:int}")]
+    [HttpDelete("delete/{id:int}")]
     public async Task<ActionResult<ApiResponse<string>>> Delete(int id, CancellationToken ct)
     {
         await quotaPlanService.DeleteAsync(id, ct);
@@ -73,7 +74,7 @@ public class QuotaPlanController(IQuotaPlanService quotaPlanService) : Controlle
     }
 
     /// <summary>Set quota plan as default.</summary>
-    [HttpPost("{id:int}/SetDefault")]
+    [HttpPost("set-default/{id:int}")]
     public async Task<ActionResult<ApiResponse<string>>> SetDefault(int id, CancellationToken ct)
     {
         await quotaPlanService.SetDefaultAsync(id, ct);

@@ -5,7 +5,7 @@ namespace OpenVPNGateMonitor.SharedModels.DataGateMonitorBackend.QuotaPlans.Resp
 /// <summary>
 /// Response model containing quota plan details.
 /// </summary>
-public class QuotaPlanResponse
+public class QuotaPlansResponse
 {
-    public QuotaPlanDto QuotaPlan { get; set; } = new();
+    public List<QuotaPlanDto> QuotaPlans { get; set; } = new();
 }
