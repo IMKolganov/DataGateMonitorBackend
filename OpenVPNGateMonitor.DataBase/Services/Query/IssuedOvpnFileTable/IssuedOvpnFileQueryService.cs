@@ -11,6 +11,9 @@ public class IssuedOvpnFileQueryService(IQueryService<IssuedOvpnFile, int> q) : 
 
     public Task<List<IssuedOvpnFile>> GetAllByVpnServerId(int vpnServerId, CancellationToken ct)
         => q.WhereAsync(x => x.VpnServerId == vpnServerId, ct: ct);
+    
+    public Task<List<IssuedOvpnFile>> GetAllByExternalId(string externalId, CancellationToken ct)
+        => q.WhereAsync(x => x.ExternalId == externalId, ct: ct);
 
     public Task<List<IssuedOvpnFile>> GetAllByVpnServerIdAndIsRevoked(int vpnServerId, bool isRevoked, 
         CancellationToken ct)

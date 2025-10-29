@@ -3,9 +3,9 @@ using Microsoft.AspNetCore.Mvc;
 
 namespace OpenVPNGateMonitor.SharedModels.DataGateMonitorBackend.OpenVpnFiles.Requests;
 
-public class GetAllOvpnFilesRequest
+public class ByTokenRequest
 {
-    [Required]
-    [FromRoute(Name = "vpnServerId")]
-    public int VpnServerId { get; set; }
+    [Required(ErrorMessage = "token is required.")]
+    [FromRoute(Name = "token")]
+    public string Token { get; set; } = string.Empty;
 }

@@ -2,7 +2,7 @@
 
 namespace OpenVPNGateMonitor.SharedModels.DataGateMonitorBackend.OpenVpnFiles.Requests;
 
-public class DownloadClientOvpnFileRequest
+public class DownloadFileRequest
 {
     [Required(ErrorMessage = "issuedOvpnFileId is required.")]
     [Range(1, int.MaxValue, ErrorMessage = "issuedOvpnFileId must be greater than 0.")]
