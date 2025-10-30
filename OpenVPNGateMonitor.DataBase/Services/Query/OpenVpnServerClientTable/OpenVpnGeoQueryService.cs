@@ -1,7 +1,8 @@
 ﻿using Microsoft.EntityFrameworkCore;
-using OpenVPNGateMonitor.DataBase.Services.Query.OpenVpnServerClientTable.Dto;
 using OpenVPNGateMonitor.DataBase.UnitOfWork;
 using OpenVPNGateMonitor.Models;
+using OpenVPNGateMonitor.SharedModels.DataGateMonitorBackend.OpenVpnServerClients.Dto;
+using OpenVPNGateMonitor.SharedModels.DataGateMonitorBackend.OpenVpnServerClients.Responses;
 
 namespace OpenVPNGateMonitor.DataBase.Services.Query.OpenVpnServerClientTable;
 

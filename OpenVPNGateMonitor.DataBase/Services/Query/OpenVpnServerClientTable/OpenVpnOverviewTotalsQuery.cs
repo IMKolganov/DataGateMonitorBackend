@@ -1,7 +1,8 @@
 ﻿using Microsoft.EntityFrameworkCore;
-using OpenVPNGateMonitor.DataBase.Services.Query.OpenVpnServerClientTable.Dto;
 using OpenVPNGateMonitor.DataBase.UnitOfWork;
 using OpenVPNGateMonitor.Models;
+using OpenVPNGateMonitor.SharedModels.DataGateMonitorBackend.OpenVpnServerClients.Dto;
+using OpenVPNGateMonitor.SharedModels.DataGateMonitorBackend.OpenVpnServerClients.Responses;
 
 namespace OpenVPNGateMonitor.DataBase.Services.Query.OpenVpnServerClientTable;
 
@@ -59,7 +60,7 @@ public sealed class OpenVpnOverviewTotalsQuery(IUnitOfWork uow) : IOpenVpnOvervi
             .AsNoTracking();
 
         var samples = await trafficQ
-            .Select(s => new TrafficSampleRow
+            .Select(s => new TrafficSampleRowDto
             {
                 SessionId  = s.SessionId,
                 MeasuredAt = s.MeasuredAt,
@@ -93,7 +94,7 @@ public sealed class OpenVpnOverviewTotalsQuery(IUnitOfWork uow) : IOpenVpnOvervi
 
         return new OverviewTotalsResponse
         {
-            Meta = new OverviewMeta
+            Meta = new OverviewMetaDto
             {
                 From        = fromUtc,
                 To          = toUtc,
@@ -102,7 +103,7 @@ public sealed class OpenVpnOverviewTotalsQuery(IUnitOfWork uow) : IOpenVpnOvervi
                 TrafficUnit = "bytes",
                 VpnServerId = vpnServerId
             },
-            Totals = new TotalsPayload
+            Totals = new TotalsPayloadDto
             {
                 SessionsCount   = sessionsCount,
                 UsersCount      = usersCount,

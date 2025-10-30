@@ -178,6 +178,7 @@ public class OvpnFileApiService(IOvpnFileApiClient ovpnFileApiClient,
         logger.LogInformation("OVPN file added successfully: CommonName={CommonName}, VpnServerId={VpnServerId}",
             request.CommonName, request.VpnServerId);
         
+        
         await ovpnFileNotificationService.NotifyIssuedAsync(
             issuedOvpnFile.VpnServerId, issuedOvpnFile.Id, issuedOvpnFile.FileName,
             issuedOvpnFile.ExternalId, /* todo: user ID*/ ct);
