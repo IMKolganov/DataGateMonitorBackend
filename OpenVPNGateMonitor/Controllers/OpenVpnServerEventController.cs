@@ -10,7 +10,7 @@ using OpenVPNGateMonitor.SharedModels.Responses;
 namespace OpenVPNGateMonitor.Controllers;
 
 [ApiController]
-[Route("api/[controller]")]
+[Route("api/open-vpn-events")]
 [Authorize]
 public class OpenVpnServerEventController(
     IOpenVpnServerEventLogQueryService openVpnServerEventLogQueryService,
@@ -19,7 +19,7 @@ public class OpenVpnServerEventController(
     /// <summary>
     /// Paged events by VPN server id.
     /// </summary>
-    [HttpGet("GetEventByVpnServerId")]
+    [HttpGet("get-by-server")]
     public async Task<ActionResult<ApiResponse<VpnServerEventResponse>>> GetEventByVpnServerId(
         [FromQuery] GetConnectedClientsRequest request, CancellationToken cancellationToken)
     {
@@ -33,7 +33,7 @@ public class OpenVpnServerEventController(
     /// <summary>
     /// Returns status snapshots for all cached OpenVPN event clients.
     /// </summary>
-    [HttpGet("Status")]
+    [HttpGet("status")]
     public ActionResult<ApiResponse<IReadOnlyCollection<OpenVpnEventConnectionStatus>>> GetAllClientStatuses()
     {
         var statuses = eventClientFactory.GetAllClientStatuses();
@@ -43,7 +43,7 @@ public class OpenVpnServerEventController(
     /// <summary>
     /// Returns status snapshot for a single server id (404 if not found in cache).
     /// </summary>
-    [HttpGet("Status/{serverId:int}")]
+    [HttpGet("status/{serverId:int}")]
     public ActionResult<ApiResponse<OpenVpnEventConnectionStatus>> GetClientStatus([FromRoute] int serverId)
     {
         if (eventClientFactory.TryGetClientStatus(serverId, out var status) && status is not null)

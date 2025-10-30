@@ -10,31 +10,35 @@ using OpenVPNGateMonitor.SharedModels.Responses;
 namespace OpenVPNGateMonitor.Controllers;
 
 [ApiController]
-[Route("api/[controller]")]
+[Route("api/open-vpn-clients")]
 [Authorize]
 public class OpenVpnServerClientsController(IOpenVpnServerClientOverviewQuery openVpnServerClientOverviewQuery,
     IOpenVpnGeoQueryService openVpnGeoQueryService,
     IOpenVpnOverviewTotalsQuery openVpnOverviewTotalsQuery,
     IOpenVpnOverviewSeriesQuery openVpnOverviewSeriesQuery) : ControllerBase
 {
-    [HttpGet("GetAllConnectedClients")]
+    [HttpGet("get-all-connected")]
     public async Task<ActionResult<ApiResponse<ConnectedClientsResponse>>> GetAllConnectedClients(
         [FromQuery] GetConnectedClientsRequest request, CancellationToken cancellationToken)
     {
-        var result = await openVpnServerClientOverviewQuery.GetAllConnectedOpenVpnServerClientsAsync(
+        var result =
+            await openVpnServerClientOverviewQuery.GetAllConnectedOpenVpnServerClientsAsync(
             request.VpnServerId, request.Page, request.PageSize, cancellationToken);
 
-        return Ok(ApiResponse<ConnectedClientsResponse>.SuccessResponse(result.Adapt<ConnectedClientsResponse>()));
+        return Ok(ApiResponse<ConnectedClientsResponse>.SuccessResponse(
+            result.Adapt<ConnectedClientsResponse>()));
     }
 
-    [HttpGet("GetAllHistoryClients")]
+    [HttpGet("get-all-history")]
     public async Task<ActionResult<ApiResponse<ConnectedClientsResponse>>> GetAllHistoryClients(
-        [FromQuery] GetHistoryClientsRequest request, CancellationToken cancellationToken)
+        [FromQuery] GetHistoryClientsRequest request, CancellationToken ct)
     {
-        var result = await openVpnServerClientOverviewQuery.GetAllHistoryOpenVpnServerClientsAsync(
-            request.VpnServerId, request.Page, request.PageSize, cancellationToken);
+        var result = 
+            await openVpnServerClientOverviewQuery.GetAllHistoryOpenVpnServerClientsAsync(
+            request.VpnServerId, request.Page, request.PageSize, ct);
 
-        return Ok(ApiResponse<ConnectedClientsResponse>.SuccessResponse(result.Adapt<ConnectedClientsResponse>()));
+        return Ok(ApiResponse<ConnectedClientsResponse>.SuccessResponse(
+            result.Adapt<ConnectedClientsResponse>()));
     }
     
     
