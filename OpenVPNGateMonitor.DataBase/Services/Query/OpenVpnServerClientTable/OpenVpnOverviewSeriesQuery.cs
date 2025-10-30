@@ -3,6 +3,7 @@ using Microsoft.EntityFrameworkCore;
 using OpenVPNGateMonitor.DataBase.Services.Query.OpenVpnServerClientTable.Dto;
 using OpenVPNGateMonitor.DataBase.UnitOfWork;
 using OpenVPNGateMonitor.Models;
+using OpenVPNGateMonitor.SharedModels.DataGateMonitorBackend.OpenVpnServerClients.Dto;
 using OpenVPNGateMonitor.SharedModels.DataGateMonitorBackend.OpenVpnServerClients.Responses;
 
 namespace OpenVPNGateMonitor.DataBase.Services.Query.OpenVpnServerClientTable;
@@ -107,7 +108,7 @@ public sealed class OpenVpnOverviewSeriesQuery(IUnitOfWork uow) : IOpenVpnOvervi
         // ---- Build series rows ----
         var series = buckets
             .OrderBy(kv => kv.Key)
-            .Select(kv => new OverviewSeriesRow
+            .Select(kv => new OverviewSeriesRowDto
             {
                 Ts                = kv.Key,
                 ActiveClients     = kv.Value.SeenSessions?.Count ?? 0,
@@ -122,7 +123,7 @@ public sealed class OpenVpnOverviewSeriesQuery(IUnitOfWork uow) : IOpenVpnOvervi
 
         return new OverviewSeriesResponse
         {
-            Meta = new OverviewMeta
+            Meta = new OverviewMetaDto
             {
                 From        = fromUtc,
                 To          = toUtc,
@@ -131,7 +132,7 @@ public sealed class OpenVpnOverviewSeriesQuery(IUnitOfWork uow) : IOpenVpnOvervi
                 TrafficUnit = "bytes",
                 VpnServerId = vpnServerId
             },
-            Summary = new OverviewSummary
+            Summary = new OverviewSummaryDto
             {
                 TotalTrafficInBytes  = series.Sum(r => r.TrafficInBytes),
                 TotalTrafficOutBytes = series.Sum(r => r.TrafficOutBytes),
@@ -283,15 +284,15 @@ public sealed class OpenVpnOverviewSeriesQuery(IUnitOfWork uow) : IOpenVpnOvervi
         return Unshift(t);
     }
 
-    private static List<OverviewSeriesRow> FillMissingBuckets(
-        List<OverviewSeriesRow> rows,
+    private static List<OverviewSeriesRowDto> FillMissingBuckets(
+        List<OverviewSeriesRowDto> rows,
         DateTimeOffset fromUtc,
         DateTimeOffset toUtc,
         OverviewGrouping mode,
         TimeSpan offset)
     {
         var dict = rows.ToDictionary(r => r.Ts);
-        var list = new List<OverviewSeriesRow>();
+        var list = new List<OverviewSeriesRowDto>();
 
         if (mode == OverviewGrouping.Months)
         {
@@ -299,7 +300,7 @@ public sealed class OpenVpnOverviewSeriesQuery(IUnitOfWork uow) : IOpenVpnOvervi
             var end = AlignToBucketStartWithOffset(OverviewGrouping.Months, toUtc, offset);
             while (cur <= end)
             {
-                if (!dict.TryGetValue(cur, out var r)) r = new OverviewSeriesRow { Ts = cur };
+                if (!dict.TryGetValue(cur, out var r)) r = new OverviewSeriesRowDto { Ts = cur };
                 list.Add(r);
                 cur = NextBucketWithOffset(OverviewGrouping.Months, cur, offset);
             }
@@ -312,7 +313,7 @@ public sealed class OpenVpnOverviewSeriesQuery(IUnitOfWork uow) : IOpenVpnOvervi
             var end = AlignToBucketStartWithOffset(OverviewGrouping.Years, toUtc, offset);
             while (cur <= end)
             {
-                if (!dict.TryGetValue(cur, out var r)) r = new OverviewSeriesRow { Ts = cur };
+                if (!dict.TryGetValue(cur, out var r)) r = new OverviewSeriesRowDto { Ts = cur };
                 list.Add(r);
                 cur = NextBucketWithOffset(OverviewGrouping.Years, cur, offset);
             }
@@ -324,7 +325,7 @@ public sealed class OpenVpnOverviewSeriesQuery(IUnitOfWork uow) : IOpenVpnOvervi
         var endDay = AlignToBucketStartWithOffset(mode, toUtc, offset);
         while (curDay <= endDay)
         {
-            if (!dict.TryGetValue(curDay, out var r)) r = new OverviewSeriesRow { Ts = curDay };
+            if (!dict.TryGetValue(curDay, out var r)) r = new OverviewSeriesRowDto { Ts = curDay };
             list.Add(r);
             curDay = NextBucketWithOffset(mode, curDay, offset);
         }
