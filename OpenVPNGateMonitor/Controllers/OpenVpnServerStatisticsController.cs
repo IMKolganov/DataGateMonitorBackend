@@ -12,7 +12,7 @@ namespace OpenVPNGateMonitor.Controllers;
 [Authorize]
 public class OpenVpnServerStatisticsController(IVpnServerStatisticsService vpnServerStatisticsService) : BaseController
 {
-    [HttpGet("get/{vpnServerId}")]
+    [HttpGet("get/{vpnServerId:int}")]
     public async Task<ActionResult<ApiResponse<TrafficByClientsResponse>>> GetClientTrafficStats(
         [FromRoute] OpenVpnServerStatisticRequest request, CancellationToken ct)
     {
@@ -20,7 +20,7 @@ public class OpenVpnServerStatisticsController(IVpnServerStatisticsService vpnSe
             await vpnServerStatisticsService.GetTrafficGroupedByClientAsync(request.VpnServerId, ct);
         return Ok(ApiResponse<TrafficByClientsResponse>.SuccessResponse(result));
     }
-    [HttpGet("get-connections-by-location/{vpnServerId}")]
+    [HttpGet("get-connections-by-location/{vpnServerId:int}")]
     public async Task<ActionResult<ApiResponse<GeoConnectionsResponse>>> GetGroupedConnectionsByLocation(
         [FromRoute] OpenVpnServerStatisticRequest request, CancellationToken ct)
     {
@@ -28,7 +28,7 @@ public class OpenVpnServerStatisticsController(IVpnServerStatisticsService vpnSe
             await vpnServerStatisticsService.GetGroupedConnectionsByLocationAsync(request.VpnServerId, ct);
         return Ok(ApiResponse<GeoConnectionsResponse>.SuccessResponse(result));
     }
-    [HttpGet("get-average-session-duration/{vpnServerId}")]
+    [HttpGet("get-average-session-duration/{vpnServerId:int}")]
     public async Task<ActionResult<ApiResponse<AverageSessionDurationsResponse>>> GetAverageSessionDuration(
         [FromRoute] OpenVpnServerStatisticRequest request, CancellationToken ct)
     {

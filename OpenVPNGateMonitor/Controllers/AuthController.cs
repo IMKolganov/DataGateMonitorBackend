@@ -100,7 +100,7 @@ public class AuthController(IConfiguration config, IApplicationService appServic
             }));
     }
     
-    [HttpGet("public-key/{pin}")]
+    [HttpGet("public-key/{pin:int}")]
     public ActionResult<ApiResponse<string>> GetPublicKeyForMicroservice([FromRoute(Name = "pin")] int pin)
     {
         if (pin > 10000)

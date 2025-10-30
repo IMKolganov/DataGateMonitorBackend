@@ -52,7 +52,7 @@ public class OpenVpnFilesController(IOvpnFileApiService ovpnFileApiService,
         }
     }
     
-    [HttpGet("get-all/{vpnServerId}/{externalId}")]
+    [HttpGet("get-all/{vpnServerId:int}/{externalId}")]
     public async Task<ActionResult<ApiResponse<OvpnFilesResponse>>> GetAllByExternalIdAndVpnServerId(
         [FromRoute] ByExternalIdAndVpnServerIdRequest request, CancellationToken cancellationToken)
     {

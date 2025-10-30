@@ -32,7 +32,7 @@ public class OpenVpnServersController(ILogger<OpenVpnServersController> logger, 
             result.Adapt<OpenVpnServerWithStatusesResponse>()));
     }
 
-    [HttpGet("get-server-with-status/{vpnServerId:int}")]
+    [HttpGet("get-server-with-status/{VpnServerId:int}")]
     public async Task<ActionResult<ApiResponse<OpenVpnServerWithStatusResponse>>> GetServerWithStatus(
         [FromRoute] GetServerWithStatsRequest request, CancellationToken ct)
     {
@@ -52,7 +52,7 @@ public class OpenVpnServersController(ILogger<OpenVpnServersController> logger, 
             serversList.Adapt<OpenVpnServersResponse>()));
     }
 
-    [HttpGet("get/{vpnServerId:int}")]
+    [HttpGet("get/{VpnServerId:int}")]
     public async Task<ActionResult<ApiResponse<OpenVpnServerResponse>>> GetServer(
         [FromRoute] GetServerRequest request, CancellationToken ct)
     {
@@ -80,7 +80,7 @@ public class OpenVpnServersController(ILogger<OpenVpnServersController> logger, 
             updatedServer.Adapt<OpenVpnServerResponse>()));
     }
 
-    [HttpDelete("delete/{vpnServerId:int}")]
+    [HttpDelete("delete/{VpnServerId:int}")]
     //todo: fixed response
     public async Task<IActionResult> DeleteServer(
         [FromRoute] DeleteServerRequest request, CancellationToken ct)

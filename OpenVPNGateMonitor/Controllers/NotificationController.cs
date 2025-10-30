@@ -7,7 +7,7 @@ using OpenVPNGateMonitor.SharedModels.Responses;
 namespace OpenVPNGateMonitor.Controllers;
 
 [ApiController]
-[Route("api/[controller]")]
+[Route("api/notifications")]
 [Authorize]
 public class NotificationController(INotificationService notificationService) : BaseController
 {
