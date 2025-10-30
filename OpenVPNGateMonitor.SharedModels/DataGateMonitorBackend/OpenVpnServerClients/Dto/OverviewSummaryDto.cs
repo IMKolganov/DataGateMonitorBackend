@@ -1,6 +1,6 @@
-﻿namespace OpenVPNGateMonitor.DataBase.Services.Query.OpenVpnServerClientTable.Dto;
+﻿namespace OpenVPNGateMonitor.SharedModels.DataGateMonitorBackend.OpenVpnServerClients.Dto;
 
-public class OverviewSummary
+public class OverviewSummaryDto
 {
     public long TotalTrafficInBytes { get; set; }
     public long TotalTrafficOutBytes { get; set; }

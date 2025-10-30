@@ -1,8 +1,8 @@
 ﻿using System.ComponentModel.DataAnnotations;
 
-namespace OpenVPNGateMonitor.SharedModels.DataGateMonitorBackend.OpenVpnServers.Requests;
+namespace OpenVPNGateMonitor.SharedModels.DataGateMonitorBackend.OpenVpnServerClients.Requests;
 
-public class GetHistoryClientsRequest
+public class GetConnectedClientsRequest
 {
     [Required(ErrorMessage = "vpnServerId is required.")]
     [Range(1, int.MaxValue, ErrorMessage = "vpnServerId must be greater than 0.")]

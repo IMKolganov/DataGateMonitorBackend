@@ -1,6 +1,6 @@
-﻿namespace OpenVPNGateMonitor.DataBase.Services.Query.OpenVpnServerClientTable.Dto;
+﻿namespace OpenVPNGateMonitor.SharedModels.DataGateMonitorBackend.OpenVpnServerClients.Dto;
 
-public sealed class OverviewSeriesRow
+public sealed class OverviewSeriesRowDto
 {
     public DateTimeOffset Ts { get; set; }          // bucket start (UTC)
     public int ActiveClients { get; set; }          // average clients in bucket (rounded)

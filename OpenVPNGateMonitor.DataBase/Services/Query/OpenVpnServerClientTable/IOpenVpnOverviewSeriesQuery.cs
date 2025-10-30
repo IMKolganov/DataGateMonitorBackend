@@ -21,7 +21,7 @@ public interface IOpenVpnOverviewSeriesQuery
         string? externalId,
         CancellationToken ct = default);
 
-    Task<List<OverviewUserItem>> GetOverviewUsersFromSessionsAsync(
+    Task<OverviewUsersResponse> GetOverviewUsersFromSessionsAsync(
         DateTimeOffset fromUtc,
         DateTimeOffset toUtc,
         int? vpnServerId,
