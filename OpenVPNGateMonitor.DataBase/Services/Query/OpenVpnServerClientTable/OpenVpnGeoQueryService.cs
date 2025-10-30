@@ -12,7 +12,7 @@ namespace OpenVPNGateMonitor.DataBase.Services.Query.OpenVpnServerClientTable;
 /// </summary>
 public sealed class OpenVpnGeoQueryService(IUnitOfWork uow) : IOpenVpnGeoQueryService
 {
-    public async Task<IReadOnlyList<GeoPointAggDto>> GetGeoPointsAsync(
+    public async Task<OverviewPointsResponse> GetGeoPointsAsync(
         DateTimeOffset fromUtc,
         DateTimeOffset toUtc,
         int? vpnServerId = null,

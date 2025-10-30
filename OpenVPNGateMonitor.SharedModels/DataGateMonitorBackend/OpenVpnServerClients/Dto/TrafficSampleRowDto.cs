@@ -1,7 +1,7 @@
-﻿namespace OpenVPNGateMonitor.DataBase.Services.Query.OpenVpnServerClientTable.Dto;
+﻿namespace OpenVPNGateMonitor.SharedModels.DataGateMonitorBackend.OpenVpnServerClients.Dto;
 
 
-public sealed class TrafficSampleRow
+public sealed class TrafficSampleRowDto
 {
     public Guid SessionId { get; set; }
     public DateTimeOffset MeasuredAt { get; set; }

@@ -1,6 +1,6 @@
-﻿namespace OpenVPNGateMonitor.DataBase.Services.Query.OpenVpnServerClientTable.Dto;
+﻿namespace OpenVPNGateMonitor.SharedModels.DataGateMonitorBackend.OpenVpnServerClients.Dto;
 
-public class OverviewMeta
+public class OverviewMetaDto
 {
     public DateTimeOffset From { get; set; }
     public DateTimeOffset To { get; set; }

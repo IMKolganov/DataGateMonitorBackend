@@ -1,6 +1,6 @@
-﻿namespace OpenVPNGateMonitor.DataBase.Services.Query.OpenVpnServerClientTable.Dto;
+﻿namespace OpenVPNGateMonitor.SharedModels.DataGateMonitorBackend.OpenVpnServerClients.Dto;
 
-public sealed class TotalsPayload
+public sealed class TotalsPayloadDto
 {
     public long SessionsCount { get; set; }
     public long UsersCount { get; set; }
