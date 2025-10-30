@@ -10,7 +10,7 @@ using OpenVPNGateMonitor.SharedModels.Responses;
 namespace OpenVPNGateMonitor.Controllers;
 
 [ApiController]
-[Route("api/[controller]")]
+[Route("api/open-vpn-certs")]
 [Authorize]
 public class OpenVpnServerCertsController(
     ICertApiClient certApiClient,
@@ -18,11 +18,11 @@ public class OpenVpnServerCertsController(
 {
     [HttpGet("{vpnServerId}/GetAllCertificates")]
     public async Task<ActionResult<ApiResponse<GetAllCertificatesResponse>>> GetAllCertificates(
-        [FromRoute] GetAllCertificatesRequest request, CancellationToken cancellationToken)
+        [FromRoute] GetAllCertificatesRequest request, CancellationToken ct)
     {
         try
         {
-            var certificates = await certApiClient.GetAllCertificatesAsync(request.VpnServerId, cancellationToken);
+            var certificates = await certApiClient.GetAllCertificatesAsync(request.VpnServerId, ct);
 
             var mapped = certificates
                 .Select(cert => (cert, request.VpnServerId))
