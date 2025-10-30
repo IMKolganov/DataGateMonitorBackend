@@ -19,9 +19,6 @@ public class VpnServerMapping : IRegister
         config.NewConfig<OpenVpnServerClient, VpnClientInfoResponse>();
 
         config.NewConfig<List<OpenVpnServerWithStatus>, List<OpenVpnServerWithStatusResponse>>();
-        config.NewConfig<OpenVpnServerWithStatus, OpenVpnServerWithStatusResponse>()
-            .Map(dest=> dest.OpenVpnServerResponses , src => src.OpenVpnServer)
-            .Map(dest=> dest.OpenVpnServerStatusLogResponse , src => src.OpenVpnServerStatusLog);
 
         config.NewConfig<OpenVpnServerStatusLog, OpenVpnServerStatusLogResponse>()
             .Map(dest => dest.VpnServerId, src => src.VpnServerId)
@@ -32,13 +29,6 @@ public class VpnServerMapping : IRegister
             .Map(dest => dest.BytesIn, src => src.BytesIn)
             .Map(dest => dest.BytesOut, src => src.BytesOut)
             .Map(dest => dest.Version, src => src.Version);
-
-        config.NewConfig<OpenVpnServer, OpenVpnServerResponse>()
-            .Map(dest => dest.Id, src => src.Id)
-            .Map(dest => dest.ServerName, src => src.ServerName)
-            .Map(dest => dest.IsOnline, src => src.IsOnline)
-            .Map(dest => dest.IsDefault, src => src.IsDefault)
-            .Map(dest => dest.ApiUrl, src => src.ApiUrl);
 
 
 
@@ -55,16 +45,5 @@ public class VpnServerMapping : IRegister
             .Map(dest => dest.IsOnline, src => src.IsOnline)
             .Map(dest => dest.IsDefault, src => src.IsDefault)
             .Map(dest => dest.ApiUrl, src => src.ApiUrl);
-
-
-        
-        config.NewConfig<KeyValuePair<string, BackgroundServerStatus>, ServiceStatusResponse>()
-            .Map(dest => dest.VpnServerId, src => src.Value.VpnServerId)
-            .Map(dest => dest.Status, src => src.Value.Status.ToString())
-            .Map(dest => dest.CountConnectedClients, src => src.Value.CountConnectedClients)
-            .Map(dest => dest.CountSessions, src => src.Value.CountSessions)
-            .Map(dest => dest.ErrorMessage, src => src.Value.ErrorMessage)
-            .Map(dest => dest.NextRunTime, src => src.Value.NextRunTime);
-
     }
 }

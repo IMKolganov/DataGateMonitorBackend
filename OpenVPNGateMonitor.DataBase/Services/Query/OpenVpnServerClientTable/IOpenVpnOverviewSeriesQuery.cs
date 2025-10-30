@@ -1,5 +1,6 @@
 ﻿using OpenVPNGateMonitor.DataBase.Services.Query.OpenVpnServerClientTable.Dto;
 using OpenVPNGateMonitor.SharedModels.DataGateMonitorBackend.OpenVpnServerClients.Responses;
+using OpenVPNGateMonitor.SharedModels.Enums;
 
 namespace OpenVPNGateMonitor.DataBase.Services.Query.OpenVpnServerClientTable;
 

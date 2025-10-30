@@ -5,6 +5,7 @@ using OpenVPNGateMonitor.DataBase.UnitOfWork;
 using OpenVPNGateMonitor.Models;
 using OpenVPNGateMonitor.SharedModels.DataGateMonitorBackend.OpenVpnServerClients.Dto;
 using OpenVPNGateMonitor.SharedModels.DataGateMonitorBackend.OpenVpnServerClients.Responses;
+using OpenVPNGateMonitor.SharedModels.Enums;
 
 namespace OpenVPNGateMonitor.DataBase.Services.Query.OpenVpnServerClientTable;
 
@@ -142,7 +143,7 @@ public sealed class OpenVpnOverviewSeriesQuery(IUnitOfWork uow) : IOpenVpnOvervi
         };
     }
 
-    public async Task<List<OverviewUserItem>> GetOverviewUsersFromSessionsAsync(
+    public async Task<OverviewUsersResponse> GetOverviewUsersFromSessionsAsync(
         DateTimeOffset fromUtc,
         DateTimeOffset toUtc,
         int? vpnServerId,
@@ -231,7 +232,7 @@ public sealed class OpenVpnOverviewSeriesQuery(IUnitOfWork uow) : IOpenVpnOvervi
             .ThenBy(x => x.ExternalId)
             .ToList();
 
-        return result;
+        return new OverviewUsersResponse() { OverviewUserItems = result };
     }
 
     /* ---------- internal helpers/types ---------- */

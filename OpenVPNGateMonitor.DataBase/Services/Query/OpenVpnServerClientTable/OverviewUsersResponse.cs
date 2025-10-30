@@ -4,5 +4,5 @@ namespace OpenVPNGateMonitor.DataBase.Services.Query.OpenVpnServerClientTable;
 
 public class OverviewUsersResponse
 {
-    private List<OverviewUserItem> OverviewUserItems { get; set; } = new();
+    public List<OverviewUserItem> OverviewUserItems { get; set; } = new();
 }

@@ -11,6 +11,8 @@ using OpenVPNGateMonitor.Models;
 using OpenVPNGateMonitor.Services.Api.Auth.Interfaces;
 using OpenVPNGateMonitor.Services.GeoLite.Interfaces;
 using OpenVPNGateMonitor.SharedModels.DataGateCertManager.VpnEvent.Requests;
+using OpenVPNGateMonitor.SharedModels.DataGateMonitorBackend.OpenVpnServerEvent.Dto;
+using OpenVPNGateMonitor.SharedModels.DataGateMonitorBackend.OpenVpnServerEvent.Responses;
 
 namespace OpenVPNGateMonitor.Services.DataGateCertManager.Events;
 
@@ -41,25 +43,31 @@ public class OpenVpnEventClient(
     public async Task StartListeningAsync(CancellationToken cancellationToken)
     {
         await EnsureConnectionAsync(cancellationToken);
-        var s = GetStatus();
-        logger.LogInformation(
-            "OpenVpnEventClient started. Status={State}, ConnId={ConnId}, Url={Url}, Host={Host}, Port={Port}",
-            s.State, s.ConnectionId, s.Url, s.Host, s.Port);
+        // var s = GetStatus();
+        // logger.LogInformation(
+        //     "OpenVpnEventClient started. Status={State}, ConnId={ConnId}, Url={Url}, Host={Host}, Port={Port}",
+        //     s.State, s.ConnectionId, s.Url, s.Host, s.Port);
     }
 
-    public  ConnectionStatusResponse GetStatus()
-        => new(
-            ServerId: _serverId,
-            Url: _fullUrl,
-            Host: _host,
-            Port: _port,
-            State: _connection?.State ?? HubConnectionState.Disconnected,
-            ConnectionId: _connection?.ConnectionId,
-            LastStateChangedUtc: _lastStateChangedUtc,
-            LastReconnectedUtc: _lastReconnectedUtc,
-            LastClosedUtc: _lastClosedUtc,
-            LastError: _lastError
-        );
+    public ConnectionStatusResponse GetStatus()
+    {
+        return new ConnectionStatusResponse()
+        {
+            ConnectionStatus = new ConnectionStatusDto()
+            {
+                ServerId = _serverId,
+                Url = _fullUrl,
+                Host = _host,
+                Port = _port,
+                // State = _connection?.State ?? HubConnectionState.Disconnected, //todo: think about it
+                ConnectionId = _connection?.ConnectionId,
+                LastStateChangedUtc = _lastStateChangedUtc,
+                LastReconnectedUtc = _lastReconnectedUtc,
+                LastClosedUtc = _lastClosedUtc,
+                LastError = _lastError
+            }
+        };
+    }
 
     private void InitTargetUrl()
     {

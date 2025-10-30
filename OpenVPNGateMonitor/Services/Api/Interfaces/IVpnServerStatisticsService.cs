@@ -4,10 +4,10 @@ namespace OpenVPNGateMonitor.Services.Api.Interfaces;
 
 public interface IVpnServerStatisticsService
 {
-    Task<List<TrafficByClientResponse>> GetTrafficGroupedByClientAsync(
+    Task<TrafficByClientsResponse> GetTrafficGroupedByClientAsync(
         int vpnServerId, CancellationToken cancellationToken);
-    Task<List<GeoConnectionsResponse>> GetGroupedConnectionsByLocationAsync(
+    Task<GeoConnectionsResponse> GetGroupedConnectionsByLocationAsync(
         int vpnServerId, CancellationToken cancellationToken);
-    Task<List<AverageSessionDurationResponse>> GetAverageSessionDurationAsync(
+    Task<AverageSessionDurationsResponse> GetAverageSessionDurationAsync(
         int vpnServerId, CancellationToken cancellationToken);
 }
