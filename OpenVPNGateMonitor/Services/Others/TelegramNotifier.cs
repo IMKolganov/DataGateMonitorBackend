@@ -3,20 +3,15 @@ using OpenVPNGateMonitor.Services.TelegramBot.Interfaces;
 
 namespace OpenVPNGateMonitor.Services.Others;
 
-public class TelegramNotifier : INotifier
+public class TelegramNotifier(
+    ITelegramUserService telegramUserService,
+    ILogger<TelegramNotifier> logger)
+    : INotifier
 {
     public string Channel => "telegram";
 
-    private readonly ITelegramUserService _telegramUserService;
-    private readonly ILogger<TelegramNotifier> _logger;
-
-    public TelegramNotifier(
-        ITelegramUserService telegramUserService,
-        ILogger<TelegramNotifier> logger)
-    {
-        _telegramUserService = telegramUserService;
-        _logger = logger;
-    }
+    private readonly ITelegramUserService _telegramUserService = telegramUserService;
+    private readonly ILogger<TelegramNotifier> _logger = logger;
 
     public Task SendAsync(Notification notification, int adminUserId, CancellationToken ct)
     {
