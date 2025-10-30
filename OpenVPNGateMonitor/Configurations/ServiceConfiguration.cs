@@ -1,5 +1,8 @@
-﻿using OpenVPNGateMonitor.Services.Api;
+﻿using OpenVPNGateMonitor.DataBase.Services.Query.UserCredentialTable;
+using OpenVPNGateMonitor.Services.Api;
 using OpenVPNGateMonitor.Services.Api.Interfaces;
+using OpenVPNGateMonitor.Services.Auth;
+using OpenVPNGateMonitor.Services.Auth.Interfaces;
 using OpenVPNGateMonitor.Services.BackgroundServices;
 using OpenVPNGateMonitor.Services.BackgroundServices.Interfaces;
 using OpenVPNGateMonitor.Services.DataGateCertManager;
@@ -11,6 +14,7 @@ using OpenVPNGateMonitor.Services.Helpers.Interfaces;
 using OpenVPNGateMonitor.Services.OpenVpnManagementInterfaces;
 using OpenVPNGateMonitor.Services.OpenVpnManagementInterfaces.Interfaces;
 using OpenVPNGateMonitor.Services.Others;
+using OpenVPNGateMonitor.Services.QuotaPlans;
 using OpenVPNGateMonitor.Services.Users;
 using OpenVPNGateMonitor.Services.Users.Interfaces;
 
@@ -61,6 +65,11 @@ public static class ServiceConfiguration
         services.AddScoped<IExternalIpAddressService, ExternalIpAddressService>();
 
         services.AddScoped<IUserService, UserService>();
+        
+        services.AddScoped<IQuotaPlanService, QuotaPlanService>();
+        
+        services.AddScoped<IUserAuthService, UserAuthService>();
+        services.AddScoped<IUserCredentialQueryService, UserCredentialQueryService>();
         
         #region DataGateCertManager
 

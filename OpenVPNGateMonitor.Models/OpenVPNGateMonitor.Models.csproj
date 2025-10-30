@@ -9,7 +9,7 @@
     <ItemGroup>
       <PackageReference Include="Microsoft.AspNetCore.Diagnostics.HealthChecks" Version="2.2.0" />
       <PackageReference Include="Newtonsoft.Json" Version="13.0.4" />
-      <PackageReference Include="OpenVPNGateMonitor.SharedModels" Version="1.0.56" />
+      <PackageReference Include="OpenVPNGateMonitor.SharedModels" Version="1.0.57" />
     </ItemGroup>
 
 </Project>
