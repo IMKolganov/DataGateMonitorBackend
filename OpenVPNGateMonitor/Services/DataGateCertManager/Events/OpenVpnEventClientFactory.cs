@@ -42,10 +42,10 @@ public class OpenVpnEventClientFactory(IServiceProvider rootProvider) : IOpenVpn
     public IReadOnlyCollection<OpenVpnEventClient> GetAllClients()
         => _clientCache.Values.ToArray();
 
-    public IReadOnlyCollection<OpenVpnEventConnectionStatus> GetAllClientStatuses()
+    public IReadOnlyCollection<ConnectionStatusResponse> GetAllClientStatuses()
         => _clientCache.Values.Select(c => c.GetStatus()).ToArray();
 
-    public bool TryGetClientStatus(int serverId, out OpenVpnEventConnectionStatus? status)
+    public bool TryGetClientStatus(int serverId, out ConnectionStatusResponse? status)
     {
         if (_clientCache.TryGetValue(serverId, out var client))
         {

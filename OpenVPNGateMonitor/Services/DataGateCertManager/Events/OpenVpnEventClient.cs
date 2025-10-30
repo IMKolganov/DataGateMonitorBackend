@@ -47,7 +47,7 @@ public class OpenVpnEventClient(
             s.State, s.ConnectionId, s.Url, s.Host, s.Port);
     }
 
-    public  OpenVpnEventConnectionStatus GetStatus()
+    public  ConnectionStatusResponse GetStatus()
         => new(
             ServerId: _serverId,
             Url: _fullUrl,

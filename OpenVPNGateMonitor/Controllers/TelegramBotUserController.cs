@@ -9,11 +9,11 @@ using OpenVPNGateMonitor.SharedModels.DataGateMonitorBackend.TelegramBotUser.Res
 namespace OpenVPNGateMonitor.Controllers;
 
 [ApiController]
-[Route("api/[controller]")]
+[Route("api/tgbot-users")]
 [Authorize]
 public class TelegramBotUserController(ITelegramUserService telegramUserService) : ControllerBase
 {
-    [HttpGet("UserExists/{telegramId}")]
+    [HttpGet("check-exists/{telegramId}")]
     public async Task<ActionResult<ApiResponse<bool>>> UserExists([FromRoute] TelegramUserActionRequest request, 
         CancellationToken cancellationToken)
     {
@@ -21,7 +21,7 @@ public class TelegramBotUserController(ITelegramUserService telegramUserService)
         return Ok(ApiResponse<bool>.SuccessResponse(user != null));
     }
 
-    [HttpGet("GetUser/{telegramId}")]
+    [HttpGet("get/{telegramId}")]
     public async Task<ActionResult<ApiResponse<UserRequest>>> GetUser(
         [FromRoute] UserRequest request, CancellationToken cancellationToken)
     {
@@ -30,14 +30,14 @@ public class TelegramBotUserController(ITelegramUserService telegramUserService)
     }
 
     
-    [HttpGet("GetAdmins")]
+    [HttpGet("get-admins")]
     public async Task<ActionResult<ApiResponse<GetAdminsResponse>>> GetAdmins(CancellationToken cancellationToken)
     {
         var telegramBotUsers = await telegramUserService.GetAdminsAsync(cancellationToken);
         return Ok(ApiResponse<GetAdminsResponse>.SuccessResponse(telegramBotUsers.Adapt<GetAdminsResponse>()));
     }
     
-    [HttpGet("GetAllUsers")]
+    [HttpGet("get-all")]
     public async Task<ActionResult<ApiResponse<GetAllTelegramUsersResponse>>> GetAllUsers(
         CancellationToken cancellationToken)
     {
@@ -46,7 +46,7 @@ public class TelegramBotUserController(ITelegramUserService telegramUserService)
             telegramBotUsers.Adapt<GetAllTelegramUsersResponse>()));
     }
     
-    [HttpPost("BlockUser")]
+    [HttpPost("block")]
     public async Task<ActionResult<ApiResponse<bool>>> BlockUser([FromBody] TelegramUserActionRequest request,
         CancellationToken cancellationToken)
     {
@@ -54,7 +54,7 @@ public class TelegramBotUserController(ITelegramUserService telegramUserService)
         return Ok(ApiResponse<bool>.SuccessResponse(result));
     }
 
-    [HttpPost("UnblockUser")]
+    [HttpPost("unblock")]
     public async Task<ActionResult<ApiResponse<bool>>> UnblockUser([FromBody] TelegramUserActionRequest request, 
         CancellationToken cancellationToken)
     {
@@ -62,7 +62,7 @@ public class TelegramBotUserController(ITelegramUserService telegramUserService)
         return Ok(ApiResponse<bool>.SuccessResponse(result));
     }
     
-    [HttpPost("SetAdmin")]
+    [HttpPost("set-admin")]
     public async Task<ActionResult<ApiResponse<bool>>> SetAdmin([FromBody] TelegramUserActionRequest request,
         CancellationToken cancellationToken)
     {
@@ -70,7 +70,7 @@ public class TelegramBotUserController(ITelegramUserService telegramUserService)
         return Ok(ApiResponse<bool>.SuccessResponse(result));
     }
 
-    [HttpPost("UnsetAdmin")]
+    [HttpPost("unset-admin")]
     public async Task<ActionResult<ApiResponse<bool>>> UnsetAdmin([FromBody] TelegramUserActionRequest request,
         CancellationToken cancellationToken)
     {

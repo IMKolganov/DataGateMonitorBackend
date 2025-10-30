@@ -28,10 +28,10 @@ public class OpenVpnServerOvpnFileConfigController(
     
     [HttpPost("add-update")]
     public async Task<ActionResult<ApiResponse<OvpnFileConfigResponse>>> AddOrUpdateOvpnFileConfig(
-        [FromBody] AddOrUpdateOvpnFileConfigRequest request, CancellationToken cancellationToken)
+        [FromBody] AddOrUpdateOvpnFileConfigRequest request, CancellationToken ct)
     {
         var config = await openVpnServerOvpnFileConfigService
-            .AddOrUpdateOpenVpnServerOvpnFileConfigByServerId(request.Adapt<OpenVpnServerOvpnFileConfig>(), cancellationToken);
+            .AddOrUpdateOpenVpnServerOvpnFileConfigByServerId(request.Adapt<OpenVpnServerOvpnFileConfig>(), ct);
 
         return Ok(ApiResponse<OvpnFileConfigResponse>.SuccessResponse(config.Adapt<OvpnFileConfigResponse>()));
     }

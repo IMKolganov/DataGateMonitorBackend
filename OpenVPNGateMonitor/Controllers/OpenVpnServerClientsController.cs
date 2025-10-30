@@ -2,9 +2,8 @@
 using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Mvc;
 using OpenVPNGateMonitor.DataBase.Services.Query.OpenVpnServerClientTable;
-using OpenVPNGateMonitor.DataBase.Services.Query.OpenVpnServerClientTable.Dto;
-using OpenVPNGateMonitor.SharedModels.DataGateMonitorBackend.OpenVpnServers.Requests;
-using OpenVPNGateMonitor.SharedModels.DataGateMonitorBackend.OpenVpnServers.Responses;
+using OpenVPNGateMonitor.SharedModels.DataGateMonitorBackend.OpenVpnServerClients.Requests;
+using OpenVPNGateMonitor.SharedModels.DataGateMonitorBackend.OpenVpnServerClients.Responses;
 using OpenVPNGateMonitor.SharedModels.Responses;
 
 namespace OpenVPNGateMonitor.Controllers;
@@ -41,62 +40,64 @@ public class OpenVpnServerClientsController(IOpenVpnServerClientOverviewQuery op
             result.Adapt<ConnectedClientsResponse>()));
     }
     
-    
-    
     [HttpGet("overview/series")]
     public async Task<ActionResult<ApiResponse<OverviewSeriesResponse>>> GetOverview(
-        [FromQuery] DateTimeOffset from,
-        [FromQuery] DateTimeOffset to,
-        [FromQuery] OverviewGrouping grouping = OverviewGrouping.Auto,
-        [FromQuery] int? vpnServerId = null,
-        [FromQuery] string? externalId = null,
+        [FromQuery] GetOverviewSeriesRequest request,
         CancellationToken ct = default)
     {
         var result = await openVpnOverviewSeriesQuery.GetOverviewSeriesFromSessionsAsync(
-            from, to, grouping, vpnServerId, externalId, ct);
+            request.From,
+            request.To,
+            request.Grouping,
+            request.VpnServerId,
+            request.ExternalId,
+            ct);
 
         return Ok(ApiResponse<OverviewSeriesResponse>.SuccessResponse(result));
     }
-    
+
     [HttpGet("overview/summary")]
     public async Task<ActionResult<ApiResponse<OverviewTotalsResponse>>> GetOverviewSummary(
-        [FromQuery] DateTimeOffset from,
-        [FromQuery] DateTimeOffset to,
-        [FromQuery] int? vpnServerId = null,
-        [FromQuery] string? externalId = null,
+        [FromQuery] GetOverviewSummaryRequest request,
         CancellationToken ct = default)
     {
         var result = await openVpnOverviewTotalsQuery.GetOverviewTotalsAsync(
-            from, to, vpnServerId, externalId, ct);
-        
+            request.From,
+            request.To,
+            request.VpnServerId,
+            request.ExternalId,
+            ct);
+
         return Ok(ApiResponse<OverviewTotalsResponse>.SuccessResponse(result));
     }
     
     [HttpGet("overview/points")]
     public async Task<ActionResult<ApiResponse<OverviewPointsResponse>>> GetPoints(
-        [FromQuery] DateTimeOffset from,
-        [FromQuery] DateTimeOffset to,
-        [FromQuery] int? vpnServerId = null,
-        [FromQuery] string? externalId = null,
-        [FromQuery] bool onlyWithCoordinates = true,
+        [FromQuery] GetOverviewPointsRequest request,
         CancellationToken ct = default)
     {
-        var points =
-            await openVpnGeoQueryService.GetGeoPointsAsync(from, to, vpnServerId, externalId, onlyWithCoordinates, ct);
+        var points = await openVpnGeoQueryService.GetGeoPointsAsync(
+            request.From,
+            request.To,
+            request.VpnServerId,
+            request.ExternalId,
+            request.OnlyWithCoordinates,
+            ct);
 
         return Ok(ApiResponse<OverviewPointsResponse>.SuccessResponse(points));
     }
     
     [HttpGet("overview/users")]
     public async Task<ActionResult<ApiResponse<OverviewUsersResponse>>> GetOverviewUsers(
-        [FromQuery] DateTimeOffset from,
-        [FromQuery] DateTimeOffset to,
-        [FromQuery] int? vpnServerId = null,
-        [FromQuery] string? externalId = null,
+        [FromQuery] GetOverviewUsersRequest request,
         CancellationToken ct = default)
     {
-        var users = await openVpnOverviewSeriesQuery
-            .GetOverviewUsersFromSessionsAsync(from, to, vpnServerId, externalId, ct);
+        var users = await openVpnOverviewSeriesQuery.GetOverviewUsersFromSessionsAsync(
+            request.From,
+            request.To,
+            request.VpnServerId,
+            request.ExternalId,
+            ct);
 
         return Ok(ApiResponse<OverviewUsersResponse>.SuccessResponse(users));
     }

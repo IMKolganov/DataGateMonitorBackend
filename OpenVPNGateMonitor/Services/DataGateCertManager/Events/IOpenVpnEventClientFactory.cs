@@ -8,6 +8,6 @@ public interface IOpenVpnEventClientFactory
     Task<OpenVpnEventClient?> TryCreateByServerIdAsync(int serverId, CancellationToken cancellationToken);
     bool Remove(int serverId);
     IReadOnlyCollection<OpenVpnEventClient> GetAllClients();
-    IReadOnlyCollection<OpenVpnEventConnectionStatus> GetAllClientStatuses();
-    bool TryGetClientStatus(int serverId, out OpenVpnEventConnectionStatus? status);
+    IReadOnlyCollection<ConnectionStatusResponse> GetAllClientStatuses();
+    bool TryGetClientStatus(int serverId, out ConnectionStatusResponse? status);
 }

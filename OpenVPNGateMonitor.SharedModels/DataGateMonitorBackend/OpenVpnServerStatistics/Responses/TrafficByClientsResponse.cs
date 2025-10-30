@@ -2,7 +2,7 @@
 
 namespace OpenVPNGateMonitor.SharedModels.DataGateMonitorBackend.OpenVpnServerStatistics.Responses;
 
-public class GeoConnectionsResponse
+public class TrafficByClientsResponse
 {
-    private List<GeoConnectionDto> GeoConnections { get; set; } = new();
+    private List<ClientTrafficDto> ClientTraffics { get; set; } = new();
 }

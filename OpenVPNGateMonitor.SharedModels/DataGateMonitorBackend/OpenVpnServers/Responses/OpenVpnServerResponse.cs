@@ -1,12 +1,8 @@
-﻿namespace OpenVPNGateMonitor.SharedModels.DataGateMonitorBackend.OpenVpnServers.Responses;
+﻿using OpenVPNGateMonitor.SharedModels.DataGateMonitorBackend.OpenVpnServers.Dto;
+
+namespace OpenVPNGateMonitor.SharedModels.DataGateMonitorBackend.OpenVpnServers.Responses;
 
 public class OpenVpnServerResponse
 {
-    public int Id { get; set; }
-    public string ServerName { get; set; } = string.Empty;
-    public bool IsOnline { get; set; } = false;
-    public bool IsDefault { get; set; } = false;
-    public string ApiUrl { get; set; } = string.Empty;
-    public DateTimeOffset CreateDate { get; set; }
-    public DateTimeOffset LastUpdate { get; set; }
+    public OpenVpnServerDto OpenVpnServer { get; set; } = new();
 }

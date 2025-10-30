@@ -9,12 +9,12 @@ using OpenVPNGateMonitor.SharedModels.Responses;
 namespace OpenVPNGateMonitor.Controllers;
 
 [ApiController]
-[Route("api/[controller]")]
+[Route("api/tgbot-incoming-message-logs")]
 [Authorize]
 public class TelegramBotIncomingMessageLogController(
     IIncomingMessageLogService incomingMessageLogService) : ControllerBase
 {
-    [HttpPost("AddMessage")]
+    [HttpPost("add")]
     public async Task<ActionResult<ApiResponse<AddMessageResponse>>> AddMessage(
         [FromBody] AddMessageRequest request,
         CancellationToken cancellationToken)
@@ -24,7 +24,7 @@ public class TelegramBotIncomingMessageLogController(
         return Ok(ApiResponse<AddMessageResponse>.SuccessResponse(response));
     }
     
-    [HttpGet("GetAllMessages")]
+    [HttpGet("get-all")]
     public async Task<ActionResult<ApiResponse<GetAllMessagesResponse>>> GetAllMessages(
         CancellationToken cancellationToken)
     {
@@ -34,7 +34,7 @@ public class TelegramBotIncomingMessageLogController(
             response.Adapt<GetAllMessagesResponse>()));
     }
     
-    [HttpGet("GetByTelegramUserId")]
+    [HttpGet("get-by-telegram-userid")]
     public async Task<ActionResult<ApiResponse<GetByTelegramIdMessagesResponse>>> GetAllMessages(
         [FromBody] GetAllByTelegramIdMessagesRequest request,
         CancellationToken cancellationToken)
@@ -46,7 +46,7 @@ public class TelegramBotIncomingMessageLogController(
             response.Adapt<GetByTelegramIdMessagesResponse>()));
     }
     
-    [HttpGet("GetById")]
+    [HttpGet("get-by-id")]
     public async Task<ActionResult<ApiResponse<GetByIdMessageResponse>>> GetById(
         [FromBody] GetByIdMessageRequest request,
         CancellationToken cancellationToken)

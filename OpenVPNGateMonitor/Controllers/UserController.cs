@@ -9,12 +9,11 @@ using OpenVPNGateMonitor.SharedModels.Responses;
 namespace OpenVPNGateMonitor.Controllers;
 
 [ApiController]
-[Route("api/[controller]")]
+[Route("api/users")]
 [Authorize]
 public class UserController(IUserService userService) : BaseController
 {
-    
-    [HttpPost("RegisterUserFromTgBot")]
+    [HttpPost("register-from-tgbot")]
     public async Task<ActionResult<ApiResponse<UsersResponse>>> RegisterUser([FromBody] RegisterUserFromTgBotRequest request, 
         CancellationToken cancellationToken)
     {
@@ -23,27 +22,26 @@ public class UserController(IUserService userService) : BaseController
         
         return Ok(ApiResponse<UsersResponse>.SuccessResponse(response.Adapt<UsersResponse>()));
     }
-    [HttpGet("GetAllUsers")]
+    [HttpGet("get-all")]
     public async Task<ActionResult<ApiResponse<GetAllUsersResponse>>> GetAllUsers(CancellationToken cancellationToken)
     {
         var response = await userService.GetAllUsers(cancellationToken);
         return Ok(ApiResponse<GetAllUsersResponse>.SuccessResponse(response.Adapt<GetAllUsersResponse>()));
     }
     
-    [HttpGet("GetUserById")]
-    public async Task<ActionResult<ApiResponse<UsersResponse>>> GetUserById([FromQuery]GetUserByIdRequest request, 
+    [HttpGet("get-by-id/{id:int}")]
+    public async Task<ActionResult<ApiResponse<UsersResponse>>> GetUserById([FromRoute]GetUserByIdRequest request, 
         CancellationToken cancellationToken)
     {
         var telegramBotUsers = await userService.GetUserById(request, cancellationToken);
         return Ok(ApiResponse<UsersResponse>.SuccessResponse(telegramBotUsers.Adapt<UsersResponse>()));
     }
     
-    [HttpGet("GetUserByExternalId")]
+    [HttpGet("get-by-external-id/{externalId:int}")]
     public async Task<ActionResult<ApiResponse<UsersResponse>>> GetUserByExternalId(
-        [FromQuery]GetUserByExternalIdRequest request, CancellationToken cancellationToken)
+        [FromRoute]GetUserByExternalIdRequest request, CancellationToken cancellationToken)
     {
         var telegramBotUsers = await userService.GetUserByExternalId(request, cancellationToken);
         return Ok(ApiResponse<UsersResponse>.SuccessResponse(telegramBotUsers.Adapt<UsersResponse>()));
     }
-    
 }
