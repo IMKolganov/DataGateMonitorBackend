@@ -1,5 +1,4 @@
-﻿using OpenVPNGateMonitor.Controllers.OpenVpnFiles;
-using OpenVPNGateMonitor.Models;
+﻿using OpenVPNGateMonitor.Models;
 using OpenVPNGateMonitor.SharedModels.DataGateMonitorBackend.OpenVpnFiles.Requests;
 using OpenVPNGateMonitor.SharedModels.DataGateMonitorBackend.OpenVpnFiles.Responses;
 
@@ -22,14 +21,14 @@ public interface IOvpnFileApiService
         GetAllByExternalIdAndVpnServerIdWithTokenAsync(int vpnServerId, string externalId, 
             CancellationToken cancellationToken, bool isRevoked = false);
     
-    Task<IssuedOvpnFile> AddOvpnFileAsync(AddClientOvpnFileRequest request, 
+    Task<IssuedOvpnFile> AddOvpnFileAsync(AddFileRequest request, 
         CancellationToken cancellationToken);
-    Task<(IssuedOvpnFile File, IssuedOvpnFileToken Token)> AddOvpnFileWithTokenAsync(AddClientOvpnFileRequest request, 
+    Task<(IssuedOvpnFile File, IssuedOvpnFileToken Token)> AddOvpnFileWithTokenAsync(AddFileRequest request, 
         CancellationToken cancellationToken);
     
     Task<IssuedOvpnFile> RevokeOvpnFileAsync(RevokeFileRequest request,
         CancellationToken cancellationToken);
 
-    Task<DownloadOvpnFileResponse> DownloadOvpnFileAsync(DownloadClientOvpnFileRequest request,
+    Task<DownloadFileResponse> DownloadOvpnFileAsync(DownloadFileRequest request,
         CancellationToken cancellationToken, bool isRevoked = false);
 }

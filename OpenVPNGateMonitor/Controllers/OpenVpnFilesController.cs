@@ -3,6 +3,7 @@ using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Mvc;
 using OpenVPNGateMonitor.Services.DataGateCertManager.Interfaces;
 using OpenVPNGateMonitor.SharedModels.DataGateMonitorBackend.OpenVpnFiles.Requests;
+using OpenVPNGateMonitor.SharedModels.DataGateMonitorBackend.OpenVpnFiles.Responses;
 using OpenVPNGateMonitor.SharedModels.Responses;
 
 namespace OpenVPNGateMonitor.Controllers;
@@ -137,7 +138,7 @@ public class OpenVpnFilesController(
 
     [HttpPost("add")]
     public async Task<ActionResult<ApiResponse<OvpnFileResponse>>> AddFile(
-        [FromBody] AddClientOvpnFileRequest request, CancellationToken cancellationToken)
+        [FromBody] AddFileRequest request, CancellationToken cancellationToken)
     {
         try
         {
@@ -155,7 +156,7 @@ public class OpenVpnFilesController(
     
     [HttpPost("add-with-token")]
     public async Task<ActionResult<ApiResponse<OvpnFileWithTokenResponse>>> AddFileWithToken(
-        [FromBody] AddClientOvpnFileRequest request, CancellationToken cancellationToken)
+        [FromBody] AddFileRequest request, CancellationToken cancellationToken)
     {
         try
         {
@@ -193,7 +194,7 @@ public class OpenVpnFilesController(
 
     [HttpPost("download-file")]
     public async Task<ActionResult<ApiResponse<DownloadFileResponse>>> DownloadFile(
-        [FromBody] DownloadClientOvpnFileRequest request, CancellationToken cancellationToken)
+        [FromBody] DownloadFileRequest request, CancellationToken cancellationToken)
     {
         try
         {

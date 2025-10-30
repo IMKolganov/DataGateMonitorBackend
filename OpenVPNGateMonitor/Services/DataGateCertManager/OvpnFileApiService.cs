@@ -1,6 +1,5 @@
 ﻿using System.Text.RegularExpressions;
 using Mapster;
-using OpenVPNGateMonitor.Controllers.OpenVpnFiles;
 using OpenVPNGateMonitor.DataBase.Services.Command;
 using OpenVPNGateMonitor.DataBase.Services.Query.IssuedOvpnFileTable;
 using OpenVPNGateMonitor.DataBase.Services.Query.IssuedOvpnFileTokenTable;
@@ -8,11 +7,11 @@ using OpenVPNGateMonitor.DataBase.Services.Query.OpenVpnServerOvpnFileConfigTabl
 using OpenVPNGateMonitor.DataBase.Services.Query.OpenVpnServerTable;
 using OpenVPNGateMonitor.Models;
 using OpenVPNGateMonitor.Services.DataGateCertManager.Interfaces;
-using OpenVPNGateMonitor.Services.Others.Notifications;
 using OpenVPNGateMonitor.Services.Others.Notifications.OvpnFileApi;
 using OpenVPNGateMonitor.SharedModels.DataGateCertManager.OvpnFile.Requests;
 using OpenVPNGateMonitor.SharedModels.DataGateMonitorBackend.OpenVpnFiles.Requests;
 using OpenVPNGateMonitor.SharedModels.DataGateMonitorBackend.OpenVpnFiles.Responses;
+using OpenVPNGateMonitor.SharedModels.DataGateMonitorBackend.OpenVpnFiles.Responses.Dto;
 
 namespace OpenVPNGateMonitor.Services.DataGateCertManager;
 
@@ -126,7 +125,7 @@ public class OvpnFileApiService(IOvpnFileApiClient ovpnFileApiClient,
     }
 
     public async Task<(IssuedOvpnFile File, IssuedOvpnFileToken Token)> AddOvpnFileWithTokenAsync(
-        AddClientOvpnFileRequest request,
+        AddFileRequest request,
         CancellationToken cancellationToken)
     {
         var issuedOvpnFile = await AddOvpnFileAsync(request, cancellationToken);
@@ -140,7 +139,7 @@ public class OvpnFileApiService(IOvpnFileApiClient ovpnFileApiClient,
         return (issuedOvpnFile, token);
     }
     
-    public async Task<IssuedOvpnFile> AddOvpnFileAsync(AddClientOvpnFileRequest request, 
+    public async Task<IssuedOvpnFile> AddOvpnFileAsync(AddFileRequest request, 
         CancellationToken ct)
     {
         logger.LogInformation("Attempting to add new OVPN file: CommonName={CommonName}, VpnServerId={VpnServerId}",
@@ -231,8 +230,8 @@ public class OvpnFileApiService(IOvpnFileApiClient ovpnFileApiClient,
             request.CommonName, ct) ?? throw new InvalidOperationException("Issued OVPN file not found.");
     }
 
-    public async Task<DownloadOvpnFileResponse> DownloadOvpnFileAsync(
-        DownloadClientOvpnFileRequest request,
+    public async Task<DownloadFileResponse> DownloadOvpnFileAsync(
+        DownloadFileRequest request,
         CancellationToken cancellationToken, bool isRevoked = false)
     {
         logger.LogInformation("Start downloading OVPN file: VpnServerId={VpnServerId}, IssuedOvpnFileId={IssuedOvpnFileId}",
@@ -266,12 +265,9 @@ public class OvpnFileApiService(IOvpnFileApiClient ovpnFileApiClient,
             issuedOvpnFile.VpnServerId, issuedOvpnFile.FileName, issuedOvpnFile.ExternalId,
             isRevoked, /* todo: user ID*/ cancellationToken);
 
-        return new DownloadOvpnFileResponse
+        return new DownloadFileResponse
         {
-            IssuedOvpnFileId = request.IssuedOvpnFileId,
-            FileName = result.FileName,
-            FullPath = issuedOvpnFile.FilePath,
-            CreatedAtUtc = DateTimeOffset.UtcNow,
+            IssuedOvpn = issuedOvpnFile.Adapt<IssuedOvpnFileDto>(),
             FileSizeBytes = result.Content.LongLength,
             Content = result.Content
         };
