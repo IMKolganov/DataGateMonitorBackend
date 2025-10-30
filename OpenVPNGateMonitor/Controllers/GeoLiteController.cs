@@ -20,7 +20,7 @@ public class GeoLiteController(IGeoLiteQueryService geoLiteQueryService,
         return Ok(ApiResponse<GetDatabasePathResponse>.SuccessResponse(response));
     }
     
-    [HttpGet("get-geo-info/{ipAddress:ipaddress}")]
+    [HttpGet("get-geo-info/{ipAddress}")]
     public async Task<ActionResult<ApiResponse<GetGeoInfoResponse>>> GetGeoInfo([FromRoute] GetGeoInfoRequest request,
         CancellationToken cancellationToken)
     {

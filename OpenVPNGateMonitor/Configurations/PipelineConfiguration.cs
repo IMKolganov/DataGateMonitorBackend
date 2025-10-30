@@ -43,10 +43,15 @@ public static class PipelineConfiguration
         if (app.Environment.IsDevelopment())
         {
             // app.MapOpenApi();
-            app.UseSwagger();
-            app.UseSwaggerUI(c =>
+            app.UseSwagger(o =>
             {
-                c.SwaggerEndpoint("/swagger/v1/swagger.json", "OpenVPN Gate Monitor API v1");
+                // IMPORTANT: allow both .json and .yaml on the same route
+                o.RouteTemplate = "swagger/{documentName}/swagger.{json|yaml}";
+            });
+            app.UseSwaggerUI(o =>
+            {
+                o.SwaggerEndpoint("/swagger/v1/swagger.json", "My API v1");
+                o.RoutePrefix = "swagger";
             });
         }
 

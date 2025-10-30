@@ -12,7 +12,7 @@ public class BaseController : ControllerBase
     {
     }
 
-    [HttpGet]
+    [HttpGet("healthcheck")]
     [ProducesResponseType(typeof(ApiResponse<string>), StatusCodes.Status200OK)]
     [AllowAnonymous]
     public ActionResult<ApiResponse<string>> Healthcheck()

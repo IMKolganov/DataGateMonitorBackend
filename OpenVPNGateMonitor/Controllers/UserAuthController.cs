@@ -7,7 +7,7 @@ using OpenVPNGateMonitor.Services.Auth.Interfaces;
 
 namespace OpenVPNGateMonitor.Controllers;
 
-[Route("[controller]")]
+[Route("api/userauth")]
 [ApiController]
 public sealed class UserAuthController(IUserAuthService userAuth, IUserQueryService users) : BaseController
 {

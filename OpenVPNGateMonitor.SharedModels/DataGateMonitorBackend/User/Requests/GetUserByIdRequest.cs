@@ -1,9 +1,11 @@
 ﻿using System.ComponentModel.DataAnnotations;
+using Microsoft.AspNetCore.Mvc;
 
 namespace OpenVPNGateMonitor.SharedModels.DataGateMonitorBackend.User.Requests;
 
 public class GetUserByIdRequest
 {
-    [Required(ErrorMessage = "Id is required.")]
+    [Required(ErrorMessage = "id is required.")]
+    [FromRoute(Name = "id") ]
     public int Id { get; set; }
 }
