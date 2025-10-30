@@ -11,9 +11,8 @@ namespace OpenVPNGateMonitor.Controllers;
 [ApiController]
 [Route("api/open-vpn-files")]
 [Authorize]
-public class OpenVpnFilesController(
-    IOvpnFileApiService ovpnFileApiService,
-    ILogger<OpenVpnFilesController> logger) : ControllerBase
+public class OpenVpnFilesController(IOvpnFileApiService ovpnFileApiService, 
+    ILogger<OpenVpnFilesController> logger) : BaseController
 {
     [HttpGet("by-token/{token}")]
     public async Task<ActionResult<ApiResponse<OvpnFileResponse>>> GetByToken([FromRoute] ByTokenRequest request,

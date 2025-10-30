@@ -9,7 +9,7 @@ namespace OpenVPNGateMonitor.Controllers;
 
 [Route("[controller]")]
 [ApiController]
-public sealed class UserAuthController(IUserAuthService userAuth, IUserQueryService users) : ControllerBase
+public sealed class UserAuthController(IUserAuthService userAuth, IUserQueryService users) : BaseController
 {
     public sealed record LoginRequest(string Login, string Password);//todo: move to shared models
     public sealed record LoginResponse(string DisplayName, bool IsAdmin);//todo: move to shared models

@@ -11,7 +11,7 @@ namespace OpenVPNGateMonitor.Controllers;
 [ApiController]
 [Route("api/tgbot-users")]
 [Authorize]
-public class TelegramBotUserController(ITelegramUserService telegramUserService) : ControllerBase
+public class TelegramBotUserController(ITelegramUserService telegramUserService) : BaseController
 {
     [HttpGet("check-exists/{telegramId}")]
     public async Task<ActionResult<ApiResponse<bool>>> UserExists([FromRoute] TelegramUserActionRequest request, 

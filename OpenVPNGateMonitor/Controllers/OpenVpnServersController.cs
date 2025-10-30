@@ -18,12 +18,9 @@ namespace OpenVPNGateMonitor.Controllers;
 [ApiController]
 [Route("api/open-vpn-servers")]
 [Authorize]
-public class OpenVpnServersController(
-    ILogger<OpenVpnServersController> logger,
-    IVpnDataService vpnDataService,
-    IOpenVpnServerOverviewQuery openVpnServerOverviewQuery,
-    IOpenVpnServerQueryService openVpnServerQueryService,
-    IOpenVpnBackgroundService openVpnBackgroundService) : ControllerBase
+public class OpenVpnServersController(ILogger<OpenVpnServersController> logger, IVpnDataService vpnDataService,
+    IOpenVpnServerOverviewQuery openVpnServerOverviewQuery, IOpenVpnServerQueryService openVpnServerQueryService,
+    IOpenVpnBackgroundService openVpnBackgroundService) : BaseController
 {
     [HttpGet("get-all-with-status")]
     public async Task<ActionResult<ApiResponse<OpenVpnServerWithStatusesResponse>>> GetAllServersWithStatus(

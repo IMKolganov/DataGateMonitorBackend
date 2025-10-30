@@ -12,9 +12,8 @@ namespace OpenVPNGateMonitor.Controllers;
 [ApiController]
 [Route("api/open-vpn-certs")]
 [Authorize]
-public class OpenVpnServerCertsController(
-    ICertApiClient certApiClient,
-    ILogger<OpenVpnServerCertsController> logger) : ControllerBase
+public class OpenVpnServerCertsController(ICertApiClient certApiClient,
+    ILogger<OpenVpnServerCertsController> logger) : BaseController
 {
     [HttpGet("{vpnServerId}/GetAllCertificates")]
     public async Task<ActionResult<ApiResponse<GetAllCertificatesResponse>>> GetAllCertificates(

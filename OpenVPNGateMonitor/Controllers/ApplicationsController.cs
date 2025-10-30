@@ -11,7 +11,7 @@ namespace OpenVPNGateMonitor.Controllers;
 [Route("api/applications")]
 [ApiController]
 [Authorize]
-public class ApplicationsController(IApplicationService appService) : ControllerBase
+public class ApplicationsController(IApplicationService appService) : BaseController
 {
     [HttpPost("register")]
     public async Task<ActionResult<ApiResponse<RegisterApplicationResponse>>> RegisterApplication([FromBody] 

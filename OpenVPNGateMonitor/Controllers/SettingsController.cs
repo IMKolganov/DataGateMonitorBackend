@@ -10,7 +10,7 @@ namespace OpenVPNGateMonitor.Controllers;
 [ApiController]
 [Route("api/settings")]
 [Authorize]
-public class SettingsController(ISettingsService settingsService) : ControllerBase
+public class SettingsController(ISettingsService settingsService) : BaseController
 {
     [HttpGet("get")]
     public async Task<ActionResult<ApiResponse<SettingResponse>>> Get([FromQuery] GetSettingRequest request, 
