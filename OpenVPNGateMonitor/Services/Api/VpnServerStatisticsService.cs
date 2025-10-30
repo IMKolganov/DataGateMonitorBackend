@@ -2,13 +2,14 @@
 using OpenVPNGateMonitor.DataBase.UnitOfWork;
 using OpenVPNGateMonitor.Models;
 using OpenVPNGateMonitor.Services.Api.Interfaces;
+using OpenVPNGateMonitor.SharedModels.DataGateMonitorBackend.OpenVpnServerStatistics.Dto;
 using OpenVPNGateMonitor.SharedModels.DataGateMonitorBackend.OpenVpnServerStatistics.Responses;
 
 namespace OpenVPNGateMonitor.Services.Api;
 
 public class VpnServerStatisticsService(IUnitOfWork unitOfWork) : IVpnServerStatisticsService
 {
-    public async Task<List<TrafficByClientResponse>> GetTrafficGroupedByClientAsync(int vpnServerId, 
+    public async Task<TrafficByClientsResponse> GetTrafficGroupedByClientAsync(int vpnServerId, 
         CancellationToken cancellationToken)
     {
         var clients = await unitOfWork.GetQuery<OpenVpnServerClient>()
@@ -40,14 +41,14 @@ public class VpnServerStatisticsService(IUnitOfWork unitOfWork) : IVpnServerStat
             .Where(x => externalIds.Contains(x.TelegramId))
             .ToListAsync(cancellationToken);
 
-        var result = trafficByClient
+        var clientTraffics = trafficByClient
             .Select(tc =>
             {
                 var tgUser = long.TryParse(tc.ExternalId, out var extId)
                     ? telegramUsers.FirstOrDefault(u => u.TelegramId == extId)
                     : null;
 
-                return new TrafficByClientResponse
+                return new ClientTrafficDto
                 {
                     ExternalId = tc.ExternalId,
                     TotalMbTraffic = tc.TotalMbTraffic,
@@ -59,16 +60,17 @@ public class VpnServerStatisticsService(IUnitOfWork unitOfWork) : IVpnServerStat
             .OrderByDescending(x => x.TotalMbTraffic)
             .ToList();
 
-        return result;
+        return new TrafficByClientsResponse { ClientTraffics = clientTraffics };
+
     }
     
     
-    public Task<List<GeoConnectionsResponse>> GetGroupedConnectionsByLocationAsync(
+    public Task<GeoConnectionsResponse> GetGroupedConnectionsByLocationAsync(
         int vpnServerId, CancellationToken cancellationToken)
     {
         throw new NotImplementedException();
     }
-    public Task<List<AverageSessionDurationResponse>> GetAverageSessionDurationAsync(
+    public Task<AverageSessionDurationsResponse> GetAverageSessionDurationAsync(
         int vpnServerId, CancellationToken cancellationToken)
     {
         throw new NotImplementedException();

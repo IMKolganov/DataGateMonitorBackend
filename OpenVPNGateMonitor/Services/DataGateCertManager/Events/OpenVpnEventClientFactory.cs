@@ -4,6 +4,7 @@ using OpenVPNGateMonitor.DataBase.Services.Query.OpenVpnServerTable;
 using OpenVPNGateMonitor.Hubs;
 using OpenVPNGateMonitor.Models;
 using OpenVPNGateMonitor.Services.Api.Auth.Interfaces;
+using OpenVPNGateMonitor.SharedModels.DataGateMonitorBackend.OpenVpnServerEvent.Responses;
 
 namespace OpenVPNGateMonitor.Services.DataGateCertManager.Events;
 
@@ -42,7 +43,7 @@ public class OpenVpnEventClientFactory(IServiceProvider rootProvider) : IOpenVpn
     public IReadOnlyCollection<OpenVpnEventClient> GetAllClients()
         => _clientCache.Values.ToArray();
 
-    public IReadOnlyCollection<ConnectionStatusResponse> GetAllClientStatuses()
+    public ConnectionStatusesResponse GetAllClientStatuses()
         => _clientCache.Values.Select(c => c.GetStatus()).ToArray();
 
     public bool TryGetClientStatus(int serverId, out ConnectionStatusResponse? status)

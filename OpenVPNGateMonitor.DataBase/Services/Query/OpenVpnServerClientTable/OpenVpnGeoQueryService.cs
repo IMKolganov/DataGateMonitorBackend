@@ -29,7 +29,7 @@ public sealed class OpenVpnGeoQueryService(IUnitOfWork uow) : IOpenVpnGeoQuerySe
 
         // Time range filter on session start
         var from = fromUtc.UtcDateTime;
-        var to   = toUtc.UtcDateTime;
+        var to = toUtc.UtcDateTime;
 
         q = q.Where(s => s.ConnectedSince >= from && s.ConnectedSince < to);
 
@@ -47,7 +47,7 @@ public sealed class OpenVpnGeoQueryService(IUnitOfWork uow) : IOpenVpnGeoQuerySe
 
         if (onlyWithCoordinates)
         {
-            q = q.Where(s => s.Latitude  != null &&
+            q = q.Where(s => s.Latitude != null &&
                              s.Longitude != null &&
                              !(s.Latitude == 0 && s.Longitude == 0));
         }
@@ -64,8 +64,8 @@ public sealed class OpenVpnGeoQueryService(IUnitOfWork uow) : IOpenVpnGeoQuerySe
                 g.Key.Latitude,
                 g.Key.Longitude,
                 SessionsCount = g.Count(),
-                TotalBytesIn  = g.Sum(x => (long?)x.BytesReceived) ?? 0,
-                TotalBytesOut = g.Sum(x => (long?)x.BytesSent)     ?? 0
+                TotalBytesIn = g.Sum(x => (long?)x.BytesReceived) ?? 0,
+                TotalBytesOut = g.Sum(x => (long?)x.BytesSent) ?? 0
             })
             .OrderBy(x => x.Country)
             .ThenBy(x => x.Region)
@@ -73,8 +73,18 @@ public sealed class OpenVpnGeoQueryService(IUnitOfWork uow) : IOpenVpnGeoQuerySe
             .ThenBy(x => x.Longitude)
             .ToListAsync(ct);
 
-        return rows.Select(x => new GeoPointAggDto(
-            x.Country, x.Region, x.Latitude, x.Longitude,
-            x.SessionsCount, x.TotalBytesIn, x.TotalBytesOut)).ToList();
+        var points = rows.Select(x =>
+            new GeoPointAggDto()
+            {
+                Country = x.Country,
+                Region = x.Region,
+                Latitude = x.Latitude,
+                Longitude = x.Longitude,
+                SessionsCount = x.SessionsCount,
+                TotalBytesIn = x.TotalBytesIn,
+                TotalBytesOut = x.TotalBytesOut,
+            }).ToList();
+
+        return new OverviewPointsResponse { GeoPointAgg = points };
     }
 }
