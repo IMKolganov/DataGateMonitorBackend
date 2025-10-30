@@ -15,20 +15,19 @@ namespace OpenVPNGateMonitor.Controllers;
 public class QuotaPlanController(IQuotaPlanService quotaPlanService) : ControllerBase
 {
     /// <summary>Get all quota plans.</summary>
-    // todo: update shared models
-    // [HttpPost("get-all")]
-    // public async Task<ActionResult<ApiResponse<QuotaPlansResponse>>> GetAll(
-    //     [FromBody] GetQuotaPlansRequest request,
-    //     CancellationToken ct)
-    // {
-    //     var entities = await quotaPlanService.GetAllAsync(ct);
-    //
-    //     if (!request.IncludeInactive)
-    //         entities = entities.Where(x => x.IsActive).ToList();
-    //
-    //     var dto = entities.Adapt<QuotaPlansResponse>();
-    //     return Ok(ApiResponse<QuotaPlansResponse>.SuccessResponse(dto));
-    // }
+    [HttpPost("get-all")]
+    public async Task<ActionResult<ApiResponse<QuotaPlansResponse>>> GetAll(
+        [FromBody] GetQuotaPlansRequest request,
+        CancellationToken ct)
+    {
+        var entities = await quotaPlanService.GetAllAsync(ct);
+    
+        if (!request.IncludeInactive)
+            entities = entities.Where(x => x.IsActive).ToList();
+    
+        var dto = entities.Adapt<QuotaPlansResponse>();
+        return Ok(ApiResponse<QuotaPlansResponse>.SuccessResponse(dto));
+    }
 
     /// <summary>Get a quota plan by id.</summary>
     [HttpGet("get/{id:int}")]

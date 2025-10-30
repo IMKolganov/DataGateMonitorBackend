@@ -2,6 +2,7 @@
 using OpenVPNGateMonitor.Models;
 using OpenVPNGateMonitor.Models.Helpers.Background;
 using OpenVPNGateMonitor.Models.Helpers.Services;
+using OpenVPNGateMonitor.SharedModels.DataGateMonitorBackend.OpenVpnServerClients.Responses;
 using OpenVPNGateMonitor.SharedModels.DataGateMonitorBackend.OpenVpnServers.Requests;
 using OpenVPNGateMonitor.SharedModels.DataGateMonitorBackend.OpenVpnServers.Responses;
 

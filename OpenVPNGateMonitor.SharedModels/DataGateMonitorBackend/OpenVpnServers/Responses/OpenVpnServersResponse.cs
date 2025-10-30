@@ -2,7 +2,7 @@
 
 namespace OpenVPNGateMonitor.SharedModels.DataGateMonitorBackend.OpenVpnServers.Responses;
 
-public class ServiceStatusResponse
+public class OpenVpnServersResponse
 {
-    public ServiceStatusDto ServiceStatus { get; set; } = new();
+    public List<OpenVpnServerDto> OpenVpnServers { get; set; } = new();
 }

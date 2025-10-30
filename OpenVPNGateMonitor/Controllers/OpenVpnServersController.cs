@@ -26,12 +26,12 @@ public class OpenVpnServersController(
     IOpenVpnBackgroundService openVpnBackgroundService) : ControllerBase
 {
     [HttpGet("get-all-with-status")]
-    public async Task<ActionResult<ApiResponse<OpenVpnServerWithStatusResponse>>> GetAllServersWithStatus(
+    public async Task<ActionResult<ApiResponse<OpenVpnServerWithStatusesResponse>>> GetAllServersWithStatus(
         CancellationToken ct)
     {
         var result = await openVpnServerOverviewQuery.GetAllOpenVpnServersWithStatusAsync(ct);
-        return Ok(ApiResponse<List<OpenVpnServerWithStatusResponse>>.SuccessResponse(
-            result.Adapt<List<OpenVpnServerWithStatusResponse>>()));
+        return Ok(ApiResponse<OpenVpnServerWithStatusesResponse>.SuccessResponse(
+            result.Adapt<OpenVpnServerWithStatusesResponse>()));
     }
 
     [HttpGet("get-server-with-status/{vpnServerId:int}")]
@@ -45,13 +45,13 @@ public class OpenVpnServersController(
     }
 
     [HttpGet("get-all")]
-    public async Task<ActionResult<ApiResponse<List<OpenVpnServerResponse>>>> GetAllServers(
+    public async Task<ActionResult<ApiResponse<OpenVpnServersResponse>>> GetAllServers(
         CancellationToken ct)
     {
         var serversList = await openVpnServerQueryService.GetAllAsync(ct);
 
-        return Ok(ApiResponse<List<OpenVpnServerResponse>>.SuccessResponse(
-            serversList.Adapt<List<OpenVpnServerResponse>>()));
+        return Ok(ApiResponse<OpenVpnServersResponse>.SuccessResponse(
+            serversList.Adapt<OpenVpnServersResponse>()));
     }
 
     [HttpGet("get/{vpnServerId:int}")]
@@ -78,7 +78,8 @@ public class OpenVpnServersController(
     {
         var updatedServer = await vpnDataService.UpdateOpenVpnServer(request.Adapt<OpenVpnServer>(), ct);
 
-        return Ok(ApiResponse<OpenVpnServerResponse>.SuccessResponse(updatedServer.Adapt<OpenVpnServerResponse>()));
+        return Ok(ApiResponse<OpenVpnServerResponse>.SuccessResponse(
+            updatedServer.Adapt<OpenVpnServerResponse>()));
     }
 
     [HttpDelete("delete/{vpnServerId:int}")]
@@ -92,13 +93,13 @@ public class OpenVpnServersController(
     }
 
     [HttpGet("status")]
-    public ActionResult<ApiResponse<List<ServiceStatusResponse>>> GetStatus()
+    public ActionResult<ApiResponse<ServiceStatusesResponse>> GetStatus()
     {
         var serverStatuses = openVpnBackgroundService.GetStatus()
             .Select(x => x.Adapt<ServiceStatusResponse>())
             .ToList();
 
-        return Ok(ApiResponse<List<ServiceStatusResponse>>.SuccessResponse(serverStatuses));
+        return Ok(ApiResponse<ServiceStatusesResponse>.SuccessResponse(serverStatuses));
     }
 
     [HttpPost("run-now")]

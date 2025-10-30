@@ -24,14 +24,13 @@ public class ApplicationsController(IApplicationService appService) : Controller
             newApp.Adapt<RegisterApplicationResponse>()));
     }
 
-    //todo: update shared models
-    // [HttpGet("get-all")]
-    // public async Task<ActionResult<ApiResponse<ApplicationsResponse>>> GetAllApplications(
-    // CancellationToken cancellationToken)
-    // {
-    //     var apps = await appService.GetAllApplicationsAsync(cancellationToken);
-    //     return Ok(ApiResponse<ApplicationsResponse>.SuccessResponse(apps.Adapt<ApplicationsResponse>()));
-    // }
+    [HttpGet("get-all")]
+    public async Task<ActionResult<ApiResponse<ApplicationsResponse>>> GetAllApplications(
+    CancellationToken cancellationToken)
+    {
+        var apps = await appService.GetAllApplicationsAsync(cancellationToken);
+        return Ok(ApiResponse<ApplicationsResponse>.SuccessResponse(apps.Adapt<ApplicationsResponse>()));
+    }
 
     [HttpPost("revoke")]
     public async Task<ActionResult<ApiResponse<string>>> RevokeApplication(

@@ -2,7 +2,7 @@
 
 namespace OpenVPNGateMonitor.SharedModels.DataGateMonitorBackend.OpenVpnServerStatistics.Responses;
 
-public class GeoConnectionsResponse
+public class AverageSessionDurationsResponse
 {
-    private List<GeoConnectionDto> GeoConnections { get; set; } = new();
+    private List<AverageSessionDurationDto> AverageSessionDurations { get; set; } = new();
 }
