@@ -11,7 +11,7 @@ using OpenVPNGateMonitor.SharedModels.Responses;
 
 namespace OpenVPNGateMonitor.Controllers;
 
-[Route("api/[controller]")]
+[Route("api/auth")]
 [ApiController]
 public class AuthController(IConfiguration config, IApplicationService appService, 
     IMicroserviceTokenService microserviceTokenService) : BaseController

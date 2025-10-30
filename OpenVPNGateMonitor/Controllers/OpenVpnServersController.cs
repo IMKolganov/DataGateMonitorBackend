@@ -8,6 +8,7 @@ using OpenVPNGateMonitor.DataBase.Services.Query.OpenVpnServerTable;
 using OpenVPNGateMonitor.Models;
 using OpenVPNGateMonitor.Services.Api.Interfaces;
 using OpenVPNGateMonitor.Services.BackgroundServices.Interfaces;
+using OpenVPNGateMonitor.SharedModels.DataGateMonitorBackend.OpenVpnServers.Dto;
 using OpenVPNGateMonitor.SharedModels.DataGateMonitorBackend.OpenVpnServers.Requests;
 using OpenVPNGateMonitor.SharedModels.DataGateMonitorBackend.OpenVpnServers.Responses;
 using OpenVPNGateMonitor.SharedModels.Enums;
@@ -92,11 +93,17 @@ public class OpenVpnServersController(ILogger<OpenVpnServersController> logger, 
     [HttpGet("status")]
     public ActionResult<ApiResponse<ServiceStatusesResponse>> GetStatus()
     {
-        var serverStatuses = openVpnBackgroundService.GetStatus()
-            .Select(x => x.Adapt<ServiceStatusResponse>())
+        var serverStatuses = openVpnBackgroundService
+            .GetStatus()
+            .Select(kv => kv.Value.Adapt<ServiceStatusDto>())
             .ToList();
 
-        return Ok(ApiResponse<ServiceStatusesResponse>.SuccessResponse(serverStatuses));
+        var response = new ServiceStatusesResponse
+        {
+            ServiceStatus = serverStatuses
+        };
+
+        return Ok(ApiResponse<ServiceStatusesResponse>.SuccessResponse(response));
     }
 
     [HttpPost("run-now")]
@@ -139,10 +146,10 @@ public class OpenVpnServersController(ILogger<OpenVpnServersController> logger, 
                 foreach (var status in statuses)
                 {
                     var (connectedClients, sessions) =
-                        await openVpnServerOverviewQuery.GetClientCountersAsync(status.VpnServerId, ct);
+                        await openVpnServerOverviewQuery.GetClientCountersAsync(status.ServiceStatus.VpnServerId, ct);
 
-                    status.CountConnectedClients = connectedClients;
-                    status.CountSessions = sessions;
+                    status.ServiceStatus.CountConnectedClients = connectedClients;
+                    status.ServiceStatus.CountSessions = sessions;
                 }
 
                 var json = JsonConvert.SerializeObject(statuses);

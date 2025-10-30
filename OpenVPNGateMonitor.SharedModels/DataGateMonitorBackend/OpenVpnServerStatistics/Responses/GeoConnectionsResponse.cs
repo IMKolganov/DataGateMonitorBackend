@@ -4,5 +4,5 @@ namespace OpenVPNGateMonitor.SharedModels.DataGateMonitorBackend.OpenVpnServerSt
 
 public class GeoConnectionsResponse
 {
-    private List<GeoConnectionDto> GeoConnections { get; set; } = new();
+    public List<GeoConnectionDto> GeoConnections { get; set; } = new();
 }

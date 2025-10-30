@@ -15,7 +15,7 @@ namespace OpenVPNGateMonitor.Controllers;
 public class OpenVpnServerCertsController(ICertApiClient certApiClient,
     ILogger<OpenVpnServerCertsController> logger) : BaseController
 {
-    [HttpGet("{vpnServerId}/GetAllCertificates")]
+    [HttpGet("{vpnServerId}/get-all")]
     public async Task<ActionResult<ApiResponse<GetAllCertificatesResponse>>> GetAllCertificates(
         [FromRoute] GetAllCertificatesRequest request, CancellationToken ct)
     {
@@ -40,7 +40,7 @@ public class OpenVpnServerCertsController(ICertApiClient certApiClient,
     }
 
     
-    [HttpPost("BuildCertificate")]
+    [HttpPost("build")]
     public async Task<ActionResult<ApiResponse<BuildCertificateResponse>>> BuildCertificate(
         [FromBody] BuildCertificateRequest request, CancellationToken cancellationToken)
     {
@@ -67,7 +67,7 @@ public class OpenVpnServerCertsController(ICertApiClient certApiClient,
         }
     }
     
-    [HttpPost("RevokeCertificate")]
+    [HttpPost("revoke")]
     public async Task<ActionResult<ApiResponse<RevokeCertificateResponse>>> RevokeCertificate(
         [FromBody] RevokeCertificateRequest request,
         CancellationToken cancellationToken)
