@@ -4,5 +4,5 @@ namespace OpenVPNGateMonitor.SharedModels.DataGateMonitorBackend.OpenVpnServerSt
 
 public class TrafficByClientsResponse
 {
-    private List<ClientTrafficDto> ClientTraffics { get; set; } = new();
+    public List<ClientTrafficDto> ClientTraffics { get; set; } = new();
 }

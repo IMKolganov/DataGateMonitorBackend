@@ -4,5 +4,5 @@ namespace OpenVPNGateMonitor.SharedModels.DataGateMonitorBackend.OpenVpnServerSt
 
 public class AverageSessionDurationsResponse
 {
-    private List<AverageSessionDurationDto> AverageSessionDurations { get; set; } = new();
+    public List<AverageSessionDurationDto> AverageSessionDurations { get; set; } = new();
 }

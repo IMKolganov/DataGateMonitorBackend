@@ -5,7 +5,7 @@ using OpenVPNGateMonitor.SharedModels.Responses;
 namespace OpenVPNGateMonitor.Controllers;
 
 [ApiController]
-[Route("api/[controller]")]
+[Route("api/base")]
 public class BaseController : ControllerBase
 {
     public BaseController()
@@ -20,7 +20,7 @@ public class BaseController : ControllerBase
         return Ok(ApiResponse<string>.SuccessResponse("Ok"));
     }
     
-    [HttpGet("HealthcheckWithJwt")]
+    [HttpGet("healthcheck-with-jwt")]
     [Authorize]
     public ActionResult<ApiResponse<string>> HealthcheckWithJwt()
     {
