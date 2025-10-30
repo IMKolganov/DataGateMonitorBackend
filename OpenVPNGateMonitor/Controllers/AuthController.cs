@@ -14,7 +14,7 @@ namespace OpenVPNGateMonitor.Controllers;
 [Route("api/[controller]")]
 [ApiController]
 public class AuthController(IConfiguration config, IApplicationService appService, 
-    IMicroserviceTokenService microserviceTokenService) : ControllerBase
+    IMicroserviceTokenService microserviceTokenService) : BaseController
 {
     [HttpGet("system-secret-status")]
     public async Task<ActionResult<ApiResponse<SystemSecretStatusResponse>>> GetSystemStatus(CancellationToken cancellationToken)

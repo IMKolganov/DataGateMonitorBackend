@@ -10,7 +10,7 @@ namespace OpenVPNGateMonitor.Controllers;
 [ApiController]
 [Route("api/open-vpn-statistics")]
 [Authorize]
-public class OpenVpnServerStatisticsController(IVpnServerStatisticsService vpnServerStatisticsService) : ControllerBase
+public class OpenVpnServerStatisticsController(IVpnServerStatisticsService vpnServerStatisticsService) : BaseController
 {
     [HttpGet("get/{vpnServerId}")]
     public async Task<ActionResult<ApiResponse<TrafficByClientsResponse>>> GetClientTrafficStats(

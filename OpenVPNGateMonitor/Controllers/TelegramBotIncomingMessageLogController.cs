@@ -12,7 +12,7 @@ namespace OpenVPNGateMonitor.Controllers;
 [Route("api/tgbot-incoming-message-logs")]
 [Authorize]
 public class TelegramBotIncomingMessageLogController(
-    IIncomingMessageLogService incomingMessageLogService) : ControllerBase
+    IIncomingMessageLogService incomingMessageLogService) : BaseController
 {
     [HttpPost("add")]
     public async Task<ActionResult<ApiResponse<AddMessageResponse>>> AddMessage(

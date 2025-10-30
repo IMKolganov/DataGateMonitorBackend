@@ -12,9 +12,8 @@ namespace OpenVPNGateMonitor.Controllers;
 [Route("api/open-vpn-clients")]
 [Authorize]
 public class OpenVpnServerClientsController(IOpenVpnServerClientOverviewQuery openVpnServerClientOverviewQuery,
-    IOpenVpnGeoQueryService openVpnGeoQueryService,
-    IOpenVpnOverviewTotalsQuery openVpnOverviewTotalsQuery,
-    IOpenVpnOverviewSeriesQuery openVpnOverviewSeriesQuery) : ControllerBase
+    IOpenVpnGeoQueryService openVpnGeoQueryService, IOpenVpnOverviewTotalsQuery openVpnOverviewTotalsQuery,
+    IOpenVpnOverviewSeriesQuery openVpnOverviewSeriesQuery) : BaseController
 {
     [HttpGet("get-all-connected")]
     public async Task<ActionResult<ApiResponse<ConnectedClientsResponse>>> GetAllConnectedClients(

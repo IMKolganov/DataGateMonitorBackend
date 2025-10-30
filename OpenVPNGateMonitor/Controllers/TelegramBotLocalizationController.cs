@@ -12,7 +12,7 @@ namespace OpenVPNGateMonitor.Controllers;
 [ApiController]
 [Route("api/tgbot-localizations")]
 [Authorize]
-public class TelegramBotLocalizationController(ILocalizationService localization) : ControllerBase
+public class TelegramBotLocalizationController(ILocalizationService localization) : BaseController
 {
     [HttpPost("set-tg-user-language")]
     public async Task<ActionResult<ApiResponse<SetTelegramUserLanguageResponse>>> SetTelegramUserLanguageAsync(

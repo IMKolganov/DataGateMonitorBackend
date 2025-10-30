@@ -12,9 +12,8 @@ namespace OpenVPNGateMonitor.Controllers;
 [ApiController]
 [Route("api/open-vpn-events")]
 [Authorize]
-public class OpenVpnServerEventController(
-    IOpenVpnServerEventLogQueryService openVpnServerEventLogQueryService,
-    IOpenVpnEventClientFactory eventClientFactory) : ControllerBase
+public class OpenVpnServerEventController(IOpenVpnServerEventLogQueryService openVpnServerEventLogQueryService,
+    IOpenVpnEventClientFactory eventClientFactory) : BaseController
 {
     /// <summary>
     /// Paged events by VPN server id.

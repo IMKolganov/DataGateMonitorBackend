@@ -13,8 +13,7 @@ namespace OpenVPNGateMonitor.Controllers;
 [Route("api/open-vpn-configs")]
 [Authorize]
 public class OpenVpnServerOvpnFileConfigController(
-    IOpenVpnServerOvpnFileConfigService openVpnServerOvpnFileConfigService)
-    : ControllerBase
+    IOpenVpnServerOvpnFileConfigService openVpnServerOvpnFileConfigService) : BaseController
 {
     [HttpGet("get/{vpnServerId:int}")]
     public async Task<ActionResult<ApiResponse<OvpnFileConfigResponse>>> GetOvpnFileConfig(

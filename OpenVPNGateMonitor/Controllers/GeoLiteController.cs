@@ -10,10 +10,8 @@ namespace OpenVPNGateMonitor.Controllers;
 [ApiController]
 [Route("api/[controller]")]
 [Authorize]
-public class GeoLiteController(
-    IGeoLiteQueryService geoLiteQueryService,
-    IGeoLiteUpdaterService geoLiteUpdaterService)
-    : ControllerBase
+public class GeoLiteController(IGeoLiteQueryService geoLiteQueryService, 
+    IGeoLiteUpdaterService geoLiteUpdaterService) : BaseController
 {
     [HttpGet("GetDatabasePath")]
     public ActionResult<ApiResponse<GetDatabasePathResponse>> GetDatabasePath()
