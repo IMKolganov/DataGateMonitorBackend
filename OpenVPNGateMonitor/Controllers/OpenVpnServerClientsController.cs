@@ -55,20 +55,20 @@ public class OpenVpnServerClientsController(IOpenVpnServerClientOverviewQuery op
         return Ok(ApiResponse<OverviewSeriesResponse>.SuccessResponse(result));
     }
 
-    // [HttpGet("overview/summary")] //todo: update shared models
-    // public async Task<ActionResult<ApiResponse<OverviewTotalsResponse>>> GetOverviewSummary(
-    //     [FromQuery] GetOverviewSummaryRequest request,
-    //     CancellationToken ct = default)
-    // {
-    //     var result = await openVpnOverviewTotalsQuery.GetOverviewTotalsAsync(
-    //         request.From,
-    //         request.To,
-    //         request.VpnServerId,
-    //         request.ExternalId,
-    //         ct);
-    //
-    //     return Ok(ApiResponse<OverviewTotalsResponse>.SuccessResponse(result));
-    // }
+    [HttpGet("overview/summary")]
+    public async Task<ActionResult<ApiResponse<OverviewTotalsResponse>>> GetOverviewSummary(
+        [FromQuery] GetOverviewSummaryRequest request,
+        CancellationToken ct = default)
+    {
+        var result = await openVpnOverviewTotalsQuery.GetOverviewTotalsAsync(
+            request.From,
+            request.To,
+            request.VpnServerId,
+            request.ExternalId,
+            ct);
+    
+        return Ok(ApiResponse<OverviewTotalsResponse>.SuccessResponse(result));
+    }
     
     [HttpGet("overview/points")]
     public async Task<ActionResult<ApiResponse<OverviewPointsResponse>>> GetPoints(
