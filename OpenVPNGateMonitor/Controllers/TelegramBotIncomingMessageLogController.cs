@@ -34,21 +34,18 @@ public class TelegramBotIncomingMessageLogController(
             response.Adapt<GetAllMessagesResponse>()));
     }
     
-    [HttpGet("get-by-telegram-userid")]
+    [HttpGet("get-by-telegram-userid/{telegramId}")]
     public async Task<ActionResult<ApiResponse<GetByTelegramIdMessagesResponse>>> GetAllMessages(
-        [FromBody] GetAllByTelegramIdMessagesRequest request,
-        CancellationToken cancellationToken)
+        [FromRoute] GetAllByTelegramIdMessagesRequest request, CancellationToken ct)
     {
-        var response = await incomingMessageLogService.GetByTelegramIdAsync(request.TelegramId, 
-            cancellationToken);
-    
+        var response = await incomingMessageLogService.GetByTelegramIdAsync(request.TelegramId, ct);
         return Ok(ApiResponse<GetByTelegramIdMessagesResponse>.SuccessResponse(
             response.Adapt<GetByTelegramIdMessagesResponse>()));
     }
     
     [HttpGet("get-by-id")]
     public async Task<ActionResult<ApiResponse<GetByIdMessageResponse>>> GetById(
-        [FromBody] GetByIdMessageRequest request,
+        [FromRoute] GetByIdMessageRequest request,
         CancellationToken cancellationToken)
     {
         var response = await incomingMessageLogService.GetByIdAsync(request.Id, cancellationToken);
