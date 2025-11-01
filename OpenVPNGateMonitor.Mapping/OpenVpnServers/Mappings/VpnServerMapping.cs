@@ -1,9 +1,7 @@
 ﻿using Mapster;
 using OpenVPNGateMonitor.Models;
-using OpenVPNGateMonitor.Models.Helpers.Background;
 using OpenVPNGateMonitor.Models.Helpers.Services;
-using OpenVPNGateMonitor.SharedModels.DataGateMonitorBackend.OpenVpnServerClients.Responses;
-using OpenVPNGateMonitor.SharedModels.DataGateMonitorBackend.OpenVpnServers.Requests;
+using OpenVPNGateMonitor.SharedModels.DataGateMonitorBackend.OpenVpnServers.Dto;
 using OpenVPNGateMonitor.SharedModels.DataGateMonitorBackend.OpenVpnServers.Responses;
 
 namespace OpenVPNGateMonitor.Mapping.OpenVpnServers.Mappings;
@@ -12,38 +10,25 @@ public class VpnServerMapping : IRegister
 {
     public void Register(TypeAdapterConfig config)
     {
-        config.NewConfig<VpnClientInfoResponseList, ConnectedClientsResponse>()
-            .Map(dest => dest.TotalCount, src => src.TotalCount)
-            .Map(dest => dest.Clients, src => src.VpnClientInfoResponse.Adapt<List<VpnClientInfoResponse>>());
+        #region "get-all-with-status"
+        // Nested types — ensure these exist so Mapster knows how to convert inner objects.
+        config.NewConfig<OpenVpnServer, OpenVpnServerResponse>();
+        config.NewConfig<OpenVpnServerStatusLog, OpenVpnServerStatusLogResponse>();
 
-        config.NewConfig<OpenVpnServerClient, VpnClientInfoResponse>();
+        // Main item mapping (source -> DTO)
+        config.NewConfig<OpenVpnServerWithStatus, OpenVpnServerWithStatusDto>()
+            // destination has "OpenVpnServerResponses" (plural) — map from source.OpenVpnServer
+            .Map(d => d.OpenVpnServerResponses,        s => s.OpenVpnServer)
+            .Map(d => d.OpenVpnServerStatusLogResponse, s => s.OpenVpnServerStatusLog)
+            .Map(d => d.CountConnectedClients,          s => s.CountConnectedClients)
+            .Map(d => d.CountSessions,                  s => s.CountSessions)
+            .Map(d => d.TotalBytesIn,                   s => s.TotalBytesIn)
+            .Map(d => d.TotalBytesOut,                  s => s.TotalBytesOut);
 
-        config.NewConfig<List<OpenVpnServerWithStatus>, List<OpenVpnServerWithStatusResponse>>();
-
-        config.NewConfig<OpenVpnServerStatusLog, OpenVpnServerStatusLogResponse>()
-            .Map(dest => dest.VpnServerId, src => src.VpnServerId)
-            .Map(dest => dest.SessionId, src => src.SessionId)
-            .Map(dest => dest.UpSince, src => src.UpSince)
-            .Map(dest => dest.ServerLocalIp, src => src.ServerLocalIp)
-            .Map(dest => dest.ServerRemoteIp, src => src.ServerRemoteIp)
-            .Map(dest => dest.BytesIn, src => src.BytesIn)
-            .Map(dest => dest.BytesOut, src => src.BytesOut)
-            .Map(dest => dest.Version, src => src.Version);
-
-
-
-        config.NewConfig<AddServerRequest, OpenVpnServer>()
-            .Map(dest => dest.ServerName, src => src.ServerName)
-            .Map(dest => dest.IsOnline, src => src.IsOnline)
-            .Map(dest => dest.IsDefault, src => src.IsDefault)
-            .Map(dest => dest.ApiUrl, src => src.ApiUrl);
-
-
-        config.NewConfig<UpdateServerRequest, OpenVpnServer>()
-            .Map(dest => dest.Id, src => src.Id)
-            .Map(dest => dest.ServerName, src => src.ServerName)
-            .Map(dest => dest.IsOnline, src => src.IsOnline)
-            .Map(dest => dest.IsDefault, src => src.IsDefault)
-            .Map(dest => dest.ApiUrl, src => src.ApiUrl);
+        // Allow adapting List<OpenVpnServerWithStatus> -> OpenVpnServerWithStatusesResponse
+        // so you can keep: result.Adapt<OpenVpnServerWithStatusesResponse>()
+        config.NewConfig<List<OpenVpnServerWithStatus>, OpenVpnServerWithStatusesResponse>()
+            .Map(d => d.OpenVpnServerWithStatuses, s => s);
+        #endregion
     }
 }
