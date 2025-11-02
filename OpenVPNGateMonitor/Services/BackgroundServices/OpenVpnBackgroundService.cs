@@ -66,6 +66,7 @@ public class OpenVpnBackgroundService : BackgroundService, IOpenVpnBackgroundSer
             var openVpnServers = await openVpnServerQueryService.GetAllAsync(cancellationToken);
             _statusManager.ClearAllStatuses();
 
+            openVpnServers = openVpnServers.Where(x=> x.IsDisable != true).ToList();
             await Parallel.ForEachAsync(openVpnServers, cancellationToken, async (server, ct) =>
             {
                 _logger.LogInformation($"VpnServerId: {server.Id}. VpnServerName: {server.ServerName} " +
