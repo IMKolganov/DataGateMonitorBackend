@@ -12,9 +12,9 @@ public class ApplicationMapping : IRegister
         #region "get-all"
         config.NewConfig<ClientApplication, ApplicationDto>()
             .Map(d => d.ClientId, s => s.ClientId)
-            .Map(d => d.Name, s => s.Name);
-        // .Map(d => d.IsRevoked, s => s.IsRevoked)
-        // .Map(d => d.IsSystem, s => s.IsSystem);
+            .Map(d => d.Name, s => s.Name)
+            .Map(d => d.IsRevoked, s => s.IsRevoked)
+            .Map(d => d.IsSystem, s => s.IsSystem);
 
         config.NewConfig<List<ClientApplication>, ApplicationsResponse>()
             .Map(d => d.Application, s => s);
