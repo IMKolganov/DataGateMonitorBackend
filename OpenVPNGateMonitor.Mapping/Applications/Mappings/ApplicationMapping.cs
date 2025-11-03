@@ -1,7 +1,6 @@
 ﻿using Mapster;
 using OpenVPNGateMonitor.Models;
 using OpenVPNGateMonitor.SharedModels.DataGateMonitorBackend.Applications.Dto;
-using OpenVPNGateMonitor.SharedModels.DataGateMonitorBackend.Applications.Requests;
 using OpenVPNGateMonitor.SharedModels.DataGateMonitorBackend.Applications.Responses;
 
 namespace OpenVPNGateMonitor.Mapping.Applications.Mappings;

@@ -5,6 +5,8 @@ public class ApplicationDto
     public string ClientId { get; set; } = string.Empty;
     public string ClientSecret { get; set; } = string.Empty;
     public string Name { get; set; } = string.Empty;
+    public bool IsRevoked { get; set; } = false;
+    public bool IsSystem { get; set; } = false;
     public DateTimeOffset CreateDate { get; set; } = DateTimeOffset.MinValue;
     public DateTimeOffset LastUpdate { get; set; } = DateTimeOffset.MinValue;
 }
