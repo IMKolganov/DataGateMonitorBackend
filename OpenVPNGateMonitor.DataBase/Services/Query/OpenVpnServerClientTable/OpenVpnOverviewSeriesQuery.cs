@@ -215,17 +215,52 @@ public sealed class OpenVpnOverviewSeriesQuery(IUnitOfWork uow) : IOpenVpnOvervi
             lastBySession[r.SessionId] = (r.BytesIn, r.BytesOut);
             users[r.ExternalId] = acc;
         }
+        
+        var externalIds = users.Keys
+            .Where(x => !string.IsNullOrWhiteSpace(x))
+            .Distinct()
+            .ToList();
+
+        var links = await uow.GetQuery<UserIdentityLink>()
+            .AsQueryable()
+            .Where(l => externalIds.Contains(l.ExternalId))
+            .AsNoTracking()
+            .Select(l => new { l.ExternalId, l.UserId })
+            .ToListAsync(ct);
+
+        // 2) UserId -> DisplayName
+        var userIds = links.Select(l => l.UserId).Distinct().ToList();
+
+        var displayByUserId = await uow.GetQuery<User>()
+            .AsQueryable()
+            .Where(u => userIds.Contains(u.Id))
+            .AsNoTracking()
+            .Select(u => new { u.Id, u.DisplayName })
+            .ToDictionaryAsync(x => x.Id, ct);
+
+        // 3) ExternalId -> DisplayName (pick the first UserId if multiple)
+        var displayByExternalId = links
+            .GroupBy(l => l.ExternalId)
+            .ToDictionary(
+                g => g.Key,
+                g =>
+                {
+                    var firstUserId = g.Select(x => x.UserId).First();
+                    return displayByUserId.TryGetValue(firstUserId, out var u) ? u.DisplayName : string.Empty;
+                }
+            );
 
         var result = users
-            .Select(kv => new OverviewUserItem
+            .Select(kv => new OverviewUserDto
             {
-                ExternalId = kv.Key,
-                VpnServerId = kv.Value.SingleServerId,
-                Sessions = kv.Value.Sessions.Count,
-                TrafficInBytes = kv.Value.In,
-                TrafficOutBytes = kv.Value.Out,
-                FirstSeen = kv.Value.First,
-                LastSeen = kv.Value.Last
+                ExternalId        = kv.Key,
+                DisplayName       = displayByExternalId.TryGetValue(kv.Key, out var dn) ? dn : string.Empty,
+                VpnServerId       = kv.Value.SingleServerId,
+                Sessions          = kv.Value.Sessions.Count,
+                TrafficInBytes    = kv.Value.In,
+                TrafficOutBytes   = kv.Value.Out,
+                FirstSeen         = kv.Value.First,
+                LastSeen          = kv.Value.Last
             })
             .OrderByDescending(x => x.TrafficTotalBytes)
             .ThenBy(x => x.ExternalId)

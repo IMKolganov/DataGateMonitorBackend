@@ -1,9 +1,9 @@
-﻿using OpenVPNGateMonitor.SharedModels.DataGateMonitorBackend.OpenVpnServers.Responses;
+﻿using OpenVPNGateMonitor.SharedModels.DataGateMonitorBackend.OpenVpnServers.Dto;
 
 namespace OpenVPNGateMonitor.Models.Helpers.Services;
 
-public class VpnClientInfoResponseList
+public class VpnClientInfoResponseList//todo: move to nuget
 {
-    public List<VpnClientInfoResponse> VpnClientInfoResponse { get; set; } = new List<VpnClientInfoResponse>();
-    public int TotalCount { get; set; }
+    public List<VpnClientInfoDto> VpnClientInfoResponse { get; set; } = new List<VpnClientInfoDto>();
+    public int TotalCount { get; init; }
 }
