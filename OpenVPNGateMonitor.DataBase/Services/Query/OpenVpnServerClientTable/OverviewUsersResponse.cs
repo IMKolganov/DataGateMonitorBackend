@@ -2,7 +2,7 @@
 
 namespace OpenVPNGateMonitor.DataBase.Services.Query.OpenVpnServerClientTable;
 
-public class OverviewUsersResponse
+public class OverviewUsersResponse//todo: move to shared models
 {
-    public List<OverviewUserItem> OverviewUserItems { get; set; } = new();
+    public List<OverviewUserDto> OverviewUserItems { get; set; } = new();
 }
