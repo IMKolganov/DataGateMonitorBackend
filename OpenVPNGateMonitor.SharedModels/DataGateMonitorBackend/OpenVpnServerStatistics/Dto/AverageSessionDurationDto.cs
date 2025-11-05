@@ -4,8 +4,6 @@ public class AverageSessionDurationDto
 {
     public string ExternalId { get; set; } = null!;
     public string CommonName { get; set; } = null!;
-    public string? TgUsername { get; set; }
-    public string? TgFirstName { get; set; }
-    public string? TgLastName { get; set; }
+    public string DisplayName { get; set; } = string.Empty;
     public double AvgDurationMinutes { get; set; }
 }
