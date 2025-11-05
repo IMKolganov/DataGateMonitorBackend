@@ -1,13 +1,11 @@
-﻿namespace OpenVPNGateMonitor.SharedModels.DataGateMonitorBackend.OpenVpnServers.Responses;
+﻿namespace OpenVPNGateMonitor.SharedModels.DataGateMonitorBackend.OpenVpnServers.Dto;
 
-public class VpnClientInfoResponse
+public class VpnClientInfoDto
 {
     public int Id { get; set; }
     public int VpnServerId { get; set; }
     public string ExternalId { get; set; } = string.Empty;
-    public string? TgUsername { get; set; } 
-    public string? TgFirstName { get; set; }
-    public string? TgLastName { get; set; }
+    public string DisplayName { get; set; } = string.Empty;
     public Guid SessionId { get; set; }
     public string CommonName { get; set; } = string.Empty;
     public string RemoteIp { get; set; } = string.Empty;

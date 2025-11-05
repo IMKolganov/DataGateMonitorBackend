@@ -1,8 +1,9 @@
 ﻿namespace OpenVPNGateMonitor.SharedModels.DataGateMonitorBackend.OpenVpnServerClients.Dto;
 
-public sealed class OverviewUserItem
+public sealed class OverviewUserDto
 {
     public string? ExternalId { get; set; }
+    public string DisplayName { get; set; } = string.Empty;
     public int? VpnServerId { get; set; } // null when mixed
     public int Sessions { get; set; }
     public long TrafficInBytes { get; set; }
