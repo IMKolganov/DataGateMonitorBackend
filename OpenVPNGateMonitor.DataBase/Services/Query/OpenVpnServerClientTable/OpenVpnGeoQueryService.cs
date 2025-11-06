@@ -85,6 +85,6 @@ public sealed class OpenVpnGeoQueryService(IUnitOfWork uow) : IOpenVpnGeoQuerySe
                 TotalBytesOut = x.TotalBytesOut,
             }).ToList();
 
-        return new OverviewPointsResponse { GeoPointAgg = points };
+        return new OverviewPointsResponse { GeoPointAggs = points };
     }
 }

@@ -100,7 +100,7 @@ public class OpenVpnServersController(ILogger<OpenVpnServersController> logger, 
 
         var response = new ServiceStatusesResponse
         {
-            ServiceStatus = serverStatuses
+            ServiceStatuses = serverStatuses
         };
 
         return Ok(ApiResponse<ServiceStatusesResponse>.SuccessResponse(response));

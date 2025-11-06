@@ -25,10 +25,10 @@ public class OpenVpnServerCertsController(ICertApiClient certApiClient,
 
             var mapped = certificates
                 .Select(cert => (cert, request.VpnServerId))
-                .Select(item => item.Adapt<ServerCertificate>())
+                .Select(item => item.Adapt<MonitorServerCertificate>())
                 .ToList();
 
-            var response = new GetAllCertificatesResponse { ServerCertificates = mapped };
+            var response = new GetAllCertificatesResponse { MonitorServerCertificates = mapped };
 
             return Ok(ApiResponse<GetAllCertificatesResponse>.SuccessResponse(response));
         }
@@ -49,11 +49,11 @@ public class OpenVpnServerCertsController(ICertApiClient certApiClient,
             var result = await certApiClient.BuildCertificateAsync(
                 request.VpnServerId, request.CommonName, cancellationToken);
 
-            var mappedCertificate = (result, request.VpnServerId).Adapt<ServerCertificate>();
+            var mappedCertificate = (result, request.VpnServerId).Adapt<MonitorServerCertificate>();
 
             var response = new BuildCertificateResponse
             {
-                ServerCertificate = mappedCertificate
+                MonitorServerCertificate = mappedCertificate
             };
 
             return Ok(ApiResponse<BuildCertificateResponse>.SuccessResponse(response));
@@ -76,11 +76,11 @@ public class OpenVpnServerCertsController(ICertApiClient certApiClient,
         {
             var result = await certApiClient.RevokeCertificateAsync(request, cancellationToken);
     
-            var mappedCertificate = (result, request.VpnServerId).Adapt<ServerCertificate>();
+            var mappedCertificate = (result, request.VpnServerId).Adapt<MonitorServerCertificate>();
     
             var response = new RevokeCertificateResponse
             {
-                ServerCertificate = mappedCertificate
+                MonitorServerCertificate = mappedCertificate
             };
     
             return Ok(ApiResponse<RevokeCertificateResponse>.SuccessResponse(response));
