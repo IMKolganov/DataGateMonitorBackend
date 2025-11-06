@@ -3,7 +3,6 @@ using Newtonsoft.Json;
 using Newtonsoft.Json.Linq;
 using OpenVPNGateMonitor.DataBase.Services.Query.OpenVpnServerTable;
 using OpenVPNGateMonitor.Services.Api.Auth.Interfaces;
-using OpenVPNGateMonitor.Services.Api.Interfaces;
 using OpenVPNGateMonitor.Services.DataGateOpenVpnManager.Interfaces;
 using OpenVPNGateMonitor.SharedModels.DataGateOpenVpnManager.OvpnFile.Requests;
 using OpenVPNGateMonitor.SharedModels.DataGateOpenVpnManager.OvpnFile.Responses;
@@ -17,6 +16,11 @@ public class OvpnFileApiClient(
     ILogger<OvpnFileApiClient> logger)
     : IOvpnFileApiClient
 {
+    private const string EndpointOvpnFilesAdd = "api/ovpn-files/add";
+    private const string EndpointOvpnFilesRevoke = "api/ovpn-files/revoke";
+    private const string EndpointOvpnFilesDownload = "api/ovpn-files/download";
+
+    
     private async Task<HttpClient> GetClientForServerAsync(int serverId, CancellationToken cancellationToken)
     {
         var server = await openVpnServerQueryService.GetByIdAsync(serverId, cancellationToken);
@@ -46,7 +50,7 @@ public class OvpnFileApiClient(
                 "backend", "DataGateOpenVpnManager");
             client.DefaultRequestHeaders.Authorization = new AuthenticationHeaderValue("Bearer", jwt);
             
-            var response = await client.PostAsJsonAsync("api/OvpnFile/AddOvpnFile", request, cancellationToken);
+            var response = await client.PostAsJsonAsync(EndpointOvpnFilesAdd, request, cancellationToken);
 
             if (!response.IsSuccessStatusCode)
             {
@@ -109,7 +113,7 @@ public class OvpnFileApiClient(
                 "backend", "DataGateOpenVpnManager");
             client.DefaultRequestHeaders.Authorization = new AuthenticationHeaderValue("Bearer", jwt);
 
-            var response = await client.PostAsJsonAsync("api/OvpnFile/RevokeOvpnFile", request, cancellationToken);
+            var response = await client.PostAsJsonAsync(EndpointOvpnFilesRevoke, request, cancellationToken);
 
             if (!response.IsSuccessStatusCode)
             {
@@ -172,7 +176,7 @@ public class OvpnFileApiClient(
                 "backend", "DataGateOpenVpnManager");
             client.DefaultRequestHeaders.Authorization = new AuthenticationHeaderValue("Bearer", jwt);
             
-            var response = await client.PostAsJsonAsync("api/OvpnFile/DownloadOvpnFile", request, cancellationToken);
+            var response = await client.PostAsJsonAsync(EndpointOvpnFilesDownload, request, cancellationToken);
 
             if (!response.IsSuccessStatusCode)
             {

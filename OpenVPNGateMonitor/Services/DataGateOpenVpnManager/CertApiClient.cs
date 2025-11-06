@@ -19,7 +19,10 @@ public class CertApiClient(
     : ICertApiClient
 {
     private static readonly AsyncLocal<bool> IsLogging = new();
-
+    private const string EndpointCertsGetAll = "api/certs/get-all";
+    private const string EndpointCertsAdd = "api/certs/add";
+    private const string EndpointCertsRevoke = "api/certs/revoke";
+    
     private void LogSafe(Action action)
     {
         if (IsLogging.Value)
@@ -60,7 +63,7 @@ public class CertApiClient(
             "backend", "DataGateOpenVpnManager");
             client.DefaultRequestHeaders.Authorization = new AuthenticationHeaderValue("Bearer", jwt);
 
-            var response = await client.GetAsync("api/Cert/GetAllCertificates", cancellationToken);
+            var response = await client.GetAsync(EndpointCertsGetAll, cancellationToken);
 
             if (!response.IsSuccessStatusCode)
             {
@@ -107,7 +110,7 @@ public class CertApiClient(
             client.DefaultRequestHeaders.Authorization = new AuthenticationHeaderValue("Bearer", jwt);
 
             var request = new AddServerCertificateRequest { CommonName = commonName };
-            var response = await client.PostAsJsonAsync("api/Cert/AddServerCertificate", request,
+            var response = await client.PostAsJsonAsync(EndpointCertsAdd, request,
                 cancellationToken);
 
             if (!response.IsSuccessStatusCode)
@@ -161,7 +164,7 @@ public class CertApiClient(
                 "backend", "DataGateOpenVpnManager");
             client.DefaultRequestHeaders.Authorization = new AuthenticationHeaderValue("Bearer", jwt);
 
-            var response = await client.PostAsJsonAsync("api/Cert/RevokeCertificate", request,
+            var response = await client.PostAsJsonAsync(EndpointCertsRevoke, request,
                 cancellationToken);
 
             if (!response.IsSuccessStatusCode)
