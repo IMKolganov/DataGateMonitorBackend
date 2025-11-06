@@ -11,7 +11,7 @@ public class VpnServerClientMapping : IRegister
         #region "get-all-connected"
         config.NewConfig<VpnClientInfoResponseList, ConnectedClientsResponse>()
             .Map(d => d.TotalCount, s => s.TotalCount)
-            .Map(d => d.Clients,    s => s.VpnClientInfoResponse);
+            .Map(d => d.VpnClients,    s => s.VpnClientInfoResponse);
         #endregion
     }
 }
