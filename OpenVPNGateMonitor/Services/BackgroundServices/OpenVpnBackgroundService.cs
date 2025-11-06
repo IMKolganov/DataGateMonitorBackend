@@ -1,7 +1,7 @@
 ﻿using OpenVPNGateMonitor.DataBase.Services.Query.OpenVpnServerTable;
-using OpenVPNGateMonitor.Models.Helpers.Background;
 using OpenVPNGateMonitor.Services.BackgroundServices.Interfaces;
 using OpenVPNGateMonitor.Services.Others;
+using OpenVPNGateMonitor.SharedModels.DataGateMonitorBackend.OpenVpnServers.Dto;
 using OpenVPNGateMonitor.SharedModels.Enums;
 
 namespace OpenVPNGateMonitor.Services.BackgroundServices;
@@ -38,7 +38,7 @@ public class OpenVpnBackgroundService : BackgroundService, IOpenVpnBackgroundSer
         _logger.LogInformation($"Initial delay token source: {_delayTokenSource.GetHashCode()}");
     }
     
-    public Dictionary<int, BackgroundServerStatus> GetStatus() => _statusManager.GetAllStatuses();
+    public Dictionary<int, ServiceStatusDto> GetStatus() => _statusManager.GetAllStatuses();
 
     public async Task RunNow(CancellationToken cancellationToken)
     {
