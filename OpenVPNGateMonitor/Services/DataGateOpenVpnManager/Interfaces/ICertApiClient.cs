@@ -1,5 +1,4 @@
-﻿using OpenVPNGateMonitor.Models.Helpers;
-using OpenVPNGateMonitor.SharedModels.DataGateOpenVpnManager.Cert.Responses;
+﻿using OpenVPNGateMonitor.SharedModels.DataGateOpenVpnManager.Cert.Responses;
 using OpenVPNGateMonitor.SharedModels.DataGateMonitorBackend.OpenVpnServerCerts.Requests;
 
 namespace OpenVPNGateMonitor.Services.DataGateOpenVpnManager.Interfaces;
