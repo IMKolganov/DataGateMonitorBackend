@@ -139,7 +139,9 @@ public class OpenVpnServersController(ILogger<OpenVpnServersController> logger, 
         {
             while (webSocket.State == WebSocketState.Open)
             {
-                var statuses = openVpnBackgroundService.GetStatus().Values
+                var rawStatuses = openVpnBackgroundService.GetStatus();
+
+                var statuses = rawStatuses.Values
                     .Select(x => x.Adapt<ServiceStatusResponse>())
                     .ToList();
 
