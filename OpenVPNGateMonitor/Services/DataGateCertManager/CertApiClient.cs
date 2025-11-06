@@ -2,13 +2,13 @@
 using System.Text.Json;
 using OpenVPNGateMonitor.DataBase.Services.Query.OpenVpnServerTable;
 using OpenVPNGateMonitor.Services.Api.Auth.Interfaces;
-using OpenVPNGateMonitor.Services.DataGateCertManager.Interfaces;
+using OpenVPNGateMonitor.Services.DataGateOpenVpnManager.Interfaces;
 using OpenVPNGateMonitor.Services.Others.Notifications.CertApiClient;
-using OpenVPNGateMonitor.SharedModels.DataGateCertManager.Cert.Responses;
+using OpenVPNGateMonitor.SharedModels.DataGateOpenVpnManager.Cert.Responses;
 using OpenVPNGateMonitor.SharedModels.DataGateMonitorBackend.OpenVpnServerCerts.Requests;
-using AddServerCertificateRequest = OpenVPNGateMonitor.SharedModels.DataGateCertManager.Cert.Requests.AddServerCertificateRequest;
+using AddServerCertificateRequest = OpenVPNGateMonitor.SharedModels.DataGateOpenVpnManager.Cert.Requests.AddServerCertificateRequest;
 
-namespace OpenVPNGateMonitor.Services.DataGateCertManager;
+namespace OpenVPNGateMonitor.Services.DataGateOpenVpnManager;
 
 public class CertApiClient(
     IHttpClientFactory httpClientFactory,
@@ -57,7 +57,7 @@ public class CertApiClient(
         {
             using var client = await GetClientForServerAsync(vpnServerId, cancellationToken);
             var jwt = tokenService.GenerateToken("vpn-cert-issuer", "cert-create",
-            "backend", "DataGateCertManager");
+            "backend", "DataGateOpenVpnManager");
             client.DefaultRequestHeaders.Authorization = new AuthenticationHeaderValue("Bearer", jwt);
 
             var response = await client.GetAsync("api/Cert/GetAllCertificates", cancellationToken);
@@ -103,7 +103,7 @@ public class CertApiClient(
         {
             using var client = await GetClientForServerAsync(vpnServerId, cancellationToken);
             var jwt = tokenService.GenerateToken("vpn-cert-issuer", "cert-create",
-                "backend", "DataGateCertManager");
+                "backend", "DataGateOpenVpnManager");
             client.DefaultRequestHeaders.Authorization = new AuthenticationHeaderValue("Bearer", jwt);
 
             var request = new AddServerCertificateRequest { CommonName = commonName };
@@ -158,7 +158,7 @@ public class CertApiClient(
         {
             using var client = await GetClientForServerAsync(request.VpnServerId, cancellationToken);
             var jwt = tokenService.GenerateToken("vpn-cert-issuer", "cert-create",
-                "backend", "DataGateCertManager");
+                "backend", "DataGateOpenVpnManager");
             client.DefaultRequestHeaders.Authorization = new AuthenticationHeaderValue("Bearer", jwt);
 
             var response = await client.PostAsJsonAsync("api/Cert/RevokeCertificate", request,

@@ -10,11 +10,11 @@ using OpenVPNGateMonitor.Hubs;
 using OpenVPNGateMonitor.Models;
 using OpenVPNGateMonitor.Services.Api.Auth.Interfaces;
 using OpenVPNGateMonitor.Services.GeoLite.Interfaces;
-using OpenVPNGateMonitor.SharedModels.DataGateCertManager.VpnEvent.Requests;
+using OpenVPNGateMonitor.SharedModels.DataGateOpenVpnManager.VpnEvent.Requests;
 using OpenVPNGateMonitor.SharedModels.DataGateMonitorBackend.OpenVpnServerEvent.Dto;
 using OpenVPNGateMonitor.SharedModels.DataGateMonitorBackend.OpenVpnServerEvent.Responses;
 
-namespace OpenVPNGateMonitor.Services.DataGateCertManager.Events;
+namespace OpenVPNGateMonitor.Services.DataGateOpenVpnManager.Events;
 
 public class OpenVpnEventClient(
     OpenVpnServer openVpnServer,
@@ -107,7 +107,7 @@ public class OpenVpnEventClient(
                     {
                         options.AccessTokenProvider = () =>
                             Task.FromResult<string?>(tokenService.GenerateToken(
-                                "vpn-cert-issuer", "cert-create", "backend", "DataGateCertManager"));
+                                "vpn-cert-issuer", "cert-create", "backend", "DataGateOpenVpnManager"));
                     })
                     .WithAutomaticReconnect([
                         TimeSpan.Zero, TimeSpan.FromSeconds(2),

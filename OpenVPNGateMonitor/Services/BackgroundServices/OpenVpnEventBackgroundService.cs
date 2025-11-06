@@ -1,5 +1,5 @@
 ﻿using OpenVPNGateMonitor.DataBase.Services.Query.OpenVpnServerTable;
-using OpenVPNGateMonitor.Services.DataGateCertManager.Events;
+using OpenVPNGateMonitor.Services.DataGateOpenVpnManager.Events;
 
 namespace OpenVPNGateMonitor.Services.BackgroundServices;
 

@@ -2,7 +2,7 @@
 using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Mvc;
 using OpenVPNGateMonitor.DataBase.Services.Query.OpenVpnServerEventLogTable;
-using OpenVPNGateMonitor.Services.DataGateCertManager.Events;
+using OpenVPNGateMonitor.Services.DataGateOpenVpnManager.Events;
 using OpenVPNGateMonitor.SharedModels.DataGateMonitorBackend.OpenVpnServerEvent.Requests;
 using OpenVPNGateMonitor.SharedModels.DataGateMonitorBackend.OpenVpnServerEvent.Responses;
 using OpenVPNGateMonitor.SharedModels.Responses;

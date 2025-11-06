@@ -1,4 +1,4 @@
-﻿namespace OpenVPNGateMonitor.SharedModels.DataGateCertManager.VpnEvent.Requests;
+﻿namespace OpenVPNGateMonitor.SharedModels.DataGateOpenVpnManager.VpnEvent.Requests;
 
 public sealed class VpnEventRequest
 {

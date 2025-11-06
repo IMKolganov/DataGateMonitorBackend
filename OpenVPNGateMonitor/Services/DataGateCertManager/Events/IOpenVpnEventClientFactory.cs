@@ -1,7 +1,7 @@
 ﻿using OpenVPNGateMonitor.Models;
 using OpenVPNGateMonitor.SharedModels.DataGateMonitorBackend.OpenVpnServerEvent.Responses;
 
-namespace OpenVPNGateMonitor.Services.DataGateCertManager.Events;
+namespace OpenVPNGateMonitor.Services.DataGateOpenVpnManager.Events;
 
 public interface IOpenVpnEventClientFactory
 {

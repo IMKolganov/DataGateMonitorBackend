@@ -6,7 +6,7 @@ using OpenVPNGateMonitor.Models;
 using OpenVPNGateMonitor.Services.Api.Auth.Interfaces;
 using OpenVPNGateMonitor.SharedModels.DataGateMonitorBackend.OpenVpnServerEvent.Responses;
 
-namespace OpenVPNGateMonitor.Services.DataGateCertManager.Events;
+namespace OpenVPNGateMonitor.Services.DataGateOpenVpnManager.Events;
 
 public class OpenVpnEventClientFactory(IServiceProvider rootProvider) : IOpenVpnEventClientFactory
 {

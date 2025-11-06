@@ -2,7 +2,7 @@
 using OpenVPNGateMonitor.SharedModels.DataGateMonitorBackend.OpenVpnFiles.Requests;
 using OpenVPNGateMonitor.SharedModels.DataGateMonitorBackend.OpenVpnFiles.Responses;
 
-namespace OpenVPNGateMonitor.Services.DataGateCertManager.Interfaces;
+namespace OpenVPNGateMonitor.Services.DataGateOpenVpnManager.Interfaces;
 
 public interface IOvpnFileApiService
 {

@@ -4,5 +4,5 @@ namespace OpenVPNGateMonitor.SharedModels.DataGateMonitorBackend.OpenVpnServerCl
 
 public class OverviewPointsResponse
 {
-    public List<GeoPointAggDto> GeoPointAgg = new();
+    public List<GeoPointAggDto> GeoPointAggs = new();
 }

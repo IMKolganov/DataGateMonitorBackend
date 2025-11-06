@@ -1,6 +1,6 @@
 ﻿using System.ComponentModel.DataAnnotations;
 
-namespace OpenVPNGateMonitor.SharedModels.DataGateCertManager.OvpnFile.Responses;
+namespace OpenVPNGateMonitor.SharedModels.DataGateOpenVpnManager.OvpnFile.Responses;
 
 public class OvpnFileDownload
 {

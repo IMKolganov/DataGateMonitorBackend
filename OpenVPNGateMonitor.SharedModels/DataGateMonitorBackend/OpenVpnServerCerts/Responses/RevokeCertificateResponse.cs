@@ -4,5 +4,5 @@ namespace OpenVPNGateMonitor.SharedModels.DataGateMonitorBackend.OpenVpnServerCe
 
 public class RevokeCertificateResponse
 {
-    public ServerCertificate ServerCertificate { get; set; } =  new ();
+    public MonitorServerCertificate MonitorServerCertificate { get; set; } =  new ();
 }

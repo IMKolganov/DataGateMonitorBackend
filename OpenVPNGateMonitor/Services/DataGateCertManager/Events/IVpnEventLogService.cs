@@ -1,7 +1,7 @@
 ﻿
-using OpenVPNGateMonitor.SharedModels.DataGateCertManager.VpnEvent.Requests;
+using OpenVPNGateMonitor.SharedModels.DataGateOpenVpnManager.VpnEvent.Requests;
 
-namespace OpenVPNGateMonitor.Services.DataGateCertManager.Events;
+namespace OpenVPNGateMonitor.Services.DataGateOpenVpnManager.Events;
 
 public interface IVpnEventLogService
 {
