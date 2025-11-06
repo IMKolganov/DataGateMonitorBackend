@@ -138,7 +138,7 @@ public sealed class OpenVpnOverviewSeriesQuery(IUnitOfWork uow) : IOpenVpnOvervi
                 TotalTrafficOutBytes = series.Sum(r => r.TrafficOutBytes),
                 PeakActiveClients    = series.Count == 0 ? 0 : series.Max(r => r.ActiveClients)
             },
-            Series = series
+            OverviewSeriesRows = series
         };
     }
 

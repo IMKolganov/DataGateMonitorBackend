@@ -25,7 +25,7 @@ public class OvpnFileMapping : IRegister
 
         // 4️⃣ List of files → OvpnFilesResponse
         config.NewConfig<List<IssuedOvpnFile>, OvpnFilesResponse>()
-            .Map(dest => dest.IssuedOvpnFile, src => src);
+            .Map(dest => dest.IssuedOvpnFiles, src => src);
 
         // 5️⃣ Files + Tokens → OvpnFilesWithTokensResponse
         config.NewConfig<(List<IssuedOvpnFile> files, List<IssuedOvpnFileToken> tokens), OvpnFilesWithTokensResponse>()

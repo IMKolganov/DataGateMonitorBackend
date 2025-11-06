@@ -17,7 +17,7 @@ public class ApplicationMapping : IRegister
             .Map(d => d.IsSystem, s => s.IsSystem);
 
         config.NewConfig<List<ClientApplication>, ApplicationsResponse>()
-            .Map(d => d.Application, s => s);
+            .Map(d => d.Applications, s => s);
         #endregion
 
         #region "register"
