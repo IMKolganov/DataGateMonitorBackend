@@ -2,6 +2,7 @@
 using MapsterMapper;
 using OpenVPNGateMonitor.Mapping.Applications.Mappings;
 using OpenVPNGateMonitor.Mapping.Auth.Mappings;
+using OpenVPNGateMonitor.Mapping.DataGateOpenVpnManager.Mappings;
 using OpenVPNGateMonitor.Mapping.OpenVpnFiles.Mappings;
 using OpenVPNGateMonitor.Mapping.OpenVpnServerCerts.Mappings;
 using OpenVPNGateMonitor.Mapping.OpenVpnServerClients.Mappings;
@@ -27,7 +28,8 @@ public static class MapsterConfiguration
             typeof(VpnServerMapping).Assembly,
             typeof(TelegramBotUserMapping).Assembly,
             typeof(TelegramBotIncomingMessageLogMapping).Assembly,
-            typeof(VpnServerClientMapping).Assembly
+            typeof(VpnServerClientMapping).Assembly,
+            typeof(DataGateOpenVpnManagerMapping).Assembly
         );
         // TypeAdapterConfig.GlobalSettings.Apply(config);
         
