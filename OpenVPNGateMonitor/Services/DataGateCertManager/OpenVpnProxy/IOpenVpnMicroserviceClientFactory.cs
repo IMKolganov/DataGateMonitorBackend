@@ -1,6 +1,6 @@
 ﻿using OpenVPNGateMonitor.Models;
 
-namespace OpenVPNGateMonitor.Services.DataGateCertManager.OpenVpnProxy;
+namespace OpenVPNGateMonitor.Services.DataGateOpenVpnManager.OpenVpnProxy;
 
 public interface IOpenVpnMicroserviceClientFactory
 {

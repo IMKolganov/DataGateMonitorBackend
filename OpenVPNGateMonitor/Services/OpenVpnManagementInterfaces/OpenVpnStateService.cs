@@ -1,6 +1,6 @@
 ﻿using OpenVPNGateMonitor.Models;
 using OpenVPNGateMonitor.Models.Helpers.OpenVpnManagementInterfaces;
-using OpenVPNGateMonitor.Services.DataGateCertManager.OpenVpnProxy;
+using OpenVPNGateMonitor.Services.DataGateOpenVpnManager.OpenVpnProxy;
 using OpenVPNGateMonitor.Services.OpenVpnManagementInterfaces.Interfaces;
 
 namespace OpenVPNGateMonitor.Services.OpenVpnManagementInterfaces;

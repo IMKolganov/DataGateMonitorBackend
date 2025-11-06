@@ -1,6 +1,6 @@
 ﻿using OpenVPNGateMonitor.SharedModels.Enums;
 
-namespace OpenVPNGateMonitor.SharedModels.DataGateCertManager.Cert.Responses;
+namespace OpenVPNGateMonitor.SharedModels.DataGateOpenVpnManager.Cert.Responses;
 
 public class ServerCertificate
 {

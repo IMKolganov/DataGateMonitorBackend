@@ -4,5 +4,5 @@ namespace OpenVPNGateMonitor.SharedModels.DataGateMonitorBackend.OpenVpnServerCe
 
 public class GetAllCertificatesResponse
 {
-    public List<ServerCertificate> ServerCertificates = [];
+    public List<MonitorServerCertificate> MonitorServerCertificates = [];
 }

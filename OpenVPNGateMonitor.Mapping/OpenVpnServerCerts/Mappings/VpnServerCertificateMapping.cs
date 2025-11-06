@@ -1,5 +1,5 @@
 ﻿using Mapster;
-using SourceCert = OpenVPNGateMonitor.SharedModels.DataGateCertManager.Cert.Responses.ServerCertificate;
+using SourceCert = OpenVPNGateMonitor.SharedModels.DataGateOpenVpnManager.Cert.Responses.ServerCertificate;
 using DestCert = OpenVPNGateMonitor.SharedModels.DataGateMonitorBackend.OpenVpnServerCerts.Responses.Dto.ServerCertificate;
 
 namespace OpenVPNGateMonitor.Mapping.OpenVpnServerCerts.Mappings;

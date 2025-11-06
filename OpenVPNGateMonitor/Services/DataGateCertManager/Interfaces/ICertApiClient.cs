@@ -1,8 +1,8 @@
 ﻿using OpenVPNGateMonitor.Models.Helpers;
-using OpenVPNGateMonitor.SharedModels.DataGateCertManager.Cert.Responses;
+using OpenVPNGateMonitor.SharedModels.DataGateOpenVpnManager.Cert.Responses;
 using OpenVPNGateMonitor.SharedModels.DataGateMonitorBackend.OpenVpnServerCerts.Requests;
 
-namespace OpenVPNGateMonitor.Services.DataGateCertManager.Interfaces;
+namespace OpenVPNGateMonitor.Services.DataGateOpenVpnManager.Interfaces;
 
 public interface ICertApiClient
 {

@@ -1,4 +1,4 @@
-﻿namespace OpenVPNGateMonitor.SharedModels.DataGateCertManager.OvpnFile.Requests;
+﻿namespace OpenVPNGateMonitor.SharedModels.DataGateOpenVpnManager.OvpnFile.Requests;
 
 public class RevokeOvpnFileRequest
 {

@@ -1,4 +1,4 @@
-﻿namespace OpenVPNGateMonitor.SharedModels.DataGateCertManager.Cert.Requests;
+﻿namespace OpenVPNGateMonitor.SharedModels.DataGateOpenVpnManager.Cert.Requests;
 
 public class AddServerCertificateRequest
 {

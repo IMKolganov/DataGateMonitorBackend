@@ -5,7 +5,7 @@ using OpenVPNGateMonitor.Hubs;
 using OpenVPNGateMonitor.Models;
 using OpenVPNGateMonitor.Services.Api.Auth.Interfaces;
 
-namespace OpenVPNGateMonitor.Services.DataGateCertManager.OpenVpnProxy;
+namespace OpenVPNGateMonitor.Services.DataGateOpenVpnManager.OpenVpnProxy;
 
 public class OpenVpnMicroserviceClient(
     OpenVpnServer server,
@@ -116,7 +116,7 @@ public class OpenVpnMicroserviceClient(
                     .WithUrl(fullUrl, options =>
                     {
                         options.AccessTokenProvider = () =>
-                            Task.FromResult<string?>(tokenService.GenerateToken("vpn-cert-issuer", "cert-create", "backend", "DataGateCertManager"));
+                            Task.FromResult<string?>(tokenService.GenerateToken("vpn-cert-issuer", "cert-create", "backend", "DataGateOpenVpnManager"));
                     })
                     .WithAutomaticReconnect()
                     .Build();

@@ -4,5 +4,5 @@ namespace OpenVPNGateMonitor.SharedModels.DataGateMonitorBackend.Applications.Re
 
 public class ApplicationsResponse
 { 
-    public List<ApplicationDto> Application { get; set; } = new();
+    public List<ApplicationDto> Applications { get; set; } = new();
 }

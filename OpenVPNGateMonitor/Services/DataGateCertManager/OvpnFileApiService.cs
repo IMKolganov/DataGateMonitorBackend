@@ -6,14 +6,14 @@ using OpenVPNGateMonitor.DataBase.Services.Query.IssuedOvpnFileTokenTable;
 using OpenVPNGateMonitor.DataBase.Services.Query.OpenVpnServerOvpnFileConfigTable;
 using OpenVPNGateMonitor.DataBase.Services.Query.OpenVpnServerTable;
 using OpenVPNGateMonitor.Models;
-using OpenVPNGateMonitor.Services.DataGateCertManager.Interfaces;
+using OpenVPNGateMonitor.Services.DataGateOpenVpnManager.Interfaces;
 using OpenVPNGateMonitor.Services.Others.Notifications.OvpnFileApi;
-using OpenVPNGateMonitor.SharedModels.DataGateCertManager.OvpnFile.Requests;
+using OpenVPNGateMonitor.SharedModels.DataGateOpenVpnManager.OvpnFile.Requests;
 using OpenVPNGateMonitor.SharedModels.DataGateMonitorBackend.OpenVpnFiles.Requests;
 using OpenVPNGateMonitor.SharedModels.DataGateMonitorBackend.OpenVpnFiles.Responses;
 using OpenVPNGateMonitor.SharedModels.DataGateMonitorBackend.OpenVpnFiles.Responses.Dto;
 
-namespace OpenVPNGateMonitor.Services.DataGateCertManager;
+namespace OpenVPNGateMonitor.Services.DataGateOpenVpnManager;
 
 public class OvpnFileApiService(IOvpnFileApiClient ovpnFileApiClient, 
     ILogger<OvpnFileApiClient> logger, IConfiguration configuration,

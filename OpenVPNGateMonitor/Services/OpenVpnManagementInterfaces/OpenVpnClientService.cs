@@ -2,7 +2,7 @@
 using System.Security.Cryptography;
 using System.Text;
 using OpenVPNGateMonitor.Models;
-using OpenVPNGateMonitor.Services.DataGateCertManager.OpenVpnProxy;
+using OpenVPNGateMonitor.Services.DataGateOpenVpnManager.OpenVpnProxy;
 using OpenVPNGateMonitor.Services.GeoLite.Interfaces;
 using OpenVPNGateMonitor.Services.OpenVpnManagementInterfaces.Interfaces;
 
