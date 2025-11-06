@@ -1,5 +1,6 @@
 ﻿using Mapster;
 using OpenVPNGateMonitor.Models;
+using OpenVPNGateMonitor.Models.Helpers.Background;
 using OpenVPNGateMonitor.SharedModels.DataGateMonitorBackend.OpenVpnServers.Dto;
 using OpenVPNGateMonitor.SharedModels.DataGateMonitorBackend.OpenVpnServers.Responses;
 
@@ -65,6 +66,17 @@ public class VpnServerMapping : IRegister
         config.NewConfig<OpenVpnServerWithStatusDto, OpenVpnServerWithStatusResponse>()
             .Map(d => 
                 d.OpenVpnServerWithStatus, s => s);
+        #endregion
+        
+        #region "status-stream"
+        TypeAdapterConfig<BackgroundServerStatus, ServiceStatusResponse>
+            .NewConfig()
+            .Map(dest => dest.ServiceStatus.VpnServerId, src => src.VpnServerId)
+            .Map(dest => dest.ServiceStatus.Status, src => src.Status)
+            .Map(dest => dest.ServiceStatus.CountConnectedClients, src => src.CountConnectedClients)
+            .Map(dest => dest.ServiceStatus.CountSessions, src => src.CountSessions)
+            .Map(dest => dest.ServiceStatus.ErrorMessage, src => src.ErrorMessage)
+            .Map(dest => dest.ServiceStatus.NextRunTime, src => src.NextRunTime);
         #endregion
     }
 }
