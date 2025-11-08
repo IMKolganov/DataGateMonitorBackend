@@ -11,10 +11,10 @@ using OpenVPNGateMonitor.SharedModels.Responses;
 
 namespace OpenVPNGateMonitor.Controllers;
 
-[Route("api/[controller]")]
+[Route("api/auth")]
 [ApiController]
 public class AuthController(IConfiguration config, IApplicationService appService, 
-    IMicroserviceTokenService microserviceTokenService) : ControllerBase
+    IMicroserviceTokenService microserviceTokenService) : BaseController
 {
     [HttpGet("system-secret-status")]
     public async Task<ActionResult<ApiResponse<SystemSecretStatusResponse>>> GetSystemStatus(CancellationToken cancellationToken)
@@ -100,7 +100,7 @@ public class AuthController(IConfiguration config, IApplicationService appServic
             }));
     }
     
-    [HttpGet("public-key/{pin}")]
+    [HttpGet("public-key/{pin:int}")]
     public ActionResult<ApiResponse<string>> GetPublicKeyForMicroservice([FromRoute(Name = "pin")] int pin)
     {
         if (pin > 10000)

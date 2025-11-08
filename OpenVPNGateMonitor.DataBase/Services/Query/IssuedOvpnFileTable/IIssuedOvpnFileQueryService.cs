@@ -7,6 +7,8 @@ public interface IIssuedOvpnFileQueryService
 {
     Task<List<IssuedOvpnFile>> GetAllAsync(CancellationToken ct);
     Task<List<IssuedOvpnFile>> GetAllByVpnServerId(int vpnServerId, CancellationToken ct);
+    Task<List<IssuedOvpnFile>> GetAllByExternalId(string externalId, CancellationToken ct);
+
     Task<List<IssuedOvpnFile>> GetAllByVpnServerIdAndIsRevoked(int vpnServerId, bool isRevoked, CancellationToken ct);
     Task<List<IssuedOvpnFile>> GetAllByVpnServerIdAndExternalIdAndIsRevoked(int vpnServerId, string externalId,
         bool isRevoked, CancellationToken ct);

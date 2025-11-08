@@ -1,9 +1,11 @@
 ﻿using System.ComponentModel.DataAnnotations;
+using Microsoft.AspNetCore.Mvc;
 
 namespace OpenVPNGateMonitor.SharedModels.DataGateMonitorBackend.User.Requests;
 
 public class GetUserByExternalIdRequest
 {
-    [Required(ErrorMessage = "ExternalId is required.")]
+    [Required(ErrorMessage = "externalId is required.")]
+    [FromRoute(Name = "externalId")]
     public string ExternalId { get; set; } = string.Empty;
 }

@@ -2,26 +2,25 @@
 using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Mvc;
 using OpenVPNGateMonitor.DataBase.Services.Query.OpenVpnServerEventLogTable;
-using OpenVPNGateMonitor.Services.DataGateCertManager.Events;
+using OpenVPNGateMonitor.Services.DataGateOpenVpnManager.Events;
+using OpenVPNGateMonitor.SharedModels.DataGateMonitorBackend.OpenVpnServerEvent.Requests;
 using OpenVPNGateMonitor.SharedModels.DataGateMonitorBackend.OpenVpnServerEvent.Responses;
-using OpenVPNGateMonitor.SharedModels.DataGateMonitorBackend.OpenVpnServers.Requests;
 using OpenVPNGateMonitor.SharedModels.Responses;
 
 namespace OpenVPNGateMonitor.Controllers;
 
 [ApiController]
-[Route("api/[controller]")]
+[Route("api/open-vpn-events")]
 [Authorize]
-public class OpenVpnServerEventController(
-    IOpenVpnServerEventLogQueryService openVpnServerEventLogQueryService,
-    IOpenVpnEventClientFactory eventClientFactory) : ControllerBase
+public class OpenVpnServerEventController(IOpenVpnServerEventLogQueryService openVpnServerEventLogQueryService,
+    IOpenVpnEventClientFactory eventClientFactory) : BaseController
 {
     /// <summary>
     /// Paged events by VPN server id.
     /// </summary>
-    [HttpGet("GetEventByVpnServerId")]
+    [HttpGet("get-by-server")]
     public async Task<ActionResult<ApiResponse<VpnServerEventResponse>>> GetEventByVpnServerId(
-        [FromQuery] GetConnectedClientsRequest request, CancellationToken cancellationToken)
+        [FromQuery] GetVpnServerEventRequest request, CancellationToken cancellationToken)
     {
         var page = await openVpnServerEventLogQueryService.GetByVpnServerIdAsync(
             request.VpnServerId, request.Page, request.PageSize, cancellationToken);
@@ -33,23 +32,24 @@ public class OpenVpnServerEventController(
     /// <summary>
     /// Returns status snapshots for all cached OpenVPN event clients.
     /// </summary>
-    [HttpGet("Status")]
-    public ActionResult<ApiResponse<IReadOnlyCollection<OpenVpnEventConnectionStatus>>> GetAllClientStatuses()
+    [HttpGet("status")]
+    public ActionResult<ApiResponse<ConnectionStatusesResponse>> GetAllClientStatuses()
     {
         var statuses = eventClientFactory.GetAllClientStatuses();
-        return Ok(ApiResponse<IReadOnlyCollection<OpenVpnEventConnectionStatus>>.SuccessResponse(statuses));
+        return Ok(ApiResponse<ConnectionStatusesResponse>.SuccessResponse(statuses));
     }
 
     /// <summary>
     /// Returns status snapshot for a single server id (404 if not found in cache).
     /// </summary>
-    [HttpGet("Status/{serverId:int}")]
-    public ActionResult<ApiResponse<OpenVpnEventConnectionStatus>> GetClientStatus([FromRoute] int serverId)
+    [HttpGet("status/{vpnServerId:int}")]
+    public ActionResult<ApiResponse<ConnectionStatusResponse>> GetClientStatus([FromRoute] 
+        GetClientStatusRequest request)
     {
-        if (eventClientFactory.TryGetClientStatus(serverId, out var status) && status is not null)
-            return Ok(ApiResponse<OpenVpnEventConnectionStatus>.SuccessResponse(status));
+        if (eventClientFactory.TryGetClientStatus(request.VpnServerId, out var status) && status is not null)
+            return Ok(ApiResponse<ConnectionStatusResponse>.SuccessResponse(status));
 
-        return NotFound(ApiResponse<OpenVpnEventConnectionStatus>.ErrorResponse(
-            $"No cached client found for serverId={serverId}"));
+        return NotFound(ApiResponse<ConnectionStatusResponse>.ErrorResponse(
+            $"No cached client found for serverId={request.VpnServerId}"));
     }
 }

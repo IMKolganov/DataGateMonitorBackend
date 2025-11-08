@@ -1,4 +1,5 @@
-﻿using OpenVPNGateMonitor.DataBase.Services.Query.OpenVpnServerClientTable.Dto;
+﻿using OpenVPNGateMonitor.SharedModels.DataGateMonitorBackend.OpenVpnServerClients.Responses;
+using OpenVPNGateMonitor.SharedModels.Enums;
 
 namespace OpenVPNGateMonitor.DataBase.Services.Query.OpenVpnServerClientTable;
 
@@ -21,7 +22,7 @@ public interface IOpenVpnOverviewSeriesQuery
         string? externalId,
         CancellationToken ct = default);
 
-    Task<List<OverviewUserItem>> GetOverviewUsersFromSessionsAsync(
+    Task<OverviewUsersResponse> GetOverviewUsersFromSessionsAsync(
         DateTimeOffset fromUtc,
         DateTimeOffset toUtc,
         int? vpnServerId,

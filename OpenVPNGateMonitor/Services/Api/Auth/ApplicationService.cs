@@ -49,7 +49,7 @@ public class ApplicationService(IClientApplicationQueryService clientApplication
 
     public async Task<List<ClientApplication>> GetAllApplicationsAsync(CancellationToken ct)
     {
-        return await clientApplicationQueryService.GetAllIsNotRevokedAsync(ct);
+        return await clientApplicationQueryService.GetAllAsync(ct);
     }
     
     public async Task<ClientApplication> UpdateApplicationAsync(ClientApplication clientApplication, 

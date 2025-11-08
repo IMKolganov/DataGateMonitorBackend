@@ -5,6 +5,7 @@ namespace OpenVPNGateMonitor.SharedModels.DataGateMonitorBackend.TelegramBotUser
 
 public class TelegramUserActionRequest
 {
-    [Required(ErrorMessage = "TelegramId is required.")]
+    [Required(ErrorMessage = "telegramId is required.")]
+    [FromRoute(Name = "telegramId") ]
     public long TelegramId { get; set; }
 }

@@ -22,7 +22,12 @@ public class OvpnFileNotificationService(INotificationService notifications) : I
             $"ServerId={vpnServerId}; Count={count}; Revoked={isRevoked}", vpnServerId, NotificationSeverity.Info,
             ReadChannels, ct);
 
-    public Task NotifyReadByExternalIdAsync(int vpnServerId, string externalId, int count, bool isRevoked,
+    public Task NotifyReadByExternalIdAsync(string externalId, int count,
+        CancellationToken ct)
+        => Notify("ovpn.read.by-external", "OVPN files requested by ExternalId",
+            $"ExternalId={externalId}; Count={count};", null,
+            NotificationSeverity.Info, ReadChannels, ct);
+    public Task NotifyReadByExternalIdAndVpnServerIdAsync(int vpnServerId, string externalId, int count, bool isRevoked,
         CancellationToken ct)
         => Notify("ovpn.read.by-external", "OVPN files requested by ExternalId",
             $"ServerId={vpnServerId}; ExternalId={externalId}; Count={count}; Revoked={isRevoked}", vpnServerId,
@@ -59,7 +64,7 @@ public class OvpnFileNotificationService(INotificationService notifications) : I
             NotificationSeverity.Info, ChangeChannels, ct);
 
     // ---- helper ----
-    private Task Notify(string type, string title, string message, int serverId, NotificationSeverity severity,
+    private Task Notify(string type, string title, string message, int? serverId, NotificationSeverity severity,
         string[] channels, CancellationToken ct, int? actorUserId = null)
         => notifications.NotifyAdminsAsync(new NotificationRequest
         {

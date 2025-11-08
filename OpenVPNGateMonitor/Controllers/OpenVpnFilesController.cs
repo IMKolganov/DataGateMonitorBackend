@@ -1,232 +1,216 @@
 ﻿using Mapster;
 using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Mvc;
-using OpenVPNGateMonitor.Models;
-using OpenVPNGateMonitor.Services.DataGateCertManager.Interfaces;
+using OpenVPNGateMonitor.Services.DataGateOpenVpnManager.Interfaces;
 using OpenVPNGateMonitor.SharedModels.DataGateMonitorBackend.OpenVpnFiles.Requests;
 using OpenVPNGateMonitor.SharedModels.DataGateMonitorBackend.OpenVpnFiles.Responses;
-using OpenVPNGateMonitor.SharedModels.DataGateMonitorBackend.OpenVpnFiles.Responses.Dto;
 using OpenVPNGateMonitor.SharedModels.Responses;
 
 namespace OpenVPNGateMonitor.Controllers;
 
 [ApiController]
-[Route("api/[controller]")]
+[Route("api/open-vpn-files")]
 [Authorize]
-public class OpenVpnFilesController(
-    IOvpnFileApiService ovpnFileApiService,
-    ILogger<OpenVpnFilesController> logger) : ControllerBase
+public class OpenVpnFilesController(IOvpnFileApiService ovpnFileApiService, 
+    ILogger<OpenVpnFilesController> logger) : BaseController
 {
-    [HttpGet("GetOvpnFileByToken/{token}")]
-    public async Task<ActionResult<ApiResponse<GetOvpnFileResponse>>> GetOvpnFileByToken(
-        [FromRoute] string token,
+// TODO: add pagination
+// TODO: deprecate all "*WithToken" endpoints/services.
+// TODO: move token creation into the regular Add method and
+//       return the token as part of the IssuedOvpnFile payload (embedded DTO).
+    
+    [HttpGet("by-token/{token}")]
+    public async Task<ActionResult<ApiResponse<OvpnFileResponse>>> GetByToken([FromRoute] ByTokenRequest request,
         CancellationToken cancellationToken)
     {
-        if (string.IsNullOrWhiteSpace(token))
-            return BadRequest(ApiResponse<GetOvpnFileResponse>.ErrorResponse("Token is required"));
+        if (string.IsNullOrWhiteSpace(request.Token))
+            return BadRequest(ApiResponse<OvpnFileResponse>.ErrorResponse("Token is required"));
 
         try
         {
-            var result = await ovpnFileApiService.GetOvpnFileByTokenAsync(token, cancellationToken);
-            var response = result.Adapt<GetOvpnFileResponse>();
-            return Ok(ApiResponse<GetOvpnFileResponse>.SuccessResponse(response));
+            var result = await ovpnFileApiService.GetByTokenAsync(request.Token, cancellationToken);
+            var response = result.Adapt<OvpnFileResponse>();
+            return Ok(ApiResponse<OvpnFileResponse>.SuccessResponse(response));
         }
         catch (Exception ex)
         {
-            logger.LogError(ex, "Failed to get OVPN file by token {Token}", token);
-            return BadRequest(ApiResponse<GetOvpnFileResponse>.ErrorResponse(ex.Message));
+            logger.LogError(ex, "Failed to get OVPN file by token {Token}", request.Token);
+            return BadRequest(ApiResponse<OvpnFileResponse>.ErrorResponse(ex.Message));
         }
     }
     
-    [HttpGet("GetAllOvpnFiles/{vpnServerId}")]
-    public async Task<ActionResult<ApiResponse<List<GetOvpnFileResponse>>>> GetAllOvpnFiles(
-        [FromRoute] GetAllOvpnFilesRequest request,
-        CancellationToken cancellationToken)
+    [HttpGet("get-all/{vpnServerId:int}")]
+    public async Task<ActionResult<ApiResponse<OvpnFilesResponse>>> GetAllByVpnServerId(
+        [FromRoute] ByVpnServerIdRequest request, CancellationToken cancellationToken)
     {
         try
         {
-            var result = await ovpnFileApiService.GetAllOvpnFilesAsync(request.VpnServerId, cancellationToken);
-            var response = result.Adapt<List<GetOvpnFileResponse>>();
-            return Ok(ApiResponse<List<GetOvpnFileResponse>>.SuccessResponse(response));
+            var result = await ovpnFileApiService.GetAllByVpnServerIdAsync(request.VpnServerId, 
+                cancellationToken);
+            var response = result.Adapt<OvpnFilesResponse>();
+            return Ok(ApiResponse<OvpnFilesResponse>.SuccessResponse(response));
         }
         catch (Exception ex)
         {
             logger.LogError(ex, "Failed to get all ovpn files on server {VpnServerId}", request.VpnServerId);
-            return BadRequest(ApiResponse<List<GetOvpnFileResponse>>.ErrorResponse(ex.Message));
+            return BadRequest(ApiResponse<string>.ErrorResponse(ex.Message));
         }
     }
     
-    [HttpGet("GetAllOvpnFilesWithToken/{vpnServerId}")]
-    public async Task<ActionResult<ApiResponse<List<GetOvpnFileWithTokenResponse>>>> GetAllOvpnFilesWithToken(
-        [FromRoute] GetAllOvpnFilesRequest request,
-        CancellationToken cancellationToken)
+    [HttpGet("get-all/{vpnServerId:int}/{externalId}")]
+    public async Task<ActionResult<ApiResponse<OvpnFilesResponse>>> GetAllByExternalIdAndVpnServerId(
+        [FromRoute] ByExternalIdAndVpnServerIdRequest request, CancellationToken cancellationToken)
     {
         try
         {
-            var result = await ovpnFileApiService.GetAllOvpnFilesWithTokenAsync(
-                request.VpnServerId, cancellationToken);
-
-            return Ok(ApiResponse<List<GetOvpnFileWithTokenResponse>>.SuccessResponse(
-                result.Adapt<List<GetOvpnFileWithTokenResponse>>()));
-        }
-        catch (Exception ex)
-        {
-            logger.LogError(ex, "Failed to get all ovpn files with token on server {VpnServerId}", request.VpnServerId);
-            return BadRequest(ApiResponse<List<GetOvpnFileWithTokenResponse>>.ErrorResponse(ex.Message));
-        }
-    }
-
-    
-    [HttpGet("GetAllByExternalIdOvpnFiles/{vpnServerId}/{externalId}")]
-    public async Task<ActionResult<ApiResponse<List<GetOvpnFileResponse>>>> GetAllByExternalIdOvpnFiles(
-        [FromRoute] GetAllByExternalIdOvpnFilesRequest request,
-        CancellationToken cancellationToken)
-    {
-        try
-        {
-            var result = await ovpnFileApiService.GetAllByExternalIdOvpnFilesAsync(
+            var result = await ovpnFileApiService.GetAllByExternalIdAndVpnServerIdAsync(
                 request.VpnServerId, request.ExternalId, cancellationToken);
 
-            var response = result.Adapt<List<GetOvpnFileResponse>>();
+            var response = result.Adapt<OvpnFilesResponse>();
 
-            return Ok(ApiResponse<List<GetOvpnFileResponse>>.SuccessResponse(response));
+            return Ok(ApiResponse<OvpnFilesResponse>.SuccessResponse(response));
         }
         catch (Exception ex)
         {
             logger.LogError(ex, "Failed to get all ovpn files on server {VpnServerId} and {ExternalId}", 
                 request.VpnServerId, request.ExternalId);
-            return BadRequest(ApiResponse<List<GetOvpnFileResponse>>.ErrorResponse(ex.Message));
+            return BadRequest(ApiResponse<string>.ErrorResponse(ex.Message));
         }
     }
     
-    [HttpGet("GetAllByExternalIdOvpnFilesWithToken/{vpnServerId}/{externalId}")]
-    public async Task<ActionResult<ApiResponse<List<GetOvpnFileWithTokenResponse>>>> GetAllByExternalIdOvpnFilesWithToken(
-        [FromRoute] GetAllByExternalIdOvpnFilesRequest request,
+    [HttpGet("get-all-with-token/{vpnServerId:int}")]
+    public async Task<ActionResult<ApiResponse<OvpnFilesWithTokensResponse>>> GetAllWithToken(
+        [FromRoute] ByVpnServerIdRequest request, CancellationToken cancellationToken)
+    {
+        try
+        {
+            var result = await ovpnFileApiService.GetAllByVpnServerIdWithTokenAsync(
+                request.VpnServerId, cancellationToken);
+
+            return Ok(ApiResponse<OvpnFilesWithTokensResponse>.SuccessResponse(
+                result.Adapt<OvpnFilesWithTokensResponse>()));
+        }
+        catch (Exception ex)
+        {
+            logger.LogError(ex, "Failed to get all ovpn files with token on server {VpnServerId}", 
+                request.VpnServerId);
+            return BadRequest(ApiResponse<string>.ErrorResponse(ex.Message));
+        }
+    }
+    
+    [HttpGet("get-all-with-token/{vpnServerId:int}/{externalId}")]
+    public async Task<ActionResult<ApiResponse<OvpnFilesWithTokensResponse>>> GetAllWithToken(
+        [FromRoute] ByExternalIdAndVpnServerIdRequest request, CancellationToken cancellationToken)
+    {
+        try
+        {
+            var result = await ovpnFileApiService.GetAllByExternalIdAndVpnServerIdWithTokenAsync(
+                request.VpnServerId, request.ExternalId, cancellationToken);
+
+            var response = result.Adapt<OvpnFilesWithTokensResponse>();
+
+            return Ok(ApiResponse<OvpnFilesWithTokensResponse>.SuccessResponse(response));
+        }
+        catch (Exception ex)
+        {
+            logger.LogError(ex, "Failed to get all ovpn files with token on server " +
+                                "{VpnServerId} and {ExternalId}",
+                request.VpnServerId, request.ExternalId);
+            return BadRequest(ApiResponse<string>.ErrorResponse(ex.Message));
+        }
+    }
+    
+    [HttpGet("get-files/{externalId}")]
+    public async Task<ActionResult<ApiResponse<OvpnFilesResponse>>> GetFiles([FromRoute] ByExternalIdRequest request,
         CancellationToken cancellationToken)
     {
         try
         {
-            var result = await ovpnFileApiService.GetAllByExternalIdOvpnFilesWithTokenAsync(
-                request.VpnServerId, request.ExternalId, cancellationToken);
+            var result = await ovpnFileApiService.GetAllByExternalIdAsync(
+                request.ExternalId, cancellationToken);
 
-            var response = result.Adapt<List<GetOvpnFileWithTokenResponse>>();
+            var response = result.Adapt<OvpnFilesResponse>();
 
-            return Ok(ApiResponse<List<GetOvpnFileWithTokenResponse>>.SuccessResponse(response));
+            return Ok(ApiResponse<OvpnFilesResponse>.SuccessResponse(response));
         }
         catch (Exception ex)
         {
-            logger.LogError(ex, "Failed to get all ovpn files with token on server {VpnServerId} and {ExternalId}",
-                request.VpnServerId, request.ExternalId);
-            return BadRequest(ApiResponse<List<GetOvpnFileWithTokenResponse>>.ErrorResponse(ex.Message));
+            logger.LogError(ex, "Failed to get all ovpn files {ExternalId}", request.ExternalId);
+            return BadRequest(ApiResponse<string>.ErrorResponse(ex.Message));
         }
     }
 
-    [HttpPost("AddClientOvpnFile")]
-    public async Task<ActionResult<ApiResponse<AddOvpnFileResponse>>> AddClientOvpnFile(
-        [FromBody] AddClientOvpnFileRequest request,
-        CancellationToken cancellationToken)
+    [HttpPost("add")]
+    public async Task<ActionResult<ApiResponse<OvpnFileResponse>>> AddFile(
+        [FromBody] AddFileRequest request, CancellationToken cancellationToken)
     {
         try
         {
             var result = await ovpnFileApiService.AddOvpnFileAsync(request, cancellationToken);
 
-            return Ok(ApiResponse<AddOvpnFileResponse>.SuccessResponse(
-                new AddOvpnFileResponse(){ IssuedOvpnFile = result.Adapt<IssuedOvpnFileDto>() }
-                ));
+            return Ok(ApiResponse<OvpnFileResponse>.SuccessResponse( result.Adapt<OvpnFileResponse>()));
         }
         catch (Exception ex)
         {
             logger.LogError(ex, "Failed to add OVPN file for {CommonName} on server {VpnServerId}",
                 request.CommonName, request.VpnServerId);
-            return BadRequest(ApiResponse<AddOvpnFileResponse>.ErrorResponse(ex.Message));
+            return BadRequest(ApiResponse<string>.ErrorResponse(ex.Message));
         }
     }
     
-    [HttpPost("AddClientOvpnFileWithToken")]
-    public async Task<ActionResult<ApiResponse<AddOvpnFileWithTokenResponse>>> AddClientOvpnFileWithToken(
-        [FromBody] AddClientOvpnFileRequest request,
-        CancellationToken cancellationToken)
+    [HttpPost("add-with-token")]
+    public async Task<ActionResult<ApiResponse<OvpnFileWithTokenResponse>>> AddFileWithToken(
+        [FromBody] AddFileRequest request, CancellationToken cancellationToken)
     {
         try
         {
             var (file, token) = await ovpnFileApiService.AddOvpnFileWithTokenAsync(request, cancellationToken);
 
-            var response = (file, token).Adapt<AddOvpnFileWithTokenResponse>();
+            var response = (file, token).Adapt<OvpnFileWithTokenResponse>();
             
-            return Ok(ApiResponse<AddOvpnFileWithTokenResponse>.SuccessResponse(response));
+            return Ok(ApiResponse<OvpnFileWithTokenResponse>.SuccessResponse(response));
         }
         catch (Exception ex)
         {
             logger.LogError(ex, "Failed to add OVPN file for {CommonName} on server {VpnServerId}",
                 request.CommonName, request.VpnServerId);
-            return BadRequest(ApiResponse<AddOvpnFileWithTokenResponse>.ErrorResponse(ex.Message));
+            return BadRequest(ApiResponse<string>.ErrorResponse(ex.Message));
         }
     }
 
-    [HttpPost("RevokeClientOvpnFile")]
-    public async Task<ActionResult<ApiResponse<RevokeOvpnFileResponse>>> RevokeClientOvpnFile(
-        [FromBody] RevokeClientOvpnFileRequest request,
+    [HttpPost("revoke-file")]
+    public async Task<ActionResult<ApiResponse<OvpnFileResponse>>> RevokeFile([FromBody] RevokeFileRequest request,
         CancellationToken cancellationToken)
     {
         try
         {
             var result = await ovpnFileApiService.RevokeOvpnFileAsync(request, cancellationToken);
-            var response = (true, result).Adapt<RevokeOvpnFileResponse>();
-            return Ok(ApiResponse<RevokeOvpnFileResponse>.SuccessResponse(response));
+            var response = (true, result).Adapt<OvpnFileResponse>();
+            return Ok(ApiResponse<OvpnFileResponse>.SuccessResponse(response));
         }
         catch (Exception ex)
         {
             logger.LogError(ex, "Failed to revoke OVPN for {CommonName} on server {VpnServerId}", 
                 request.CommonName, request.VpnServerId);
-            return BadRequest(ApiResponse<RevokeOvpnFileResponse>.ErrorResponse(ex.Message));
+            return BadRequest(ApiResponse<string>.ErrorResponse(ex.Message));
         }
     }
 
-    [HttpPost("DownloadClientOvpnFile")]
-    public async Task<ActionResult<ApiResponse<DownloadOvpnFileResponse>>> DownloadClientOvpnFile(
-        [FromBody] DownloadClientOvpnFileRequest request,
-        CancellationToken cancellationToken)
+    [HttpPost("download-file")]
+    public async Task<ActionResult<ApiResponse<DownloadFileResponse>>> DownloadFile(
+        [FromBody] DownloadFileRequest request, CancellationToken cancellationToken)
     {
         try
         {
             var content = await ovpnFileApiService.DownloadOvpnFileAsync(request, 
                 cancellationToken);
-            return Ok(ApiResponse<DownloadOvpnFileResponse>.SuccessResponse(content));
+            return Ok(ApiResponse<DownloadFileResponse>.SuccessResponse(content));
         }
         catch (Exception ex)
         {
             logger.LogError(ex, "Failed to download OVPN file {IssuedOvpnFileId} for {VpnServerId}", 
                 request.IssuedOvpnFileId, request.VpnServerId);
-            return BadRequest(ApiResponse<DownloadOvpnFileResponse>.ErrorResponse(ex.Message));
-        }
-    }
-    
-    [HttpGet("DownloadClientOvpnFile")]
-    public async Task<IActionResult> DownloadClientOvpnFile(
-        [FromQuery] int vpnServerId, 
-        [FromQuery] int issuedOvpnFileId,
-        CancellationToken cancellationToken)
-    {
-        try
-        {
-            var request = new DownloadClientOvpnFileRequest
-            {
-                VpnServerId = vpnServerId,
-                IssuedOvpnFileId = issuedOvpnFileId
-            };
-
-            var response = await ovpnFileApiService.DownloadOvpnFileAsync(request, cancellationToken);
-
-            return File(
-                response.Content,
-                "application/x-openvpn-profile",
-                response.FileName);
-        }
-        catch (Exception ex)
-        {
-            logger.LogError(ex, "Failed to download raw OVPN file {IssuedOvpnFileId} for {VpnServerId}",
-                issuedOvpnFileId, vpnServerId);
-            return NotFound(ApiResponse<string>.ErrorResponse("OVPN file not found or error occurred."));
+            return BadRequest(ApiResponse<string>.ErrorResponse(ex.Message));
         }
     }
 }
