@@ -9,6 +9,21 @@ public class VpnServerMapping : IRegister
 {
     public void Register(TypeAdapterConfig config)
     {
+        #region "get-all"
+        // Mapping from entity to DTO
+        config.NewConfig<OpenVpnServer, OpenVpnServerDto>()
+            .Map(dest => dest.Id, src => src.Id)
+            .Map(dest => dest.ServerName, src => src.ServerName)
+            .Map(dest => dest.IsOnline, src => src.IsOnline)
+            .Map(dest => dest.IsDefault, src => src.IsDefault)
+            .Map(dest => dest.ApiUrl, src => src.ApiUrl)
+            .Map(dest => dest.CreateDate, src => src.CreateDate)
+            .Map(dest => dest.LastUpdate, src => src.LastUpdate);
+
+        // Mapping list → response wrapper
+        config.NewConfig<List<OpenVpnServer>, OpenVpnServersResponse>()
+            .Map(dest => dest.OpenVpnServers, src => src);
+        #endregion
         #region "get-all-with-status"
         config.NewConfig<OpenVpnServer, OpenVpnServerDto>();
 
@@ -28,7 +43,6 @@ public class VpnServerMapping : IRegister
         // config.NewConfig<List<OpenVpnServerWithStatus>, OpenVpnServerWithStatusesResponse>()
         //     .Map(d => d.OpenVpnServerWithStatuses, s => s);
         #endregion
-        
         
         #region "get-all-with-status"
         config.NewConfig<OpenVpnServer, OpenVpnServerDto>();
