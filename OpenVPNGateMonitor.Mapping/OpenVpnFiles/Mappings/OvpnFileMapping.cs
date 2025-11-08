@@ -29,5 +29,19 @@ public class OvpnFileMapping : IRegister
         config.NewConfig<(List<IssuedOvpnFile> files, List<IssuedOvpnFileToken> tokens), OvpnFilesWithTokensResponse>()
             .Map(dest => dest.IssuedOvpnFiles, src => src.files)
             .Map(dest => dest.IssuedOvpnFileTokens, src => src.tokens);
+        
+        config.NewConfig<(IssuedOvpnFile File, IssuedOvpnFileToken? Token), OvpnFileWithTokenResponse>()
+            .Map(d => d.IssuedOvpnFile,      s => s.File)
+            .Map(d => d.IssuedOvpnFileToken, s => s.Token ?? new IssuedOvpnFileToken());
+
+        config.NewConfig<List<(IssuedOvpnFile File, IssuedOvpnFileToken? Token)>, OvpnFilesWithTokensResponse>()
+            .Map(d => d.IssuedOvpnFiles,      s => s.Select(x => x.File))
+            .Map(d => d.IssuedOvpnFileTokens, s => s.Where(x => x.Token != null).Select(x => x.Token!));
+        
+        config.NewConfig<List<(IssuedOvpnFile File, IssuedOvpnFileToken? Token)>, OvpnFilesWithTokensResponse>()
+            .Map(d => d.IssuedOvpnFiles, 
+                s => s.Select(p => p.File)) // will use IssuedOvpnFile -> IssuedOvpnFileDto
+            .Map(d => d.IssuedOvpnFileTokens, 
+                s => s.Where(p => p.Token != null).Select(p => p.Token!)); // null-safe
     }
 }
