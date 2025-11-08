@@ -213,8 +213,6 @@ public class OvpnFileApiService(IOvpnFileApiClient ovpnFileApiClient,
             revokeOvpnFileRequest,
             ct);
 
-
-
         issuedOvpnFile.IsRevoked = result;
         
         await issuedOvpnFileCommandService.UpdateAsync(issuedOvpnFile, true, ct);
