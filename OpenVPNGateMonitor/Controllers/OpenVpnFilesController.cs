@@ -185,7 +185,7 @@ public class OpenVpnFilesController(IOvpnFileApiService ovpnFileApiService,
         try
         {
             var result = await ovpnFileApiService.RevokeOvpnFileAsync(request, cancellationToken);
-            var response = (true, result).Adapt<OvpnFileResponse>();
+            var response = result.Adapt<OvpnFileResponse>();
             return Ok(ApiResponse<OvpnFileResponse>.SuccessResponse(response));
         }
         catch (Exception ex)
