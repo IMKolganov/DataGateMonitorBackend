@@ -1,7 +1,7 @@
 ﻿using Mapster;
 using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Mvc;
-using OpenVPNGateMonitor.Services.DataGateCertManager.Interfaces;
+using OpenVPNGateMonitor.Services.DataGateOpenVpnManager.Interfaces;
 using OpenVPNGateMonitor.SharedModels.DataGateMonitorBackend.OpenVpnServerCerts.Requests;
 using OpenVPNGateMonitor.SharedModels.DataGateMonitorBackend.OpenVpnServerCerts.Responses;
 using OpenVPNGateMonitor.SharedModels.DataGateMonitorBackend.OpenVpnServerCerts.Responses.Dto;
@@ -10,26 +10,25 @@ using OpenVPNGateMonitor.SharedModels.Responses;
 namespace OpenVPNGateMonitor.Controllers;
 
 [ApiController]
-[Route("api/[controller]")]
+[Route("api/open-vpn-certs")]
 [Authorize]
-public class OpenVpnServerCertsController(
-    ICertApiClient certApiClient,
-    ILogger<OpenVpnServerCertsController> logger) : ControllerBase
+public class OpenVpnServerCertsController(ICertApiClient certApiClient,
+    ILogger<OpenVpnServerCertsController> logger) : BaseController
 {
-    [HttpGet("{vpnServerId}/GetAllCertificates")]
+    [HttpGet("{vpnServerId}/get-all")]
     public async Task<ActionResult<ApiResponse<GetAllCertificatesResponse>>> GetAllCertificates(
-        [FromRoute] GetAllCertificatesRequest request, CancellationToken cancellationToken)
+        [FromRoute] GetAllCertificatesRequest request, CancellationToken ct)
     {
         try
         {
-            var certificates = await certApiClient.GetAllCertificatesAsync(request.VpnServerId, cancellationToken);
+            var certificates = await certApiClient.GetAllCertificatesAsync(request.VpnServerId, ct);
 
             var mapped = certificates
                 .Select(cert => (cert, request.VpnServerId))
-                .Select(item => item.Adapt<ServerCertificate>())
+                .Select(item => item.Adapt<MonitorServerCertificate>())
                 .ToList();
 
-            var response = new GetAllCertificatesResponse { ServerCertificates = mapped };
+            var response = new GetAllCertificatesResponse { MonitorServerCertificates = mapped };
 
             return Ok(ApiResponse<GetAllCertificatesResponse>.SuccessResponse(response));
         }
@@ -41,7 +40,7 @@ public class OpenVpnServerCertsController(
     }
 
     
-    [HttpPost("BuildCertificate")]
+    [HttpPost("build")]
     public async Task<ActionResult<ApiResponse<BuildCertificateResponse>>> BuildCertificate(
         [FromBody] BuildCertificateRequest request, CancellationToken cancellationToken)
     {
@@ -50,11 +49,11 @@ public class OpenVpnServerCertsController(
             var result = await certApiClient.BuildCertificateAsync(
                 request.VpnServerId, request.CommonName, cancellationToken);
 
-            var mappedCertificate = (result, request.VpnServerId).Adapt<ServerCertificate>();
+            var mappedCertificate = (result, request.VpnServerId).Adapt<MonitorServerCertificate>();
 
             var response = new BuildCertificateResponse
             {
-                ServerCertificate = mappedCertificate
+                MonitorServerCertificate = mappedCertificate
             };
 
             return Ok(ApiResponse<BuildCertificateResponse>.SuccessResponse(response));
@@ -68,7 +67,7 @@ public class OpenVpnServerCertsController(
         }
     }
     
-    [HttpPost("RevokeCertificate")]
+    [HttpPost("revoke")]
     public async Task<ActionResult<ApiResponse<RevokeCertificateResponse>>> RevokeCertificate(
         [FromBody] RevokeCertificateRequest request,
         CancellationToken cancellationToken)
@@ -77,11 +76,11 @@ public class OpenVpnServerCertsController(
         {
             var result = await certApiClient.RevokeCertificateAsync(request, cancellationToken);
     
-            var mappedCertificate = (result, request.VpnServerId).Adapt<ServerCertificate>();
+            var mappedCertificate = (result, request.VpnServerId).Adapt<MonitorServerCertificate>();
     
             var response = new RevokeCertificateResponse
             {
-                ServerCertificate = mappedCertificate
+                MonitorServerCertificate = mappedCertificate
             };
     
             return Ok(ApiResponse<RevokeCertificateResponse>.SuccessResponse(response));

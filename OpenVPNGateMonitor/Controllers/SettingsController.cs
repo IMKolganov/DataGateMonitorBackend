@@ -8,11 +8,11 @@ using OpenVPNGateMonitor.SharedModels.DataGateMonitorBackend.Settings.Responses;
 namespace OpenVPNGateMonitor.Controllers;
 
 [ApiController]
-[Route("api/[controller]")]
+[Route("api/settings")]
 [Authorize]
-public class SettingsController(ISettingsService settingsService) : ControllerBase
+public class SettingsController(ISettingsService settingsService) : BaseController
 {
-    [HttpGet("Get")]
+    [HttpGet("get")]
     public async Task<ActionResult<ApiResponse<SettingResponse>>> Get([FromQuery] GetSettingRequest request, 
         CancellationToken cancellationToken)
     {
@@ -43,7 +43,7 @@ public class SettingsController(ISettingsService settingsService) : ControllerBa
         }));
     }
 
-    [HttpPost("Set")]
+    [HttpPost("set")]
     public async Task<ActionResult<ApiResponse<SettingResponse>>> Set(
         [FromQuery] SetSettingRequest request,
         CancellationToken cancellationToken)

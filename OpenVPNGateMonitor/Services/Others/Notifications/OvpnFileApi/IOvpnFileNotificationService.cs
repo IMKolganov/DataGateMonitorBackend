@@ -7,7 +7,8 @@ public interface IOvpnFileNotificationService
     Task NotifyReadAllAsync(int vpnServerId, int count, CancellationToken ct);
     Task NotifyReadAllWithTokenAsync(int vpnServerId, int count, bool isRevoked, CancellationToken ct);
 
-    Task NotifyReadByExternalIdAsync(int vpnServerId, string externalId, int count, bool isRevoked,
+    Task NotifyReadByExternalIdAsync(string externalId, int count, CancellationToken ct);
+    Task NotifyReadByExternalIdAndVpnServerIdAsync(int vpnServerId, string externalId, int count, bool isRevoked,
         CancellationToken ct);
 
     Task NotifyReadByExternalIdWithTokenAsync(int vpnServerId, string externalId, int count, bool isRevoked,

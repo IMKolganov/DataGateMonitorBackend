@@ -7,9 +7,9 @@ using OpenVPNGateMonitor.SharedModels.Responses;
 namespace OpenVPNGateMonitor.Controllers;
 
 [ApiController]
-[Route("api/[controller]")]
+[Route("api/notifications")]
 [Authorize]
-public class NotificationController(INotificationService notificationService) : ControllerBase
+public class NotificationController(INotificationService notificationService) : BaseController
 {
     /// <summary>
     /// Creates and sends a test notification to all admins via the web channel.

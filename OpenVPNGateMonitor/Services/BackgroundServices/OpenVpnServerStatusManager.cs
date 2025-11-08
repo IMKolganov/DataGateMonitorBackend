@@ -1,19 +1,19 @@
 ﻿using System.Collections.Concurrent;
-using OpenVPNGateMonitor.Models.Helpers.Background;
+using OpenVPNGateMonitor.SharedModels.DataGateMonitorBackend.OpenVpnServers.Dto;
 using OpenVPNGateMonitor.SharedModels.Enums;
 
 namespace OpenVPNGateMonitor.Services.BackgroundServices;
 
 public class OpenVpnServerStatusManager
 {
-    private readonly ConcurrentDictionary<int, BackgroundServerStatus> _serverStatuses = new();
+    private readonly ConcurrentDictionary<int, ServiceStatusDto> _serverStatuses = new();
 
     public void UpdateStatus(int vpnServerId, ServiceStatus status, int nextRunSeconds, 
         string? errorMessage = null, int countConnectedClients = 0, int countSessions = 0, 
         int totalBytesIn = 0, int totalBytesOut = 0)
     {
         _serverStatuses.AddOrUpdate(vpnServerId,
-            new BackgroundServerStatus
+            new ServiceStatusDto
             {
                 VpnServerId = vpnServerId,
                 Status = status, 
@@ -39,13 +39,13 @@ public class OpenVpnServerStatusManager
         _serverStatuses.Clear();
     }
 
-    public BackgroundServerStatus GetStatus(int serverId)
+    public ServiceStatusDto GetStatus(int serverId)
     {
-        return _serverStatuses.GetValueOrDefault(serverId, new BackgroundServerStatus());
+        return _serverStatuses.GetValueOrDefault(serverId, new ServiceStatusDto());
     }
 
-    public Dictionary<int, BackgroundServerStatus> GetAllStatuses()
+    public Dictionary<int, ServiceStatusDto> GetAllStatuses()
     {
-        return new Dictionary<int, BackgroundServerStatus>(_serverStatuses);
+        return new Dictionary<int, ServiceStatusDto>(_serverStatuses);
     }
 }

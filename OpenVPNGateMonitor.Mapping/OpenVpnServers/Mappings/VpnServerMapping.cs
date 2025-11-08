@@ -1,8 +1,6 @@
 ﻿using Mapster;
 using OpenVPNGateMonitor.Models;
-using OpenVPNGateMonitor.Models.Helpers.Background;
-using OpenVPNGateMonitor.Models.Helpers.Services;
-using OpenVPNGateMonitor.SharedModels.DataGateMonitorBackend.OpenVpnServers.Requests;
+using OpenVPNGateMonitor.SharedModels.DataGateMonitorBackend.OpenVpnServers.Dto;
 using OpenVPNGateMonitor.SharedModels.DataGateMonitorBackend.OpenVpnServers.Responses;
 
 namespace OpenVPNGateMonitor.Mapping.OpenVpnServers.Mappings;
@@ -11,59 +9,73 @@ public class VpnServerMapping : IRegister
 {
     public void Register(TypeAdapterConfig config)
     {
-        config.NewConfig<VpnClientInfoResponseList, ConnectedClientsResponse>()
-            .Map(dest => dest.TotalCount, src => src.TotalCount)
-            .Map(dest => dest.Clients, src => src.VpnClientInfoResponse.Adapt<List<VpnClientInfoResponse>>());
-
-        config.NewConfig<OpenVpnServerClient, VpnClientInfoResponse>();
-
-        config.NewConfig<List<OpenVpnServerWithStatus>, List<OpenVpnServerWithStatusResponse>>();
-        config.NewConfig<OpenVpnServerWithStatus, OpenVpnServerWithStatusResponse>()
-            .Map(dest=> dest.OpenVpnServerResponses , src => src.OpenVpnServer)
-            .Map(dest=> dest.OpenVpnServerStatusLogResponse , src => src.OpenVpnServerStatusLog);
-
-        config.NewConfig<OpenVpnServerStatusLog, OpenVpnServerStatusLogResponse>()
-            .Map(dest => dest.VpnServerId, src => src.VpnServerId)
-            .Map(dest => dest.SessionId, src => src.SessionId)
-            .Map(dest => dest.UpSince, src => src.UpSince)
-            .Map(dest => dest.ServerLocalIp, src => src.ServerLocalIp)
-            .Map(dest => dest.ServerRemoteIp, src => src.ServerRemoteIp)
-            .Map(dest => dest.BytesIn, src => src.BytesIn)
-            .Map(dest => dest.BytesOut, src => src.BytesOut)
-            .Map(dest => dest.Version, src => src.Version);
+        #region "get-all-with-status"
+        config.NewConfig<OpenVpnServer, OpenVpnServerDto>();
 
         config.NewConfig<OpenVpnServer, OpenVpnServerResponse>()
-            .Map(dest => dest.Id, src => src.Id)
-            .Map(dest => dest.ServerName, src => src.ServerName)
-            .Map(dest => dest.IsOnline, src => src.IsOnline)
-            .Map(dest => dest.IsDefault, src => src.IsDefault)
-            .Map(dest => dest.ApiUrl, src => src.ApiUrl);
+            .Map(d => d.OpenVpnServer, s => s);
 
+        config.NewConfig<OpenVpnServerStatusLog, OpenVpnServerStatusLogResponse>();
 
-
-        config.NewConfig<AddServerRequest, OpenVpnServer>()
-            .Map(dest => dest.ServerName, src => src.ServerName)
-            .Map(dest => dest.IsOnline, src => src.IsOnline)
-            .Map(dest => dest.IsDefault, src => src.IsDefault)
-            .Map(dest => dest.ApiUrl, src => src.ApiUrl);
-
-
-        config.NewConfig<UpdateServerRequest, OpenVpnServer>()
-            .Map(dest => dest.Id, src => src.Id)
-            .Map(dest => dest.ServerName, src => src.ServerName)
-            .Map(dest => dest.IsOnline, src => src.IsOnline)
-            .Map(dest => dest.IsDefault, src => src.IsDefault)
-            .Map(dest => dest.ApiUrl, src => src.ApiUrl);
-
-
+        // config.NewConfig<OpenVpnServerWithStatus, OpenVpnServerWithStatusDto>()
+        //     .Map(d => d.OpenVpnServerResponses, s => s.OpenVpnServer)
+        //     .Map(d => d.OpenVpnServerStatusLogResponse, s => s.OpenVpnServerStatusLog)
+        //     .Map(d => d.CountConnectedClients, s => s.CountConnectedClients)
+        //     .Map(d => d.CountSessions, s => s.CountSessions)
+        //     .Map(d => d.TotalBytesIn, s => s.TotalBytesIn)
+        //     .Map(d => d.TotalBytesOut, s => s.TotalBytesOut);
+        //
+        // config.NewConfig<List<OpenVpnServerWithStatus>, OpenVpnServerWithStatusesResponse>()
+        //     .Map(d => d.OpenVpnServerWithStatuses, s => s);
+        #endregion
         
-        config.NewConfig<KeyValuePair<string, BackgroundServerStatus>, ServiceStatusResponse>()
-            .Map(dest => dest.VpnServerId, src => src.Value.VpnServerId)
-            .Map(dest => dest.Status, src => src.Value.Status.ToString())
-            .Map(dest => dest.CountConnectedClients, src => src.Value.CountConnectedClients)
-            .Map(dest => dest.CountSessions, src => src.Value.CountSessions)
-            .Map(dest => dest.ErrorMessage, src => src.Value.ErrorMessage)
-            .Map(dest => dest.NextRunTime, src => src.Value.NextRunTime);
+        
+        #region "get-all-with-status"
+        config.NewConfig<OpenVpnServer, OpenVpnServerDto>();
 
+        config.NewConfig<OpenVpnServer, OpenVpnServerResponse>()
+            .Map(d => d.OpenVpnServer, s => s);
+
+        config.NewConfig<OpenVpnServerStatusLog, OpenVpnServerStatusLogResponse>();
+        
+        config.NewConfig<OpenVpnServer, OpenVpnServerDto>();
+
+        config.NewConfig<OpenVpnServer, OpenVpnServerResponse>()
+            .Map(d => d.OpenVpnServer, s => s);
+
+        config.NewConfig<OpenVpnServerStatusLog, OpenVpnServerStatusLogResponse>();
+
+        config.NewConfig<OpenVpnServerWithStatusDto, OpenVpnServerWithStatusResponse>()
+            .Map(d => 
+                d.OpenVpnServerWithStatus, s => s);
+        
+        config.NewConfig<List<OpenVpnServerWithStatusDto>, OpenVpnServerWithStatusesResponse>()
+            .Map(d => 
+                d.OpenVpnServerWithStatuses, s => s);
+        #endregion
+
+        #region "get-server-with-status/{VpnServerId:int}"
+        config.NewConfig<OpenVpnServer, OpenVpnServerDto>();
+
+        config.NewConfig<OpenVpnServer, OpenVpnServerResponse>()
+            .Map(d => d.OpenVpnServer, s => s);
+
+        config.NewConfig<OpenVpnServerStatusLog, OpenVpnServerStatusLogResponse>();
+
+        config.NewConfig<OpenVpnServerWithStatusDto, OpenVpnServerWithStatusResponse>()
+            .Map(d => 
+                d.OpenVpnServerWithStatus, s => s);
+        #endregion
+        
+        #region "status-stream"
+        TypeAdapterConfig<ServiceStatusDto, ServiceStatusResponse>
+            .NewConfig()
+            .Map(dest => dest.ServiceStatus.VpnServerId, src => src.VpnServerId)
+            .Map(dest => dest.ServiceStatus.Status, src => src.Status)
+            .Map(dest => dest.ServiceStatus.CountConnectedClients, src => src.CountConnectedClients)
+            .Map(dest => dest.ServiceStatus.CountSessions, src => src.CountSessions)
+            .Map(dest => dest.ServiceStatus.ErrorMessage, src => src.ErrorMessage)
+            .Map(dest => dest.ServiceStatus.NextRunTime, src => src.NextRunTime);
+        #endregion
     }
 }

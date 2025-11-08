@@ -4,5 +4,5 @@ namespace OpenVPNGateMonitor.SharedModels.DataGateMonitorBackend.TelegramBotInco
 
 public class AddMessageResponse
 {
-    public MessageDto ? Message { get; set; }
+    public MessageDto? Message { get; set; }
 }

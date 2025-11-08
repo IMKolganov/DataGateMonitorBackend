@@ -10,13 +10,12 @@ using OpenVPNGateMonitor.SharedModels.Responses;
 namespace OpenVPNGateMonitor.Controllers;
 
 [ApiController]
-[Route("api/[controller]")]
+[Route("api/open-vpn-configs")]
 [Authorize]
 public class OpenVpnServerOvpnFileConfigController(
-    IOpenVpnServerOvpnFileConfigService openVpnServerOvpnFileConfigService)
-    : ControllerBase
+    IOpenVpnServerOvpnFileConfigService openVpnServerOvpnFileConfigService) : BaseController
 {
-    [HttpGet("GetOvpnFileConfig/{vpnServerId:int}")]
+    [HttpGet("get/{vpnServerId:int}")]
     public async Task<ActionResult<ApiResponse<OvpnFileConfigResponse>>> GetOvpnFileConfig(
         [FromRoute] GetOvpnFileConfigRequest request, CancellationToken cancellationToken)
     {
@@ -26,12 +25,12 @@ public class OpenVpnServerOvpnFileConfigController(
         return Ok(ApiResponse<OvpnFileConfigResponse>.SuccessResponse(config.Adapt<OvpnFileConfigResponse>()));
     }
     
-    [HttpPost("AddOrUpdateOvpnFileConfig")]
+    [HttpPost("add-update")]
     public async Task<ActionResult<ApiResponse<OvpnFileConfigResponse>>> AddOrUpdateOvpnFileConfig(
-        [FromBody] AddOrUpdateOvpnFileConfigRequest request, CancellationToken cancellationToken)
+        [FromBody] AddOrUpdateOvpnFileConfigRequest request, CancellationToken ct)
     {
         var config = await openVpnServerOvpnFileConfigService
-            .AddOrUpdateOpenVpnServerOvpnFileConfigByServerId(request.Adapt<OpenVpnServerOvpnFileConfig>(), cancellationToken);
+            .AddOrUpdateOpenVpnServerOvpnFileConfigByServerId(request.Adapt<OpenVpnServerOvpnFileConfig>(), ct);
 
         return Ok(ApiResponse<OvpnFileConfigResponse>.SuccessResponse(config.Adapt<OvpnFileConfigResponse>()));
     }

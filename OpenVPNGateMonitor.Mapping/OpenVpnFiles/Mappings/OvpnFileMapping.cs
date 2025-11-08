@@ -1,7 +1,5 @@
 ﻿using Mapster;
 using OpenVPNGateMonitor.Models;
-using OpenVPNGateMonitor.SharedModels.DataGateCertManager.OvpnFile.Responses;
-using OpenVPNGateMonitor.SharedModels.DataGateMonitorBackend.OpenVpnFiles.Requests;
 using OpenVPNGateMonitor.SharedModels.DataGateMonitorBackend.OpenVpnFiles.Responses;
 using OpenVPNGateMonitor.SharedModels.DataGateMonitorBackend.OpenVpnFiles.Responses.Dto;
 
@@ -11,45 +9,39 @@ public class OvpnFileMapping : IRegister
 {
     public void Register(TypeAdapterConfig config)
     {
+        // Entity → DTO
         config.NewConfig<IssuedOvpnFile, IssuedOvpnFileDto>();
         config.NewConfig<IssuedOvpnFileToken, IssuedOvpnFileTokenDto>();
 
-        config.NewConfig<RevokeClientOvpnFileRequest, IssuedOvpnFile>()
-            .Map(dest => dest.VpnServerId, src => src.VpnServerId)
-            .Map(dest => dest.CommonName, src => src.CommonName);
+        // 2️⃣ Single entity → Single response
+        config.NewConfig<IssuedOvpnFile, OvpnFileResponse>()
+            .Map(dest => dest.IssuedOvpnFile, src => src);
 
-        TypeAdapterConfig<(AddClientOvpnFileRequest, OvpnFileMetadata), IssuedOvpnFile>.NewConfig()
-            .Map(dest => dest.VpnServerId, src => src.Item1.VpnServerId)
-            .Map(dest => dest.ExternalId, src => src.Item1.ExternalId)
-            .Map(dest => dest.CommonName, src => src.Item1.CommonName)
-            .Map(dest => dest.IssuedTo, src => src.Item1.IssuedTo)
-            .Map(dest => dest.FileName, src => src.Item2.FileName)
-            .Map(dest => dest.FilePath, src => src.Item2.FilePath)
-            .Map(dest => dest.IssuedAt, src => src.Item2.IssuedAt)
-            .Map(dest => dest.CertFilePath, src => src.Item2.CertFilePath)
-            .Map(dest => dest.KeyFilePath, src => src.Item2.KeyFilePath);
+        // 3️⃣ List of entities → List of DTOs
+        config.NewConfig<List<IssuedOvpnFile>, List<IssuedOvpnFileDto>>();
+        config.NewConfig<List<IssuedOvpnFileToken>, List<IssuedOvpnFileTokenDto>>();
 
-        // Mapping for (IssuedOvpnFile, IssuedOvpnFileToken?) → GetOvpnFileWithTokenResponse
-        config.NewConfig<(IssuedOvpnFile File, IssuedOvpnFileToken? Token), GetOvpnFileWithTokenResponse>()
-            .Map(dest => dest.IssuedOvpnFile, src => src.File.Adapt<IssuedOvpnFileDto>())
-            .Map(dest => dest.IssuedOvpnFileToken, src => src.Token == null ? null : src.Token.Adapt<IssuedOvpnFileTokenDto>());
+        // 4️⃣ List of files → OvpnFilesResponse
+        config.NewConfig<List<IssuedOvpnFile>, OvpnFilesResponse>()
+            .Map(dest => dest.IssuedOvpnFiles, src => src);
 
-        // Mapping for IssuedOvpnFile → GetOvpnFileResponse
-        config.NewConfig<IssuedOvpnFile, GetOvpnFileResponse>()
-            .Map(dest => dest.IssuedOvpnFile, src => src.Adapt<IssuedOvpnFileDto>());
+        // 5️⃣ Files + Tokens → OvpnFilesWithTokensResponse
+        config.NewConfig<(List<IssuedOvpnFile> files, List<IssuedOvpnFileToken> tokens), OvpnFilesWithTokensResponse>()
+            .Map(dest => dest.IssuedOvpnFiles, src => src.files)
+            .Map(dest => dest.IssuedOvpnFileTokens, src => src.tokens);
+        
+        config.NewConfig<(IssuedOvpnFile File, IssuedOvpnFileToken? Token), OvpnFileWithTokenResponse>()
+            .Map(d => d.IssuedOvpnFile,      s => s.File)
+            .Map(d => d.IssuedOvpnFileToken, s => s.Token ?? new IssuedOvpnFileToken());
 
-        // Mapping for IssuedOvpnFile → AddOvpnFileResponse
-        config.NewConfig<IssuedOvpnFile, AddOvpnFileResponse>()
-            .Map(dest => dest.IssuedOvpnFile, src => src.Adapt<IssuedOvpnFileDto>());
-
-        // Mapping for (IssuedOvpnFile, IssuedOvpnFileToken) → AddOvpnFilesWithTokenResponse
-        config.NewConfig<(IssuedOvpnFile File, IssuedOvpnFileToken Token), AddOvpnFileWithTokenResponse>()
-            .Map(dest => dest.IssuedOvpnFile, src => src.File.Adapt<IssuedOvpnFileDto>())
-            .Map(dest => dest.IssuedOvpnFileToken, src => src.Token.Adapt<IssuedOvpnFileTokenDto>());
-
-        // Mapping for (bool, IssuedOvpnFile) → RevokeOvpnFileResponse
-        config.NewConfig<(bool Success, IssuedOvpnFile File), RevokeOvpnFileResponse>()
-            .Map(dest => dest.Success, src => src.Success)
-            .Map(dest => dest.IssuedOvpnFile, src => src.File.Adapt<IssuedOvpnFileDto>());
+        config.NewConfig<List<(IssuedOvpnFile File, IssuedOvpnFileToken? Token)>, OvpnFilesWithTokensResponse>()
+            .Map(d => d.IssuedOvpnFiles,      s => s.Select(x => x.File))
+            .Map(d => d.IssuedOvpnFileTokens, s => s.Where(x => x.Token != null).Select(x => x.Token!));
+        
+        config.NewConfig<List<(IssuedOvpnFile File, IssuedOvpnFileToken? Token)>, OvpnFilesWithTokensResponse>()
+            .Map(d => d.IssuedOvpnFiles, 
+                s => s.Select(p => p.File)) // will use IssuedOvpnFile -> IssuedOvpnFileDto
+            .Map(d => d.IssuedOvpnFileTokens, 
+                s => s.Where(p => p.Token != null).Select(p => p.Token!)); // null-safe
     }
 }

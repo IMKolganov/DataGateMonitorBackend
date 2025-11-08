@@ -2,7 +2,6 @@
 using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Mvc;
 using OpenVPNGateMonitor.Models;
-using OpenVPNGateMonitor.Services.TelegramBot;
 using OpenVPNGateMonitor.Services.TelegramBot.Interfaces;
 using OpenVPNGateMonitor.SharedModels.Responses;
 using OpenVPNGateMonitor.SharedModels.DataGateMonitorBackend.TelegramBotLocalization.Requests;
@@ -11,11 +10,11 @@ using OpenVPNGateMonitor.SharedModels.DataGateMonitorBackend.TelegramBotLocaliza
 namespace OpenVPNGateMonitor.Controllers;
 
 [ApiController]
-[Route("api/[controller]")]
+[Route("api/tgbot-localizations")]
 [Authorize]
-public class TelegramBotLocalizationController(ILocalizationService localization) : ControllerBase
+public class TelegramBotLocalizationController(ILocalizationService localization) : BaseController
 {
-    [HttpPost("SetTelegramUserLanguage")]
+    [HttpPost("set-tg-user-language")]
     public async Task<ActionResult<ApiResponse<SetTelegramUserLanguageResponse>>> SetTelegramUserLanguageAsync(
         [FromBody] SetTelegramUserLanguageRequest request, 
         CancellationToken cancellationToken)
@@ -27,7 +26,7 @@ public class TelegramBotLocalizationController(ILocalizationService localization
             telegramUserLanguagePreference.Adapt<SetTelegramUserLanguageResponse>()));
     }
 
-    [HttpGet("GetTelegramUserLanguage/{telegramId}")]
+    [HttpGet("get-tg-user-language/{telegramId}")]
     public async Task<ActionResult<ApiResponse<GetTelegramUserLanguageResponse>>> GetTelegramUserLanguageAsync(
         [FromRoute] GetTelegramUserLanguageRequest request,
         CancellationToken cancellationToken)
@@ -43,7 +42,7 @@ public class TelegramBotLocalizationController(ILocalizationService localization
     }
 
     
-    [HttpGet("IsExistTelegramUserLanguagePreference/{telegramId}")]
+    [HttpGet("is-exist-tg-user-language-preference/{telegramId}")]
     public async Task<ActionResult<ApiResponse<IsExistTelegramUserLanguagePreferenceResponse>>> 
         IsExistTelegramUserLanguagePreferenceAsync(
         [FromRoute] IsExistTelegramUserLanguagePreferenceRequest request, 
@@ -58,7 +57,7 @@ public class TelegramBotLocalizationController(ILocalizationService localization
         return Ok(ApiResponse<IsExistTelegramUserLanguagePreferenceResponse>.SuccessResponse(response));
     }
     
-    [HttpGet("GetTextForTelegramUser/{telegramId}/{key}")]
+    [HttpGet("get-text-for-tg-user/{telegramId}/{key}")]
     public async Task<ActionResult<ApiResponse<GetTextForTelegramUserResponse>>> 
         GetTextAsync([FromRoute] GetTextForTelegramUserRequest request,
         CancellationToken cancellationToken)

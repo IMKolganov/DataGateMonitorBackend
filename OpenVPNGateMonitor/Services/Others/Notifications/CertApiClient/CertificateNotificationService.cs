@@ -1,5 +1,5 @@
 ﻿using OpenVPNGateMonitor.Services.Others.Models;
-using OpenVPNGateMonitor.SharedModels.DataGateCertManager.Cert.Responses;
+using OpenVPNGateMonitor.SharedModels.DataGateOpenVpnManager.Cert.Responses;
 using OpenVPNGateMonitor.SharedModels.DataGateMonitorBackend.OpenVpnServerCerts.Requests;
 using OpenVPNGateMonitor.SharedModels.Enums;
 

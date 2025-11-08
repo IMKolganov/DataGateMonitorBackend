@@ -27,8 +27,8 @@ public class GeoLiteQueryService(GeoLiteDatabaseFactory dbFactory, ILogger<GeoLi
         }
         catch (Exception ex)
         {
-            logger.LogError(ex, "Error retrieving database version.");
-            return "Error retrieving version.";
+            logger.LogError(ex, "Error retrieving database version. Error: {Error}", ex.Message);
+            return $"Error retrieving version. {ex.Message}";
         }
     }
     

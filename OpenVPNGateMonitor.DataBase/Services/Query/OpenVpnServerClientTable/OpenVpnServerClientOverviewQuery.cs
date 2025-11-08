@@ -1,17 +1,19 @@
 ﻿using System.Linq.Expressions;
 using Microsoft.EntityFrameworkCore;
+using OpenVPNGateMonitor.DataBase.Services.Query.UserTable;
 using OpenVPNGateMonitor.DataBase.UnitOfWork;
 using OpenVPNGateMonitor.Models;
 using OpenVPNGateMonitor.Models.Helpers.Services;
-using OpenVPNGateMonitor.SharedModels.DataGateMonitorBackend.OpenVpnServers.Responses;
+using OpenVPNGateMonitor.SharedModels.DataGateMonitorBackend.OpenVpnServers.Dto;
 
 namespace OpenVPNGateMonitor.DataBase.Services.Query.OpenVpnServerClientTable;
 
-public class OpenVpnServerClientOverviewQuery(IUnitOfWork uow) : IOpenVpnServerClientOverviewQuery
+public class OpenVpnServerClientOverviewQuery(
+    IUnitOfWork uow, IUserQueryService userQueryService) : IOpenVpnServerClientOverviewQuery
 {
     // Reusable DB-side projection to DTO
-    private static readonly Expression<Func<OpenVpnServerClient, VpnClientInfoResponse>> VpnClientSelect =
-        x => new VpnClientInfoResponse
+    private static readonly Expression<Func<OpenVpnServerClient, VpnClientInfoDto>> VpnClientSelect =
+        x => new VpnClientInfoDto
         {
             Id = x.Id,
             VpnServerId = x.VpnServerId,
@@ -30,13 +32,10 @@ public class OpenVpnServerClientOverviewQuery(IUnitOfWork uow) : IOpenVpnServerC
             Latitude = x.Latitude,
             Longitude = x.Longitude,
             IsConnected = x.IsConnected,
-            // Telegram fields are enriched later:
-            TgUsername = null,
-            TgFirstName = null,
-            TgLastName = null
+            DisplayName = string.Empty,
         };
 
-    // Connected clients page + Telegram enrichment
+    // Connected clients page
     public async Task<VpnClientInfoResponseList> GetAllConnectedOpenVpnServerClientsAsync(
         int vpnServerId, int page, int pageSize, CancellationToken ct)
     {
@@ -57,7 +56,7 @@ public class OpenVpnServerClientOverviewQuery(IUnitOfWork uow) : IOpenVpnServerC
             .AsNoTracking()
             .ToListAsync(ct);
 
-        await EnrichWithTelegramAsync(items, ct);
+        await EnrichWithUsersAsync(items, ct);
 
         return new VpnClientInfoResponseList
         {
@@ -87,7 +86,7 @@ public class OpenVpnServerClientOverviewQuery(IUnitOfWork uow) : IOpenVpnServerC
             .AsNoTracking()
             .ToListAsync(ct);
 
-        await EnrichWithTelegramAsync(items, ct);
+        await EnrichWithUsersAsync(items, ct);
 
         return new VpnClientInfoResponseList
         {
@@ -96,33 +95,32 @@ public class OpenVpnServerClientOverviewQuery(IUnitOfWork uow) : IOpenVpnServerC
         };
     }
 
-    // Helper: enrich page items with Telegram user fields by ExternalId->TelegramId
-    private async Task EnrichWithTelegramAsync(List<VpnClientInfoResponse> items, CancellationToken ct)
+    // Helper: enrich page items with User.DisplayName by ExternalId
+    private async Task EnrichWithUsersAsync(List<VpnClientInfoDto> items, CancellationToken ct)
     {
         var externalIds = items
-            .Select(c => long.TryParse(c.ExternalId, out var id) ? id : (long?)null)
-            .Where(id => id.HasValue)
-            .Select(id => id!.Value)
+            .Select(c => c.ExternalId)
+            .Where(id => !string.IsNullOrWhiteSpace(id))
             .Distinct()
             .ToList();
 
-        if (externalIds.Count == 0) return;
+        if (externalIds.Count == 0)
+            return;
 
-        var tgDict = await uow.GetQuery<TelegramBotUser>()
-            .AsQueryable()
-            .Where(x => externalIds.Contains(x.TelegramId))
-            .AsNoTracking()
-            .ToDictionaryAsync(x => x.TelegramId, ct);
-
-        foreach (var c in items)
+        var users = new Dictionary<string, User?>();
+        foreach (var extId in externalIds)
         {
-            if (!long.TryParse(c.ExternalId, out var ext)) continue;
-            if (tgDict.TryGetValue(ext, out var u))
-            {
-                c.TgUsername  = u.Username;
-                c.TgFirstName = u.FirstName;
-                c.TgLastName  = u.LastName;
-            }
+            var user = await userQueryService.GetByExternalIdAsync(extId, ct);
+            users[extId] = user;
+        }
+
+        foreach (var client in items)
+        {
+            if (string.IsNullOrWhiteSpace(client.ExternalId))
+                continue;
+
+            if (users.TryGetValue(client.ExternalId, out var user) && user is not null)
+                client.DisplayName = user.DisplayName;
         }
     }
 }
