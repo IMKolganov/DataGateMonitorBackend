@@ -14,6 +14,11 @@ namespace OpenVPNGateMonitor.Controllers;
 public class OpenVpnFilesController(IOvpnFileApiService ovpnFileApiService, 
     ILogger<OpenVpnFilesController> logger) : BaseController
 {
+// TODO: add pagination
+// TODO: deprecate all "*WithToken" endpoints/services.
+// TODO: move token creation into the regular Add method and
+//       return the token as part of the IssuedOvpnFile payload (embedded DTO).
+    
     [HttpGet("by-token/{token}")]
     public async Task<ActionResult<ApiResponse<OvpnFileResponse>>> GetByToken([FromRoute] ByTokenRequest request,
         CancellationToken cancellationToken)
