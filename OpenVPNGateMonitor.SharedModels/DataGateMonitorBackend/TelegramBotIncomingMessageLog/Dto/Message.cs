@@ -17,6 +17,6 @@ public class MessageDto
     public long? FileSize { get; set; }
     public string? FilePath { get; set; }
     public DateTimeOffset ReceivedAt { get; set; }
-    public DateTimeOffset CreateDate { get; set; } = DateTimeOffset.UtcNow;
-    public DateTimeOffset LastUpdate { get; set; } = DateTimeOffset.UtcNow;
+    public DateTimeOffset CreateDate { get; set; }
+    public DateTimeOffset LastUpdate { get; set; }
 }

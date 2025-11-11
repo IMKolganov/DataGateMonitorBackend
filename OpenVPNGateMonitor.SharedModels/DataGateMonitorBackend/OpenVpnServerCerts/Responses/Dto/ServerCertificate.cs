@@ -13,6 +13,6 @@ public class MonitorServerCertificate
     public string Message { get; set; } = string.Empty;
     public string CertificatePath { get; set; } = string.Empty;
     public string KeyPath { get; set; } = string.Empty;
-    public DateTimeOffset ExpiryDate { get; set; } = DateTimeOffset.MinValue;
+    public DateTimeOffset ExpiryDate { get; set; }
     public DateTimeOffset? RevokeDate { get; set; }
 }
