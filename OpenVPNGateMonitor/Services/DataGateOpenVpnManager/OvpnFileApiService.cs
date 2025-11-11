@@ -193,7 +193,7 @@ public class OvpnFileApiService(IOvpnFileApiClient ovpnFileApiClient,
     {
         logger.LogInformation("Attempting to revoke OVPN file: CommonName={CommonName}, VpnServerId={VpnServerId}",
             request.CommonName, request.VpnServerId);
-        var issuedOvpnFile = await issuedOvpnFileQueryService.GetByVpnServerIdAndCommonNameAndIsRevokedAsync(
+        var issuedOvpnFile = await issuedOvpnFileQueryService.GetByIdAndVpnServerIdAndCommonNameAndIsRevokedAsync(
             request.VpnServerId, request.OvpnFileId, request.CommonName, request.IsRevoked, ct);
         
         if (issuedOvpnFile == null)
