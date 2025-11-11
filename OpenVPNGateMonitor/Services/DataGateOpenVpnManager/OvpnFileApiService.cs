@@ -173,7 +173,14 @@ public class OvpnFileApiService(IOvpnFileApiClient ovpnFileApiClient,
         issuedOvpnFile.ReqFilePath = "unavailable";
         issuedOvpnFile.IsRevoked = false;
 
-        await issuedOvpnFileCommandService.AddAsync(issuedOvpnFile, true, ct);
+        var newIssuedOvpnFile = await issuedOvpnFileCommandService.AddAsync(issuedOvpnFile, true, ct);
+
+        if (newIssuedOvpnFile.Id <= 0)
+        {
+            throw new InvalidOperationException($"Issued OVPN file not added. " +
+                                                $"CommonName = {request.CommonName}, " +
+                                                $"VpnServerId={request.VpnServerId }");
+        }
 
         logger.LogInformation("OVPN file added successfully: CommonName={CommonName}, VpnServerId={VpnServerId}",
             request.CommonName, request.VpnServerId);
@@ -184,7 +191,7 @@ public class OvpnFileApiService(IOvpnFileApiClient ovpnFileApiClient,
             issuedOvpnFile.ExternalId, /* todo: user ID*/ ct);
 
         
-        return await issuedOvpnFileQueryService.GetByVpnServerIdAndCommonNameAsync(
+        return await issuedOvpnFileQueryService.GetByVpnServerIdAndCommonNameAsync(newIssuedOvpnFile.Id,
             request.VpnServerId, request.CommonName, ct)
                ?? throw new InvalidOperationException("Issued OVPN file not found.");
     }
@@ -225,8 +232,9 @@ public class OvpnFileApiService(IOvpnFileApiClient ovpnFileApiClient,
             issuedOvpnFile.VpnServerId, issuedOvpnFile.Id, issuedOvpnFile.FileName,
             issuedOvpnFile.ExternalId, /* todo: user ID*/ ct);
 
-        return await issuedOvpnFileQueryService.GetByVpnServerIdAndCommonNameAsync(request.VpnServerId,
-            request.CommonName, ct) ?? throw new InvalidOperationException("Issued OVPN file not found.");
+        return await issuedOvpnFileQueryService.GetByVpnServerIdAndCommonNameAsync(issuedOvpnFile.Id, 
+            request.VpnServerId, request.CommonName, ct) ?? 
+               throw new InvalidOperationException("Issued OVPN file not found.");
     }
 
     public async Task<DownloadFileResponse> DownloadOvpnFileAsync(

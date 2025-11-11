@@ -23,8 +23,8 @@ public interface IIssuedOvpnFileQueryService
     Task<IssuedOvpnFile?> GetByIdAndVpnServerIdAndCommonNameAndIsRevokedAsync(
         int vpnServerId, int ovpnFileId, string commonName, bool isRevoked, CancellationToken ct);
     
-    Task<IssuedOvpnFile?> GetByVpnServerIdAndCommonNameAsync(
-        int vpnServerId, string commonName, CancellationToken ct);
+    Task<IssuedOvpnFile?> GetByVpnServerIdAndCommonNameAsync(int id, int vpnServerId, string commonName, 
+        CancellationToken ct);
     
     Task<bool> ExistsActiveByVpnServerIdAndCommonNameAsync(int vpnServerId, string commonName, CancellationToken ct);
 
