@@ -28,10 +28,14 @@ public class TelegramBotIncomingMessageLogController(
     public async Task<ActionResult<ApiResponse<GetAllMessagesResponse>>> GetAllMessages(
         CancellationToken cancellationToken)
     {
-        var response = await incomingMessageLogService.GetAllAsync(cancellationToken);
-    
-        return Ok(ApiResponse<GetAllMessagesResponse>.SuccessResponse(
-            response.Adapt<GetAllMessagesResponse>()));
+        var messages = await incomingMessageLogService.GetAllAsync(cancellationToken);
+
+        var response = new GetAllMessagesResponse
+        {
+            Messages = messages
+        };
+
+        return Ok(ApiResponse<GetAllMessagesResponse>.SuccessResponse(response));
     }
     
     [HttpGet("get-by-telegram-userid/{telegramId}")]

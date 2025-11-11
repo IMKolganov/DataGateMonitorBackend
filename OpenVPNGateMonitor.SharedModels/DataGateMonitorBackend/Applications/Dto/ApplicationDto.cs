@@ -7,6 +7,6 @@ public class ApplicationDto
     public string Name { get; set; } = string.Empty;
     public bool IsRevoked { get; set; } = false;
     public bool IsSystem { get; set; } = false;
-    public DateTimeOffset CreateDate { get; set; } = DateTimeOffset.MinValue;
-    public DateTimeOffset LastUpdate { get; set; } = DateTimeOffset.MinValue;
+    public DateTimeOffset CreateDate { get; set; }
+    public DateTimeOffset LastUpdate { get; set; }
 }
