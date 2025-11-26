@@ -32,13 +32,6 @@ public class IncomingMessageLogService(ILogger<IncomingMessageLogService> logger
             Message = messageDto
         };
     }
-    
-    public async Task<List<MessageDto>> GetAllAsync(CancellationToken ct)
-    {
-        var messages = await incomingMessageLogQueryService.GetAllAsync(ct);
-
-        return messages.Adapt<List<MessageDto>>();
-    }
 
     public async Task<MessageDto?> GetByIdAsync(int id, CancellationToken ct)
     {
@@ -48,13 +41,5 @@ public class IncomingMessageLogService(ILogger<IncomingMessageLogService> logger
 
 
         return message.Adapt<MessageDto>();
-    }
-    
-    public async Task<List<MessageDto>> GetByTelegramIdAsync(long telegramId, CancellationToken ct)
-    {
-        var messages = await incomingMessageLogQueryService.GetByTelegramIdAsync(telegramId, ct);
-
-
-        return messages.Adapt<List<MessageDto>>();
     }
 }

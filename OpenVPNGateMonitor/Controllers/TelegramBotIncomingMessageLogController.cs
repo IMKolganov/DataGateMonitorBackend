@@ -1,7 +1,9 @@
 ﻿using Mapster;
 using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Mvc;
+using OpenVPNGateMonitor.DataBase.Services.Query.IncomingMessageLogTable;
 using OpenVPNGateMonitor.Services.TelegramBot.Interfaces;
+using OpenVPNGateMonitor.SharedModels.DataGateMonitorBackend.TelegramBotIncomingMessageLog.Dto;
 using OpenVPNGateMonitor.SharedModels.DataGateMonitorBackend.TelegramBotIncomingMessageLog.Requests;
 using OpenVPNGateMonitor.SharedModels.DataGateMonitorBackend.TelegramBotIncomingMessageLog.Responses;
 using OpenVPNGateMonitor.SharedModels.Responses;
@@ -12,7 +14,8 @@ namespace OpenVPNGateMonitor.Controllers;
 [Route("api/tgbot-incoming-message-logs")]
 [Authorize]
 public class TelegramBotIncomingMessageLogController(
-    IIncomingMessageLogService incomingMessageLogService) : BaseController
+    IIncomingMessageLogService incomingMessageLogService,
+    IIncomingMessageLogQueryService incomingMessageLogQueryService) : BaseController
 {
     [HttpPost("add")]
     public async Task<ActionResult<ApiResponse<AddMessageResponse>>> AddMessage(
@@ -26,13 +29,14 @@ public class TelegramBotIncomingMessageLogController(
     
     [HttpGet("get-all")]
     public async Task<ActionResult<ApiResponse<GetAllMessagesResponse>>> GetAllMessages(
-        CancellationToken cancellationToken)
+        [FromQuery] GetAllMessagesRequest request, CancellationToken cancellationToken)
     {
-        var messages = await incomingMessageLogService.GetAllAsync(cancellationToken);
+        var messages = await incomingMessageLogQueryService.GetPageAsync(
+            request.Page, request.PageSize, cancellationToken);
 
         var response = new GetAllMessagesResponse
         {
-            Messages = messages
+            Messages = messages.Adapt<PagedResponse<MessageDto>>()
         };
 
         return Ok(ApiResponse<GetAllMessagesResponse>.SuccessResponse(response));
@@ -42,9 +46,15 @@ public class TelegramBotIncomingMessageLogController(
     public async Task<ActionResult<ApiResponse<GetByTelegramIdMessagesResponse>>> GetAllMessages(
         [FromRoute] GetAllByTelegramIdMessagesRequest request, CancellationToken ct)
     {
-        var response = await incomingMessageLogService.GetByTelegramIdAsync(request.TelegramId, ct);
-        return Ok(ApiResponse<GetByTelegramIdMessagesResponse>.SuccessResponse(
-            response.Adapt<GetByTelegramIdMessagesResponse>()));
+        var messages= await incomingMessageLogQueryService.GetPageByTelegramIdAsync(
+            request.TelegramId, request.Page, request.PageSize, ct);
+        
+        var response = new GetByTelegramIdMessagesResponse
+        {
+            Messages = messages.Adapt<PagedResponse<MessageDto>>()
+        };
+
+        return Ok(ApiResponse<GetByTelegramIdMessagesResponse>.SuccessResponse(response));
     }
     
     [HttpGet("get-by-id")]
