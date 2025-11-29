@@ -1,8 +1,3 @@
-using System;
-using System.Collections.Generic;
-using System.Linq;
-using System.Threading;
-using System.Threading.Tasks;
 using Mapster;
 using Microsoft.AspNetCore.Mvc;
 using Microsoft.Extensions.Logging;
@@ -12,11 +7,9 @@ using OpenVPNGateMonitor.Mapping.OpenVpnServerCerts.Mappings;
 using OpenVPNGateMonitor.Services.DataGateOpenVpnManager.Interfaces;
 using OpenVPNGateMonitor.SharedModels.DataGateMonitorBackend.OpenVpnServerCerts.Requests;
 using OpenVPNGateMonitor.SharedModels.DataGateMonitorBackend.OpenVpnServerCerts.Responses;
-using OpenVPNGateMonitor.SharedModels.DataGateMonitorBackend.OpenVpnServerCerts.Responses.Dto;
 using OpenVPNGateMonitor.SharedModels.DataGateOpenVpnManager.Cert.Responses;
 using OpenVPNGateMonitor.SharedModels.Enums;
 using OpenVPNGateMonitor.SharedModels.Responses;
-using Xunit;
 
 namespace OpenVPNGateMonitor.Tests.Controllers;
 

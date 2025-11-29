@@ -1,4 +1,3 @@
-using Mapster;
 using Microsoft.AspNetCore.Mvc;
 using Moq;
 using OpenVPNGateMonitor.Controllers;
