@@ -40,7 +40,7 @@ public class GZipTests
 
         var tarGzPath = Path.Combine(tempDir, "test-progress.tar.gz");
 
-        // Make archive with several files to have some progress steps
+        // Make an archive with several files to have some progress steps
         await CreateTarGzAsync(
             tarGzPath,
             ("file1.txt", new string('A', 1024), (byte)'0'),
@@ -114,7 +114,7 @@ public class GZipTests
 
         var tarGzPath = Path.Combine(tempDir, "test-traversal.tar.gz");
 
-        // Attempt to write outside output directory
+        // Attempt to write outside the output directory
         await CreateTarGzAsync(
             tarGzPath,
             ("../evil.txt", "should-not-be-written", (byte)'0'));
@@ -140,7 +140,7 @@ public class GZipTests
         params (string Name, string Content, byte TypeFlag)[] entries)
     {
         await using var tarStream = new MemoryStream();
-        using (var writer = new BinaryWriter(tarStream, Encoding.ASCII, leaveOpen: true))
+        await using (var writer = new BinaryWriter(tarStream, Encoding.ASCII, leaveOpen: true))
         {
             foreach (var (name, content, typeFlag) in entries)
             {
@@ -222,8 +222,8 @@ public class GZipTests
 
     private static void WriteOctal(byte[] buffer, int offset, int length, long value)
     {
-        var octal = Convert.ToString(value, 8) ?? "0";
-        var str = octal.PadLeft(length - 1, '0'); // last char is null
+        var octal = Convert.ToString(value, 8);
+        var str = octal.PadLeft(length - 1, '0'); // the last char is null
         var bytes = Encoding.ASCII.GetBytes(str);
         Array.Copy(bytes, 0, buffer, offset, bytes.Length);
         buffer[offset + length - 1] = 0; // null terminator

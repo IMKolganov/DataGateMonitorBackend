@@ -80,5 +80,22 @@ namespace OpenVPNGateMonitor.Tests.Controllers
             // Assert
             Assert.Null(executingContext.Result);
         }
+        
+        [Fact]
+        public void OnActionExecuted_DoesNotThrow()
+        {
+            var filter = new ValidationFilter();
+
+            var context = new ActionExecutedContext(
+                new ActionContext(
+                    new DefaultHttpContext(),
+                    new RouteData(),
+                    new ActionDescriptor()),
+                new List<IFilterMetadata>(),
+                null
+            );
+
+            filter.OnActionExecuted(context);
+        }
     }
 }
