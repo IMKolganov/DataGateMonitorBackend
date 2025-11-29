@@ -36,4 +36,8 @@
       <ProjectReference Include="..\OpenVPNGateMonitor\OpenVPNGateMonitor.csproj" />
     </ItemGroup>
 
+    <ItemGroup>
+      <Folder Include="Services\OpenVpnManagementInterfaces\" />
+    </ItemGroup>
+
 </Project>
