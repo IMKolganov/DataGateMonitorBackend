@@ -2,27 +2,29 @@
 
 namespace OpenVPNGateMonitor.Services.Helpers;
 
-public class ExternalIpAddressService(ILogger<ExternalIpAddressService> logger, 
-    IConfiguration configuration) : IExternalIpAddressService
+public class ExternalIpAddressService(
+    ILogger<ExternalIpAddressService> logger,
+    IConfiguration configuration,
+    HttpClient httpClient)
+    : IExternalIpAddressService
 {
-    private readonly List<string>? _externalIpServices = 
-        configuration.GetSection("ExternalIpServices").Get<List<string>>();
+    private readonly List<string>? _externalIpServices = configuration
+        .GetSection("ExternalIpServices")
+        .Get<List<string>>();
 
     public async Task<string> GetRemoteIpAddress(CancellationToken cancellationToken)
     {
-        using HttpClient client = new();
-
         if (_externalIpServices is not { Count: > 0 })
         {
             logger.LogError("No external IP services configured.");
             return "127.0.0.1";
         }
 
-        foreach (string service in _externalIpServices)
+        foreach (var service in _externalIpServices)
         {
             try
             {
-                string ip = await client.GetStringAsync(service, cancellationToken);
+                var ip = await httpClient.GetStringAsync(service, cancellationToken);
                 logger.LogInformation("Retrieved external IP: {Ip} from {Service}", ip.Trim(), service);
                 return ip.Trim();
             }
