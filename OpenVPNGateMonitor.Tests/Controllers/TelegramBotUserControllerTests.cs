@@ -5,11 +5,10 @@ using Moq;
 using OpenVPNGateMonitor.Controllers;
 using OpenVPNGateMonitor.Mapping.TelegramBotUser.Mappings;
 using OpenVPNGateMonitor.Models;
-using OpenVPNGateMonitor.Services.TelegramBot;
 using OpenVPNGateMonitor.Services.TelegramBot.Interfaces;
-using OpenVPNGateMonitor.SharedModels.Responses;
 using OpenVPNGateMonitor.SharedModels.DataGateMonitorBackend.TelegramBotUser.Requests;
 using OpenVPNGateMonitor.SharedModels.DataGateMonitorBackend.TelegramBotUser.Responses;
+using OpenVPNGateMonitor.SharedModels.Responses;
 
 namespace OpenVPNGateMonitor.Tests.Controllers;
 
@@ -28,7 +27,6 @@ public class TelegramBotUserControllerTests
     [Fact]
     public async Task GetAdmins_ReturnsOkResult_WithListOfAdmins()
     {
-        // Arrange
         var admins = new List<TelegramBotUser>
         {
             new() { Id = 1, TelegramId = 111, Username = "admin1", FirstName = "Admin", LastName = "One", IsAdmin = true },
@@ -39,10 +37,8 @@ public class TelegramBotUserControllerTests
             .Setup(s => s.GetAdminsAsync(It.IsAny<CancellationToken>()))
             .ReturnsAsync(admins);
 
-        // Act
         var result = await _controller.GetAdmins(CancellationToken.None);
 
-        // Assert
         var okResult = result.Result as OkObjectResult;
         okResult.Should().NotBeNull();
 
@@ -51,11 +47,10 @@ public class TelegramBotUserControllerTests
         apiResponse!.Data!.TelegramBotAdmins.Should().HaveCount(2);
         apiResponse.Data.TelegramBotAdmins[0].Username.Should().Be("admin1");
     }
-    
+
     [Fact]
     public void Map_TelegramBotUser_List_To_GetAdminsResponse_ShouldWork()
     {
-        // Arrange
         var admins = new List<TelegramBotUser>
         {
             new() { Id = 1, TelegramId = 111, Username = "admin1", FirstName = "Admin", LastName = "One", IsAdmin = true },
@@ -64,13 +59,201 @@ public class TelegramBotUserControllerTests
 
         TypeAdapterConfig.GlobalSettings.Scan(typeof(TelegramBotUserMapping).Assembly);
 
-        // Act
         var response = admins.Adapt<GetAdminsResponse>();
 
-        // Assert
         response.Should().NotBeNull();
         response.TelegramBotAdmins.Should().HaveCount(2);
         response.TelegramBotAdmins[0].Username.Should().Be("admin1");
         response.TelegramBotAdmins[1].Username.Should().Be("admin2");
+    }
+
+    // ---------- UserExists ----------
+
+    [Fact]
+    public async Task UserExists_WhenUserFound_ReturnsTrue()
+    {
+        var user = new TelegramBotUser { Id = 1, TelegramId = 123 };
+
+        _telegramUserServiceMock
+            .Setup(s => s.GetUserByTelegramIdAsync(123, It.IsAny<CancellationToken>()))
+            .ReturnsAsync(user);
+
+        var req = new TelegramUserActionRequest { TelegramId = 123 };
+
+        var result = await _controller.UserExists(req, CancellationToken.None);
+
+        var ok = Assert.IsType<OkObjectResult>(result.Result);
+        var response = Assert.IsType<ApiResponse<bool>>(ok.Value);
+
+        response.Success.Should().BeTrue();
+        response.Data.Should().BeTrue();
+
+        _telegramUserServiceMock.Verify(
+            s => s.GetUserByTelegramIdAsync(123, It.IsAny<CancellationToken>()),
+            Times.Once);
+    }
+
+    [Fact]
+    public async Task UserExists_WhenUserNotFound_ReturnsFalse()
+    {
+        _telegramUserServiceMock
+            .Setup(s => s.GetUserByTelegramIdAsync(123, It.IsAny<CancellationToken>()))
+            .ReturnsAsync((TelegramBotUser?)null);
+
+        var req = new TelegramUserActionRequest { TelegramId = 123 };
+
+        var result = await _controller.UserExists(req, CancellationToken.None);
+
+        var ok = Assert.IsType<OkObjectResult>(result.Result);
+        var response = Assert.IsType<ApiResponse<bool>>(ok.Value);
+
+        response.Success.Should().BeTrue();
+        response.Data.Should().BeFalse();
+    }
+
+    // ---------- GetUser ----------
+
+    [Fact]
+    public async Task GetUser_ReturnsOk_WithMappedUser()
+    {
+        var user = new TelegramBotUser
+        {
+            Id = 10,
+            TelegramId = 555,
+            Username = "user1",
+            FirstName = "Ivan",
+            LastName = "Kolganov"
+        };
+
+        _telegramUserServiceMock
+            .Setup(s => s.GetUserAsync(555, It.IsAny<CancellationToken>()))
+            .ReturnsAsync(user);
+
+        var req = new UserRequest { TelegramId = 555 };
+
+        var result = await _controller.GetUser(req, CancellationToken.None);
+
+        var ok = Assert.IsType<OkObjectResult>(result.Result);
+        var response = Assert.IsType<ApiResponse<UserResponse>>(ok.Value);
+
+        response.Success.Should().BeTrue();
+        response.Data.Should().NotBeNull();
+        response.Data.TelegramBotUser.TelegramId.Should().Be(555);
+        response.Data.TelegramBotUser.Username.Should().Be("user1");
+    }
+
+    // ---------- GetAllUsers ----------
+
+    [Fact]
+    public async Task GetAllUsers_ReturnsOk_WithUsersList()
+    {
+        var users = new List<TelegramBotUser>
+        {
+            new() { Id = 1, TelegramId = 100, Username = "u1" },
+            new() { Id = 2, TelegramId = 200, Username = "u2" }
+        };
+
+        _telegramUserServiceMock
+            .Setup(s => s.GetAllUsersAsync(It.IsAny<CancellationToken>()))
+            .ReturnsAsync(users);
+
+        var result = await _controller.GetAllUsers(CancellationToken.None);
+
+        var ok = Assert.IsType<OkObjectResult>(result.Result);
+        var response = Assert.IsType<ApiResponse<GetAllTelegramUsersResponse>>(ok.Value);
+
+        response.Success.Should().BeTrue();
+        response.Data.Should().NotBeNull();
+        // тут не лезем в конкретные названия коллекции, чтобы не угадывать пропертю
+    }
+
+    // ---------- Block / Unblock / SetAdmin / UnsetAdmin ----------
+
+    [Fact]
+    public async Task BlockUser_ReturnsOk_WithServiceResult()
+    {
+        _telegramUserServiceMock
+            .Setup(s => s.BlockUserAsync(123, It.IsAny<CancellationToken>()))
+            .ReturnsAsync(true);
+
+        var req = new TelegramUserActionRequest { TelegramId = 123 };
+
+        var result = await _controller.BlockUser(req, CancellationToken.None);
+
+        var ok = Assert.IsType<OkObjectResult>(result.Result);
+        var response = Assert.IsType<ApiResponse<bool>>(ok.Value);
+
+        response.Success.Should().BeTrue();
+        response.Data.Should().BeTrue();
+
+        _telegramUserServiceMock.Verify(
+            s => s.BlockUserAsync(123, It.IsAny<CancellationToken>()),
+            Times.Once);
+    }
+
+    [Fact]
+    public async Task UnblockUser_ReturnsOk_WithServiceResult()
+    {
+        _telegramUserServiceMock
+            .Setup(s => s.UnblockUserAsync(123, It.IsAny<CancellationToken>()))
+            .ReturnsAsync(true);
+
+        var req = new TelegramUserActionRequest { TelegramId = 123 };
+
+        var result = await _controller.UnblockUser(req, CancellationToken.None);
+
+        var ok = Assert.IsType<OkObjectResult>(result.Result);
+        var response = Assert.IsType<ApiResponse<bool>>(ok.Value);
+
+        response.Success.Should().BeTrue();
+        response.Data.Should().BeTrue();
+
+        _telegramUserServiceMock.Verify(
+            s => s.UnblockUserAsync(123, It.IsAny<CancellationToken>()),
+            Times.Once);
+    }
+
+    [Fact]
+    public async Task SetAdmin_ReturnsOk_WithServiceResult()
+    {
+        _telegramUserServiceMock
+            .Setup(s => s.SetAdminAsync(123, It.IsAny<CancellationToken>()))
+            .ReturnsAsync(true);
+
+        var req = new TelegramUserActionRequest { TelegramId = 123 };
+
+        var result = await _controller.SetAdmin(req, CancellationToken.None);
+
+        var ok = Assert.IsType<OkObjectResult>(result.Result);
+        var response = Assert.IsType<ApiResponse<bool>>(ok.Value);
+
+        response.Success.Should().BeTrue();
+        response.Data.Should().BeTrue();
+
+        _telegramUserServiceMock.Verify(
+            s => s.SetAdminAsync(123, It.IsAny<CancellationToken>()),
+            Times.Once);
+    }
+
+    [Fact]
+    public async Task UnsetAdmin_ReturnsOk_WithServiceResult()
+    {
+        _telegramUserServiceMock
+            .Setup(s => s.UnsetAdminAsync(123, It.IsAny<CancellationToken>()))
+            .ReturnsAsync(true);
+
+        var req = new TelegramUserActionRequest { TelegramId = 123 };
+
+        var result = await _controller.UnsetAdmin(req, CancellationToken.None);
+
+        var ok = Assert.IsType<OkObjectResult>(result.Result);
+        var response = Assert.IsType<ApiResponse<bool>>(ok.Value);
+
+        response.Success.Should().BeTrue();
+        response.Data.Should().BeTrue();
+
+        _telegramUserServiceMock.Verify(
+            s => s.UnsetAdminAsync(123, It.IsAny<CancellationToken>()),
+            Times.Once);
     }
 }
