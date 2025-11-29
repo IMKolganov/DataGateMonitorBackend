@@ -1,7 +1,6 @@
 using System.Net;
 using Microsoft.Extensions.Logging.Abstractions;
 using OpenVPNGateMonitor.Services.GeoLite;
-using Xunit;
 
 namespace OpenVPNGateMonitor.Tests.Services.GeoLite;
 

@@ -1,4 +1,3 @@
-using System.Linq;
 using OpenVPNGateMonitor.DataBase.Repositories.Queries.Interfaces;
 
 internal sealed class TestQuery<TEntity> : IQuery<TEntity>

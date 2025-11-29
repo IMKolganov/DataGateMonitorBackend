@@ -1,13 +1,8 @@
-using System;
 using System.Net;
-using System.Net.Http;
-using System.Threading;
-using System.Threading.Tasks;
 using Microsoft.Extensions.Logging.Abstractions;
 using Moq;
 using OpenVPNGateMonitor.Services.GeoLite;
 using OpenVPNGateMonitor.Services.GeoLite.Interfaces;
-using Xunit;
 
 namespace OpenVPNGateMonitor.Tests.Services.GeoLite;
 

@@ -1,11 +1,7 @@
-using System;
-using System.Threading;
-using System.Threading.Tasks;
 using Microsoft.Extensions.DependencyInjection;
 using Moq;
 using OpenVPNGateMonitor.Services.GeoLite;
 using OpenVPNGateMonitor.Services.Others;
-using Xunit;
 
 namespace OpenVPNGateMonitor.Tests.Services.GeoLite;
 
