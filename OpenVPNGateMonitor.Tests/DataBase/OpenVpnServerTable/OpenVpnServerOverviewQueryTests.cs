@@ -23,7 +23,6 @@ public class OpenVpnServerOverviewQueryTests
 
         var uowMock = new Mock<IUnitOfWork>();
 
-        // ВАЖНО: возвращаем IQuery<T>, а не DbSet<T>
         uowMock
             .Setup(u => u.GetQuery<OpenVpnServer>())
             .Returns(new TestQuery<OpenVpnServer>(ctx.OpenVpnServers));
