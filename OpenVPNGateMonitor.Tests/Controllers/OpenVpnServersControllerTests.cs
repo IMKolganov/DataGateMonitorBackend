@@ -11,6 +11,10 @@ using OpenVPNGateMonitor.SharedModels.DataGateMonitorBackend.OpenVpnServers.Requ
 using OpenVPNGateMonitor.SharedModels.DataGateMonitorBackend.OpenVpnServers.Responses;
 using OpenVPNGateMonitor.SharedModels.Enums;
 using OpenVPNGateMonitor.SharedModels.Responses;
+using Microsoft.AspNetCore.Http;
+using Microsoft.AspNetCore.Http.Features;
+using System.Net.WebSockets;
+using System.Text;
 
 namespace OpenVPNGateMonitor.Tests.Controllers;
 
@@ -253,5 +257,132 @@ public class OpenVpnServersControllerTests
         var response = Assert.IsType<ApiResponse<string>>(ok.Value);
         Assert.True(response.Success);
         _backgroundService.Verify(b => b.RunNow(It.IsAny<CancellationToken>()), Times.Never);
+    }
+
+    [Fact]
+    public async Task StatusStream_Returns400_When_NotWebSocket()
+    {
+        var httpContext = new DefaultHttpContext();
+        // Feature without WebSocket capability
+        httpContext.Features.Set<IHttpWebSocketFeature>(new DummyWebSocketFeature(isWebSocketRequest: false));
+
+        _controller.ControllerContext = new ControllerContext { HttpContext = httpContext };
+
+        await _controller.StatusStream(CancellationToken.None);
+
+        Assert.Equal(400, httpContext.Response.StatusCode);
+    }
+
+    [Fact]
+    public async Task StatusStream_AcceptsWebSocket_SendsMessage_And_Closes()
+    {
+        // Arrange
+        var dict = new Dictionary<int, ServiceStatusDto>
+        {
+            [5] = new ServiceStatusDto { VpnServerId = 5, Status = ServiceStatus.Idle }
+        };
+        _backgroundService.Setup(b => b.GetStatus()).Returns(dict);
+        _overviewQuery
+            .Setup(q => q.GetClientCountersAsync(5, It.IsAny<CancellationToken>()))
+            .ReturnsAsync((3, 7));
+
+        var testSocket = new TestWebSocket();
+        var httpContext = new DefaultHttpContext();
+        httpContext.Features.Set<IHttpWebSocketFeature>(new DummyWebSocketFeature(true, testSocket));
+        _controller.ControllerContext = new ControllerContext { HttpContext = httpContext };
+
+        // Act
+        var cts = new CancellationTokenSource();
+        cts.Cancel(); // cancel immediately to skip 1s delay inside the loop
+        await _controller.StatusStream(cts.Token);
+
+        // Assert
+        Assert.True(testSocket.Accepted);
+        Assert.True(testSocket.SendCalled);
+        Assert.NotEmpty(testSocket.SentMessages);
+        // Verify the service was asked for counters with the VpnServerId from status
+        _overviewQuery.Verify(q => q.GetClientCountersAsync(5, It.IsAny<CancellationToken>()), Times.AtLeastOnce);
+        // Ensure socket was closed by controller finally block
+        Assert.True(testSocket.CloseCalled);
+        Assert.Equal(WebSocketState.Closed, testSocket.State);
+    }
+
+    private sealed class DummyWebSocketFeature : IHttpWebSocketFeature
+    {
+        private readonly bool _isWebSocketRequest;
+        private readonly WebSocket _socket;
+
+        public DummyWebSocketFeature(bool isWebSocketRequest, WebSocket? socket = null)
+        {
+            _isWebSocketRequest = isWebSocketRequest;
+            _socket = socket ?? new TestWebSocket();
+        }
+
+        public bool IsWebSocketRequest => _isWebSocketRequest;
+
+        public Task<WebSocket> AcceptAsync(WebSocketAcceptContext context)
+        {
+            if (!_isWebSocketRequest)
+                throw new InvalidOperationException("Not a WebSocket request");
+            if (_socket is TestWebSocket tws) tws.Accepted = true;
+            return Task.FromResult(_socket);
+        }
+    }
+
+    private sealed class TestWebSocket : WebSocket
+    {
+        private WebSocketState _state = WebSocketState.Open;
+        public bool SendCalled { get; private set; }
+        public bool CloseCalled { get; private set; }
+        public bool Accepted { get; set; } = true; // set by feature
+        public List<string> SentMessages { get; } = new();
+
+        public override WebSocketCloseStatus? CloseStatus => CloseCalled ? WebSocketCloseStatus.NormalClosure : null;
+        public override string? CloseStatusDescription => CloseCalled ? "Closing" : null;
+        public override WebSocketState State => _state;
+        public override string? SubProtocol => null;
+
+        public override void Abort()
+        {
+            _state = WebSocketState.Aborted;
+        }
+
+        public override Task CloseAsync(WebSocketCloseStatus closeStatus, string? statusDescription, CancellationToken cancellationToken)
+        {
+            CloseCalled = true;
+            _state = WebSocketState.Closed;
+            return Task.CompletedTask;
+        }
+
+        public override Task CloseOutputAsync(WebSocketCloseStatus closeStatus, string? statusDescription, CancellationToken cancellationToken)
+        {
+            CloseCalled = true;
+            _state = WebSocketState.CloseSent;
+            return Task.CompletedTask;
+        }
+
+        public override void Dispose()
+        {
+            _state = WebSocketState.Closed;
+        }
+
+        public override Task<WebSocketReceiveResult> ReceiveAsync(ArraySegment<byte> buffer, CancellationToken cancellationToken)
+        {
+            // Not used by controller; simulate no incoming messages.
+            return Task.FromResult(new WebSocketReceiveResult(0, WebSocketMessageType.Text, true));
+        }
+
+        public override Task SendAsync(ArraySegment<byte> buffer, WebSocketMessageType messageType, bool endOfMessage, CancellationToken cancellationToken)
+        {
+            SendCalled = true;
+            if (buffer.Array != null)
+            {
+                var msg = Encoding.UTF8.GetString(buffer.Array, buffer.Offset, buffer.Count);
+                SentMessages.Add(msg);
+            }
+            // After first send, simulate client closing so loop exits quickly
+            _state = WebSocketState.CloseReceived;
+            return Task.CompletedTask;
+        }
     }
 }

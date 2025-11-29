@@ -28,7 +28,7 @@ public class OpenVpnServerEventController(IOpenVpnServerEventLogQueryService ope
         var dto = page.Adapt<VpnServerEventResponse>();
         return Ok(ApiResponse<VpnServerEventResponse>.SuccessResponse(dto));
     }
-
+    
     /// <summary>
     /// Returns status snapshots for all cached OpenVPN event clients.
     /// </summary>
