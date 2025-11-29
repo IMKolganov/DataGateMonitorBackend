@@ -164,7 +164,6 @@ public class TelegramBotUserControllerTests
 
         response.Success.Should().BeTrue();
         response.Data.Should().NotBeNull();
-        // тут не лезем в конкретные названия коллекции, чтобы не угадывать пропертю
     }
 
     // ---------- Block / Unblock / SetAdmin / UnsetAdmin ----------

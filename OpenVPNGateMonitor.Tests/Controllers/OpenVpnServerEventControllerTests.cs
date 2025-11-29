@@ -21,7 +21,6 @@ public class OpenVpnServerEventControllerTests
 
     public OpenVpnServerEventControllerTests()
     {
-        // регистрируем мэппинги для PagedResponse<OpenVpnServerEventLog> -> VpnServerEventResponse
         TypeAdapterConfig.GlobalSettings.Scan(typeof(OpenVpnServerEventMapping).Assembly);
 
         _controller = new OpenVpnServerEventController(_logQuery.Object, _factory.Object);
