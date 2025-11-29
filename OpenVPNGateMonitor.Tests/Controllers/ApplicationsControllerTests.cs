@@ -1,8 +1,4 @@
-﻿using System;
-using System.Collections.Generic;
-using System.Threading;
-using System.Threading.Tasks;
-using Microsoft.AspNetCore.Mvc;
+﻿using Microsoft.AspNetCore.Mvc;
 using Moq;
 using OpenVPNGateMonitor.Controllers;
 using OpenVPNGateMonitor.Models;
@@ -10,7 +6,6 @@ using OpenVPNGateMonitor.Services.Api.Auth.Interfaces;
 using OpenVPNGateMonitor.SharedModels.DataGateMonitorBackend.Applications.Requests;
 using OpenVPNGateMonitor.SharedModels.DataGateMonitorBackend.Applications.Responses;
 using OpenVPNGateMonitor.SharedModels.Responses;
-using Xunit;
 
 namespace OpenVPNGateMonitor.Tests.Controllers
 {
