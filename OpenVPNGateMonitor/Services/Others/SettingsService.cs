@@ -13,9 +13,10 @@ public class SettingsService(
 {
     public async Task<T?> GetValueAsync<T>(string key, CancellationToken ct)
     {
-        var setting = await q.Query() // AsNoTracking = true by default
-            .Where(x => x.Key == key)
-            .FirstOrDefaultAsync(ct);
+        var setting = await q.FirstOrDefaultAsync(
+            x => x.Key == key,
+            asNoTracking: true,
+            ct: ct);
 
         if (setting == null || setting.ValueType == "null")
             return default;
@@ -34,9 +35,10 @@ public class SettingsService(
     public async Task SetValueAsync<T>(string key, T value, CancellationToken ct)
     {
         // tracked query so we can update the loaded entity
-        var setting = await q.Query(asNoTracking: false)
-            .Where(x => x.Key == key)
-            .FirstOrDefaultAsync(ct);
+        var setting = await q.FirstOrDefaultAsync(
+            x => x.Key == key,
+            asNoTracking: false,
+            ct: ct);
 
         var now = DateTimeOffset.UtcNow;
 
