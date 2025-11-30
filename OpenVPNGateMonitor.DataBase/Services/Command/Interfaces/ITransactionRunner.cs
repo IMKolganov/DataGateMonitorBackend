@@ -1,4 +1,4 @@
-﻿namespace OpenVPNGateMonitor.DataBase.Services.Command;
+﻿namespace OpenVPNGateMonitor.DataBase.Services.Command.Interfaces;
 
 // Interface
 public interface ITransactionRunner
