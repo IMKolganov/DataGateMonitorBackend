@@ -5,7 +5,7 @@ using OpenVPNGateMonitor.DataBase.Services.Query.OpenVpnServerTable;
 using OpenVPNGateMonitor.DataBase.UnitOfWork;
 using OpenVPNGateMonitor.Models;
 
-namespace OpenVPNGateMonitor.Tests.DataBase.OpenVpnServerTable;
+namespace OpenVPNGateMonitor.Tests.DataBase.Services.Query.OpenVpnServerTable;
 
 public class OpenVpnServerOverviewQueryTests
 {
