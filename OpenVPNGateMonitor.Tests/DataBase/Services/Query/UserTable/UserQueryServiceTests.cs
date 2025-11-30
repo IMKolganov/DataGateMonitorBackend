@@ -1,12 +1,11 @@
 using Microsoft.EntityFrameworkCore;
 using Moq;
-using OpenVPNGateMonitor.DataBase.Repositories.Queries.Interfaces;
 using OpenVPNGateMonitor.DataBase.Services.Query;
 using OpenVPNGateMonitor.DataBase.Services.Query.UserTable;
 using OpenVPNGateMonitor.DataBase.UnitOfWork;
 using OpenVPNGateMonitor.Models;
 
-namespace OpenVPNGateMonitor.Tests.DataBase.Services.Query;
+namespace OpenVPNGateMonitor.Tests.DataBase.Services.Query.UserTable;
 
 public class UserQueryServiceTests
 {
