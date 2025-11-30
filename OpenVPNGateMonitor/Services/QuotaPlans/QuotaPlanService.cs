@@ -1,5 +1,6 @@
 ﻿using System.ComponentModel.DataAnnotations;
 using OpenVPNGateMonitor.DataBase.Services.Command;
+using OpenVPNGateMonitor.DataBase.Services.Command.Interfaces;
 using OpenVPNGateMonitor.DataBase.Services.Query.QuotaPlanTable;
 using OpenVPNGateMonitor.Models;
 using OpenVPNGateMonitor.SharedModels.Responses;

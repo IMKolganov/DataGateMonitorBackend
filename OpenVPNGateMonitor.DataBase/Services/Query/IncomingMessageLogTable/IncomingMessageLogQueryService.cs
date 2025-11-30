@@ -18,9 +18,18 @@ public class IncomingMessageLogQueryService(IQueryService<IncomingMessageLog, in
             page: page,
             pageSize: pageSize,
             predicate: x => x.TelegramId == telegramId,
+            o => o.OrderByDescending(x => x.Id),
+            true,
             ct: ct);
     }
 
     public Task<IPagedResult<IncomingMessageLog>> GetPageAsync(int page, int pageSize, CancellationToken ct)
-        => q.PageAsync(page, pageSize, ct: ct);
+        => q.PageAsync(
+            page,
+            pageSize,
+            null,
+            o => o.OrderByDescending(x => x.Id),
+            true,
+            ct
+        );
 }

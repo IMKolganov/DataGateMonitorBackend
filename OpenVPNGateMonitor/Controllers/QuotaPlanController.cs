@@ -3,6 +3,7 @@ using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Mvc;
 using OpenVPNGateMonitor.Models;
 using OpenVPNGateMonitor.Services.QuotaPlans;
+using OpenVPNGateMonitor.SharedModels.DataGateMonitorBackend.QuotaPlans.Dto;
 using OpenVPNGateMonitor.SharedModels.DataGateMonitorBackend.QuotaPlans.Requests;
 using OpenVPNGateMonitor.SharedModels.DataGateMonitorBackend.QuotaPlans.Responses;
 using OpenVPNGateMonitor.SharedModels.Responses;
@@ -49,7 +50,12 @@ public class QuotaPlanController(IQuotaPlanService quotaPlanService) : BaseContr
     {
         var entity = request.Adapt<QuotaPlan>();
         var created = await quotaPlanService.CreateAsync(entity, request.IsDefault, ct);
-        var dto = created.Adapt<QuotaPlanResponse>();
+
+        var dto = new QuotaPlanResponse
+        {
+            QuotaPlan = created.Adapt<QuotaPlanDto>()
+        };
+
         return Ok(ApiResponse<QuotaPlanResponse>.SuccessResponse(dto));
     }
 

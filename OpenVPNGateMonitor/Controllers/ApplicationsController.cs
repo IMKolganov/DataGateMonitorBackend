@@ -2,6 +2,7 @@
 using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Mvc;
 using OpenVPNGateMonitor.Services.Api.Auth.Interfaces;
+using OpenVPNGateMonitor.SharedModels.DataGateMonitorBackend.Applications.Dto;
 using OpenVPNGateMonitor.SharedModels.DataGateMonitorBackend.Applications.Requests;
 using OpenVPNGateMonitor.SharedModels.DataGateMonitorBackend.Applications.Responses;
 using OpenVPNGateMonitor.SharedModels.Responses;
@@ -26,11 +27,20 @@ public class ApplicationsController(IApplicationService appService) : BaseContro
 
     [HttpGet("get-all")]
     public async Task<ActionResult<ApiResponse<ApplicationsResponse>>> GetAllApplications(
-    CancellationToken cancellationToken)
+        CancellationToken cancellationToken)
     {
         var apps = await appService.GetAllApplicationsAsync(cancellationToken);
-        return Ok(ApiResponse<ApplicationsResponse>.SuccessResponse(apps.Adapt<ApplicationsResponse>()));
+
+        var dtoList = apps.Adapt<List<ApplicationDto>>();
+
+        var response = new ApplicationsResponse
+        {
+            Applications = dtoList
+        };
+
+        return Ok(ApiResponse<ApplicationsResponse>.SuccessResponse(response));
     }
+
 
     [HttpPost("revoke")]
     public async Task<ActionResult<ApiResponse<string>>> RevokeApplication(

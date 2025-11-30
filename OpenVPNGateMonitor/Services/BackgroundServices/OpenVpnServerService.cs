@@ -2,6 +2,7 @@
 using System.Text;
 using Mapster;
 using OpenVPNGateMonitor.DataBase.Services.Command;
+using OpenVPNGateMonitor.DataBase.Services.Command.Interfaces;
 using OpenVPNGateMonitor.DataBase.Services.Query.IssuedOvpnFileTable;
 using OpenVPNGateMonitor.DataBase.Services.Query.OpenVpnServerStatusLogTable;
 using OpenVPNGateMonitor.Models;
