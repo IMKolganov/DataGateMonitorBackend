@@ -1,5 +1,4 @@
-﻿using OpenVPNGateMonitor.DataBase.Services.Command;
-using OpenVPNGateMonitor.DataBase.Services.Command.Interfaces;
+﻿using OpenVPNGateMonitor.DataBase.Services.Command.Interfaces;
 using OpenVPNGateMonitor.DataBase.Services.Query.OpenVpnServerOvpnFileConfigTable;
 using OpenVPNGateMonitor.Models;
 using OpenVPNGateMonitor.Services.Api.Interfaces;
