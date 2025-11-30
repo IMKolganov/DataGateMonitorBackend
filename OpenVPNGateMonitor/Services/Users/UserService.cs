@@ -1,5 +1,6 @@
 ﻿using Mapster;
 using OpenVPNGateMonitor.DataBase.Services.Command;
+using OpenVPNGateMonitor.DataBase.Services.Command.Interfaces;
 using OpenVPNGateMonitor.DataBase.Services.Query.QuotaPlanTable;
 using OpenVPNGateMonitor.DataBase.Services.Query.TelegramBotUserTable;
 using OpenVPNGateMonitor.DataBase.Services.Query.UserIdentityLinkTable;
