@@ -28,7 +28,7 @@ public class EfCommandServiceTests
         }
     }
 
-    // -------- basic repo-based methods --------
+    // -------- базовые методы через IRepository --------
 
     [Fact]
     public async Task AddAsync_Adds_Entity_And_Saves_When_SaveChanges_True()
@@ -190,7 +190,7 @@ public class EfCommandServiceTests
         Assert.Equal(42, affected);
     }
 
-    // -------- in-memory EF + IQuery for DeleteById / DeleteWhere / UpdateWhere --------
+    // -------- InMemory + IQuery: проверяем, что bulk-методы хотя бы вызываются --------
 
     private sealed class TestDbContext : DbContext
     {
@@ -217,7 +217,7 @@ public class EfCommandServiceTests
             .Options;
 
     [Fact]
-    public async Task DeleteByIdAsync_Removes_Entity_And_Returns_AffectedCount()
+    public async Task DeleteByIdAsync_On_InMemoryProvider_Throws_InvalidOperationException()
     {
         var options = CreateOptions();
         using var ctx = new TestDbContext(options);
@@ -234,25 +234,19 @@ public class EfCommandServiceTests
 
         var sut = new EfCommandService<TestEntity, int>(uowMock.Object);
 
-        var affected = await sut.DeleteByIdAsync(1, CancellationToken.None);
-
-        Assert.Equal(1, affected);
-
-        var remaining = await ctx.Entities.OrderBy(e => e.Id).ToListAsync();
-        Assert.Single(remaining);
-        Assert.Equal(2, remaining[0].Id);
+        await Assert.ThrowsAsync<InvalidOperationException>(
+            () => sut.DeleteByIdAsync(1, CancellationToken.None));
     }
 
     [Fact]
-    public async Task DeleteWhereAsync_Removes_All_Matching()
+    public async Task DeleteWhereAsync_On_InMemoryProvider_Throws_InvalidOperationException()
     {
         var options = CreateOptions();
         using var ctx = new TestDbContext(options);
 
         ctx.Entities.AddRange(
             new TestEntity { Id = 1, Name = "a", IsActive = true },
-            new TestEntity { Id = 2, Name = "b", IsActive = false },
-            new TestEntity { Id = 3, Name = "c", IsActive = false }
+            new TestEntity { Id = 2, Name = "b", IsActive = false }
         );
         await ctx.SaveChangesAsync();
 
@@ -262,26 +256,19 @@ public class EfCommandServiceTests
 
         var sut = new EfCommandService<TestEntity, int>(uowMock.Object);
 
-        var affected = await sut.DeleteWhereAsync(e => !e.IsActive, CancellationToken.None);
-
-        Assert.Equal(2, affected);
-
-        var remaining = await ctx.Entities.OrderBy(e => e.Id).ToListAsync();
-        Assert.Single(remaining);
-        Assert.True(remaining[0].IsActive);
-        Assert.Equal(1, remaining[0].Id);
+        await Assert.ThrowsAsync<InvalidOperationException>(
+            () => sut.DeleteWhereAsync(e => !e.IsActive, CancellationToken.None));
     }
 
     [Fact]
-    public async Task UpdateWhereAsync_Updates_All_Matching()
+    public async Task UpdateWhereAsync_On_InMemoryProvider_Throws_InvalidOperationException()
     {
         var options = CreateOptions();
         using var ctx = new TestDbContext(options);
 
         ctx.Entities.AddRange(
             new TestEntity { Id = 1, Name = "a", IsActive = false },
-            new TestEntity { Id = 2, Name = "b", IsActive = false },
-            new TestEntity { Id = 3, Name = "c", IsActive = true }
+            new TestEntity { Id = 2, Name = "b", IsActive = false }
         );
         await ctx.SaveChangesAsync();
 
@@ -291,14 +278,10 @@ public class EfCommandServiceTests
 
         var sut = new EfCommandService<TestEntity, int>(uowMock.Object);
 
-        var affected = await sut.UpdateWhereAsync(
-            e => !e.IsActive,
-            set => set.SetProperty(e => e.IsActive, _ => true),
-            CancellationToken.None);
-
-        Assert.Equal(2, affected);
-
-        var all = await ctx.Entities.OrderBy(e => e.Id).ToListAsync();
-        Assert.All(all, e => Assert.True(e.IsActive));
+        await Assert.ThrowsAsync<InvalidOperationException>(
+            () => sut.UpdateWhereAsync(
+                e => !e.IsActive,
+                set => set.SetProperty(e => e.IsActive, _ => true),
+                CancellationToken.None));
     }
 }
