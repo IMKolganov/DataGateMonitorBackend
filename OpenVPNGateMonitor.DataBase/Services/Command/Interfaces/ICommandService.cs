@@ -2,7 +2,7 @@
 using Microsoft.EntityFrameworkCore.Query;
 using OpenVPNGateMonitor.Models;
 
-namespace OpenVPNGateMonitor.DataBase.Services.Command;
+namespace OpenVPNGateMonitor.DataBase.Services.Command.Interfaces;
 
 public interface ICommandService<TEntity, TKey> where TEntity : BaseEntity<TKey>
 {

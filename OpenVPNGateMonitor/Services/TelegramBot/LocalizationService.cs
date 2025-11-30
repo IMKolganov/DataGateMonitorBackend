@@ -1,5 +1,6 @@
 ﻿using Mapster;
 using OpenVPNGateMonitor.DataBase.Services.Command;
+using OpenVPNGateMonitor.DataBase.Services.Command.Interfaces;
 using OpenVPNGateMonitor.DataBase.Services.Query.LocalizationTextTable;
 using OpenVPNGateMonitor.DataBase.Services.Query.TelegramUserLanguagePreferenceTable;
 using OpenVPNGateMonitor.Models;

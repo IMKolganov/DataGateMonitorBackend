@@ -1,4 +1,5 @@
-﻿using OpenVPNGateMonitor.DataBase.UnitOfWork;
+﻿using OpenVPNGateMonitor.DataBase.Services.Command.Interfaces;
+using OpenVPNGateMonitor.DataBase.UnitOfWork;
 
 namespace OpenVPNGateMonitor.DataBase.Services.Command;
 
