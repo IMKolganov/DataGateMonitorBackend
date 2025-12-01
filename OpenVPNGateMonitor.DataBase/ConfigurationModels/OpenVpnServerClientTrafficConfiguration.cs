@@ -17,16 +17,28 @@ public class OpenVpnServerClientTrafficConfiguration : BaseEntityConfiguration<O
         entity.Property(e => e.BytesSent).IsRequired();
         entity.Property(e => e.MeasuredAt).IsRequired();
 
-        // Unique per server+session+timestamp
-        entity.HasIndex(e => new { e.VpnServerId, e.SessionId, e.MeasuredAt })
+        // Uniqueness (logical constraint)
+        entity.HasIndex(e => new { e.VpnServerId, e.MeasuredAt, e.SessionId })
             .IsUnique()
             .HasDatabaseName("UX_ClientTraffic_Server_Session_At");
 
-        // Helpful read indexes
+        // Existing read helpers
         entity.HasIndex(e => new { e.VpnServerId, e.MeasuredAt })
             .HasDatabaseName("IX_ClientTraffic_Server_At");
 
         entity.HasIndex(e => new { e.ExternalId, e.MeasuredAt })
             .HasDatabaseName("IX_ClientTraffic_External_At");
+        
+        // WHERE MeasuredAt BETWEEN ...
+        entity.HasIndex(e => e.MeasuredAt)
+            .HasDatabaseName("IX_ClientTraffic_At");
+
+        // ORDER BY SessionId, MeasuredAt (plus WHERE by MeasuredAt)
+        entity.HasIndex(e => new { e.MeasuredAt, e.SessionId })
+            .HasDatabaseName("IX_ClientTraffic_At_Session");
+
+        // ORDER BY ExternalId, SessionId, MeasuredAt (plus WHERE by MeasuredAt)
+        entity.HasIndex(e => new { e.MeasuredAt, e.ExternalId, e.SessionId })
+            .HasDatabaseName("IX_ClientTraffic_At_External_Session");
     }
 }
