@@ -1,7 +1,8 @@
 using System.ComponentModel.DataAnnotations;
+using System.Linq.Expressions;
+using Microsoft.EntityFrameworkCore.Query;
 using Microsoft.Extensions.Logging;
 using Moq;
-using OpenVPNGateMonitor.DataBase.Services.Command;
 using OpenVPNGateMonitor.DataBase.Services.Command.Interfaces;
 using OpenVPNGateMonitor.DataBase.Services.Query.QuotaPlanTable;
 using OpenVPNGateMonitor.Models;
@@ -46,7 +47,6 @@ public class QuotaPlanServiceTests
     [Fact]
     public async Task GetPage_DelegatesToQuery()
     {
-        // We don't need a concrete IPagedResult implementation here; just ensure delegation happens.
         var paged = Mock.Of<SharedModels.Responses.IPagedResult<QuotaPlan>>();
         _query.Setup(q => q.GetPageAsync(2, 5, It.IsAny<CancellationToken>())).ReturnsAsync(paged);
 
@@ -95,15 +95,24 @@ public class QuotaPlanServiceTests
         var result = await svc.CreateAsync(input);
 
         Assert.Same(created, result);
-        _command.Verify(c => c.AddAsync(It.Is<QuotaPlan>(p => p.Id == 0 && p.Name == "Plan"), true, It.IsAny<CancellationToken>()), Times.Once);
+        _command.Verify(
+            c => c.AddAsync(
+                It.Is<QuotaPlan>(p => p.Id == 0 && p.Name == "Plan"),
+                true,
+                It.IsAny<CancellationToken>()),
+            Times.Once);
     }
 
     [Fact]
     public async Task Create_WhenMakeDefault_UnsetsAllDefaults_AndSetsFlag()
     {
-        int unsetCalls = 0;
+        var unsetCalls = 0;
+
         _command
-            .Setup(c => c.UpdateWhereAsync(It.IsAny<System.Linq.Expressions.Expression<Func<QuotaPlan, bool>>>(), It.IsAny<System.Linq.Expressions.Expression<Func<Microsoft.EntityFrameworkCore.Query.SetPropertyCalls<QuotaPlan>, Microsoft.EntityFrameworkCore.Query.SetPropertyCalls<QuotaPlan>>>>(), It.IsAny<CancellationToken>()))
+            .Setup(c => c.UpdateWhereAsync(
+                It.IsAny<Expression<Func<QuotaPlan, bool>>>(),
+                It.IsAny<Action<UpdateSettersBuilder<QuotaPlan>>>(),
+                It.IsAny<CancellationToken>()))
             .Callback(() => unsetCalls++)
             .ReturnsAsync(1);
 
@@ -143,29 +152,48 @@ public class QuotaPlanServiceTests
     [Fact]
     public async Task Update_CallsUpdate_AndUnsetsDefaults_WhenIsDefaultTrue()
     {
-        int unsetCalls = 0;
+        var unsetCalls = 0;
+
         _command
-            .Setup(c => c.UpdateWhereAsync(It.IsAny<System.Linq.Expressions.Expression<Func<QuotaPlan, bool>>>(), It.IsAny<System.Linq.Expressions.Expression<Func<Microsoft.EntityFrameworkCore.Query.SetPropertyCalls<QuotaPlan>, Microsoft.EntityFrameworkCore.Query.SetPropertyCalls<QuotaPlan>>>>(), It.IsAny<CancellationToken>()))
+            .Setup(c => c.UpdateWhereAsync(
+                It.IsAny<Expression<Func<QuotaPlan, bool>>>(),
+                It.IsAny<Action<UpdateSettersBuilder<QuotaPlan>>>(),
+                It.IsAny<CancellationToken>()))
             .Callback(() => unsetCalls++)
             .ReturnsAsync(3);
 
-        _command.Setup(c => c.UpdateAsync(It.IsAny<QuotaPlan>(), true, It.IsAny<CancellationToken>())).ReturnsAsync(1);
+        _command.Setup(c => c.UpdateAsync(It.IsAny<QuotaPlan>(), true, It.IsAny<CancellationToken>()))
+            .ReturnsAsync(1);
 
         var svc = CreateService();
         var affected = await svc.UpdateAsync(new QuotaPlan { Id = 5, Name = "N", IsDefault = true });
 
         Assert.Equal(1, affected);
         Assert.Equal(1, unsetCalls);
-        _command.Verify(c => c.UpdateAsync(It.Is<QuotaPlan>(p => p.Id == 5 && p.IsDefault), true, It.IsAny<CancellationToken>()), Times.Once);
+        _command.Verify(
+            c => c.UpdateAsync(
+                It.Is<QuotaPlan>(p => p.Id == 5 && p.IsDefault),
+                true,
+                It.IsAny<CancellationToken>()),
+            Times.Once);
     }
 
     [Fact]
     public async Task Activate_CallsUpdateWhere_WithIdPredicate()
     {
-        System.Linq.Expressions.Expression<Func<QuotaPlan, bool>>? capturedPredicate = null;
+        Expression<Func<QuotaPlan, bool>>? capturedPredicate = null;
+
         _command
-            .Setup(c => c.UpdateWhereAsync(It.IsAny<System.Linq.Expressions.Expression<Func<QuotaPlan, bool>>>(), It.IsAny<System.Linq.Expressions.Expression<Func<Microsoft.EntityFrameworkCore.Query.SetPropertyCalls<QuotaPlan>, Microsoft.EntityFrameworkCore.Query.SetPropertyCalls<QuotaPlan>>>>(), It.IsAny<CancellationToken>()))
-            .Callback((System.Linq.Expressions.Expression<Func<QuotaPlan, bool>> pred, object _, CancellationToken __) => capturedPredicate = pred)
+            .Setup(c => c.UpdateWhereAsync(
+                It.IsAny<Expression<Func<QuotaPlan, bool>>>(),
+                It.IsAny<Action<UpdateSettersBuilder<QuotaPlan>>>(),
+                It.IsAny<CancellationToken>()))
+            .Callback((Expression<Func<QuotaPlan, bool>> pred,
+                       Action<UpdateSettersBuilder<QuotaPlan>> _,
+                       CancellationToken __) =>
+            {
+                capturedPredicate = pred;
+            })
             .ReturnsAsync(1);
 
         var svc = CreateService();
@@ -181,16 +209,26 @@ public class QuotaPlanServiceTests
     [Fact]
     public async Task Deactivate_CallsUpdateWhere_WithIdPredicate()
     {
-        System.Linq.Expressions.Expression<Func<QuotaPlan, bool>>? capturedPredicate = null;
+        Expression<Func<QuotaPlan, bool>>? capturedPredicate = null;
+
         _command
-            .Setup(c => c.UpdateWhereAsync(It.IsAny<System.Linq.Expressions.Expression<Func<QuotaPlan, bool>>>(), It.IsAny<System.Linq.Expressions.Expression<Func<Microsoft.EntityFrameworkCore.Query.SetPropertyCalls<QuotaPlan>, Microsoft.EntityFrameworkCore.Query.SetPropertyCalls<QuotaPlan>>>>(), It.IsAny<CancellationToken>()))
-            .Callback((System.Linq.Expressions.Expression<Func<QuotaPlan, bool>> pred, object _, CancellationToken __) => capturedPredicate = pred)
+            .Setup(c => c.UpdateWhereAsync(
+                It.IsAny<Expression<Func<QuotaPlan, bool>>>(),
+                It.IsAny<Action<UpdateSettersBuilder<QuotaPlan>>>(),
+                It.IsAny<CancellationToken>()))
+            .Callback((Expression<Func<QuotaPlan, bool>> pred,
+                       Action<UpdateSettersBuilder<QuotaPlan>> _,
+                       CancellationToken __) =>
+            {
+                capturedPredicate = pred;
+            })
             .ReturnsAsync(2);
 
         var svc = CreateService();
         var rows = await svc.DeactivateAsync(3);
 
         Assert.Equal(2, rows);
+        Assert.NotNull(capturedPredicate);
         var compiled = capturedPredicate!.Compile();
         Assert.True(compiled(new QuotaPlan { Id = 3 }));
         Assert.False(compiled(new QuotaPlan { Id = 4 }));
@@ -209,10 +247,13 @@ public class QuotaPlanServiceTests
     [Fact]
     public async Task SetDefault_UnsetsAll_ThenSetsTarget()
     {
-        int calls = 0;
-        // First call: unset all defaults, second call: set specific id
+        var calls = 0;
+
         _command
-            .Setup(c => c.UpdateWhereAsync(It.IsAny<System.Linq.Expressions.Expression<Func<QuotaPlan, bool>>>(), It.IsAny<System.Linq.Expressions.Expression<Func<Microsoft.EntityFrameworkCore.Query.SetPropertyCalls<QuotaPlan>, Microsoft.EntityFrameworkCore.Query.SetPropertyCalls<QuotaPlan>>>>(), It.IsAny<CancellationToken>()))
+            .Setup(c => c.UpdateWhereAsync(
+                It.IsAny<Expression<Func<QuotaPlan, bool>>>(),
+                It.IsAny<Action<UpdateSettersBuilder<QuotaPlan>>>(),
+                It.IsAny<CancellationToken>()))
             .Callback(() => calls++)
             .ReturnsAsync(() => calls == 1 ? 5 : 1);
 
@@ -225,10 +266,14 @@ public class QuotaPlanServiceTests
     [Fact]
     public async Task SetDefault_Throws_WhenTargetNotFound()
     {
-        int calls = 0;
+        var calls = 0;
+
         _command
-            .Setup(c => c.UpdateWhereAsync(It.IsAny<System.Linq.Expressions.Expression<Func<QuotaPlan, bool>>>(), It.IsAny<System.Linq.Expressions.Expression<Func<Microsoft.EntityFrameworkCore.Query.SetPropertyCalls<QuotaPlan>, Microsoft.EntityFrameworkCore.Query.SetPropertyCalls<QuotaPlan>>>>(), It.IsAny<CancellationToken>()))
-            .ReturnsAsync(() => calls++ == 0 ? 5 : 0); // second call returns 0 rows
+            .Setup(c => c.UpdateWhereAsync(
+                It.IsAny<Expression<Func<QuotaPlan, bool>>>(),
+                It.IsAny<Action<UpdateSettersBuilder<QuotaPlan>>>(),
+                It.IsAny<CancellationToken>()))
+            .ReturnsAsync(() => calls++ == 0 ? 5 : 0);
 
         var svc = CreateService();
         await Assert.ThrowsAsync<KeyNotFoundException>(() => svc.SetDefaultAsync(123));

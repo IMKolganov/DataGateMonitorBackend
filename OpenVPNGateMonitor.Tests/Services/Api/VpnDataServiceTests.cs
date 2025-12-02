@@ -1,11 +1,8 @@
-using System;
-using System.Threading;
-using System.Threading.Tasks;
+using System.Linq.Expressions;
 using Microsoft.Extensions.Logging;
 using Microsoft.EntityFrameworkCore.Query;
 using Moq;
 using OpenVPNGateMonitor.DataBase.Services.Command.Interfaces;
-using OpenVPNGateMonitor.DataBase.Services.Command;
 using OpenVPNGateMonitor.DataBase.Services.Query.OpenVpnServerOvpnFileConfigTable;
 using OpenVPNGateMonitor.DataBase.Services.Query.OpenVpnServerTable;
 using OpenVPNGateMonitor.Models;
@@ -35,7 +32,6 @@ public class VpnDataServiceTests
         var serverCmd = new Mock<ICommandService<OpenVpnServer, int>>(MockBehavior.Strict);
         var cfgCmd = new Mock<ICommandService<OpenVpnServerOvpnFileConfig, int>>(MockBehavior.Strict);
 
-        // Transaction runner should invoke provided delegate immediately
         trx.Setup(t => t.RunAsync(It.IsAny<Func<CancellationToken, Task<OpenVpnServer>>>(), It.IsAny<CancellationToken>()))
             .Returns<Func<CancellationToken, Task<OpenVpnServer>>, CancellationToken>(async (f, ct) => await f(ct));
         trx.Setup(t => t.RunAsync(It.IsAny<Func<CancellationToken, Task>>(), It.IsAny<CancellationToken>()))
@@ -61,26 +57,21 @@ public class VpnDataServiceTests
 
         var before = DateTimeOffset.UtcNow;
 
-        // Any returns false -> no config exists
         cfgQ.Setup(q => q.AnyByVpnServerId(It.IsAny<int>(), It.IsAny<CancellationToken>()))
             .ReturnsAsync(false);
 
-        // External IP
         ip.Setup(x => x.GetRemoteIpAddress(It.IsAny<CancellationToken>()))
           .ReturnsAsync("203.0.113.10");
 
-        // AddAsync should set Id and dates
         serverCmd.Setup(c => c.AddAsync(server, true, It.IsAny<CancellationToken>()))
             .Callback<OpenVpnServer, bool, CancellationToken>((s, _, __) => { s.Id = 101; })
             .ReturnsAsync((OpenVpnServer s, bool _, CancellationToken __) => s);
 
-        // Config AddAsync capture
         OpenVpnServerOvpnFileConfig? addedCfg = null;
         cfgCmd.Setup(c => c.AddAsync(It.IsAny<OpenVpnServerOvpnFileConfig>(), true, It.IsAny<CancellationToken>()))
               .Callback<OpenVpnServerOvpnFileConfig, bool, CancellationToken>((e, _, __) => addedCfg = e)
               .ReturnsAsync((OpenVpnServerOvpnFileConfig e, bool _, CancellationToken __) => e);
 
-        // Final snapshot
         serverQ.Setup(q => q.GetByIdAsync(101, It.IsAny<CancellationToken>()))
                .ReturnsAsync(() => server);
 
@@ -109,12 +100,11 @@ public class VpnDataServiceTests
         var server = new OpenVpnServer { Id = 0, IsDefault = true, ServerName = "DefaultSrv" };
 
         cfgQ.Setup(q => q.AnyByVpnServerId(It.IsAny<int>(), It.IsAny<CancellationToken>())).ReturnsAsync(true);
-        // External IP never used because Any=true
         ip.Setup(x => x.GetRemoteIpAddress(It.IsAny<CancellationToken>())).ReturnsAsync("ignored");
 
-        // Bulk unset defaults called
-        serverCmd.Setup(c => c.UpdateWhereAsync(It.IsAny<System.Linq.Expressions.Expression<Func<OpenVpnServer, bool>>>(),
-                It.IsAny<System.Linq.Expressions.Expression<Func<SetPropertyCalls<OpenVpnServer>, SetPropertyCalls<OpenVpnServer>>>>(),
+        serverCmd.Setup(c => c.UpdateWhereAsync(
+                It.IsAny<Expression<Func<OpenVpnServer, bool>>>(),
+                It.IsAny<Action<UpdateSettersBuilder<OpenVpnServer>>>(),
                 It.IsAny<CancellationToken>()))
             .ReturnsAsync(1);
 
@@ -128,10 +118,11 @@ public class VpnDataServiceTests
 
         Assert.Equal(7, result.Id);
 
-        serverCmd.Verify(c => c.UpdateWhereAsync(It.IsAny<System.Linq.Expressions.Expression<Func<OpenVpnServer, bool>>>(),
-                It.IsAny<System.Linq.Expressions.Expression<Func<SetPropertyCalls<OpenVpnServer>, SetPropertyCalls<OpenVpnServer>>>>(),
+        serverCmd.Verify(c => c.UpdateWhereAsync(
+                It.IsAny<Expression<Func<OpenVpnServer, bool>>>(),
+                It.IsAny<Action<UpdateSettersBuilder<OpenVpnServer>>>(),
                 It.IsAny<CancellationToken>()), Times.Once);
-        // Because AnyByVpnServerId returned true, no config added
+
         cfgCmd.Verify(c => c.AddAsync(It.IsAny<OpenVpnServerOvpnFileConfig>(), true, It.IsAny<CancellationToken>()), Times.Never);
     }
 
@@ -141,7 +132,6 @@ public class VpnDataServiceTests
         var (svc, _, ip, serverQ, cfgQ, _, serverCmd, cfgCmd) = CreateService();
         var server = new OpenVpnServer { Id = 51, IsDefault = false, ServerName = "Srv" };
 
-        // Any=false -> will add config
         cfgQ.Setup(q => q.AnyByVpnServerId(51, It.IsAny<CancellationToken>())).ReturnsAsync(false);
         ip.Setup(x => x.GetRemoteIpAddress(It.IsAny<CancellationToken>())).ReturnsAsync("198.51.100.5");
         cfgCmd.Setup(c => c.AddAsync(It.IsAny<OpenVpnServerOvpnFileConfig>(), true, It.IsAny<CancellationToken>()))
@@ -169,8 +159,9 @@ public class VpnDataServiceTests
         cfgQ.Setup(q => q.AnyByVpnServerId(9, It.IsAny<CancellationToken>())).ReturnsAsync(true);
         ip.Setup(x => x.GetRemoteIpAddress(It.IsAny<CancellationToken>())).ReturnsAsync("ignored");
 
-        serverCmd.Setup(c => c.UpdateWhereAsync(It.IsAny<System.Linq.Expressions.Expression<Func<OpenVpnServer, bool>>>(),
-                It.IsAny<System.Linq.Expressions.Expression<Func<SetPropertyCalls<OpenVpnServer>, SetPropertyCalls<OpenVpnServer>>>>(),
+        serverCmd.Setup(c => c.UpdateWhereAsync(
+                It.IsAny<Expression<Func<OpenVpnServer, bool>>>(),
+                It.IsAny<Action<UpdateSettersBuilder<OpenVpnServer>>>(),
                 It.IsAny<CancellationToken>()))
             .ReturnsAsync(1);
 
@@ -179,9 +170,11 @@ public class VpnDataServiceTests
 
         var result = await svc.UpdateOpenVpnServer(server, CancellationToken.None);
         Assert.Equal(9, result.Id);
+
         cfgCmd.Verify(c => c.AddAsync(It.IsAny<OpenVpnServerOvpnFileConfig>(), true, It.IsAny<CancellationToken>()), Times.Never);
-        serverCmd.Verify(c => c.UpdateWhereAsync(It.IsAny<System.Linq.Expressions.Expression<Func<OpenVpnServer, bool>>>(),
-                It.IsAny<System.Linq.Expressions.Expression<Func<SetPropertyCalls<OpenVpnServer>, SetPropertyCalls<OpenVpnServer>>>>(),
+        serverCmd.Verify(c => c.UpdateWhereAsync(
+                It.IsAny<Expression<Func<OpenVpnServer, bool>>>(),
+                It.IsAny<Action<UpdateSettersBuilder<OpenVpnServer>>>(),
                 It.IsAny<CancellationToken>()), Times.Once);
     }
 
