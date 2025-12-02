@@ -43,8 +43,25 @@ public class OpenVpnServerClientConfiguration : BaseEntityConfiguration<OpenVpnS
         entity.Property(e => e.Longitude);
         entity.Property(e => e.IsConnected);
         
+        // Unique per server + session
         entity.HasIndex(e => new { e.VpnServerId, e.SessionId })
             .IsUnique()
             .HasDatabaseName("UX_OpenVpnServerClients_Server_Session");
+
+        // Counts and filters by server + connection state
+        entity.HasIndex(e => new { e.VpnServerId, e.IsConnected })
+            .HasDatabaseName("IX_OpenVpnServerClients_Server_IsConnected");
+
+        // Updates and checks by server + connection state + session
+        entity.HasIndex(e => new { e.VpnServerId, e.IsConnected, e.SessionId })
+            .HasDatabaseName("IX_OpenVpnServerClients_Server_IsConnected_Session");
+
+        // Period-based queries and DISTINCT ExternalId per period
+        entity.HasIndex(e => new { e.ConnectedSince, e.ExternalId })
+            .HasDatabaseName("IX_OpenVpnServerClients_ConnectedSince_ExternalId");
+
+        // Geo reports by period and coordinates
+        entity.HasIndex(e => new { e.ConnectedSince, e.Latitude, e.Longitude })
+            .HasDatabaseName("IX_OpenVpnServerClients_ConnectedSince_Lat_Lon");
     }
 }

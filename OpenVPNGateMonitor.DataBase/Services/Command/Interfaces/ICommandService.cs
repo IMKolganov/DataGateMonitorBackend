@@ -16,7 +16,7 @@ public interface ICommandService<TEntity, TKey> where TEntity : BaseEntity<TKey>
     // Bulk update by predicate (server-side)
     Task<int> UpdateWhereAsync(
         Expression<Func<TEntity, bool>> predicate,
-        Expression<Func<SetPropertyCalls<TEntity>, SetPropertyCalls<TEntity>>> set,
+        Action<UpdateSettersBuilder<TEntity>> set,
         CancellationToken ct = default);
 
     // Delete by entity / by id

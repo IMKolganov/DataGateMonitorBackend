@@ -2,7 +2,7 @@
 using Microsoft.AspNetCore.Diagnostics.HealthChecks;
 using Microsoft.AspNetCore.HttpOverrides;
 using Microsoft.Extensions.Diagnostics.HealthChecks;
-using Microsoft.OpenApi.Writers;
+using Microsoft.OpenApi;
 using OpenVPNGateMonitor.DataBase.Contexts;
 using OpenVPNGateMonitor.Hubs;
 using Swashbuckle.AspNetCore.Swagger;
