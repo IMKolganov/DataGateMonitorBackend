@@ -41,7 +41,7 @@ public class EfCommandService<TEntity, TKey>(IUnitOfWork uow) : ICommandService<
 
     public Task<int> UpdateWhereAsync(
         Expression<Func<TEntity, bool>> predicate,
-        Expression<Func<SetPropertyCalls<TEntity>, SetPropertyCalls<TEntity>>> set,
+        Action<UpdateSettersBuilder<TEntity>> set,
         CancellationToken ct = default)
         => uow.GetQuery<TEntity>()
             .AsQueryable()
