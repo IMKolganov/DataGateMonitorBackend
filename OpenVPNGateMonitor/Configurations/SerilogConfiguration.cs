@@ -1,5 +1,6 @@
 ﻿using OpenVPNGateMonitor.Models.Helpers;
 using Serilog;
+using Serilog.Events;
 using Serilog.Sinks.Elasticsearch;
 
 namespace OpenVPNGateMonitor.Configurations;
@@ -15,10 +16,12 @@ public static class SerilogConfiguration
             .Build();
 
         var loggerConfig = new LoggerConfiguration()
+            .MinimumLevel.Information()
+            .MinimumLevel.Override("Microsoft.EntityFrameworkCore.Database.Command", LogEventLevel.Warning)
+            .MinimumLevel.Override("Microsoft.EntityFrameworkCore", LogEventLevel.Warning)
             .WriteTo.Console()
-            .Enrich.FromLogContext()
-            .MinimumLevel.Information();
-
+            .Enrich.FromLogContext();
+        
         var elasticsearchSettings = new ElasticsearchSettings
         {
             Uri = (Environment.GetEnvironmentVariable("ELASTIC_URI") 
