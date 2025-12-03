@@ -4,7 +4,6 @@ using System.Text;
 using Mapster;
 using Microsoft.AspNetCore.SignalR;
 using Microsoft.AspNetCore.SignalR.Client;
-using OpenVPNGateMonitor.DataBase.Services.Command;
 using OpenVPNGateMonitor.DataBase.Services.Command.Interfaces;
 using OpenVPNGateMonitor.DataBase.Services.Query.IssuedOvpnFileTable;
 using OpenVPNGateMonitor.Hubs;
@@ -60,7 +59,7 @@ public class OpenVpnEventClient(
                 Url = _fullUrl,
                 Host = _host,
                 Port = _port,
-                State = _connection?.State ?? HubConnectionState.Disconnected, //todo: think about it
+                State = _lastState.ToString(),
                 ConnectionId = _connection?.ConnectionId,
                 LastStateChangedUtc = _lastStateChangedUtc,
                 LastReconnectedUtc = _lastReconnectedUtc,

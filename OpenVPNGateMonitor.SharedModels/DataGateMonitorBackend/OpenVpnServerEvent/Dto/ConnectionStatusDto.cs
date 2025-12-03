@@ -1,6 +1,4 @@
-﻿using Microsoft.AspNetCore.SignalR.Client;
-
-namespace OpenVPNGateMonitor.SharedModels.DataGateMonitorBackend.OpenVpnServerEvent.Dto;
+﻿namespace OpenVPNGateMonitor.SharedModels.DataGateMonitorBackend.OpenVpnServerEvent.Dto;
 
 public class ConnectionStatusDto
 {
@@ -8,7 +6,7 @@ public class ConnectionStatusDto
     public string Url { get; set; } = string.Empty;
     public string Host { get; set; } = string.Empty;
     public int Port { get; set; }
-    public HubConnectionState State { get; set; }
+    public string State { get; set; } = string.Empty;
     public string? ConnectionId { get; set; } = string.Empty;
     public DateTimeOffset LastStateChangedUtc { get; set; }
     public DateTimeOffset? LastReconnectedUtc { get; set; }
