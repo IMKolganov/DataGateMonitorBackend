@@ -34,7 +34,7 @@ public class OpenVpnMicroserviceClient(
         try
         {
             var connection = await EnsureConnectionAsync(cancellationToken);
-            await connection.InvokeAsync("SendCommandWithRequestId", cancellationToken, requestId, command);
+            await connection.InvokeAsync("SendCommandWithRequestId", requestId, command, cancellationToken);
 
             using var timeoutCts = new CancellationTokenSource(TimeSpan.FromSeconds(10));
             using var linkedCts = CancellationTokenSource.CreateLinkedTokenSource(timeoutCts.Token, cancellationToken);
