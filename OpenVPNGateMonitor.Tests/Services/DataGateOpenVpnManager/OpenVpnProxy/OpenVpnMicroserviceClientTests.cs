@@ -286,4 +286,67 @@ public class OpenVpnMicroserviceClientTests
         connection.Verify(c => c.StopAsync(It.IsAny<CancellationToken>()), Times.Once);
         connection.Verify(c => c.DisposeAsync(), Times.Once);
     }
+    
+        [Fact]
+    public async Task SendCommandToMicroserviceAsync_Reconnects_When_NotConnected_Then_Sends()
+    {
+        var (server, log, hub, _, _, token, factory, connection) = CreateCommon();
+
+        connection.Setup(c => c.InvokeAsync(
+                            "SendCommand",
+                            It.IsAny<object?>(),
+                            It.IsAny<object?>(),
+                            It.IsAny<CancellationToken>()))
+                  .Returns(Task.CompletedTask)
+                  .Verifiable();
+
+        var sut = new OpenVpnMicroserviceClient(server, log.Object, hub.Object, token.Object, factory.Object);
+
+        await sut.SendCommandToMicroserviceAsync("ping", CancellationToken.None);
+
+        connection.Verify(c => c.StartAsync(It.IsAny<CancellationToken>()), Times.AtLeastOnce);
+        connection.Verify(c => c.InvokeAsync(
+                               "SendCommand",
+                               It.IsAny<object?>(),
+                               It.IsAny<object?>(),
+                               It.IsAny<CancellationToken>()),
+                          Times.Once);
+    }
+
+    [Fact]
+    public async Task SendCommandToMicroserviceAsync_OnError_Logs_And_Forwards_Error_To_Group()
+    {
+        var (server, log, hub, _, groupProxy, token, factory, connection) = CreateCommon();
+
+        connection.Setup(c => c.InvokeAsync(
+                            "SendCommand",
+                            It.IsAny<object?>(),
+                            It.IsAny<object?>(),
+                            It.IsAny<CancellationToken>()))
+                  .ThrowsAsync(new InvalidOperationException("boom"));
+
+        var sut = new OpenVpnMicroserviceClient(server, log.Object, hub.Object, token.Object, factory.Object);
+
+        await sut.SendCommandToMicroserviceAsync("cmd", CancellationToken.None);
+
+        groupProxy.Verify(p => p.SendCoreAsync(
+                "ReceiveCommandResult",
+                It.Is<object?[]>(arr =>
+                    arr != null &&
+                    arr.Length == 1 &&
+                    arr[0] != null &&
+                    arr[0]!.ToString()!.Contains("[Error] Failed to send command to server")),
+                It.IsAny<CancellationToken>()),
+            Times.Once);
+
+        log.Verify(x => x.Log(
+                LogLevel.Error,
+                It.IsAny<EventId>(),
+                It.Is<It.IsAnyType>((state, _) =>
+                    state!.ToString()!.Contains("Failed to send command to microservice")),
+                It.IsAny<Exception?>(),
+                It.IsAny<Func<It.IsAnyType, Exception?, string>>()),
+            Times.Once);
+    }
+
 }
