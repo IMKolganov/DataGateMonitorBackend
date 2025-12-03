@@ -9,9 +9,9 @@ namespace OpenVPNGateMonitor.Services.DataGateOpenVpnManager.OpenVpnProxy;
 
 public class OpenVpnMicroserviceClientFactory(IServiceProvider serviceProvider) : IOpenVpnMicroserviceClientFactory
 {
-    private readonly ConcurrentDictionary<int, OpenVpnMicroserviceClient> _clientCache = new();
+    private readonly ConcurrentDictionary<int, IOpenVpnMicroserviceClient> _clientCache = new();
 
-    public OpenVpnMicroserviceClient Create(OpenVpnServer server)
+    public IOpenVpnMicroserviceClient Create(OpenVpnServer server)
     {
         var normalizedUrl = NormalizeUrl(server.ApiUrl);
 
@@ -30,7 +30,7 @@ public class OpenVpnMicroserviceClientFactory(IServiceProvider serviceProvider) 
             });
     }
 
-    public async Task<OpenVpnMicroserviceClient?> TryCreateByServerIdAsync(
+    public async Task<IOpenVpnMicroserviceClient?> TryCreateByServerIdAsync(
         int serverId,
         CancellationToken cancellationToken)
     {
@@ -42,7 +42,7 @@ public class OpenVpnMicroserviceClientFactory(IServiceProvider serviceProvider) 
         return Create(server);
     }
 
-    private OpenVpnMicroserviceClient CreateNew(OpenVpnServer server)
+    private IOpenVpnMicroserviceClient CreateNew(OpenVpnServer server)
     {
         using var scope = serviceProvider.CreateScope();
         var logger = scope.ServiceProvider.GetRequiredService<ILogger<OpenVpnMicroserviceClient>>();
@@ -51,7 +51,7 @@ public class OpenVpnMicroserviceClientFactory(IServiceProvider serviceProvider) 
         return new OpenVpnMicroserviceClient(server, logger, frontendHub, tokenService);
     }
 
-    private static void DisposeClient(OpenVpnMicroserviceClient client)
+    private static void DisposeClient(IOpenVpnMicroserviceClient client)
     {
         // try async dispose first; fall back to sync
         (client as IAsyncDisposable)?.DisposeAsync().AsTask().GetAwaiter().GetResult();

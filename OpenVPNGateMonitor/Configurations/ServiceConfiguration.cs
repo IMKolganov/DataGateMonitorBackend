@@ -36,7 +36,10 @@ public static class ServiceConfiguration
                     .AllowCredentials();
             });
         });
-        services.AddSignalR();
+        services.AddSignalR(options =>
+        {
+            options.EnableDetailedErrors = true;
+        });
         
         services.AddScoped<IOpenVpnClientService, OpenVpnClientService>();
         services.AddScoped<IOpenVpnStateService, OpenVpnStateService>();

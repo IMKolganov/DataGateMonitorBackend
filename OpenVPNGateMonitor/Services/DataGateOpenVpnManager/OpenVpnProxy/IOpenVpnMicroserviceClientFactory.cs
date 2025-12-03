@@ -4,6 +4,6 @@ namespace OpenVPNGateMonitor.Services.DataGateOpenVpnManager.OpenVpnProxy;
 
 public interface IOpenVpnMicroserviceClientFactory
 {
-    OpenVpnMicroserviceClient Create(OpenVpnServer server);
-    Task<OpenVpnMicroserviceClient?> TryCreateByServerIdAsync(int serverId, CancellationToken cancellationToken);
+    IOpenVpnMicroserviceClient Create(OpenVpnServer server);
+    Task<IOpenVpnMicroserviceClient?> TryCreateByServerIdAsync(int serverId, CancellationToken cancellationToken);
 }
