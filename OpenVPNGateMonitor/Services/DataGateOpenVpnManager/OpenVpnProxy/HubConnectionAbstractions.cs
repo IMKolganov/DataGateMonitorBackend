@@ -43,6 +43,11 @@ internal sealed class DefaultHubConnectionFactory : IHubConnectionFactory
         var connection = new HubConnectionBuilder()
             .WithUrl(fullUrl, options => { options.AccessTokenProvider = accessTokenProvider; })
             .WithAutomaticReconnect()
+            .ConfigureLogging(logging =>
+            {
+                logging.SetMinimumLevel(LogLevel.Debug);
+                logging.AddConsole();
+            })
             .Build();
         return new HubConnectionProxy(connection);
     }
