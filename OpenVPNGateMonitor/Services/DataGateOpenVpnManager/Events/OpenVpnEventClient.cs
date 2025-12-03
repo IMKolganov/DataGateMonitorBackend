@@ -60,7 +60,7 @@ public class OpenVpnEventClient(
                 Url = _fullUrl,
                 Host = _host,
                 Port = _port,
-                // State = _connection?.State ?? HubConnectionState.Disconnected, //todo: think about it
+                State = _connection?.State ?? HubConnectionState.Disconnected, //todo: think about it
                 ConnectionId = _connection?.ConnectionId,
                 LastStateChangedUtc = _lastStateChangedUtc,
                 LastReconnectedUtc = _lastReconnectedUtc,
