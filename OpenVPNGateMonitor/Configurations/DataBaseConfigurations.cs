@@ -52,6 +52,8 @@ public static class DataBaseConfigurations
                     dbSettings.DefaultSchema ?? "public"
                 )
             );
+            
+            options.LogTo(_ => { }, LogLevel.Warning);
         }, ServiceLifetime.Scoped);
 
         // Scoped DbContextFactory
@@ -64,6 +66,8 @@ public static class DataBaseConfigurations
                     dbSettings.DefaultSchema ?? "public"
                 )
             );
+            
+            options.LogTo(_ => { }, LogLevel.Warning);
         }, ServiceLifetime.Scoped);
         
         services.AddScoped<IRepositoryFactory, RepositoryFactory>();
