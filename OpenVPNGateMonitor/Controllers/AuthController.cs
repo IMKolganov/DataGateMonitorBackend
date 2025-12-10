@@ -3,9 +3,11 @@ using Microsoft.IdentityModel.Tokens;
 using System.IdentityModel.Tokens.Jwt;
 using System.Security.Claims;
 using System.Text;
+using Microsoft.AspNetCore.Authorization;
 using OpenVPNGateMonitor.Models;
 using OpenVPNGateMonitor.Models.Helpers.Auth;
 using OpenVPNGateMonitor.Services.Api.Auth.Interfaces;
+using OpenVPNGateMonitor.SharedModels.DataGateMonitorBackend.Auth.Requests;
 using OpenVPNGateMonitor.SharedModels.DataGateMonitorBackend.Auth.Responses;
 using OpenVPNGateMonitor.SharedModels.Responses;
 
@@ -13,8 +15,12 @@ namespace OpenVPNGateMonitor.Controllers;
 
 [Route("api/auth")]
 [ApiController]
-public class AuthController(IConfiguration config, IApplicationService appService, 
-    IMicroserviceTokenService microserviceTokenService) : BaseController
+public class AuthController(
+    IConfiguration config, 
+    IApplicationService appService, 
+    IMicroserviceTokenService microserviceTokenService,
+    IUserRegistrationService userRegistrationService
+    ) : BaseController
 {
     [HttpGet("system-secret-status")]
     public async Task<ActionResult<ApiResponse<SystemSecretStatusResponse>>> GetSystemStatus(CancellationToken cancellationToken)
@@ -111,4 +117,17 @@ public class AuthController(IConfiguration config, IApplicationService appServic
 
         return BadRequest(ApiResponse<string>.ErrorResponse("Invalid pin"));
     }
+    
+    [AllowAnonymous]
+    [HttpPost("register")]
+    [ProducesResponseType(typeof(ApiResponse<RegisterUserResponse>), StatusCodes.Status200OK)]
+    public async Task<ActionResult<ApiResponse<RegisterUserResponse>>> Register(
+        [FromBody] RegisterUserRequest request,
+        CancellationToken ct)
+    {
+        var result = await userRegistrationService.RegisterAsync(request, ct);
+
+        return Ok(ApiResponse<RegisterUserResponse>.SuccessResponse(result));
+    }
+
 }

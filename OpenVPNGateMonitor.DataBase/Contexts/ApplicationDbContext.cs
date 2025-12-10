@@ -72,7 +72,8 @@ public class ApplicationDbContext(DbContextOptions<ApplicationDbContext> options
         modelBuilder.ApplyConfiguration(new QuotaPlanConfiguration());
         modelBuilder.ApplyConfiguration(new UserQuotaPlanConfiguration());
         modelBuilder.ApplyConfiguration(new QuotaPlanAllowedServerConfiguration());
-
+        modelBuilder.ApplyConfiguration(new RoleConfiguration());
+        modelBuilder.ApplyConfiguration(new UserRoleConfiguration());
     }
     
     private void UpdateTimestamps()
