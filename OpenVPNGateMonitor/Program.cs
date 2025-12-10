@@ -17,9 +17,20 @@ logger.Information($"Application version: {version};");
 var jwtSecret = JwtSecretLoaderConfiguration.LoadOrGenerateSecret(logger);
 builder.Configuration["Jwt:Secret"] = jwtSecret;
 
+#region google secret
 builder.Configuration
-    .AddJsonFile("googleauth.json", optional: true, reloadOnChange: true)
+    .AddJsonFile("secrets/googleauth.json", optional: true, reloadOnChange: true)
     .AddEnvironmentVariables();
+
+// Optional fallback secret (NOT clientId)
+var googleAuthSecret = GoogleAuthSecretLoaderConfiguration.LoadSecret(logger);
+
+if (!string.IsNullOrEmpty(googleAuthSecret))
+{
+    builder.Configuration["GoogleAuth:Secret"] = googleAuthSecret;
+}
+#endregion
+
 
 builder.Services.ConfigureServices(builder.Configuration);
 builder.Services.ConfigureQueryCommand();

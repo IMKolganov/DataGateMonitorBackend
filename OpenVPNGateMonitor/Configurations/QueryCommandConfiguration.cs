@@ -14,6 +14,7 @@ using OpenVPNGateMonitor.DataBase.Services.Query.OpenVpnServerTable;
 using OpenVPNGateMonitor.DataBase.Services.Query.QuotaPlanTable;
 using OpenVPNGateMonitor.DataBase.Services.Query.TelegramBotUserTable;
 using OpenVPNGateMonitor.DataBase.Services.Query.TelegramUserLanguagePreferenceTable;
+using OpenVPNGateMonitor.DataBase.Services.Query.UserCredentialTable;
 using OpenVPNGateMonitor.DataBase.Services.Query.UserIdentityLinkTable;
 using OpenVPNGateMonitor.DataBase.Services.Query.UserTable;
 
@@ -46,6 +47,8 @@ public static class QueryCommandConfiguration
         services.AddScoped<ITelegramBotUserQueryService, TelegramBotUserQueryService>();
         services.AddScoped<ITelegramUserLanguagePreferenceQueryService, TelegramUserLanguagePreferenceQueryService>();
         
+        
+        services.AddScoped<IUserCredentialQueryService, UserCredentialQueryService>();
         services.AddScoped<IUserQueryService, UserQueryService>();
         services.AddScoped<IUserIdentityLinkQueryService, UserIdentityLinkQueryService>();
         services.AddScoped<IQuotaPlanQueryService, QuotaPlanQueryService>();

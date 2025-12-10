@@ -1,5 +1,7 @@
-﻿using Microsoft.OpenApi;
+﻿using Microsoft.AspNetCore.Identity;
+using Microsoft.OpenApi;
 using OpenVPNGateMonitor.Controllers;
+using OpenVPNGateMonitor.Models;
 using OpenVPNGateMonitor.Models.Helpers;
 using OpenVPNGateMonitor.Services.Api.Auth;
 using OpenVPNGateMonitor.Services.Api.Auth.Interfaces;
@@ -10,12 +12,15 @@ public static class AuthServiceConfiguration
 {
     public static void ConfigureAuthServices(this IServiceCollection services, IConfiguration configuration)
     {
+        services.AddScoped<IPasswordHasher<User>, PasswordHasher<User>>();
+        services.AddScoped<IUserRegistrationService, UserRegistrationService>();
         #region example google env
         // GoogleAuth:ClientId → ENV: GOOGLEAUTH__CLIENTID
         // GoogleAuth:ClientSecret → ENV: GOOGLEAUTH__CLIENTSECRET
         #endregion
         services.Configure<GoogleAuthSettings>(configuration.GetSection("GoogleAuth"));
-
+        
+        services.AddScoped<IGoogleAuthService, GoogleAuthService>();
         services.AddScoped<IApplicationService, ApplicationService>();
         services.AddScoped<IGoogleTokenValidator, GoogleTokenValidator>();
 
