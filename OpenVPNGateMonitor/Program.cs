@@ -17,11 +17,15 @@ logger.Information($"Application version: {version};");
 var jwtSecret = JwtSecretLoaderConfiguration.LoadOrGenerateSecret(logger);
 builder.Configuration["Jwt:Secret"] = jwtSecret;
 
+builder.Configuration
+    .AddJsonFile("googleauth.json", optional: true, reloadOnChange: true)
+    .AddEnvironmentVariables();
+
 builder.Services.ConfigureServices(builder.Configuration);
 builder.Services.ConfigureQueryCommand();
 builder.Services.ConfigureTelegramServices();
 builder.Services.ConfigureGeoLiteServices();
-builder.Services.ConfigureAuthServices();
+builder.Services.ConfigureAuthServices(builder.Configuration);
 builder.Services.DataBaseServices(builder.Configuration, logger);
 builder.Services.ConfigureJwt(builder.Configuration);
 builder.Services.ConfigureMapster();
