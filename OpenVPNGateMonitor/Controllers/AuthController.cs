@@ -19,8 +19,8 @@ public class AuthController(
     IConfiguration config, 
     IApplicationService appService, 
     IMicroserviceTokenService microserviceTokenService,
-    IUserRegistrationService userRegistrationService
-    ) : BaseController
+    IUserRegistrationService userRegistrationService, 
+    IGoogleAuthService googleAuthService) : BaseController
 {
     [HttpGet("system-secret-status")]
     public async Task<ActionResult<ApiResponse<SystemSecretStatusResponse>>> GetSystemStatus(CancellationToken cancellationToken)
@@ -130,4 +130,14 @@ public class AuthController(
         return Ok(ApiResponse<RegisterUserResponse>.SuccessResponse(result));
     }
 
+    [AllowAnonymous]
+    [HttpPost("google-login")]
+    [ProducesResponseType(typeof(ApiResponse<GoogleLoginResponse>), StatusCodes.Status200OK)]
+    public async Task<ActionResult<ApiResponse<GoogleLoginResponse>>> GoogleLogin(
+        [FromBody] GoogleLoginRequest request,
+        CancellationToken ct)
+    {
+        var result = await googleAuthService.LoginWithGoogleAsync(request.IdToken, ct);
+        return Ok(ApiResponse<GoogleLoginResponse>.SuccessResponse(result));
+    }
 }
