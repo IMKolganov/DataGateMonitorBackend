@@ -16,6 +16,7 @@ namespace OpenVPNGateMonitor.Tests.Controllers
         private readonly Mock<IApplicationService> appServiceMock;
         private readonly Mock<IMicroserviceTokenService> microserviceTokenServiceMock;
         private readonly Mock<IUserRegistrationService> userRegistrationServiceMock;
+        private readonly Mock<IGoogleAuthService> googleAuthServiceMock;
         private readonly IConfiguration configuration;
         private readonly AuthController controller;
 
@@ -24,6 +25,7 @@ namespace OpenVPNGateMonitor.Tests.Controllers
             appServiceMock = new Mock<IApplicationService>();
             microserviceTokenServiceMock = new Mock<IMicroserviceTokenService>();
             userRegistrationServiceMock = new Mock<IUserRegistrationService>();
+            googleAuthServiceMock = new Mock<IGoogleAuthService>();
 
             configuration = new ConfigurationBuilder()
                 .AddInMemoryCollection(new Dictionary<string, string?>
@@ -36,7 +38,8 @@ namespace OpenVPNGateMonitor.Tests.Controllers
                 configuration,
                 appServiceMock.Object,
                 microserviceTokenServiceMock.Object,
-                userRegistrationServiceMock.Object);
+                userRegistrationServiceMock.Object,
+                googleAuthServiceMock.Object);
         }
 
         // ---------------------------
@@ -242,7 +245,6 @@ namespace OpenVPNGateMonitor.Tests.Controllers
             Assert.NotNull(response.Data);
             Assert.False(string.IsNullOrWhiteSpace(response.Data.Token));
 
-            // Expiration is set to now + 1h in controller, we can just assert it's in the future
             Assert.True(response.Data.Expiration > DateTimeOffset.UtcNow);
 
             appServiceMock.Verify(
@@ -384,10 +386,10 @@ namespace OpenVPNGateMonitor.Tests.Controllers
                 s => s.GetPublicKeyPem(),
                 Times.Once);
         }
-        
-// ---------------------------
-// Register
-// ---------------------------
+
+        // ---------------------------
+        // Register
+        // ---------------------------
 
         [Fact]
         public async Task Register_WhenValidRequest_ReturnsOkWithSuccessResponse()
@@ -433,6 +435,56 @@ namespace OpenVPNGateMonitor.Tests.Controllers
 
             userRegistrationServiceMock.Verify(
                 s => s.RegisterAsync(request, ct),
+                Times.Once);
+        }
+
+        // ---------------------------
+        // GoogleLogin
+        // ---------------------------
+
+        [Fact]
+        public async Task GoogleLogin_WhenValidRequest_ReturnsOkWithSuccessResponse()
+        {
+            // Arrange
+            var request = new GoogleLoginRequest
+            {
+                IdToken = "google-id-token"
+            };
+
+            var serviceResult = new GoogleLoginResponse
+            {
+                Token = "jwt-token",
+                Expiration = DateTimeOffset.UtcNow.AddHours(1),
+                UserId = 7,
+                DisplayName = "Google User",
+                Email = "google@example.com",
+                IsNewUser = true
+            };
+
+            googleAuthServiceMock
+                .Setup(s => s.LoginWithGoogleAsync(request.IdToken, It.IsAny<CancellationToken>()))
+                .ReturnsAsync(serviceResult);
+
+            var ct = CancellationToken.None;
+
+            // Act
+            var result = await controller.GoogleLogin(request, ct);
+
+            // Assert
+            var ok = Assert.IsType<OkObjectResult>(result.Result);
+            var response = Assert.IsType<ApiResponse<GoogleLoginResponse>>(ok.Value);
+
+            Assert.True(response.Success);
+            Assert.Equal("Success", response.Message);
+            Assert.NotNull(response.Data);
+            Assert.Equal(serviceResult.Token, response.Data.Token);
+            Assert.Equal(serviceResult.UserId, response.Data.UserId);
+            Assert.Equal(serviceResult.DisplayName, response.Data.DisplayName);
+            Assert.Equal(serviceResult.Email, response.Data.Email);
+            Assert.Equal(serviceResult.IsNewUser, response.Data.IsNewUser);
+
+            googleAuthServiceMock.Verify(
+                s => s.LoginWithGoogleAsync(request.IdToken, ct),
                 Times.Once);
         }
     }
