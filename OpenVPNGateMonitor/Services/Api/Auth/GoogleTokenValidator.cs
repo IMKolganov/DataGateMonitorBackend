@@ -7,8 +7,8 @@ namespace OpenVPNGateMonitor.Services.Api.Auth;
 
 public sealed class GoogleTokenValidator(IConfiguration configuration) : IGoogleTokenValidator
 {
-    private readonly string clientId = configuration["Authentication:Google:ClientId"]
-                                       ?? throw new InvalidOperationException("Authentication:Google:ClientId is not configured.");
+    private readonly string clientId = configuration["GoogleAuth:ClientId"]
+                                       ?? throw new InvalidOperationException("GoogleAuth:ClientId is not configured.");
 
     public async Task<GoogleUserInfo> ValidateAsync(string idToken, CancellationToken ct)
     {
