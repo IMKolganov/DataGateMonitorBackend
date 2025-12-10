@@ -5,6 +5,7 @@ using OpenVPNGateMonitor.Controllers;
 using OpenVPNGateMonitor.Models;
 using OpenVPNGateMonitor.Models.Helpers.Auth;
 using OpenVPNGateMonitor.Services.Api.Auth.Interfaces;
+using OpenVPNGateMonitor.SharedModels.DataGateMonitorBackend.Auth.Requests;
 using OpenVPNGateMonitor.SharedModels.DataGateMonitorBackend.Auth.Responses;
 using OpenVPNGateMonitor.SharedModels.Responses;
 
@@ -14,6 +15,7 @@ namespace OpenVPNGateMonitor.Tests.Controllers
     {
         private readonly Mock<IApplicationService> appServiceMock;
         private readonly Mock<IMicroserviceTokenService> microserviceTokenServiceMock;
+        private readonly Mock<IUserRegistrationService> userRegistrationServiceMock;
         private readonly IConfiguration configuration;
         private readonly AuthController controller;
 
@@ -21,6 +23,7 @@ namespace OpenVPNGateMonitor.Tests.Controllers
         {
             appServiceMock = new Mock<IApplicationService>();
             microserviceTokenServiceMock = new Mock<IMicroserviceTokenService>();
+            userRegistrationServiceMock = new Mock<IUserRegistrationService>();
 
             configuration = new ConfigurationBuilder()
                 .AddInMemoryCollection(new Dictionary<string, string?>
@@ -29,7 +32,11 @@ namespace OpenVPNGateMonitor.Tests.Controllers
                 })
                 .Build();
 
-            controller = new AuthController(configuration, appServiceMock.Object, microserviceTokenServiceMock.Object);
+            controller = new AuthController(
+                configuration,
+                appServiceMock.Object,
+                microserviceTokenServiceMock.Object,
+                userRegistrationServiceMock.Object);
         }
 
         // ---------------------------
@@ -375,6 +382,57 @@ namespace OpenVPNGateMonitor.Tests.Controllers
 
             microserviceTokenServiceMock.Verify(
                 s => s.GetPublicKeyPem(),
+                Times.Once);
+        }
+        
+// ---------------------------
+// Register
+// ---------------------------
+
+        [Fact]
+        public async Task Register_WhenValidRequest_ReturnsOkWithSuccessResponse()
+        {
+            // Arrange
+            var request = new RegisterUserRequest
+            {
+                DisplayName = "Test User",
+                Email = "test@example.com",
+                Login = "test-login",
+                Password = "StrongPass123!",
+                ConfirmPassword = "StrongPass123!"
+            };
+
+            var serviceResult = new RegisterUserResponse
+            {
+                UserId = 42,
+                DisplayName = "Test User",
+                Email = "test@example.com",
+                HasDashboardAccess = true
+            };
+
+            userRegistrationServiceMock
+                .Setup(s => s.RegisterAsync(request, It.IsAny<CancellationToken>()))
+                .ReturnsAsync(serviceResult);
+
+            var ct = CancellationToken.None;
+
+            // Act
+            var result = await controller.Register(request, ct);
+
+            // Assert
+            var ok = Assert.IsType<OkObjectResult>(result.Result);
+            var response = Assert.IsType<ApiResponse<RegisterUserResponse>>(ok.Value);
+
+            Assert.True(response.Success);
+            Assert.Equal("Success", response.Message);
+            Assert.NotNull(response.Data);
+            Assert.Equal(serviceResult.UserId, response.Data.UserId);
+            Assert.Equal(serviceResult.DisplayName, response.Data.DisplayName);
+            Assert.Equal(serviceResult.Email, response.Data.Email);
+            Assert.Equal(serviceResult.HasDashboardAccess, response.Data.HasDashboardAccess);
+
+            userRegistrationServiceMock.Verify(
+                s => s.RegisterAsync(request, ct),
                 Times.Once);
         }
     }
