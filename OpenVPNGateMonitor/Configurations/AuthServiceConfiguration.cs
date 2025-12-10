@@ -1,5 +1,6 @@
 ﻿using Microsoft.OpenApi;
 using OpenVPNGateMonitor.Controllers;
+using OpenVPNGateMonitor.Models.Helpers;
 using OpenVPNGateMonitor.Services.Api.Auth;
 using OpenVPNGateMonitor.Services.Api.Auth.Interfaces;
 
@@ -7,9 +8,16 @@ namespace OpenVPNGateMonitor.Configurations;
 
 public static class AuthServiceConfiguration
 {
-    public static void ConfigureAuthServices(this IServiceCollection services)
+    public static void ConfigureAuthServices(this IServiceCollection services, IConfiguration configuration)
     {
+        #region example google env
+        // GoogleAuth:ClientId → ENV: GOOGLEAUTH__CLIENTID
+        // GoogleAuth:ClientSecret → ENV: GOOGLEAUTH__CLIENTSECRET
+        #endregion
+        services.Configure<GoogleAuthSettings>(configuration.GetSection("GoogleAuth"));
+
         services.AddScoped<IApplicationService, ApplicationService>();
+        services.AddScoped<IGoogleTokenValidator, GoogleTokenValidator>();
 
         services.AddAuthorization();
 
