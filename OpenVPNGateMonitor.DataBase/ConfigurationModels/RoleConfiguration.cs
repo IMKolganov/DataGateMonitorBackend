@@ -1,5 +1,6 @@
 using Microsoft.EntityFrameworkCore;
 using Microsoft.EntityFrameworkCore.Metadata.Builders;
+using OpenVPNGateMonitor.DataBase.ConfigurationModels.Seeds;
 using OpenVPNGateMonitor.Models;
 
 namespace OpenVPNGateMonitor.DataBase.ConfigurationModels;
@@ -28,5 +29,7 @@ public class RoleConfiguration : IEntityTypeConfiguration<Role>
 
         // Optional: just for convenience when browsing roles
         entity.HasIndex(e => e.Name);
+        
+        entity.HasData(RoleSeedData.Data);
     }
 }
