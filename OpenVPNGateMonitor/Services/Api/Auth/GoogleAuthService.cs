@@ -3,6 +3,7 @@ using System.Text;
 using Microsoft.IdentityModel.Tokens;
 using System.IdentityModel.Tokens.Jwt;
 using OpenVPNGateMonitor.DataBase.Services.Command.Interfaces;
+using OpenVPNGateMonitor.DataBase.Services.Query.UserIdentityLinkTable;
 using OpenVPNGateMonitor.DataBase.Services.Query.UserTable;
 using OpenVPNGateMonitor.Models;
 using OpenVPNGateMonitor.Services.Api.Auth.Interfaces;
@@ -14,13 +15,14 @@ public sealed class GoogleAuthService(
     IGoogleTokenValidator tokenValidator,
     ICommandService<User, int> userCommandService,
     ICommandService<UserIdentityLink, int> userIdentityLinkCommandService,
-    IQueryService<UserIdentityLink, int> userIdentityLinkQueryService,
+    IUserIdentityLinkQueryService userIdentityLinkQueryService,
     IUserQueryService userQueryService,
     IConfiguration configuration
 ) : IGoogleAuthService
 {
     public async Task<GoogleLoginResponse> LoginWithGoogleAsync(string idToken, CancellationToken ct)
     {
+        var t = await userQueryService.GetAllAsync(ct);
         if (string.IsNullOrWhiteSpace(idToken))
             throw new ArgumentException("IdToken is required.", nameof(idToken));
 
@@ -32,27 +34,22 @@ public sealed class GoogleAuthService(
         var provider = "google";
         var externalId = googleUser.Subject;
 
-        var existingLink = await userIdentityLinkQueryService.FirstOrDefaultAsync(
-            x => x.Provider == provider && x.ExternalId == externalId,
-            asNoTracking: false,
-            ct: ct);
+        var existingLink = await userIdentityLinkQueryService.GetByProviderAndExternalIdAsync(provider, externalId, ct);
 
-        User user;
+        User? user = null;
         var isNew = false;
 
-        if (existingLink is not null)
+        if (existingLink is { UserId: > 0 })
         {
             user = await userQueryService.GetByIdAsync(existingLink.UserId, ct)
                    ?? throw new InvalidOperationException("User linked to Google account not found.");
         }
         else
         {
-            user = null!;
-
             if (!string.IsNullOrEmpty(googleUser.Email))
             {
-                user = await userQueryService.GetByEmailAsync(googleUser.Email, ct)
-                       ?? null!;
+                
+                user = await userQueryService.GetByEmailAsync(googleUser.Email, ct);
             }
 
             if (user is null)
@@ -66,7 +63,9 @@ public sealed class GoogleAuthService(
                     HasDashboardAccess = true
                 };
 
-                user = await userCommandService.AddAsync(user, saveChanges: false, ct);
+                user = await userCommandService.AddAsync(user, saveChanges: true, ct);
+                if (user.Id <= 0)
+                    throw new InvalidOperationException($"Something went wrong when adding new user {user.DisplayName}");
                 isNew = true;
             }
 
@@ -77,8 +76,7 @@ public sealed class GoogleAuthService(
                 ExternalId = externalId
             };
 
-            await userIdentityLinkCommandService.AddAsync(link, saveChanges: false, ct);
-            await userCommandService.SaveChangesAsync(ct);
+            await userIdentityLinkCommandService.AddAsync(link, saveChanges: true, ct);
         }
 
         var (token, expires) = CreateJwtForUser(user);
