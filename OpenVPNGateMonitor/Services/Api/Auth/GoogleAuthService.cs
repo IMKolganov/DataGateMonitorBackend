@@ -7,22 +7,22 @@ using OpenVPNGateMonitor.DataBase.Services.Query.UserIdentityLinkTable;
 using OpenVPNGateMonitor.DataBase.Services.Query.UserTable;
 using OpenVPNGateMonitor.Models;
 using OpenVPNGateMonitor.Services.Api.Auth.Interfaces;
+using OpenVPNGateMonitor.Services.Api.Auth.Users;
 using OpenVPNGateMonitor.SharedModels.DataGateMonitorBackend.Auth.Responses;
 
 namespace OpenVPNGateMonitor.Services.Api.Auth;
 
 public sealed class GoogleAuthService(
     IGoogleTokenValidator tokenValidator,
-    ICommandService<User, int> userCommandService,
     ICommandService<UserIdentityLink, int> userIdentityLinkCommandService,
     IUserIdentityLinkQueryService userIdentityLinkQueryService,
     IUserQueryService userQueryService,
+    IUserAccountService userAccountService,
     IConfiguration configuration
 ) : IGoogleAuthService
 {
     public async Task<GoogleLoginResponse> LoginWithGoogleAsync(string idToken, CancellationToken ct)
     {
-        var t = await userQueryService.GetAllAsync(ct);
         if (string.IsNullOrWhiteSpace(idToken))
             throw new ArgumentException("IdToken is required.", nameof(idToken));
 
@@ -34,7 +34,8 @@ public sealed class GoogleAuthService(
         var provider = "google";
         var externalId = googleUser.Subject;
 
-        var existingLink = await userIdentityLinkQueryService.GetByProviderAndExternalIdAsync(provider, externalId, ct);
+        var existingLink = await userIdentityLinkQueryService
+            .GetByProviderAndExternalIdAsync(provider, externalId, ct);
 
         User? user = null;
         var isNew = false;
@@ -47,25 +48,16 @@ public sealed class GoogleAuthService(
         else
         {
             if (!string.IsNullOrEmpty(googleUser.Email))
-            {
-                
                 user = await userQueryService.GetByEmailAsync(googleUser.Email, ct);
-            }
 
             if (user is null)
             {
-                user = new User
-                {
-                    DisplayName = googleUser.Name ?? googleUser.Email ?? "Google User",
-                    Email = googleUser.Email,
-                    IsAdmin = false,
-                    IsBlocked = false,
-                    HasDashboardAccess = true
-                };
+                var displayName = googleUser.Name ?? googleUser.Email ?? "Google User";
 
-                user = await userCommandService.AddAsync(user, saveChanges: true, ct);
-                if (user.Id <= 0)
-                    throw new InvalidOperationException($"Something went wrong when adding new user {user.DisplayName}");
+                var newUser = UserFactory.CreateNew(displayName, googleUser.Email);
+
+                user = await userAccountService.CreateUserWithDefaultRoleAsync(newUser, ct);
+
                 isNew = true;
             }
 

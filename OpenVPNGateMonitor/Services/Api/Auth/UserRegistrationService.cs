@@ -4,6 +4,7 @@ using OpenVPNGateMonitor.DataBase.Services.Query.UserCredentialTable;
 using OpenVPNGateMonitor.DataBase.Services.Query.UserTable;
 using OpenVPNGateMonitor.Models;
 using OpenVPNGateMonitor.Services.Api.Auth.Interfaces;
+using OpenVPNGateMonitor.Services.Api.Auth.Users;
 using OpenVPNGateMonitor.SharedModels.DataGateMonitorBackend.Auth.Requests;
 using OpenVPNGateMonitor.SharedModels.DataGateMonitorBackend.Auth.Responses;
 
@@ -14,7 +15,8 @@ public sealed class UserRegistrationService(
     ICommandService<User, int> userCommandService,
     ICommandService<UserCredential, int> userCredentialCommandService,
     IUserCredentialQueryService userCredentialQueryService,
-    IUserQueryService userQueryService
+    IUserQueryService userQueryService,
+    IUserAccountService userAccountService // 🔹 новый сервис
 ) : IUserRegistrationService
 {
     public async Task<RegisterUserResponse> RegisterAsync(RegisterUserRequest request, CancellationToken ct)
@@ -23,6 +25,7 @@ public sealed class UserRegistrationService(
         var login = request.Login?.Trim();
         var email = request.Email?.Trim();
 
+        // 🔹 вся твоя текущая валидация — остаётся
         if (string.IsNullOrWhiteSpace(displayName))
             throw new ArgumentException("Display name is required.");
 
@@ -40,14 +43,12 @@ public sealed class UserRegistrationService(
 
         var normalizedLogin = login.ToUpperInvariant();
 
-        // Check login uniqueness
         var existingCredential = await userCredentialQueryService
             .GetByNormalizedLogin(normalizedLogin, ct);
 
         if (existingCredential is not null)
             throw new InvalidOperationException("Login is already in use.");
 
-        // Check email uniqueness (if provided)
         if (!string.IsNullOrEmpty(email))
         {
             var emailTaken = await userQueryService.AnyByEmailAsync(email, ct);
@@ -56,18 +57,13 @@ public sealed class UserRegistrationService(
                 throw new InvalidOperationException("Email is already in use.");
         }
 
-        var user = new User
-        {
-            DisplayName = displayName!,
-            Email = email,
-            IsAdmin = false,
-            IsBlocked = false,
-            HasDashboardAccess = true
-        };
+        // 🔹 создаём User через фабрику
+        var user = UserFactory.CreateNew(displayName!, email);
 
-        // Create user without immediate save
-        user = await userCommandService.AddAsync(user, saveChanges: false, ct);
+        // 🔹 сохраняем и назначаем дефолтную роль через общий сервис
+        user = await userAccountService.CreateUserWithDefaultRoleAsync(user, ct);
 
+        // дальше — как у тебя
         var passwordHash = passwordHasher.HashPassword(user, request.Password);
 
         var credential = new UserCredential
@@ -82,11 +78,7 @@ public sealed class UserRegistrationService(
             LockoutUntilUtc = null
         };
 
-        // Create credential without immediate save
-        await userCredentialCommandService.AddAsync(credential, saveChanges: false, ct);
-
-        // Single save point for both entities (shared DbContext under the hood)
-        await userCommandService.SaveChangesAsync(ct);
+        await userCredentialCommandService.AddAsync(credential, saveChanges: true, ct);
 
         return new RegisterUserResponse
         {
