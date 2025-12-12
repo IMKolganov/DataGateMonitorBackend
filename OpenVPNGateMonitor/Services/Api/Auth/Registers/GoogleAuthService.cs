@@ -1,7 +1,7 @@
+using System.IdentityModel.Tokens.Jwt;
 using System.Security.Claims;
 using System.Text;
 using Microsoft.IdentityModel.Tokens;
-using System.IdentityModel.Tokens.Jwt;
 using OpenVPNGateMonitor.DataBase.Services.Command.Interfaces;
 using OpenVPNGateMonitor.DataBase.Services.Query.UserIdentityLinkTable;
 using OpenVPNGateMonitor.DataBase.Services.Query.UserTable;
@@ -10,7 +10,7 @@ using OpenVPNGateMonitor.Services.Api.Auth.Interfaces;
 using OpenVPNGateMonitor.Services.Api.Auth.Users;
 using OpenVPNGateMonitor.SharedModels.DataGateMonitorBackend.Auth.Responses;
 
-namespace OpenVPNGateMonitor.Services.Api.Auth;
+namespace OpenVPNGateMonitor.Services.Api.Auth.Registers;
 
 public sealed class GoogleAuthService(
     IGoogleTokenValidator tokenValidator,

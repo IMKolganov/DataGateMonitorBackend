@@ -4,7 +4,7 @@ using OpenVPNGateMonitor.DataBase.Services.Query.UserRoleTable;
 using OpenVPNGateMonitor.Models;
 using OpenVPNGateMonitor.Services.Api.Auth.Interfaces;
 
-namespace OpenVPNGateMonitor.Services.Api.Auth;
+namespace OpenVPNGateMonitor.Services.Api.Auth.Registers;
 
 public class UserRoleService(IUserRoleQueryService userRoleQueryService, IRoleQueryService roleQueryService, 
     ICommandService<UserRole, int> userRoleCommandService) : IUserRoleService

@@ -1,9 +1,9 @@
 using Google.Apis.Auth;
+using Microsoft.IdentityModel.Tokens;
 using OpenVPNGateMonitor.Services.Api.Auth.Interfaces;
 using OpenVPNGateMonitor.SharedModels.Auth.Google;
-using Microsoft.IdentityModel.Tokens;
 
-namespace OpenVPNGateMonitor.Services.Api.Auth;
+namespace OpenVPNGateMonitor.Services.Api.Auth.Registers;
 
 public sealed class GoogleTokenValidator(IConfiguration configuration) : IGoogleTokenValidator
 {

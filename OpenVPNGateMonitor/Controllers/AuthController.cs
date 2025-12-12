@@ -3,10 +3,12 @@ using Microsoft.IdentityModel.Tokens;
 using System.IdentityModel.Tokens.Jwt;
 using System.Security.Claims;
 using System.Text;
+using Microsoft.AspNetCore.Authentication;
 using Microsoft.AspNetCore.Authorization;
-using OpenVPNGateMonitor.Models;
+using Microsoft.AspNetCore.Identity.Data;
 using OpenVPNGateMonitor.Models.Helpers.Auth;
 using OpenVPNGateMonitor.Services.Api.Auth.Interfaces;
+using OpenVPNGateMonitor.Services.Api.Auth.Login;
 using OpenVPNGateMonitor.SharedModels.DataGateMonitorBackend.Auth.Requests;
 using OpenVPNGateMonitor.SharedModels.DataGateMonitorBackend.Auth.Responses;
 using OpenVPNGateMonitor.SharedModels.Responses;
@@ -20,43 +22,44 @@ public class AuthController(
     IApplicationService appService, 
     IMicroserviceTokenService microserviceTokenService,
     IUserRegistrationService userRegistrationService, 
+    IUserLoginService  userLoginService,
     IGoogleAuthService googleAuthService) : BaseController
 {
-    [HttpGet("system-secret-status")]
-    public async Task<ActionResult<ApiResponse<SystemSecretStatusResponse>>> GetSystemStatus(CancellationToken cancellationToken)
-    {
-        var isSet = await appService.IsSystemApplicationSetAsync(cancellationToken);
-        return Ok(ApiResponse<SystemSecretStatusResponse>.SuccessResponse(
-            new SystemSecretStatusResponse { SystemSet = isSet }));
-    }
+    // [HttpGet("system-secret-status")]
+    // public async Task<ActionResult<ApiResponse<SystemSecretStatusResponse>>> GetSystemStatus(CancellationToken cancellationToken)
+    // {
+    //     var isSet = await appService.IsSystemApplicationSetAsync(cancellationToken);
+    //     return Ok(ApiResponse<SystemSecretStatusResponse>.SuccessResponse(
+    //         new SystemSecretStatusResponse { SystemSet = isSet }));
+    // }
 
-    [HttpPost("set-system-secret")]
-    public async Task<ActionResult<ApiResponse<AuthResponse>>> SetSystemSecret([FromBody] SetSecretRequest request,
-        CancellationToken cancellationToken)
-    {
-        var systemApp = await appService.GetApplicationSystemByClientIdAsync(request.ClientId, 
-            cancellationToken);
-
-        if (systemApp is { ClientSecret: not null })
-        {
-            return BadRequest(ApiResponse<AuthResponse>.ErrorResponse("System application is already set"));
-        }
-
-        var hashedSecret = BCrypt.Net.BCrypt.HashPassword(request.ClientSecret);
-
-        systemApp ??= new ClientApplication
-        {
-            Name = "OpenVPN Gate Monitor Dashboard",
-            ClientId = request.ClientId,
-            ClientSecret = hashedSecret,
-            IsSystem = true
-        };
-
-        await appService.UpdateApplicationAsync(systemApp, cancellationToken);
-
-        return Ok(ApiResponse<AuthResponse>.SuccessResponse(
-            new AuthResponse { Message = "ClientSecret set successfully" }));
-    }
+    // [HttpPost("set-system-secret")]
+    // public async Task<ActionResult<ApiResponse<AuthResponse>>> SetSystemSecret([FromBody] SetSecretRequest request,
+    //     CancellationToken cancellationToken)
+    // {
+    //     var systemApp = await appService.GetApplicationSystemByClientIdAsync(request.ClientId, 
+    //         cancellationToken);
+    //
+    //     if (systemApp is { ClientSecret: not null })
+    //     {
+    //         return BadRequest(ApiResponse<AuthResponse>.ErrorResponse("System application is already set"));
+    //     }
+    //
+    //     var hashedSecret = BCrypt.Net.BCrypt.HashPassword(request.ClientSecret);
+    //
+    //     systemApp ??= new ClientApplication
+    //     {
+    //         Name = "OpenVPN Gate Monitor Dashboard",
+    //         ClientId = request.ClientId,
+    //         ClientSecret = hashedSecret,
+    //         IsSystem = true
+    //     };
+    //
+    //     await appService.UpdateApplicationAsync(systemApp, cancellationToken);
+    //
+    //     return Ok(ApiResponse<AuthResponse>.SuccessResponse(
+    //         new AuthResponse { Message = "ClientSecret set successfully" }));
+    // }
 
     [HttpPost("token")]
     public async Task<ActionResult<ApiResponse<TokenResponse>>> GenerateToken([FromBody] TokenRequest request, CancellationToken cancellationToken)
@@ -66,16 +69,16 @@ public class AuthController(
         {
             return Unauthorized(ApiResponse<TokenResponse>.ErrorResponse("Invalid credentials"));
         }
-
+    
         var isValid = app.IsSystem
             ? BCrypt.Net.BCrypt.Verify(request.ClientSecret, app.ClientSecret)
             : app.ClientSecret == request.ClientSecret;
-
+    
         if (!isValid)
         {
             return Unauthorized(ApiResponse<TokenResponse>.ErrorResponse("Invalid credentials"));
         }
-
+    
         var tokenHandler = new JwtSecurityTokenHandler();
         var key = Encoding.ASCII.GetBytes(config["Jwt:Secret"]
                                           ?? throw new InvalidOperationException("Jwt:Secret"));
@@ -97,7 +100,7 @@ public class AuthController(
                 SecurityAlgorithms.HmacSha256Signature)
         };
         var token = tokenHandler.CreateToken(tokenDescriptor);
-
+    
         return Ok(ApiResponse<TokenResponse>.SuccessResponse(
             new TokenResponse
             {
@@ -139,5 +142,24 @@ public class AuthController(
     {
         var result = await googleAuthService.LoginWithGoogleAsync(request.IdToken, ct);
         return Ok(ApiResponse<GoogleLoginResponse>.SuccessResponse(result));
+    }
+    
+    [AllowAnonymous]
+    [HttpPost("login")]
+    [ProducesResponseType(typeof(ApiResponse<LoginResponse>), StatusCodes.Status200OK)]
+    public async Task<ActionResult<ApiResponse<LoginResponse>>> Login(
+        [FromBody] LoginRequest request,
+        CancellationToken ct)
+    {
+        var result = await userLoginService.LoginAsync(request, ct);
+        return Ok(ApiResponse<LoginResponse>.SuccessResponse(result));
+    }
+    
+    [Authorize(Policy = "UserOnly")]
+    [HttpPost("logout")]
+    public async Task<IActionResult> Logout()
+    {
+        await HttpContext.SignOutAsync("UserCookie");
+        return Ok();
     }
 }
