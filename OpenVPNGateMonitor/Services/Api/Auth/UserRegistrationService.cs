@@ -12,11 +12,10 @@ namespace OpenVPNGateMonitor.Services.Api.Auth;
 
 public sealed class UserRegistrationService(
     IPasswordHasher<User> passwordHasher,
-    ICommandService<User, int> userCommandService,
     ICommandService<UserCredential, int> userCredentialCommandService,
     IUserCredentialQueryService userCredentialQueryService,
     IUserQueryService userQueryService,
-    IUserAccountService userAccountService // 🔹 новый сервис
+    IUserAccountService userAccountService
 ) : IUserRegistrationService
 {
     public async Task<RegisterUserResponse> RegisterAsync(RegisterUserRequest request, CancellationToken ct)
@@ -25,7 +24,6 @@ public sealed class UserRegistrationService(
         var login = request.Login?.Trim();
         var email = request.Email?.Trim();
 
-        // 🔹 вся твоя текущая валидация — остаётся
         if (string.IsNullOrWhiteSpace(displayName))
             throw new ArgumentException("Display name is required.");
 
@@ -57,13 +55,10 @@ public sealed class UserRegistrationService(
                 throw new InvalidOperationException("Email is already in use.");
         }
 
-        // 🔹 создаём User через фабрику
         var user = UserFactory.CreateNew(displayName!, email);
 
-        // 🔹 сохраняем и назначаем дефолтную роль через общий сервис
         user = await userAccountService.CreateUserWithDefaultRoleAsync(user, ct);
 
-        // дальше — как у тебя
         var passwordHash = passwordHasher.HashPassword(user, request.Password);
 
         var credential = new UserCredential
