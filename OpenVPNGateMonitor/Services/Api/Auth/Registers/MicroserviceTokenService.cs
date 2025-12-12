@@ -1,11 +1,10 @@
 ﻿using System.IdentityModel.Tokens.Jwt;
 using System.Security.Claims;
 using System.Security.Cryptography;
-using System.Text;
 using Microsoft.IdentityModel.Tokens;
 using OpenVPNGateMonitor.Services.Api.Auth.Interfaces;
 
-namespace OpenVPNGateMonitor.Services.Api.Auth;
+namespace OpenVPNGateMonitor.Services.Api.Auth.Registers;
 
 public class MicroserviceTokenService : IMicroserviceTokenService
 {

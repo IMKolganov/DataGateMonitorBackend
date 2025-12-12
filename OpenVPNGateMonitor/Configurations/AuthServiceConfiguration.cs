@@ -5,6 +5,8 @@ using OpenVPNGateMonitor.Models;
 using OpenVPNGateMonitor.Models.Helpers;
 using OpenVPNGateMonitor.Services.Api.Auth;
 using OpenVPNGateMonitor.Services.Api.Auth.Interfaces;
+using OpenVPNGateMonitor.Services.Api.Auth.Login;
+using OpenVPNGateMonitor.Services.Api.Auth.Registers;
 using OpenVPNGateMonitor.Services.Api.Auth.Users;
 
 namespace OpenVPNGateMonitor.Configurations;
@@ -13,6 +15,7 @@ public static class AuthServiceConfiguration
 {
     public static void ConfigureAuthServices(this IServiceCollection services, IConfiguration configuration)
     {
+        services.AddScoped<IUserLoginService, UserLoginService>();
         services.AddScoped<IUserAccountService, UserAccountService>();
         services.AddScoped<IUserRoleService, UserRoleService>();
         services.AddScoped<IPasswordHasher<User>, PasswordHasher<User>>();

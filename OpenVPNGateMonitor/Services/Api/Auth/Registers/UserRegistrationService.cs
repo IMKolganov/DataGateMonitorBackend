@@ -8,7 +8,7 @@ using OpenVPNGateMonitor.Services.Api.Auth.Users;
 using OpenVPNGateMonitor.SharedModels.DataGateMonitorBackend.Auth.Requests;
 using OpenVPNGateMonitor.SharedModels.DataGateMonitorBackend.Auth.Responses;
 
-namespace OpenVPNGateMonitor.Services.Api.Auth;
+namespace OpenVPNGateMonitor.Services.Api.Auth.Registers;
 
 public sealed class UserRegistrationService(
     IPasswordHasher<User> passwordHasher,
