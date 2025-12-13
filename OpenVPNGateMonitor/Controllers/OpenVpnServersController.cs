@@ -66,7 +66,7 @@ public class OpenVpnServersController(ILogger<OpenVpnServersController> logger, 
     public async Task<ActionResult<ApiResponse<OpenVpnServerResponse>>> AddServer(
         [FromBody] AddServerRequest request, CancellationToken ct)
     {
-        var newServer = await vpnDataService.AddOpenVpnServer(request.Adapt<OpenVpnServer>(), ct);
+        var newServer = await vpnDataService.AddOpenVpnServer(request.Adapt<OpenVpnServer>(), request.QuotaPlanIds, ct);
 
         return Ok(ApiResponse<OpenVpnServerResponse>.SuccessResponse(newServer.Adapt<OpenVpnServerResponse>()));
     }
@@ -76,7 +76,8 @@ public class OpenVpnServersController(ILogger<OpenVpnServersController> logger, 
     public async Task<ActionResult<ApiResponse<OpenVpnServerResponse>>> UpdateServer(
         [FromBody] UpdateServerRequest request, CancellationToken ct)
     {
-        var updatedServer = await vpnDataService.UpdateOpenVpnServer(request.Adapt<OpenVpnServer>(), ct);
+        var updatedServer = await vpnDataService.UpdateOpenVpnServer(request.Adapt<OpenVpnServer>(), 
+            request.QuotaPlanIds, ct);
 
         return Ok(ApiResponse<OpenVpnServerResponse>.SuccessResponse(
             updatedServer.Adapt<OpenVpnServerResponse>()));
