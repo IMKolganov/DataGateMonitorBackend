@@ -1,6 +1,6 @@
 using OpenVPNGateMonitor.Models;
 
-namespace OpenVPNGateMonitor.Services.Api.Auth.Interfaces;
+namespace OpenVPNGateMonitor.Services.Api.Auth.Registers.Interfaces;
 
 public interface IUserRoleService
 {

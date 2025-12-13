@@ -6,8 +6,8 @@ using System.Text;
 using Microsoft.AspNetCore.Authentication;
 using Microsoft.AspNetCore.Authorization;
 using OpenVPNGateMonitor.Models.Helpers.Auth;
-using OpenVPNGateMonitor.Services.Api.Auth.Interfaces;
 using OpenVPNGateMonitor.Services.Api.Auth.Login;
+using OpenVPNGateMonitor.Services.Api.Auth.Registers.Interfaces;
 using OpenVPNGateMonitor.SharedModels.DataGateMonitorBackend.Auth.Requests;
 using OpenVPNGateMonitor.SharedModels.DataGateMonitorBackend.Auth.Responses;
 using OpenVPNGateMonitor.SharedModels.Responses;
@@ -21,45 +21,8 @@ public class AuthController(
     IApplicationService appService, 
     IMicroserviceTokenService microserviceTokenService,
     IUserRegistrationService userRegistrationService, 
-    IUserLoginService  userLoginService,
-    IGoogleAuthService googleAuthService) : BaseController
+    IUserLoginService  userLoginService) : BaseController
 {
-    // [HttpGet("system-secret-status")]
-    // public async Task<ActionResult<ApiResponse<SystemSecretStatusResponse>>> GetSystemStatus(CancellationToken cancellationToken)
-    // {
-    //     var isSet = await appService.IsSystemApplicationSetAsync(cancellationToken);
-    //     return Ok(ApiResponse<SystemSecretStatusResponse>.SuccessResponse(
-    //         new SystemSecretStatusResponse { SystemSet = isSet }));
-    // }
-
-    // [HttpPost("set-system-secret")]
-    // public async Task<ActionResult<ApiResponse<AuthResponse>>> SetSystemSecret([FromBody] SetSecretRequest request,
-    //     CancellationToken cancellationToken)
-    // {
-    //     var systemApp = await appService.GetApplicationSystemByClientIdAsync(request.ClientId, 
-    //         cancellationToken);
-    //
-    //     if (systemApp is { ClientSecret: not null })
-    //     {
-    //         return BadRequest(ApiResponse<AuthResponse>.ErrorResponse("System application is already set"));
-    //     }
-    //
-    //     var hashedSecret = BCrypt.Net.BCrypt.HashPassword(request.ClientSecret);
-    //
-    //     systemApp ??= new ClientApplication
-    //     {
-    //         Name = "OpenVPN Gate Monitor Dashboard",
-    //         ClientId = request.ClientId,
-    //         ClientSecret = hashedSecret,
-    //         IsSystem = true
-    //     };
-    //
-    //     await appService.UpdateApplicationAsync(systemApp, cancellationToken);
-    //
-    //     return Ok(ApiResponse<AuthResponse>.SuccessResponse(
-    //         new AuthResponse { Message = "ClientSecret set successfully" }));
-    // }
-
     [HttpPost("token")]
     public async Task<ActionResult<ApiResponse<TokenResponse>>> GenerateToken([FromBody] TokenRequest request, CancellationToken cancellationToken)
     {
@@ -139,7 +102,7 @@ public class AuthController(
         [FromBody] GoogleLoginRequest request,
         CancellationToken ct)
     {
-        var result = await googleAuthService.LoginWithGoogleAsync(request.IdToken, ct);
+        var result = await userLoginService.LoginWithGoogleAsync(request.IdToken, ct);
         return Ok(ApiResponse<GoogleLoginResponse>.SuccessResponse(result));
     }
     

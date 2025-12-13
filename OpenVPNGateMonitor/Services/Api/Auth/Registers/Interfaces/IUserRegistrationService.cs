@@ -1,7 +1,7 @@
 using OpenVPNGateMonitor.SharedModels.DataGateMonitorBackend.Auth.Requests;
 using OpenVPNGateMonitor.SharedModels.DataGateMonitorBackend.Auth.Responses;
 
-namespace OpenVPNGateMonitor.Services.Api.Auth.Interfaces;
+namespace OpenVPNGateMonitor.Services.Api.Auth.Registers.Interfaces;
 
 public interface IUserRegistrationService
 {

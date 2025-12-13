@@ -2,7 +2,7 @@ using OpenVPNGateMonitor.DataBase.Services.Command.Interfaces;
 using OpenVPNGateMonitor.DataBase.Services.Query.RoleTable;
 using OpenVPNGateMonitor.DataBase.Services.Query.UserRoleTable;
 using OpenVPNGateMonitor.Models;
-using OpenVPNGateMonitor.Services.Api.Auth.Interfaces;
+using OpenVPNGateMonitor.Services.Api.Auth.Registers.Interfaces;
 
 namespace OpenVPNGateMonitor.Services.Api.Auth.Registers;
 

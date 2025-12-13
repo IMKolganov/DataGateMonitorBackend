@@ -39,16 +39,29 @@ public class GlobalExceptionMiddleware(
             logger.LogError(sendEx, "Failed to send system exception notification.");
         }
 
-        // Prepare error response
+        var statusCode = exception switch
+        {
+            UnauthorizedAccessException => (int)HttpStatusCode.Unauthorized,   // 401
+            ArgumentException => (int)HttpStatusCode.BadRequest,               // 400
+            _ => (int)HttpStatusCode.InternalServerError                      // 500
+        };
+
         context.Response.Clear();
         context.Response.ContentType = "application/json";
-        context.Response.StatusCode = (int)HttpStatusCode.InternalServerError;
+        context.Response.StatusCode = statusCode;
+
+        var message = statusCode switch
+        {
+            (int)HttpStatusCode.Unauthorized => exception.Message, // "Invalid login or password." / "User account is blocked."
+            (int)HttpStatusCode.BadRequest => exception.Message,
+            _ => "An unexpected error occurred. Please try again later."
+        };
 
         var payload = new
         {
-            context.Response.StatusCode,
-            Message = "An unexpected error occurred. Please try again later.",
-            Detail = exception.Message
+            statusCode,
+            message,
+            detail = exception.Message
         };
 
         var json = JsonConvert.SerializeObject(payload);

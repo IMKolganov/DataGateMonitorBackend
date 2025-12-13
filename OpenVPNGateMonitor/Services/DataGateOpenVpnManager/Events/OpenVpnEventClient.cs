@@ -8,7 +8,7 @@ using OpenVPNGateMonitor.DataBase.Services.Command.Interfaces;
 using OpenVPNGateMonitor.DataBase.Services.Query.IssuedOvpnFileTable;
 using OpenVPNGateMonitor.Hubs;
 using OpenVPNGateMonitor.Models;
-using OpenVPNGateMonitor.Services.Api.Auth.Interfaces;
+using OpenVPNGateMonitor.Services.Api.Auth.Registers.Interfaces;
 using OpenVPNGateMonitor.Services.GeoLite.Interfaces;
 using OpenVPNGateMonitor.SharedModels.DataGateOpenVpnManager.VpnEvent.Requests;
 using OpenVPNGateMonitor.SharedModels.DataGateMonitorBackend.OpenVpnServerEvent.Dto;

@@ -7,7 +7,7 @@ using OpenVPNGateMonitor.Tests.Helpers;
 
 namespace OpenVPNGateMonitor.Tests.DataBase.Services.Query.QuotaPlanTable;
 
-public class QuotaPlanQueryServiceTests
+public class UserQuotaPlanQueryServiceTests
 {
     [Fact]
     public async Task GetAllAsync_Delegates_To_IQueryService()

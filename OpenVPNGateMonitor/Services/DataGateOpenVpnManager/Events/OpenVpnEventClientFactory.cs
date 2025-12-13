@@ -3,7 +3,7 @@ using Microsoft.AspNetCore.SignalR;
 using OpenVPNGateMonitor.DataBase.Services.Query.OpenVpnServerTable;
 using OpenVPNGateMonitor.Hubs;
 using OpenVPNGateMonitor.Models;
-using OpenVPNGateMonitor.Services.Api.Auth.Interfaces;
+using OpenVPNGateMonitor.Services.Api.Auth.Registers.Interfaces;
 using OpenVPNGateMonitor.SharedModels.DataGateMonitorBackend.OpenVpnServerEvent.Responses;
 
 namespace OpenVPNGateMonitor.Services.DataGateOpenVpnManager.Events;

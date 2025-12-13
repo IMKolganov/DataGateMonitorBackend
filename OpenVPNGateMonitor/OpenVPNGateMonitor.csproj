@@ -50,4 +50,8 @@
       </None>
     </ItemGroup>
 
+    <ItemGroup>
+      <Folder Include="Services\Api\Auth\Interfaces\" />
+    </ItemGroup>
+
 </Project>
