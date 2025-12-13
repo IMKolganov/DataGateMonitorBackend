@@ -1,9 +1,12 @@
-﻿using Microsoft.AspNetCore.Identity;
+﻿using Microsoft.AspNetCore.Authorization;
+using Microsoft.AspNetCore.Identity;
 using Microsoft.OpenApi;
 using OpenVPNGateMonitor.Controllers;
 using OpenVPNGateMonitor.Models;
 using OpenVPNGateMonitor.Models.Helpers;
 using OpenVPNGateMonitor.Services.Api.Auth;
+using OpenVPNGateMonitor.Services.Api.Auth.Handlers;
+using OpenVPNGateMonitor.Services.Api.Auth.Handlers.Interfaces;
 using OpenVPNGateMonitor.Services.Api.Auth.Login;
 using OpenVPNGateMonitor.Services.Api.Auth.Registers;
 using OpenVPNGateMonitor.Services.Api.Auth.Registers.Interfaces;
@@ -31,7 +34,15 @@ public static class AuthServiceConfiguration
         
         services.AddScoped<IUserQuotaPlanService, UserQuotaPlanService>();
 
-        services.AddAuthorization();
+        services.AddAuthorization(options =>
+        {
+            options.AddPolicy("AdminOrOwnServer", policy =>
+                policy.Requirements.Add(new AdminOrOwnServerRequirement()));
+        });
+
+        services.AddScoped<IVpnServerAccessQueryService, VpnServerAccessQueryService>();
+        services.AddSingleton<IAuthorizationHandler, AdminOrOwnServerHandler>();
+
 
         services.AddControllers(options =>
             {

@@ -13,17 +13,29 @@ namespace OpenVPNGateMonitor.Controllers;
 [Route("api/open-vpn-events")]
 [Authorize]
 public class OpenVpnServerEventController(IOpenVpnServerEventLogQueryService openVpnServerEventLogQueryService,
-    IOpenVpnEventClientFactory eventClientFactory) : BaseController
+    IOpenVpnEventClientFactory eventClientFactory, IAuthorizationService authorizationService) : BaseController
 {
     /// <summary>
     /// Paged events by VPN server id.
     /// </summary>
     [HttpGet("get-by-server")]
     public async Task<ActionResult<ApiResponse<VpnServerEventResponse>>> GetEventByVpnServerId(
-        [FromQuery] GetVpnServerEventRequest request, CancellationToken cancellationToken)
+        [FromQuery] GetVpnServerEventRequest request,
+        CancellationToken cancellationToken)
     {
+        var authResult = await authorizationService.AuthorizeAsync(
+            User,
+            resource: request.VpnServerId,
+            policyName: "AdminOrOwnServer");
+
+        if (!authResult.Succeeded)
+            return Forbid();
+
         var page = await openVpnServerEventLogQueryService.GetByVpnServerIdAsync(
-            request.VpnServerId, request.Page, request.PageSize, cancellationToken);
+            request.VpnServerId,
+            request.Page,
+            request.PageSize,
+            cancellationToken);
 
         var dto = page.Adapt<VpnServerEventResponse>();
         return Ok(ApiResponse<VpnServerEventResponse>.SuccessResponse(dto));

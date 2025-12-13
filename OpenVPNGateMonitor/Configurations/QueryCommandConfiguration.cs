@@ -11,6 +11,7 @@ using OpenVPNGateMonitor.DataBase.Services.Query.OpenVpnServerEventLogTable;
 using OpenVPNGateMonitor.DataBase.Services.Query.OpenVpnServerOvpnFileConfigTable;
 using OpenVPNGateMonitor.DataBase.Services.Query.OpenVpnServerStatusLogTable;
 using OpenVPNGateMonitor.DataBase.Services.Query.OpenVpnServerTable;
+using OpenVPNGateMonitor.DataBase.Services.Query.QuotaPlanAllowedServerTable;
 using OpenVPNGateMonitor.DataBase.Services.Query.QuotaPlanTable;
 using OpenVPNGateMonitor.DataBase.Services.Query.RoleTable;
 using OpenVPNGateMonitor.DataBase.Services.Query.TelegramBotUserTable;
@@ -58,6 +59,7 @@ public static class QueryCommandConfiguration
         services.AddScoped<IUserRoleQueryService, UserRoleQueryService>();
         services.AddScoped<IRoleQueryService, RoleQueryService>();
         services.AddScoped<IUserQuotaPlanQueryService, UserQuotaPlanQueryService>();
+        services.AddScoped<IQuotaPlanAllowedServerQueryService, QuotaPlanAllowedServerQueryService>();
 
         // Feature: overview queries
         services.AddScoped<IOpenVpnServerOverviewQuery, OpenVpnServerOverviewQuery>();

@@ -1,5 +1,4 @@
 using OpenVPNGateMonitor.DataBase.Services.Command.Interfaces;
-using OpenVPNGateMonitor.DataBase.Services.Query.QuotaPlanTable;
 using OpenVPNGateMonitor.DataBase.Services.Query.UserQuotaPlanTable;
 using OpenVPNGateMonitor.Models;
 using OpenVPNGateMonitor.Services.Api.Auth.Registers.Interfaces;
@@ -8,7 +7,6 @@ namespace OpenVPNGateMonitor.Services.Api.Auth.Registers;
 
 public class UserQuotaPlanService(
     IUserQuotaPlanQueryService userQuotaPlanQueryService, 
-    IQuotaPlanQueryService quotaPlanQueryService, 
     ICommandService<UserQuotaPlan, int> userQuotaPlanCommandService) : IUserQuotaPlanService
 {
     public async Task<UserQuotaPlan> AssignQuotaPlanAsync(int userId, int quotaPlanId, CancellationToken ct)
