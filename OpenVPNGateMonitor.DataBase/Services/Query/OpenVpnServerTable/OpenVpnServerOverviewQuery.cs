@@ -1,4 +1,5 @@
-﻿using Microsoft.EntityFrameworkCore;
+﻿using Mapster;
+using Microsoft.EntityFrameworkCore;
 using OpenVPNGateMonitor.DataBase.UnitOfWork;
 using OpenVPNGateMonitor.Models;
 using OpenVPNGateMonitor.SharedModels.DataGateMonitorBackend.OpenVpnServers.Dto;
@@ -22,16 +23,7 @@ public class OpenVpnServerOverviewQuery(IUnitOfWork uow) : IOpenVpnServerOvervie
             {
                 OpenVpnServerResponses = new OpenVpnServerResponse
                 {
-                    OpenVpnServer = new OpenVpnServerDto
-                    {
-                        Id = s.Id,
-                        ServerName = s.ServerName,
-                        IsOnline = s.IsOnline,
-                        IsDefault = s.IsDefault,
-                        ApiUrl = s.ApiUrl,
-                        CreateDate = s.CreateDate,
-                        LastUpdate = s.LastUpdate
-                    }
+                    OpenVpnServer = s.Adapt<OpenVpnServerDto>(),
                 },
 
                 CountConnectedClients = clients.Count(c => c.VpnServerId == s.Id && c.IsConnected),
@@ -74,16 +66,7 @@ public class OpenVpnServerOverviewQuery(IUnitOfWork uow) : IOpenVpnServerOvervie
             {
                 OpenVpnServerResponses = new OpenVpnServerResponse
                 {
-                    OpenVpnServer = new OpenVpnServerDto
-                    {
-                        Id = s.Id,
-                        ServerName = s.ServerName,
-                        IsOnline = s.IsOnline,
-                        IsDefault = s.IsDefault,
-                        ApiUrl = s.ApiUrl,
-                        CreateDate = s.CreateDate,
-                        LastUpdate = s.LastUpdate
-                    }
+                    OpenVpnServer = s.Adapt<OpenVpnServerDto>(),
                 },
                 CountConnectedClients = clients.Count(c => c.VpnServerId == s.Id && c.IsConnected),
                 CountSessions = clients.Count(c => c.VpnServerId == s.Id),
