@@ -10,6 +10,7 @@ namespace OpenVPNGateMonitor.Controllers;
 
 [ApiController]
 [Route("api/tgbot-users")]
+[Authorize(Roles = "Admin")]
 [Authorize]
 public class TelegramBotUserController(ITelegramUserService telegramUserService) : BaseController
 {

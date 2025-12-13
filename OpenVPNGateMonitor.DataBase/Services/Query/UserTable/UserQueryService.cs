@@ -15,6 +15,16 @@ public class UserQueryService(
     public Task<User?> GetByIdAsync(int id, CancellationToken ct)
         => q.FindByIdAsync(id, ct: ct);
 
+    public async Task<User?> GetByEmailAsync(string email, CancellationToken ct)
+        => await q.FirstOrDefaultAsync(
+            predicate: u => u.Email != null && u.Email == email,
+            asNoTracking: true,
+            ct: ct
+        );
+
+    public Task<bool> AnyByEmailAsync(string email, CancellationToken ct)
+        => q.AnyAsync(x => x.Email == email, ct: ct);
+
     public async Task<User?> GetByExternalIdAsync(string externalId, CancellationToken ct)
     {
         var link = await qUserIdentityLink.FirstOrDefaultAsync(
@@ -35,4 +45,9 @@ public class UserQueryService(
 
     public Task<IPagedResult<User>> GetPageAsync(int page, int pageSize, CancellationToken ct)
         => q.PageAsync(page, pageSize, ct: ct);
+
+    public Task<List<User>> SearchAsync(
+        Expression<Func<User, bool>> predicate,
+        CancellationToken ct)
+        => q.WhereAsync(predicate, ct: ct);
 }

@@ -39,6 +39,7 @@ public static class PipelineConfiguration
 
         app.UseWebSockets();
         app.UseCors("AllowAllOriginsWithCredentials");
+        app.UseStaticFiles();
 
         if (app.Environment.IsDevelopment())
         {
@@ -50,7 +51,8 @@ public static class PipelineConfiguration
             });
             app.UseSwaggerUI(o =>
             {
-                o.SwaggerEndpoint("/swagger/v1/swagger.json", "My API v1");
+                o.SwaggerEndpoint("/swagger/v1/swagger.json", "Data Gate Monitor API v1");
+                o.InjectStylesheet("/swagger-ui/SwaggerDark.css");
                 o.RoutePrefix = "swagger";
             });
         }

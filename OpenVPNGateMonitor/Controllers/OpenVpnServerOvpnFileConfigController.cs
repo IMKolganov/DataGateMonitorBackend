@@ -12,6 +12,7 @@ namespace OpenVPNGateMonitor.Controllers;
 [ApiController]
 [Route("api/open-vpn-configs")]
 [Authorize]
+[Authorize(Roles = "Admin")]
 public class OpenVpnServerOvpnFileConfigController(
     IOpenVpnServerOvpnFileConfigService openVpnServerOvpnFileConfigService) : BaseController
 {
@@ -24,7 +25,6 @@ public class OpenVpnServerOvpnFileConfigController(
 
         return Ok(ApiResponse<OvpnFileConfigResponse>.SuccessResponse(config.Adapt<OvpnFileConfigResponse>()));
     }
-    
     [HttpPost("add-update")]
     public async Task<ActionResult<ApiResponse<OvpnFileConfigResponse>>> AddOrUpdateOvpnFileConfig(
         [FromBody] AddOrUpdateOvpnFileConfigRequest request, CancellationToken ct)

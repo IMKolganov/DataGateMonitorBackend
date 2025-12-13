@@ -8,8 +8,10 @@ public interface IUserCredentialQueryService
     Task<List<UserCredential>> GetAllAsync(CancellationToken ct);
     Task<UserCredential?> GetByIdAsync(int id, CancellationToken ct);
     Task<UserCredential?> GetByNormalizedLogin(string normalizedLogin, CancellationToken ct);
+    Task<UserCredential?> GetByLoginAsync(string login, CancellationToken ct);
     Task<UserCredential?> GetByUserId(int userId, CancellationToken ct);
     Task<bool> AnyByUserId(int userId, CancellationToken ct);
+    Task<bool> LoginExistsAsync(string login, CancellationToken ct);
 
     Task<IPagedResult<UserCredential>> GetPageAsync(int page, int pageSize, CancellationToken ct);
 }

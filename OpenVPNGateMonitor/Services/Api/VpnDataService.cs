@@ -1,5 +1,4 @@
-﻿using OpenVPNGateMonitor.DataBase.Services.Command;
-using OpenVPNGateMonitor.DataBase.Services.Command.Interfaces;
+﻿using OpenVPNGateMonitor.DataBase.Services.Command.Interfaces;
 using OpenVPNGateMonitor.DataBase.Services.Query.OpenVpnServerOvpnFileConfigTable;
 using OpenVPNGateMonitor.DataBase.Services.Query.OpenVpnServerTable;
 using OpenVPNGateMonitor.Models;
@@ -15,9 +14,10 @@ public class VpnDataService(
     IOpenVpnServerOvpnFileConfigQueryService openVpnServerOvpnFileConfigQueryService,
     ITransactionRunner transactionRunner,
     ICommandService<OpenVpnServer, int> openVpnServerCommandService,
-    ICommandService<OpenVpnServerOvpnFileConfig, int> openVpnServerOvpnFileConfigCommandService) : IVpnDataService
+    ICommandService<OpenVpnServerOvpnFileConfig, int> openVpnServerOvpnFileConfigCommandService,
+    ICommandService<QuotaPlanAllowedServer, int> quotaPlanAllowedServerCommandService) : IVpnDataService
 {
-    public Task<OpenVpnServer> AddOpenVpnServer(OpenVpnServer server, CancellationToken ct)
+    public Task<OpenVpnServer> AddOpenVpnServer(OpenVpnServer server, List<int> quotaPlanIds, CancellationToken ct)
         => transactionRunner.RunAsync(async _ =>
         {
             var now = DateTimeOffset.UtcNow;
@@ -36,6 +36,8 @@ public class VpnDataService(
             server.CreateDate = now;
             server.LastUpdate = now;
             await openVpnServerCommandService.AddAsync(server, saveChanges: true, ct);
+            
+            await SyncQuotaPlanLinksAsync(server.Id, quotaPlanIds, ct);
 
             // Additional writes that must be part of the same transaction
             if (!await CheckAndPutDefaultExpiredSettings(server, ct))
@@ -47,7 +49,7 @@ public class VpnDataService(
         }, ct);
 
 
-    public Task<OpenVpnServer> UpdateOpenVpnServer(OpenVpnServer server, CancellationToken ct)
+    public Task<OpenVpnServer> UpdateOpenVpnServer(OpenVpnServer server, List<int> quotaPlanIds, CancellationToken ct)
         => transactionRunner.RunAsync(async _ =>
         {
             var now = DateTimeOffset.UtcNow;
@@ -65,6 +67,8 @@ public class VpnDataService(
             // Update this server
             server.LastUpdate = now;
             await openVpnServerCommandService.UpdateAsync(server, saveChanges: true, ct);
+            
+            await SyncQuotaPlanLinksAsync(server.Id, quotaPlanIds, ct);
 
             // Additional writes in the same transaction
             if (!await CheckAndPutDefaultExpiredSettings(server, ct))
@@ -101,18 +105,29 @@ public class VpnDataService(
         return changesMade;
     }
     
-    private async Task UnsetPreviousDefaultServer(CancellationToken ct, int exceptId = 0)
+    private async Task SyncQuotaPlanLinksAsync(
+        int vpnServerId,
+        IReadOnlyCollection<int> quotaPlanIds,
+        CancellationToken ct)
     {
-        var servers = await openVpnServerQueryService.GetDefaultExceptAsync(exceptId, ct);
+        // Remove old links
+        await quotaPlanAllowedServerCommandService.DeleteWhereAsync(
+            x => x.VpnServerId == vpnServerId,
+            ct);
 
-        if (servers.Count == 0)
+        // Add new links
+        if (quotaPlanIds.Count == 0)
             return;
 
+        var links = quotaPlanIds
+            .Distinct()
+            .Select(planId => new QuotaPlanAllowedServer
+            {
+                VpnServerId = vpnServerId,
+                QuotaPlanId = planId
+            })
+            .ToList();
 
-        foreach (var server in servers)
-        {
-            server.IsDefault = false;
-            await openVpnServerCommandService.UpdateAsync(server, false,ct);
-        }
+        await quotaPlanAllowedServerCommandService.AddRangeAsync(links, saveChanges: true, ct);
     }
 }

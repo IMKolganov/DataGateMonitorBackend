@@ -190,7 +190,6 @@ public class EfCommandServiceTests
         Assert.Equal(42, affected);
     }
 
-    // -------- InMemory + IQuery: проверяем, что bulk-методы хотя бы вызываются --------
 
     private sealed class TestDbContext : DbContext
     {

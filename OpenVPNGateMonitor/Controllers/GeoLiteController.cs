@@ -8,6 +8,7 @@ using OpenVPNGateMonitor.SharedModels.Responses;
 namespace OpenVPNGateMonitor.Controllers;
 
 [ApiController]
+[Authorize(Roles = "Admin")]
 [Route("api/geo-lite")]
 [Authorize]
 public class GeoLiteController(IGeoLiteQueryService geoLiteQueryService, 

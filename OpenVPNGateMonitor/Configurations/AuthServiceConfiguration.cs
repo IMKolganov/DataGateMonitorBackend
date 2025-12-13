@@ -1,17 +1,48 @@
-﻿using Microsoft.OpenApi;
+﻿using Microsoft.AspNetCore.Authorization;
+using Microsoft.AspNetCore.Identity;
+using Microsoft.OpenApi;
 using OpenVPNGateMonitor.Controllers;
+using OpenVPNGateMonitor.Models;
+using OpenVPNGateMonitor.Models.Helpers;
 using OpenVPNGateMonitor.Services.Api.Auth;
-using OpenVPNGateMonitor.Services.Api.Auth.Interfaces;
+using OpenVPNGateMonitor.Services.Api.Auth.Handlers;
+using OpenVPNGateMonitor.Services.Api.Auth.Handlers.Interfaces;
+using OpenVPNGateMonitor.Services.Api.Auth.Login;
+using OpenVPNGateMonitor.Services.Api.Auth.Registers;
+using OpenVPNGateMonitor.Services.Api.Auth.Registers.Interfaces;
+using OpenVPNGateMonitor.Services.Api.Auth.Users;
 
 namespace OpenVPNGateMonitor.Configurations;
 
 public static class AuthServiceConfiguration
 {
-    public static void ConfigureAuthServices(this IServiceCollection services)
+    public static void ConfigureAuthServices(this IServiceCollection services, IConfiguration configuration)
     {
+        services.AddScoped<IUserLoginService, UserLoginService>();
+        services.AddScoped<IUserAccountService, UserAccountService>();
+        services.AddScoped<IUserRoleService, UserRoleService>();
+        services.AddScoped<IPasswordHasher<User>, PasswordHasher<User>>();
+        services.AddScoped<IUserRegistrationService, UserRegistrationService>();
+        #region example google env
+        // GoogleAuth:ClientId → ENV: GOOGLEAUTH__CLIENTID
+        // GoogleAuth:ClientSecret → ENV: GOOGLEAUTH__CLIENTSECRET
+        #endregion
+        services.Configure<GoogleAuthSettings>(configuration.GetSection("GoogleAuth"));
+        
         services.AddScoped<IApplicationService, ApplicationService>();
+        services.AddScoped<IGoogleTokenValidator, GoogleTokenValidator>();
+        
+        services.AddScoped<IUserQuotaPlanService, UserQuotaPlanService>();
 
-        services.AddAuthorization();
+        services.AddAuthorization(options =>
+        {
+            options.AddPolicy("AdminOrOwnServer", policy =>
+                policy.Requirements.Add(new AdminOrOwnServerRequirement()));
+        });
+
+        services.AddScoped<IVpnServerAccessQueryService, VpnServerAccessQueryService>();
+        services.AddScoped<IAuthorizationHandler, AdminOrOwnServerHandler>();
+
 
         services.AddControllers(options =>
             {
