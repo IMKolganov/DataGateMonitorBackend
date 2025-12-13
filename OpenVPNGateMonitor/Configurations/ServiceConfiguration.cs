@@ -1,4 +1,5 @@
 ﻿using OpenVPNGateMonitor.DataBase.Services.Query.UserCredentialTable;
+using OpenVPNGateMonitor.Hubs.BackgroundService;
 using OpenVPNGateMonitor.Services.Api;
 using OpenVPNGateMonitor.Services.Api.Interfaces;
 using OpenVPNGateMonitor.Services.BackgroundServices;
@@ -59,6 +60,7 @@ public static class ServiceConfiguration
         services.AddScoped<IVpnEventLogService, VpnEventLogService>();
         services.AddSingleton<IOpenVpnEventClientFactory, OpenVpnEventClientFactory>();
         services.AddHostedService<OpenVpnEventBackgroundService>();
+        services.AddHostedService<OpenVpnStatusStreamPublisher>();
 
         services.AddScoped<IOpenVpnServerOvpnFileConfigService, OpenVpnServerOvpnFileConfigService>();
         services.AddScoped<ISettingsService, SettingsService>();
