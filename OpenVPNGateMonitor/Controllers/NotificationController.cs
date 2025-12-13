@@ -9,6 +9,7 @@ namespace OpenVPNGateMonitor.Controllers;
 [ApiController]
 [Route("api/notifications")]
 [Authorize]
+[Authorize(Roles = "Admin")]
 public class NotificationController(INotificationService notificationService) : BaseController
 {
     /// <summary>

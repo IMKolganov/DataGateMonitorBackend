@@ -12,6 +12,7 @@ namespace OpenVPNGateMonitor.Controllers;
 [ApiController]
 [Route("api/open-vpn-certs")]
 [Authorize]
+[Authorize(Roles = "Admin")]
 public class OpenVpnServerCertsController(ICertApiClient certApiClient,
     ILogger<OpenVpnServerCertsController> logger) : BaseController
 {

@@ -12,6 +12,7 @@ namespace OpenVPNGateMonitor.Controllers;
 [Route("api/applications")]
 [ApiController]
 [Authorize]
+[Authorize(Roles = "Admin")]
 public class ApplicationsController(IApplicationService appService) : BaseController
 {
     [HttpPost("register")]

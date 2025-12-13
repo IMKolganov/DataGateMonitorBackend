@@ -41,7 +41,7 @@ public static class AuthServiceConfiguration
         });
 
         services.AddScoped<IVpnServerAccessQueryService, VpnServerAccessQueryService>();
-        services.AddSingleton<IAuthorizationHandler, AdminOrOwnServerHandler>();
+        services.AddScoped<IAuthorizationHandler, AdminOrOwnServerHandler>();
 
 
         services.AddControllers(options =>
