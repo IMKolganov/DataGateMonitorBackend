@@ -4,9 +4,9 @@ using OpenVPNGateMonitor.Controllers;
 using OpenVPNGateMonitor.Models;
 using OpenVPNGateMonitor.Models.Helpers;
 using OpenVPNGateMonitor.Services.Api.Auth;
-using OpenVPNGateMonitor.Services.Api.Auth.Interfaces;
 using OpenVPNGateMonitor.Services.Api.Auth.Login;
 using OpenVPNGateMonitor.Services.Api.Auth.Registers;
+using OpenVPNGateMonitor.Services.Api.Auth.Registers.Interfaces;
 using OpenVPNGateMonitor.Services.Api.Auth.Users;
 
 namespace OpenVPNGateMonitor.Configurations;
@@ -26,9 +26,10 @@ public static class AuthServiceConfiguration
         #endregion
         services.Configure<GoogleAuthSettings>(configuration.GetSection("GoogleAuth"));
         
-        services.AddScoped<IGoogleAuthService, GoogleAuthService>();
         services.AddScoped<IApplicationService, ApplicationService>();
         services.AddScoped<IGoogleTokenValidator, GoogleTokenValidator>();
+        
+        services.AddScoped<IUserQuotaPlanService, UserQuotaPlanService>();
 
         services.AddAuthorization();
 

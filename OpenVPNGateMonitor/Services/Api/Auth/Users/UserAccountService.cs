@@ -1,12 +1,15 @@
 using OpenVPNGateMonitor.Models;
-using OpenVPNGateMonitor.Services.Api.Auth.Interfaces;
 using OpenVPNGateMonitor.SharedModels.Auth;
 using OpenVPNGateMonitor.DataBase.Services.Command.Interfaces;
+using OpenVPNGateMonitor.DataBase.Services.Query.QuotaPlanTable;
+using OpenVPNGateMonitor.Services.Api.Auth.Registers.Interfaces;
 
 namespace OpenVPNGateMonitor.Services.Api.Auth.Users;
 
 public sealed class UserAccountService(
     ICommandService<User, int> userCommandService,
+    IUserQuotaPlanService userQuotaPlanService,
+    IQuotaPlanQueryService quotaPlanQueryService,
     IUserRoleService userRoleService)
     : IUserAccountService
 {
@@ -18,6 +21,9 @@ public sealed class UserAccountService(
             throw new InvalidOperationException($"Failed to create user {user.DisplayName}");
 
         await userRoleService.AssignRoleAsync(user.Id, SystemRoles.VpnUserId, ct);
+
+        var quotaPlanDefault = await quotaPlanQueryService.GetDefaultAsync(ct);
+        if (quotaPlanDefault != null) await userQuotaPlanService.AssignQuotaPlanAsync(user.Id, quotaPlanDefault.Id, ct);
 
         return user;
     }

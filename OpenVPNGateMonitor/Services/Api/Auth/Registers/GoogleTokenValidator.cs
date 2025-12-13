@@ -1,6 +1,6 @@
 using Google.Apis.Auth;
 using Microsoft.IdentityModel.Tokens;
-using OpenVPNGateMonitor.Services.Api.Auth.Interfaces;
+using OpenVPNGateMonitor.Services.Api.Auth.Registers.Interfaces;
 using OpenVPNGateMonitor.SharedModels.Auth.Google;
 
 namespace OpenVPNGateMonitor.Services.Api.Auth.Registers;

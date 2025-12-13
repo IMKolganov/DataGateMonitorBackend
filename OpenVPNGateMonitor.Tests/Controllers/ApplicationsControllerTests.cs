@@ -2,7 +2,7 @@
 using Moq;
 using OpenVPNGateMonitor.Controllers;
 using OpenVPNGateMonitor.Models;
-using OpenVPNGateMonitor.Services.Api.Auth.Interfaces;
+using OpenVPNGateMonitor.Services.Api.Auth.Registers.Interfaces;
 using OpenVPNGateMonitor.SharedModels.DataGateMonitorBackend.Applications.Requests;
 using OpenVPNGateMonitor.SharedModels.DataGateMonitorBackend.Applications.Responses;
 using OpenVPNGateMonitor.SharedModels.Responses;

@@ -12,10 +12,13 @@ using OpenVPNGateMonitor.DataBase.Services.Query.OpenVpnServerOvpnFileConfigTabl
 using OpenVPNGateMonitor.DataBase.Services.Query.OpenVpnServerStatusLogTable;
 using OpenVPNGateMonitor.DataBase.Services.Query.OpenVpnServerTable;
 using OpenVPNGateMonitor.DataBase.Services.Query.QuotaPlanTable;
+using OpenVPNGateMonitor.DataBase.Services.Query.RoleTable;
 using OpenVPNGateMonitor.DataBase.Services.Query.TelegramBotUserTable;
 using OpenVPNGateMonitor.DataBase.Services.Query.TelegramUserLanguagePreferenceTable;
 using OpenVPNGateMonitor.DataBase.Services.Query.UserCredentialTable;
 using OpenVPNGateMonitor.DataBase.Services.Query.UserIdentityLinkTable;
+using OpenVPNGateMonitor.DataBase.Services.Query.UserQuotaPlanTable;
+using OpenVPNGateMonitor.DataBase.Services.Query.UserRoleTable;
 using OpenVPNGateMonitor.DataBase.Services.Query.UserTable;
 
 namespace OpenVPNGateMonitor.Configurations;
@@ -52,6 +55,9 @@ public static class QueryCommandConfiguration
         services.AddScoped<IUserQueryService, UserQueryService>();
         services.AddScoped<IUserIdentityLinkQueryService, UserIdentityLinkQueryService>();
         services.AddScoped<IQuotaPlanQueryService, QuotaPlanQueryService>();
+        services.AddScoped<IUserRoleQueryService, UserRoleQueryService>();
+        services.AddScoped<IRoleQueryService, RoleQueryService>();
+        services.AddScoped<IUserQuotaPlanQueryService, UserQuotaPlanQueryService>();
 
         // Feature: overview queries
         services.AddScoped<IOpenVpnServerOverviewQuery, OpenVpnServerOverviewQuery>();

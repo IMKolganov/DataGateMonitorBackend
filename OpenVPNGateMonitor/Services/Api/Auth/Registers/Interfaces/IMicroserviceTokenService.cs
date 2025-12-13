@@ -1,6 +1,6 @@
 ﻿using System.Security.Claims;
 
-namespace OpenVPNGateMonitor.Services.Api.Auth.Interfaces;
+namespace OpenVPNGateMonitor.Services.Api.Auth.Registers.Interfaces;
 
 public interface IMicroserviceTokenService
 {

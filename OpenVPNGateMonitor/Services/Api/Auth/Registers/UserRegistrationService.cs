@@ -3,7 +3,7 @@ using OpenVPNGateMonitor.DataBase.Services.Command.Interfaces;
 using OpenVPNGateMonitor.DataBase.Services.Query.UserCredentialTable;
 using OpenVPNGateMonitor.DataBase.Services.Query.UserTable;
 using OpenVPNGateMonitor.Models;
-using OpenVPNGateMonitor.Services.Api.Auth.Interfaces;
+using OpenVPNGateMonitor.Services.Api.Auth.Registers.Interfaces;
 using OpenVPNGateMonitor.Services.Api.Auth.Users;
 using OpenVPNGateMonitor.SharedModels.DataGateMonitorBackend.Auth.Requests;
 using OpenVPNGateMonitor.SharedModels.DataGateMonitorBackend.Auth.Responses;

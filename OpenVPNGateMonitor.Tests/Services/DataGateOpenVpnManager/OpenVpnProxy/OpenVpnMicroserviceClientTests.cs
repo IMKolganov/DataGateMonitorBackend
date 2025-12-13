@@ -4,7 +4,7 @@ using Microsoft.Extensions.Logging;
 using Moq;
 using OpenVPNGateMonitor.Hubs;
 using OpenVPNGateMonitor.Models;
-using OpenVPNGateMonitor.Services.Api.Auth.Interfaces;
+using OpenVPNGateMonitor.Services.Api.Auth.Registers.Interfaces;
 using OpenVPNGateMonitor.Services.DataGateOpenVpnManager.OpenVpnProxy;
 using OpenVPNGateMonitor.Services.DataGateOpenVpnManager.OpenVpnProxy.Hubs.Interfaces;
 
