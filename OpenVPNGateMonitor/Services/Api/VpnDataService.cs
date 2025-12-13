@@ -1,5 +1,4 @@
-﻿using OpenVPNGateMonitor.DataBase.Services.Command;
-using OpenVPNGateMonitor.DataBase.Services.Command.Interfaces;
+﻿using OpenVPNGateMonitor.DataBase.Services.Command.Interfaces;
 using OpenVPNGateMonitor.DataBase.Services.Query.OpenVpnServerOvpnFileConfigTable;
 using OpenVPNGateMonitor.DataBase.Services.Query.OpenVpnServerTable;
 using OpenVPNGateMonitor.Models;
@@ -99,20 +98,5 @@ public class VpnDataService(
         }
 
         return changesMade;
-    }
-    
-    private async Task UnsetPreviousDefaultServer(CancellationToken ct, int exceptId = 0)
-    {
-        var servers = await openVpnServerQueryService.GetDefaultExceptAsync(exceptId, ct);
-
-        if (servers.Count == 0)
-            return;
-
-
-        foreach (var server in servers)
-        {
-            server.IsDefault = false;
-            await openVpnServerCommandService.UpdateAsync(server, false,ct);
-        }
     }
 }

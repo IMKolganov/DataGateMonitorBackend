@@ -9,4 +9,6 @@ public class AddServerRequest
     public bool IsOnline { get; set; } = false;
     public bool IsDefault { get; set; } = false;
     public string ApiUrl { get; set; } = string.Empty;
+    public double? Latitude { get; set; }
+    public double? Longitude { get; set; }
 }
