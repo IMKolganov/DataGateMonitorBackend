@@ -16,6 +16,14 @@ public class UserQuotaPlanQueryService(IQueryService<UserQuotaPlan, int> q) : IU
             orderBy: s => s.OrderBy(x => x.Id),
             asNoTracking: true,
             ct: ct);
+
+    public Task<UserQuotaPlan?> GetByUserId(int userId, CancellationToken ct)
+        => q.FirstOrDefaultAsync(
+            predicate: x => x.UserId == userId,
+            orderBy: s => s.OrderBy(x => x.Id),
+            asNoTracking: true,
+            ct: ct);
+
     public Task<IPagedResult<UserQuotaPlan>> GetPageAsync(int page, int pageSize, CancellationToken ct)
         => q.PageAsync(page, pageSize, ct: ct);
 }
