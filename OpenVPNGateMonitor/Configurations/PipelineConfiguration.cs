@@ -101,7 +101,8 @@ public static class PipelineConfiguration
 
         app.MapHub<GeoLiteHub>("/api/hubs/geoLite");
         app.MapHub<OpenVpnFrontendHub>("/api/hubs/frontend");
-        app.MapHub<AdminNotificationHub>("/hubs/admin-notify");
+        app.MapHub<AdminNotificationHub>("/api/hubs/admin-notify");
+        app.MapHub<OpenVpnStatusHub>("/api/status-stream");
 
         var version = Assembly.GetExecutingAssembly().GetName().Version?.ToString() ?? "Unknown version";
         var environmentName = app.Environment.EnvironmentName;
