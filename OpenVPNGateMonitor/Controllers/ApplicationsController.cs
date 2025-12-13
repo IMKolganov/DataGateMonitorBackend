@@ -1,7 +1,7 @@
 ﻿using Mapster;
 using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Mvc;
-using OpenVPNGateMonitor.Services.Api.Auth.Interfaces;
+using OpenVPNGateMonitor.Services.Api.Auth.Registers.Interfaces;
 using OpenVPNGateMonitor.SharedModels.DataGateMonitorBackend.Applications.Dto;
 using OpenVPNGateMonitor.SharedModels.DataGateMonitorBackend.Applications.Requests;
 using OpenVPNGateMonitor.SharedModels.DataGateMonitorBackend.Applications.Responses;
@@ -12,6 +12,7 @@ namespace OpenVPNGateMonitor.Controllers;
 [Route("api/applications")]
 [ApiController]
 [Authorize]
+[Authorize(Roles = "Admin")]
 public class ApplicationsController(IApplicationService appService) : BaseController
 {
     [HttpPost("register")]

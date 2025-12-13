@@ -1,7 +1,7 @@
 ﻿using System.Net.Http.Headers;
 using System.Text.Json;
 using OpenVPNGateMonitor.DataBase.Services.Query.OpenVpnServerTable;
-using OpenVPNGateMonitor.Services.Api.Auth.Interfaces;
+using OpenVPNGateMonitor.Services.Api.Auth.Registers.Interfaces;
 using OpenVPNGateMonitor.Services.DataGateOpenVpnManager.Interfaces;
 using OpenVPNGateMonitor.Services.Others.Notifications.CertApiClient;
 using OpenVPNGateMonitor.SharedModels.DataGateOpenVpnManager.Cert.Responses;
