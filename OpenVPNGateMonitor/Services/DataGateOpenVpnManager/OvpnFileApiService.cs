@@ -422,8 +422,61 @@ public class OvpnFileApiService(
         return match.Success ? match.Value : null;
     }
     
-    public Task<DownloadFileResponse> DownloadOvpnFileByCn(DownloadFileRequest request, CancellationToken cancellationToken, bool isRevoked = false)
+    public async Task<DownloadFileResponse> DownloadOvpnFileByCn(DownloadFileRequest request, CancellationToken ct, 
+        bool isRevoked = false)
     {
-        throw new NotImplementedException();
+        logger.LogInformation("Start downloading OVPN file:" +
+                              " VpnServerId={VpnServerId}, IssuedOvpnFileId={IssuedOvpnFileId}",
+            request.VpnServerId, request.IssuedOvpnFileId);
+
+        var issuedOvpnFile = await issuedOvpnFileQueryService
+                .GetByIdAndVpnServerIdAndIsRevoked(
+                    request.IssuedOvpnFileId,
+                    request.VpnServerId,
+                    isRevoked,
+                    ct)
+            ?? throw new InvalidOperationException(
+                $"Issued OVPN file not found. " +
+                $"Requested IssuedOvpnFileId={request.IssuedOvpnFileId}, " +
+                $"VpnServerId={request.VpnServerId}, " +
+                $"IsRevoked={isRevoked}. " +
+                "Possible reasons: the file does not exist, belongs to another server, " +
+                "or its revoke state does not match the requested one.");
+
+        var requestApi =
+            new DownloadOvpnFileRequest()
+            {
+                CommonName = issuedOvpnFile.CommonName,
+                FileName = issuedOvpnFile.FileName,
+                FilePath = issuedOvpnFile.FilePath
+            };
+        var result = await ovpnFileApiClient.DownloadOvpnFile(
+            request.VpnServerId, requestApi, ct);
+
+        if (result.Content == null)
+        {
+            logger.LogError(
+                "Downloaded OVPN file content is null: FileName={FileName}, CommonName={CommonName}",
+                result.FileName,
+                result.CommonName);
+
+            throw new InvalidOperationException(
+                "Downloaded OVPN file content is null. " +
+                $"FileName={result.FileName}, CommonName={result.CommonName}.");
+        }
+
+        logger.LogInformation("Successfully downloaded OVPN file: FileName={FileName}, Size={Size} bytes",
+            result.FileName, result.Content.LongLength);
+        
+        await ovpnFileNotificationService.NotifyDownloaded(
+            issuedOvpnFile.VpnServerId, issuedOvpnFile.FileName, issuedOvpnFile.ExternalId,
+            isRevoked, /* todo: user ID*/ ct);
+
+        return new DownloadFileResponse
+        {
+            IssuedOvpn = issuedOvpnFile.Adapt<IssuedOvpnFileDto>(),
+            FileSizeBytes = result.Content.LongLength,
+            Content = result.Content
+        };
     }
 }

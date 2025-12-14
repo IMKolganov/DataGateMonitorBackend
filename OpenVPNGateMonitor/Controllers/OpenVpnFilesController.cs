@@ -221,7 +221,7 @@ public class OpenVpnFilesController(IOvpnFileApiService ovpnFileApiService,
     {
         try
         {
-            var content = await ovpnFileApiService.DownloadOvpnFile(request, 
+            var content = await ovpnFileApiService.DownloadOvpnFileByCn(request, 
                 cancellationToken);
             return Ok(ApiResponse<DownloadFileResponse>.SuccessResponse(content));
         }
