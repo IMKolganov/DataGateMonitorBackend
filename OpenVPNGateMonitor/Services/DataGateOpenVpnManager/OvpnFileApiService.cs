@@ -422,7 +422,7 @@ public class OvpnFileApiService(
         return match.Success ? match.Value : null;
     }
     
-    public async Task<DownloadFileResponse> DownloadOvpnFileByCn(DownloadFileRequest request, CancellationToken ct, 
+    public async Task<DownloadFileResponse> DownloadOvpnFileByCn(DownloadFileByCnRequest request, CancellationToken ct, 
         bool isRevoked = false)
     {
         logger.LogInformation("Start downloading OVPN file:" +

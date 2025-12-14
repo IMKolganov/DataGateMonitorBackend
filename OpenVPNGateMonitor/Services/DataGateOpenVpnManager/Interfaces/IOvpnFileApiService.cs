@@ -32,6 +32,6 @@ public interface IOvpnFileApiService
     Task<DownloadFileResponse> DownloadOvpnFile(DownloadFileRequest request,
         CancellationToken cancellationToken, bool isRevoked = false);
     
-    Task<DownloadFileResponse> DownloadOvpnFileByCn(DownloadFileRequest request,
+    Task<DownloadFileResponse> DownloadOvpnFileByCn(DownloadFileByCnRequest request,
         CancellationToken cancellationToken, bool isRevoked = false);
 }

@@ -217,7 +217,7 @@ public class OpenVpnFilesController(IOvpnFileApiService ovpnFileApiService,
     
     [HttpPost("download-file-by-cn")]
     public async Task<ActionResult<ApiResponse<DownloadFileResponse>>> DownloadFileByCn(
-        [FromBody] DownloadFileRequest request, CancellationToken cancellationToken)
+        [FromBody] DownloadFileByCnRequest request, CancellationToken cancellationToken)
     {
         try
         {

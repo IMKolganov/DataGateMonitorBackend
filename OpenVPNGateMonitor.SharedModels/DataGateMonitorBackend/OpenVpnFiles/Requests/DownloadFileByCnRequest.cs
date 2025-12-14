@@ -4,9 +4,9 @@ namespace OpenVPNGateMonitor.SharedModels.DataGateMonitorBackend.OpenVpnFiles.Re
 
 public class DownloadFileByCnRequest
 {
-    [Required(ErrorMessage = "issuedOvpnFileId is required.")]
-    [Range(1, int.MaxValue, ErrorMessage = "issuedOvpnFileId must be greater than 0.")]
-    public int IssuedOvpnFileId { get; set; }
+    [Required(ErrorMessage = "vpnServerId is required.")]
+    [Range(1, int.MaxValue, ErrorMessage = "vpnServerId must be greater than 0.")]
+    public int VpnServerId { get; set; }
 
     [Required(ErrorMessage = "commonName is required.")]
     public string CommonName { get; set; } = string.Empty;
