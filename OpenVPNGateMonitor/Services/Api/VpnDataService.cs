@@ -25,7 +25,7 @@ public class VpnDataService(
             if (server.IsDefault)
             {
                 // Unset previous default in one SQL statement (no entity loading)
-                await openVpnServerCommandService.UpdateWhereAsync(
+                await openVpnServerCommandService.UpdateWhere(
                     s => s.IsDefault,
                     u => u.SetProperty(x => x.IsDefault, false)
                         .SetProperty(x => x.LastUpdate, now),
@@ -35,7 +35,7 @@ public class VpnDataService(
             // Insert server (need Id immediately for further operations)
             server.CreateDate = now;
             server.LastUpdate = now;
-            await openVpnServerCommandService.AddAsync(server, saveChanges: true, ct);
+            await openVpnServerCommandService.Add(server, saveChanges: true, ct);
             
             await SyncQuotaPlanLinksAsync(server.Id, quotaPlanIds, ct);
 
@@ -44,7 +44,7 @@ public class VpnDataService(
                 logger.LogWarning("Failed to add default settings for OpenVPN server.");
 
             // Return a fresh snapshot
-            return await openVpnServerQueryService.GetByIdAsync(server.Id, ct)
+            return await openVpnServerQueryService.GetById(server.Id, ct)
                    ?? throw new InvalidOperationException("OpenVPN server not found");
         }, ct);
 
@@ -57,7 +57,7 @@ public class VpnDataService(
             if (server.IsDefault)
             {
                 // Unset all other defaults in a single SQL statement
-                await openVpnServerCommandService.UpdateWhereAsync(
+                await openVpnServerCommandService.UpdateWhere(
                     s => s.IsDefault && s.Id != server.Id,
                     u => u.SetProperty(x => x.IsDefault, false)
                         .SetProperty(x => x.LastUpdate, now),
@@ -66,7 +66,7 @@ public class VpnDataService(
 
             // Update this server
             server.LastUpdate = now;
-            await openVpnServerCommandService.UpdateAsync(server, saveChanges: true, ct);
+            await openVpnServerCommandService.Update(server, saveChanges: true, ct);
             
             await SyncQuotaPlanLinksAsync(server.Id, quotaPlanIds, ct);
 
@@ -75,16 +75,16 @@ public class VpnDataService(
                 logger.LogWarning("Failed to add/update default settings for OpenVPN server.");
 
             // Return fresh snapshot
-            return await openVpnServerQueryService.GetByIdAsync(server.Id, ct)
+            return await openVpnServerQueryService.GetById(server.Id, ct)
                    ?? throw new InvalidOperationException("OpenVPN server not found");
         }, ct);
 
 
     public async Task<bool> DeleteOpenVpnServer(int vpnServerId, CancellationToken ct)
     {
-        var openVpnServer = await openVpnServerQueryService.GetByIdAsync(vpnServerId, ct)
+        var openVpnServer = await openVpnServerQueryService.GetById(vpnServerId, ct)
                             ?? throw new InvalidOperationException("OpenVpnServer not found");
-        await openVpnServerCommandService.DeleteAsync(openVpnServer, true, ct);
+        await openVpnServerCommandService.Delete(openVpnServer, true, ct);
         return true;
     }
 
@@ -94,7 +94,7 @@ public class VpnDataService(
 
         if (!await openVpnServerOvpnFileConfigQueryService.AnyByVpnServerId(openVpnServer.Id, ct))
         {
-            await openVpnServerOvpnFileConfigCommandService.AddAsync(new OpenVpnServerOvpnFileConfig
+            await openVpnServerOvpnFileConfigCommandService.Add(new OpenVpnServerOvpnFileConfig
             {
                 VpnServerId = openVpnServer.Id,
                 VpnServerIp = await externalIpAddressService.GetRemoteIpAddress(ct),
@@ -111,7 +111,7 @@ public class VpnDataService(
         CancellationToken ct)
     {
         // Remove old links
-        await quotaPlanAllowedServerCommandService.DeleteWhereAsync(
+        await quotaPlanAllowedServerCommandService.DeleteWhere(
             x => x.VpnServerId == vpnServerId,
             ct);
 
@@ -128,6 +128,6 @@ public class VpnDataService(
             })
             .ToList();
 
-        await quotaPlanAllowedServerCommandService.AddRangeAsync(links, saveChanges: true, ct);
+        await quotaPlanAllowedServerCommandService.AddRange(links, saveChanges: true, ct);
     }
 }

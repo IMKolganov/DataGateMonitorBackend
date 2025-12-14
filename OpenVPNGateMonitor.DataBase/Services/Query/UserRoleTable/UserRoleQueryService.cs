@@ -7,23 +7,23 @@ namespace OpenVPNGateMonitor.DataBase.Services.Query.UserRoleTable;
 public class UserRoleQueryService(
     IQueryService<UserRole, int> q) : IUserRoleQueryService
 {
-    public Task<List<UserRole>> GetAllAsync(CancellationToken ct)
-        => q.GetAllAsync(ct: ct);
+    public Task<List<UserRole>> GetAll(CancellationToken ct)
+        => q.GetAll(ct: ct);
 
-    public Task<UserRole?> GetByIdAsync(int id, CancellationToken ct)
-        => q.FindByIdAsync(id, ct: ct);
+    public Task<UserRole?> GetById(int id, CancellationToken ct)
+        => q.FindById(id, ct: ct);
 
-    public Task<UserRole?> GetByUserIdAsync(int userId, CancellationToken ct)
-        => q.FirstOrDefaultAsync(x=> x.UserId == userId, ct: ct);
+    public Task<UserRole?> GetByUserId(int userId, CancellationToken ct)
+        => q.FirstOrDefault(x=> x.UserId == userId, ct: ct);
 
-    public Task<UserRole?> GetByIdAndUserIdAsync(int id, int userId, CancellationToken ct)
-        => q.FirstOrDefaultAsync(x=> x.Id == id && x.UserId == userId, ct: ct);
+    public Task<UserRole?> GetByIdAndUserId(int id, int userId, CancellationToken ct)
+        => q.FirstOrDefault(x=> x.Id == id && x.UserId == userId, ct: ct);
 
-    public Task<IPagedResult<UserRole>> GetPageAsync(int page, int pageSize, CancellationToken ct)
-        => q.PageAsync(page, pageSize, ct: ct);
+    public Task<IPagedResult<UserRole>> GetPage(int page, int pageSize, CancellationToken ct)
+        => q.Page(page, pageSize, ct: ct);
 
-    public Task<List<UserRole>> SearchAsync(
+    public Task<List<UserRole>> Search(
         Expression<Func<UserRole, bool>> predicate,
         CancellationToken ct)
-        => q.WhereAsync(predicate, ct: ct);
+        => q.Where(predicate, ct: ct);
 }

@@ -6,18 +6,19 @@ namespace OpenVPNGateMonitor.DataBase.Services.Query.TelegramUserLanguagePrefere
 
 public class TelegramUserLanguagePreferenceQueryService(IQueryService<TelegramUserLanguagePreference, int> q) : ITelegramUserLanguagePreferenceQueryService
 {
-    public Task<List<TelegramUserLanguagePreference>> GetAllAsync(CancellationToken ct)
-        => q.GetAllAsync(ct: ct);
+    public Task<List<TelegramUserLanguagePreference>> GetAll(CancellationToken ct)
+        => q.GetAll(ct: ct);
 
-    public Task<TelegramUserLanguagePreference?> GetByIdAsync(int id, CancellationToken ct)
-        => q.FindByIdAsync(id, ct: ct);
+    public Task<TelegramUserLanguagePreference?> GetById(int id, CancellationToken ct)
+        => q.FindById(id, ct: ct);
 
     public Task<TelegramUserLanguagePreference?> GetByTelegramId(long telegramId, CancellationToken ct)
-        => q.Query().FirstOrDefaultAsync(x => x.TelegramId == telegramId, ct);
+        => q.Query()
+            .FirstOrDefaultAsync(x => x.TelegramId == telegramId, ct);
 
     public Task<bool> AnyByTelegramId(long telegramId, CancellationToken ct)
-        => q.AnyAsync(x => x.TelegramId == telegramId, ct: ct);
+        => q.Any(x => x.TelegramId == telegramId, ct: ct);
 
-    public Task<IPagedResult<TelegramUserLanguagePreference>> GetPageAsync(int page, int pageSize, CancellationToken ct)
-        => q.PageAsync(page, pageSize, ct: ct);
+    public Task<IPagedResult<TelegramUserLanguagePreference>> GetPage(int page, int pageSize, CancellationToken ct)
+        => q.Page(page, pageSize, ct: ct);
 }

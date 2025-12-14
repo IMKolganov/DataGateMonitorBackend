@@ -48,6 +48,6 @@ public class VpnEventLogService(
             Message         = e.Message
         };
 
-        await cmd.AddAsync(row, saveChanges: true, ct);
+        await cmd.Add(row, saveChanges: true, ct);
     }
 }

@@ -6,25 +6,28 @@ namespace OpenVPNGateMonitor.DataBase.Services.Query.UserIdentityLinkTable;
 
 public class UserIdentityLinkQueryService(IQueryService<UserIdentityLink, int> q) : IUserIdentityLinkQueryService
 {
-    public Task<List<UserIdentityLink>> GetAllAsync(CancellationToken ct)
-        => q.GetAllAsync(ct: ct);
+    public Task<List<UserIdentityLink>> GetAll(CancellationToken ct)
+        => q.GetAll(ct: ct);
 
-    public Task<UserIdentityLink?> GetByIdAsync(int id, CancellationToken ct)
-        => q.FindByIdAsync(id, ct: ct);
+    public Task<UserIdentityLink?> GetById(int id, CancellationToken ct)
+        => q.FindById(id, ct: ct);
 
-    public Task<UserIdentityLink?> GetByProviderAndExternalIdAsync(string provider, string externalId, 
+    public Task<UserIdentityLink?> GetByProviderAndExternalId(string provider, string externalId, 
         CancellationToken ct)
-        => q.Query().FirstOrDefaultAsync(x => x.Provider == provider && x.ExternalId == externalId, ct);
+        => q.Query()
+            .FirstOrDefaultAsync(x => x.Provider == provider && x.ExternalId == externalId, ct);
     
-    public Task<UserIdentityLink?> GetByExternalIdAsync(string externalId, CancellationToken ct)
-        => q.Query().FirstOrDefaultAsync(x => x.ExternalId == externalId, ct);
+    public Task<UserIdentityLink?> GetByExternalId(string externalId, CancellationToken ct)
+        => q.Query()
+            .FirstOrDefaultAsync(x => x.ExternalId == externalId, ct);
 
-    public Task<UserIdentityLink?> GetByUserIdAsync(int userId, CancellationToken ct)
-        => q.Query().FirstOrDefaultAsync(x => x.UserId == userId, ct);
+    public Task<UserIdentityLink?> GetByUserId(int userId, CancellationToken ct)
+        => q.Query()
+            .FirstOrDefaultAsync(x => x.UserId == userId, ct);
 
-    public Task<bool> AnyByUserIdAsync(int userId, CancellationToken ct)
-        => q.AnyAsync(x => x.UserId == userId, ct: ct);
+    public Task<bool> AnyByUserId(int userId, CancellationToken ct)
+        => q.Any(x => x.UserId == userId, ct: ct);
 
-    public Task<IPagedResult<UserIdentityLink>> GetPageAsync(int page, int pageSize, CancellationToken ct)
-        => q.PageAsync(page, pageSize, ct: ct);
+    public Task<IPagedResult<UserIdentityLink>> GetPage(int page, int pageSize, CancellationToken ct)
+        => q.Page(page, pageSize, ct: ct);
 }

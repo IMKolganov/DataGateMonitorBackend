@@ -20,7 +20,7 @@ public class NotificationController(INotificationService notificationService) : 
         [FromBody] NotificationRequest request,
         CancellationToken cancellationToken)
     {
-        var result = await notificationService.NotifyAdminsAsync(request, new[] { "web" }, cancellationToken);
+        var result = await notificationService.NotifyAdmins(request, new[] { "web" }, cancellationToken);
         return Ok(ApiResponse<int>.SuccessResponse(result));
     }
 
@@ -34,7 +34,7 @@ public class NotificationController(INotificationService notificationService) : 
         [FromQuery] string channel,
         CancellationToken cancellationToken)
     {
-        await notificationService.MarkDeliveredAsync(notificationId, adminUserId, channel, cancellationToken);
+        await notificationService.MarkDelivered(notificationId, adminUserId, channel, cancellationToken);
         return Ok(ApiResponse<bool>.SuccessResponse(true));
     }
 
@@ -47,7 +47,7 @@ public class NotificationController(INotificationService notificationService) : 
         [FromQuery] int adminUserId,
         CancellationToken cancellationToken)
     {
-        await notificationService.MarkReadAsync(notificationId, adminUserId, cancellationToken);
+        await notificationService.MarkRead(notificationId, adminUserId, cancellationToken);
         return Ok(ApiResponse<bool>.SuccessResponse(true));
     }
 }

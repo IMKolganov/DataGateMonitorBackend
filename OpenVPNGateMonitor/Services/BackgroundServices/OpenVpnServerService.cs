@@ -45,7 +45,7 @@ public class OpenVpnServerService(
                     GenerateSessionId(c.CommonName, c.RemoteIp, c.ConnectedSince)));
 
             // Mark not-present sessions as disconnected
-            await openVpnServerClientCommandService.UpdateWhereAsync(
+            await openVpnServerClientCommandService.UpdateWhere(
                 x => x.VpnServerId == openVpnServer.Id
                      && x.IsConnected
                      && !currentSessionIds.Contains(x.SessionId),
@@ -63,7 +63,7 @@ public class OpenVpnServerService(
                     m.CommonName, openVpnServer.Id, ct) ?? string.Empty;
 
                 // ---- Upsert main client row ----
-                var rows = await openVpnServerClientCommandService.UpdateWhereAsync(
+                var rows = await openVpnServerClientCommandService.UpdateWhere(
                     x => x.VpnServerId == openVpnServer.Id && x.SessionId == sessionId,
                     s => s
                         .SetProperty(c => c.CommonName, m.CommonName)
@@ -95,7 +95,7 @@ public class OpenVpnServerService(
                     newClient.LastUpdate = nowUtc;
                     newClient.CreateDate = nowUtc;
 
-                    await openVpnServerClientCommandService.AddAsync(newClient, saveChanges: false, ct);
+                    await openVpnServerClientCommandService.Add(newClient, saveChanges: false, ct);
                     logger.LogInformation("VpnServerId: {Id}. Added new client session {SessionId}.",
                         openVpnServer.Id, sessionId);
                 }
@@ -108,7 +108,7 @@ public class OpenVpnServerService(
                 var measuredAt = DateTimeOffset.UtcNow; // exact timestamp of this poll
 
                 // Conditional UPDATE to avoid counter regression; then INSERT if not found
-                var tRows = await openVpnClientTrafficCommandService.UpdateWhereAsync(
+                var tRows = await openVpnClientTrafficCommandService.UpdateWhere(
                     x => x.VpnServerId == openVpnServer.Id
                          && x.SessionId == sessionId
                          && x.MeasuredAt == measuredAt
@@ -132,13 +132,13 @@ public class OpenVpnServerService(
                         MeasuredAt = measuredAt // saved as UTC in setter
                     };
 
-                    await openVpnClientTrafficCommandService.AddAsync(sample, saveChanges: false, ct);
+                    await openVpnClientTrafficCommandService.Add(sample, saveChanges: false, ct);
                 }
             }
 
             // Persist both sets (clients + traffic)
-            await openVpnServerClientCommandService.SaveChangesAsync(ct);
-            await openVpnClientTrafficCommandService.SaveChangesAsync(ct);
+            await openVpnServerClientCommandService.SaveChanges(ct);
+            await openVpnClientTrafficCommandService.SaveChanges(ct);
 
             logger.LogInformation("VpnServerId: {Id}. SaveConnectedClientsAsync completed successfully.",
                 openVpnServer.Id);
@@ -194,7 +194,7 @@ public class OpenVpnServerService(
         );
 
         var existingStatusLog =
-            await openVpnServerStatusLogQueryService.GetBySessionIdAndVpnServerIdAsync(sessionId, openVpnServer.Id, ct);
+            await openVpnServerStatusLogQueryService.GetBySessionIdAndVpnServerId(sessionId, openVpnServer.Id, ct);
 
         if (existingStatusLog != null)
         {
@@ -207,7 +207,7 @@ public class OpenVpnServerService(
             existingStatusLog.Version = serverInfo.Version;
             existingStatusLog.LastUpdate = DateTimeOffset.UtcNow;
 
-            await openVpnServerStatusLogCommandService.UpdateAsync(existingStatusLog, true, ct);
+            await openVpnServerStatusLogCommandService.Update(existingStatusLog, true, ct);
             logger.LogInformation($"VpnServerId: {openVpnServer.Id}. Updated existing status log {sessionId}.");
         }
         else
@@ -226,7 +226,7 @@ public class OpenVpnServerService(
                 CreateDate = DateTimeOffset.UtcNow
             };
 
-            await openVpnServerStatusLogCommandService.AddAsync(newStatusLog, true, ct);
+            await openVpnServerStatusLogCommandService.Add(newStatusLog, true, ct);
             logger.LogInformation($"VpnServerId: {openVpnServer.Id}. Created new status log {{SessionId}}.", sessionId);
         }
 

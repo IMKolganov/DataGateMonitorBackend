@@ -15,5 +15,5 @@ public interface INotifier
     /// <param name="notification">Notification entity to send.</param>
     /// <param name="adminUserId">Recipient admin user ID.</param>
     /// <param name="ct">Cancellation token.</param>
-    Task SendAsync(Notification notification, int adminUserId, CancellationToken ct);
+    Task Send(Notification notification, int adminUserId, CancellationToken ct);
 }

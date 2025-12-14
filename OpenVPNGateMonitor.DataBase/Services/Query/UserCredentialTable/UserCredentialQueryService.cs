@@ -7,17 +7,17 @@ namespace OpenVPNGateMonitor.DataBase.Services.Query.UserCredentialTable;
 public class UserCredentialQueryService(IQueryService<UserCredential, int> q)
     : IUserCredentialQueryService
 {
-    public Task<List<UserCredential>> GetAllAsync(CancellationToken ct)
-        => q.GetAllAsync(ct: ct);
+    public Task<List<UserCredential>> GetAll(CancellationToken ct)
+        => q.GetAll(ct: ct);
 
-    public Task<UserCredential?> GetByIdAsync(int id, CancellationToken ct)
-        => q.FindByIdAsync(id, ct: ct);
+    public Task<UserCredential?> GetById(int id, CancellationToken ct)
+        => q.FindById(id, ct: ct);
 
     public Task<UserCredential?> GetByNormalizedLogin(string normalizedLogin, CancellationToken ct)
         => q.Query()
             .FirstOrDefaultAsync(x => x.NormalizedLogin == normalizedLogin, ct);
 
-    public Task<UserCredential?> GetByLoginAsync(string login, CancellationToken ct)
+    public Task<UserCredential?> GetByLogin(string login, CancellationToken ct)
     {
         var normalized = login.ToUpperInvariant();
         return q.Query()
@@ -25,17 +25,18 @@ public class UserCredentialQueryService(IQueryService<UserCredential, int> q)
     }
 
     public Task<UserCredential?> GetByUserId(int userId, CancellationToken ct)
-        => q.Query().FirstOrDefaultAsync(x => x.UserId == userId, ct);
+        => q.Query()
+            .FirstOrDefaultAsync(x => x.UserId == userId, ct);
 
     public Task<bool> AnyByUserId(int userId, CancellationToken ct)
-        => q.AnyAsync(x => x.UserId == userId, ct: ct);
+        => q.Any(x => x.UserId == userId, ct: ct);
 
-    public Task<bool> LoginExistsAsync(string login, CancellationToken ct)
+    public Task<bool> LoginExists(string login, CancellationToken ct)
     {
         var normalized = login.ToUpperInvariant();
-        return q.AnyAsync(x => x.NormalizedLogin == normalized, ct: ct);
+        return q.Any(x => x.NormalizedLogin == normalized, ct: ct);
     }
 
-    public Task<IPagedResult<UserCredential>> GetPageAsync(int page, int pageSize, CancellationToken ct)
-        => q.PageAsync(page, pageSize, ct: ct);
+    public Task<IPagedResult<UserCredential>> GetPage(int page, int pageSize, CancellationToken ct)
+        => q.Page(page, pageSize, ct: ct);
 }

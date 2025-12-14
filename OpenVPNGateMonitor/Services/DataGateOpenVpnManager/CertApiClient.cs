@@ -45,7 +45,7 @@ public class CertApiClient(
 
     private async Task<HttpClient> GetClientForServerAsync(int vpnServerId, CancellationToken cancellationToken)
     {
-        var server = await openVpnServerQueryService.GetByIdAsync(vpnServerId, cancellationToken) 
+        var server = await openVpnServerQueryService.GetById(vpnServerId, cancellationToken) 
             ?? throw new InvalidOperationException("OpenVPN server not found");
         var client = httpClientFactory.CreateClient();
         client.BaseAddress = new Uri(server.ApiUrl);

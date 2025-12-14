@@ -6,10 +6,10 @@ namespace OpenVPNGateMonitor.DataBase.Services.Query.RoleTable;
 
 public interface IRoleQueryService
 {
-    Task<List<Role>> GetAllAsync(CancellationToken ct);
-    Task<Role?> GetByIdAsync(int id, CancellationToken ct);
-    Task<IPagedResult<Role>> GetPageAsync(int page, int pageSize, CancellationToken ct);
-    public Task<List<Role>> SearchAsync(
+    Task<List<Role>> GetAll(CancellationToken ct);
+    Task<Role?> GetById(int id, CancellationToken ct);
+    Task<IPagedResult<Role>> GetPage(int page, int pageSize, CancellationToken ct);
+    public Task<List<Role>> Search(
         Expression<Func<Role, bool>> predicate,
         CancellationToken ct);
 }

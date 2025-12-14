@@ -13,7 +13,7 @@ public class TelegramNotifier(
     private readonly ITelegramUserService _telegramUserService = telegramUserService;
     private readonly ILogger<TelegramNotifier> _logger = logger;
 
-    public Task SendAsync(Notification notification, int adminUserId, CancellationToken ct)
+    public Task Send(Notification notification, int adminUserId, CancellationToken ct)
     {
         throw new NotImplementedException();
         // var user = await _telegramUserService.GetUserByAdminIdAsync(adminUserId, ct);

@@ -49,7 +49,7 @@ public sealed class UserRegistrationService(
 
         if (!string.IsNullOrEmpty(email))
         {
-            var emailTaken = await userQueryService.AnyByEmailAsync(email, ct);
+            var emailTaken = await userQueryService.AnyByEmail(email, ct);
 
             if (emailTaken)
                 throw new InvalidOperationException("Email is already in use.");
@@ -73,7 +73,7 @@ public sealed class UserRegistrationService(
             LockoutUntilUtc = null
         };
 
-        await userCredentialCommandService.AddAsync(credential, saveChanges: true, ct);
+        await userCredentialCommandService.Add(credential, saveChanges: true, ct);
 
         return new RegisterUserResponse
         {

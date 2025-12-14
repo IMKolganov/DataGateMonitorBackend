@@ -6,13 +6,13 @@ namespace OpenVPNGateMonitor.DataBase.Services.Query.UserTable;
 
 public interface IUserQueryService
 {
-    Task<List<User>> GetAllAsync(CancellationToken ct);
-    Task<User?> GetByEmailAsync(string email, CancellationToken ct);
-    Task<bool> AnyByEmailAsync(string email, CancellationToken ct);
-    Task<User?> GetByIdAsync(int id, CancellationToken ct);
-    Task<User?> GetByExternalIdAsync(string externalId, CancellationToken ct);
-    Task<IPagedResult<User>> GetPageAsync(int page, int pageSize, CancellationToken ct);
-    public Task<List<User>> SearchAsync(
+    Task<List<User>> GetAll(CancellationToken ct);
+    Task<User?> GetByEmail(string email, CancellationToken ct);
+    Task<bool> AnyByEmail(string email, CancellationToken ct);
+    Task<User?> GetById(int id, CancellationToken ct);
+    Task<User?> GetByExternalId(string externalId, CancellationToken ct);
+    Task<IPagedResult<User>> GetPage(int page, int pageSize, CancellationToken ct);
+    public Task<List<User>> Search(
         Expression<Func<User, bool>> predicate,
         CancellationToken ct);
 }

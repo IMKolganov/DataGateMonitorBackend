@@ -96,7 +96,7 @@ public class OpenVpnMicroserviceClientFactoryTests
         };
 
         serverQueryMock
-            .Setup(q => q.GetByIdAsync(42, It.IsAny<CancellationToken>()))
+            .Setup(q => q.GetById(42, It.IsAny<CancellationToken>()))
             .ReturnsAsync(server);
 
         var client = await factory.TryCreateByServerIdAsync(42, CancellationToken.None);
@@ -107,7 +107,7 @@ public class OpenVpnMicroserviceClientFactoryTests
         var client2 = await factory.TryCreateByServerIdAsync(42, CancellationToken.None);
         Assert.Same(client, client2);
 
-        serverQueryMock.Verify(q => q.GetByIdAsync(42, It.IsAny<CancellationToken>()), Times.Exactly(2));
+        serverQueryMock.Verify(q => q.GetById(42, It.IsAny<CancellationToken>()), Times.Exactly(2));
     }
 
     [Fact]
@@ -116,7 +116,7 @@ public class OpenVpnMicroserviceClientFactoryTests
         var (factory, _, serverQueryMock) = CreateFactory();
 
         serverQueryMock
-            .Setup(q => q.GetByIdAsync(99, It.IsAny<CancellationToken>()))
+            .Setup(q => q.GetById(99, It.IsAny<CancellationToken>()))
             .ReturnsAsync((OpenVpnServer?)null);
 
         var ex = await Assert.ThrowsAsync<Exception>(

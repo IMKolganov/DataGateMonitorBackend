@@ -32,7 +32,7 @@ public class GlobalExceptionMiddleware(
         {
             using var scope = serviceProvider.CreateScope();
             var appNotifications = scope.ServiceProvider.GetRequiredService<IAppNotificationFacade>();
-            await appNotifications.SystemExceptionAsync(exception, CancellationToken.None);
+            await appNotifications.SystemException(exception, CancellationToken.None);
         }
         catch (Exception sendEx)
         {

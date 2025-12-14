@@ -5,16 +5,16 @@ namespace OpenVPNGateMonitor.DataBase.Services.Query.IncomingMessageLogTable;
 
 public class IncomingMessageLogQueryService(IQueryService<IncomingMessageLog, int> q) : IIncomingMessageLogQueryService
 {
-    public Task<List<IncomingMessageLog>> GetAllAsync(CancellationToken ct)
-        => q.GetAllAsync(ct: ct);
+    public Task<List<IncomingMessageLog>> GetAll(CancellationToken ct)
+        => q.GetAll(ct: ct);
 
-    public Task<IncomingMessageLog?> GetByIdAsync(int id, CancellationToken ct)
-        => q.FindByIdAsync(id, ct: ct);
+    public Task<IncomingMessageLog?> GetById(int id, CancellationToken ct)
+        => q.FindById(id, ct: ct);
 
-    public Task<IPagedResult<IncomingMessageLog>> GetPageByTelegramIdAsync(long telegramId, int page, int pageSize, 
+    public Task<IPagedResult<IncomingMessageLog>> GetPageByTelegramId(long telegramId, int page, int pageSize, 
         CancellationToken ct)
     {
-        return q.PageAsync(
+        return q.Page(
             page: page,
             pageSize: pageSize,
             predicate: x => x.TelegramId == telegramId,
@@ -23,8 +23,8 @@ public class IncomingMessageLogQueryService(IQueryService<IncomingMessageLog, in
             ct: ct);
     }
 
-    public Task<IPagedResult<IncomingMessageLog>> GetPageAsync(int page, int pageSize, CancellationToken ct)
-        => q.PageAsync(
+    public Task<IPagedResult<IncomingMessageLog>> GetPage(int page, int pageSize, CancellationToken ct)
+        => q.Page(
             page,
             pageSize,
             null,

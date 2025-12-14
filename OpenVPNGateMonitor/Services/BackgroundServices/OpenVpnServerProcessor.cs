@@ -28,7 +28,7 @@ public class OpenVpnServerProcessor(
 
             // Set IsOnline = true (server-side update, no entity tracking)
             var now = DateTimeOffset.UtcNow;
-            await serverCmd.UpdateWhereAsync(
+            await serverCmd.UpdateWhere(
                 s => s.Id == openVpnServer.Id,
                 u => u.SetProperty(x => x.IsOnline, true)
                     .SetProperty(x => x.LastUpdate, now),
@@ -42,7 +42,7 @@ public class OpenVpnServerProcessor(
         {
             // Mark server offline on failure
             var now = DateTimeOffset.UtcNow;
-            await serverCmd.UpdateWhereAsync(
+            await serverCmd.UpdateWhere(
                 s => s.Id == openVpnServer.Id,
                 u => u.SetProperty(x => x.IsOnline, false)
                     .SetProperty(x => x.LastUpdate, now),

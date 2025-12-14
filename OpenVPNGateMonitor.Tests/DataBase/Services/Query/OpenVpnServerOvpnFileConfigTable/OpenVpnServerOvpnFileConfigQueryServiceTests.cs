@@ -44,16 +44,16 @@ public class OpenVpnServerOvpnFileConfigQueryServiceTests
     {
         var data = CreateSample();
         var (q, ctx) = CreateEfBackedQuery(data);
-        q.Setup(x => x.GetAllAsync(true, It.IsAny<CancellationToken>()))
+        q.Setup(x => x.GetAll(true, It.IsAny<CancellationToken>()))
          .ReturnsAsync(data)
          .Verifiable();
 
         var sut = new OpenVpnServerOvpnFileConfigQueryService(q.Object);
-        var result = await sut.GetAllAsync(CancellationToken.None);
+        var result = await sut.GetAll(CancellationToken.None);
 
         Assert.Equal(data.Count, result.Count);
         Assert.True(result.SequenceEqual(data));
-        q.Verify(x => x.GetAllAsync(true, It.IsAny<CancellationToken>()), Times.Once);
+        q.Verify(x => x.GetAll(true, It.IsAny<CancellationToken>()), Times.Once);
         await ctx.DisposeAsync();
     }
 
@@ -62,15 +62,15 @@ public class OpenVpnServerOvpnFileConfigQueryServiceTests
     {
         var target = new OpenVpnServerOvpnFileConfig { Id = 42, VpnServerId = 777, VpnServerIp = "10.8.0.1" };
         var (q, ctx) = CreateEfBackedQuery(new[] { target });
-        q.Setup(x => x.FindByIdAsync(42, true, It.IsAny<CancellationToken>(), It.IsAny<Expression<Func<OpenVpnServerOvpnFileConfig, object>>[]>()))
+        q.Setup(x => x.FindById(42, true, It.IsAny<CancellationToken>(), It.IsAny<Expression<Func<OpenVpnServerOvpnFileConfig, object>>[]>()))
          .ReturnsAsync(target)
          .Verifiable();
 
         var sut = new OpenVpnServerOvpnFileConfigQueryService(q.Object);
-        var result = await sut.GetByIdAsync(42, CancellationToken.None);
+        var result = await sut.GetById(42, CancellationToken.None);
 
         Assert.Same(target, result);
-        q.Verify(x => x.FindByIdAsync(42, true, It.IsAny<CancellationToken>(), It.IsAny<Expression<Func<OpenVpnServerOvpnFileConfig, object>>[]>()), Times.Once);
+        q.Verify(x => x.FindById(42, true, It.IsAny<CancellationToken>(), It.IsAny<Expression<Func<OpenVpnServerOvpnFileConfig, object>>[]>()), Times.Once);
         await ctx.DisposeAsync();
     }
 
@@ -81,7 +81,7 @@ public class OpenVpnServerOvpnFileConfigQueryServiceTests
         var (q, ctx) = CreateEfBackedQuery(data);
         var sut = new OpenVpnServerOvpnFileConfigQueryService(q.Object);
 
-        var result = await sut.GetByVpnServerIdIdAsync(22, CancellationToken.None);
+        var result = await sut.GetByVpnServerIdId(22, CancellationToken.None);
 
         Assert.NotNull(result);
         Assert.Equal(22, result!.VpnServerId);
@@ -92,7 +92,7 @@ public class OpenVpnServerOvpnFileConfigQueryServiceTests
     public async Task AnyByVpnServerId_Delegates_To_AnyAsync()
     {
         var (q, ctx) = CreateEfBackedQuery(Array.Empty<OpenVpnServerOvpnFileConfig>());
-        q.Setup(x => x.AnyAsync(It.IsAny<Expression<Func<OpenVpnServerOvpnFileConfig, bool>>>(), It.IsAny<CancellationToken>()))
+        q.Setup(x => x.Any(It.IsAny<Expression<Func<OpenVpnServerOvpnFileConfig, bool>>>(), It.IsAny<CancellationToken>()))
          .ReturnsAsync(true)
          .Verifiable();
 
@@ -100,7 +100,7 @@ public class OpenVpnServerOvpnFileConfigQueryServiceTests
         var found = await sut.AnyByVpnServerId(999, CancellationToken.None);
 
         Assert.True(found);
-        q.Verify(x => x.AnyAsync(It.IsAny<Expression<Func<OpenVpnServerOvpnFileConfig, bool>>>(), It.IsAny<CancellationToken>()), Times.Once);
+        q.Verify(x => x.Any(It.IsAny<Expression<Func<OpenVpnServerOvpnFileConfig, bool>>>(), It.IsAny<CancellationToken>()), Times.Once);
         await ctx.DisposeAsync();
     }
 
@@ -118,15 +118,15 @@ public class OpenVpnServerOvpnFileConfigQueryServiceTests
             Items = data.Take(2).ToList()
         };
 
-        q.Setup(x => x.PageAsync(1, 2, null, null, true, It.IsAny<CancellationToken>(), It.IsAny<Expression<Func<OpenVpnServerOvpnFileConfig, object>>[]>()))
+        q.Setup(x => x.Page(1, 2, null, null, true, It.IsAny<CancellationToken>(), It.IsAny<Expression<Func<OpenVpnServerOvpnFileConfig, object>>[]>()))
          .ReturnsAsync(paged as IPagedResult<OpenVpnServerOvpnFileConfig>)
          .Verifiable();
 
         var sut = new OpenVpnServerOvpnFileConfigQueryService(q.Object);
-        var result = await sut.GetPageAsync(1, 2, CancellationToken.None);
+        var result = await sut.GetPage(1, 2, CancellationToken.None);
 
         Assert.Same(paged, result);
-        q.Verify(x => x.PageAsync(1, 2, null, null, true, It.IsAny<CancellationToken>(), It.IsAny<Expression<Func<OpenVpnServerOvpnFileConfig, object>>[]>()), Times.Once);
+        q.Verify(x => x.Page(1, 2, null, null, true, It.IsAny<CancellationToken>(), It.IsAny<Expression<Func<OpenVpnServerOvpnFileConfig, object>>[]>()), Times.Once);
         await ctx.DisposeAsync();
     }
 }
