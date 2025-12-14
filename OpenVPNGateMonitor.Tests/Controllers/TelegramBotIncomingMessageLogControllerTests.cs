@@ -82,7 +82,7 @@ public class TelegramBotIncomingMessageLogControllerTests
         };
 
         _query
-            .Setup(q => q.GetPageAsync(2, 5, It.IsAny<CancellationToken>()))
+            .Setup(q => q.GetPage(2, 5, It.IsAny<CancellationToken>()))
             .ReturnsAsync(paged);
 
         var request = new GetAllMessagesRequest { Page = 2, PageSize = 5 };
@@ -98,7 +98,7 @@ public class TelegramBotIncomingMessageLogControllerTests
         Assert.Equal(12, response.Data!.Messages.TotalCount);
         Assert.Single(response.Data!.Messages.Items);
 
-        _query.Verify(q => q.GetPageAsync(2, 5, It.IsAny<CancellationToken>()), Times.Once);
+        _query.Verify(q => q.GetPage(2, 5, It.IsAny<CancellationToken>()), Times.Once);
     }
 
     [Fact]
@@ -123,7 +123,7 @@ public class TelegramBotIncomingMessageLogControllerTests
         };
 
         _query
-            .Setup(q => q.GetPageByTelegramIdAsync(777, 1, 10, It.IsAny<CancellationToken>()))
+            .Setup(q => q.GetPageByTelegramId(777, 1, 10, It.IsAny<CancellationToken>()))
             .ReturnsAsync(paged);
 
         var req = new GetAllByTelegramIdMessagesRequest
@@ -144,7 +144,7 @@ public class TelegramBotIncomingMessageLogControllerTests
         Assert.Single(response.Data!.Messages.Items);
         Assert.Equal(777, response.Data!.Messages.Items[0].TelegramId);
 
-        _query.Verify(q => q.GetPageByTelegramIdAsync(777, 1, 10, It.IsAny<CancellationToken>()), Times.Once);
+        _query.Verify(q => q.GetPageByTelegramId(777, 1, 10, It.IsAny<CancellationToken>()), Times.Once);
     }
 
     [Fact]

@@ -26,7 +26,7 @@ public sealed class OpenVpnEventBackgroundService(
         {
             using var scope = scopeFactory.CreateScope();
             var openVpnOverviewQuery = scope.ServiceProvider.GetRequiredService<IOpenVpnServerQueryService>();
-            var servers = await openVpnOverviewQuery.GetAllAsync(cancellationToken);
+            var servers = await openVpnOverviewQuery.GetAll(cancellationToken);
             servers = servers.Where(x=> !x.IsDisable).ToList();
 
             foreach (var server in servers)

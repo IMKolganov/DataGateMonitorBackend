@@ -21,9 +21,9 @@ public class OvpnFileApiClient(
     private const string EndpointOvpnFilesDownload = "api/ovpn-files/download";
 
     
-    private async Task<HttpClient> GetClientForServerAsync(int serverId, CancellationToken cancellationToken)
+    private async Task<HttpClient> GetClientForServer(int serverId, CancellationToken cancellationToken)
     {
-        var server = await openVpnServerQueryService.GetByIdAsync(serverId, cancellationToken);
+        var server = await openVpnServerQueryService.GetById(serverId, cancellationToken);
         var client = httpClientFactory.CreateClient();
         if (server != null)
         {
@@ -40,12 +40,12 @@ public class OvpnFileApiClient(
         return client;
     }
 
-    public async Task<OvpnFileMetadata> AddOvpnFileAsync(int vpnServerId, GenerateOvpnFileRequest request,
+    public async Task<OvpnFileMetadata> AddOvpnFile(int vpnServerId, GenerateOvpnFileRequest request,
         CancellationToken cancellationToken)
     {
         try
         {
-            using var client = await GetClientForServerAsync(vpnServerId, cancellationToken);
+            using var client = await GetClientForServer(vpnServerId, cancellationToken);
             var jwt = tokenService.GenerateToken("vpn-cert-issuer", "cert-create",
                 "backend", "DataGateOpenVpnManager");
             client.DefaultRequestHeaders.Authorization = new AuthenticationHeaderValue("Bearer", jwt);
@@ -103,12 +103,12 @@ public class OvpnFileApiClient(
         }
     }
 
-    public async Task<bool> RevokeOvpnFileAsync(int vpnServerId, RevokeOvpnFileRequest request,
+    public async Task<bool> RevokeOvpnFile(int vpnServerId, RevokeOvpnFileRequest request,
         CancellationToken cancellationToken)
     {
         try
         {
-            using var client = await GetClientForServerAsync(vpnServerId, cancellationToken);
+            using var client = await GetClientForServer(vpnServerId, cancellationToken);
             var jwt = tokenService.GenerateToken("vpn-cert-issuer", "cert-create",
                 "backend", "DataGateOpenVpnManager");
             client.DefaultRequestHeaders.Authorization = new AuthenticationHeaderValue("Bearer", jwt);
@@ -166,12 +166,12 @@ public class OvpnFileApiClient(
         }
     }
 
-    public async Task<OvpnFileDownload> DownloadOvpnFileAsync(int vpnServerId, DownloadOvpnFileRequest request,
+    public async Task<OvpnFileDownload> DownloadOvpnFile(int vpnServerId, DownloadOvpnFileRequest request,
         CancellationToken cancellationToken)
     {
         try
         {
-            using var client = await GetClientForServerAsync(vpnServerId, cancellationToken);
+            using var client = await GetClientForServer(vpnServerId, cancellationToken);
             var jwt = tokenService.GenerateToken("vpn-cert-issuer", "cert-create",
                 "backend", "DataGateOpenVpnManager");
             client.DefaultRequestHeaders.Authorization = new AuthenticationHeaderValue("Bearer", jwt);

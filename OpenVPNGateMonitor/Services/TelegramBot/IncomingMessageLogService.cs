@@ -21,7 +21,7 @@ public class IncomingMessageLogService(ILogger<IncomingMessageLogService> logger
         var incomingMessageLog = request.Message.Adapt<IncomingMessageLog>();
 
         // Save message to DB
-        await incomingMessageLogCommandService.AddAsync(incomingMessageLog, true, ct);
+        await incomingMessageLogCommandService.Add(incomingMessageLog, true, ct);
     
         logger.LogInformation($"Saved incoming message from TelegramId: {request.Message!.TelegramId}");
 
@@ -36,7 +36,7 @@ public class IncomingMessageLogService(ILogger<IncomingMessageLogService> logger
 
     public async Task<MessageDto?> GetByIdAsync(int id, CancellationToken ct)
     {
-        var message = await incomingMessageLogQueryService.GetByIdAsync(id, ct);
+        var message = await incomingMessageLogQueryService.GetById(id, ct);
         if (message == null)
             return null;
 

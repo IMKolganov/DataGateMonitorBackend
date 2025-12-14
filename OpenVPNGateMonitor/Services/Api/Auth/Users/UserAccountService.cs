@@ -15,14 +15,14 @@ public sealed class UserAccountService(
 {
     public async Task<User> CreateUserWithDefaultRoleAsync(User user, CancellationToken ct)
     {
-        user = await userCommandService.AddAsync(user, saveChanges: true, ct);
+        user = await userCommandService.Add(user, saveChanges: true, ct);
 
         if (user.Id <= 0)
             throw new InvalidOperationException($"Failed to create user {user.DisplayName}");
 
         await userRoleService.AssignRoleAsync(user.Id, SystemRoles.VpnUserId, ct);
 
-        var quotaPlanDefault = await quotaPlanQueryService.GetDefaultAsync(ct);
+        var quotaPlanDefault = await quotaPlanQueryService.GetDefault(ct);
         if (quotaPlanDefault != null) await userQuotaPlanService.AssignQuotaPlanAsync(user.Id, quotaPlanDefault.Id, ct);
 
         return user;

@@ -49,7 +49,7 @@ public class CertificateNotificationService(INotificationService notifications)
     // ---- helper ----
     private Task Notify(string type, string title, string message, int serverId,
         NotificationSeverity severity, string[] channels, CancellationToken ct, int? actorUserId = null)
-        => notifications.NotifyAdminsAsync(new NotificationRequest
+        => notifications.NotifyAdmins(new NotificationRequest
         {
             Type = type,
             Title = title,

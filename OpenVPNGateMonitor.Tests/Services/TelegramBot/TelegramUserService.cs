@@ -42,11 +42,11 @@ public class TelegramUserServiceTests
         TelegramBotUser? addedEntity = null;
 
         _userQuery
-            .Setup(q => q.GetByTelegramIdAsync(request.TelegramId, It.IsAny<CancellationToken>()))
+            .Setup(q => q.GetByTelegramId(request.TelegramId, It.IsAny<CancellationToken>()))
             .ReturnsAsync((TelegramBotUser?)null);
 
         _userCommand
-            .Setup(c => c.AddAsync(It.IsAny<TelegramBotUser>(), true, It.IsAny<CancellationToken>()))
+            .Setup(c => c.Add(It.IsAny<TelegramBotUser>(), true, It.IsAny<CancellationToken>()))
             .Callback<TelegramBotUser, bool, CancellationToken>((entity, _, _) =>
             {
                 addedEntity = entity;
@@ -65,15 +65,15 @@ public class TelegramUserServiceTests
         Assert.Equal(request.TelegramId, addedEntity!.TelegramId);
 
         _userQuery.Verify(
-            q => q.GetByTelegramIdAsync(request.TelegramId, It.IsAny<CancellationToken>()),
+            q => q.GetByTelegramId(request.TelegramId, It.IsAny<CancellationToken>()),
             Times.Once);
 
         _userCommand.Verify(
-            c => c.AddAsync(It.IsAny<TelegramBotUser>(), true, It.IsAny<CancellationToken>()),
+            c => c.Add(It.IsAny<TelegramBotUser>(), true, It.IsAny<CancellationToken>()),
             Times.Once);
 
         _userCommand.Verify(
-            c => c.UpdateAsync(It.IsAny<TelegramBotUser>(), true, It.IsAny<CancellationToken>()),
+            c => c.Update(It.IsAny<TelegramBotUser>(), true, It.IsAny<CancellationToken>()),
             Times.Never);
     }
 
@@ -102,11 +102,11 @@ public class TelegramUserServiceTests
         TelegramBotUser? updatedEntity = null;
 
         _userQuery
-            .Setup(q => q.GetByTelegramIdAsync(request.TelegramId, It.IsAny<CancellationToken>()))
+            .Setup(q => q.GetByTelegramId(request.TelegramId, It.IsAny<CancellationToken>()))
             .ReturnsAsync(existing);
 
         _userCommand
-            .Setup(c => c.UpdateAsync(It.IsAny<TelegramBotUser>(), true, It.IsAny<CancellationToken>()))
+            .Setup(c => c.Update(It.IsAny<TelegramBotUser>(), true, It.IsAny<CancellationToken>()))
             .Callback<TelegramBotUser, bool, CancellationToken>((entity, _, _) =>
             {
                 updatedEntity = entity;
@@ -127,11 +127,11 @@ public class TelegramUserServiceTests
         Assert.Equal(request.Username, updatedEntity!.Username);
 
         _userCommand.Verify(
-            c => c.UpdateAsync(It.IsAny<TelegramBotUser>(), true, It.IsAny<CancellationToken>()),
+            c => c.Update(It.IsAny<TelegramBotUser>(), true, It.IsAny<CancellationToken>()),
             Times.Once);
 
         _userCommand.Verify(
-            c => c.AddAsync(It.IsAny<TelegramBotUser>(), true, It.IsAny<CancellationToken>()),
+            c => c.Add(It.IsAny<TelegramBotUser>(), true, It.IsAny<CancellationToken>()),
             Times.Never);
     }
 
@@ -145,7 +145,7 @@ public class TelegramUserServiceTests
         var user = new TelegramBotUser { TelegramId = 3003, Username = "exists" };
 
         _userQuery
-            .Setup(q => q.GetByTelegramIdAsync(user.TelegramId, It.IsAny<CancellationToken>()))
+            .Setup(q => q.GetByTelegramId(user.TelegramId, It.IsAny<CancellationToken>()))
             .ReturnsAsync(user);
 
         var result = await _service.GetUserAsync(user.TelegramId, CancellationToken.None);
@@ -159,7 +159,7 @@ public class TelegramUserServiceTests
         long telegramId = 4004;
 
         _userQuery
-            .Setup(q => q.GetByTelegramIdAsync(telegramId, It.IsAny<CancellationToken>()))
+            .Setup(q => q.GetByTelegramId(telegramId, It.IsAny<CancellationToken>()))
             .ReturnsAsync((TelegramBotUser?)null);
 
         await Assert.ThrowsAsync<InvalidOperationException>(
@@ -180,7 +180,7 @@ public class TelegramUserServiceTests
         };
 
         _userQuery
-            .Setup(q => q.GetAllAdminsAsync(It.IsAny<CancellationToken>()))
+            .Setup(q => q.GetAllAdmins(It.IsAny<CancellationToken>()))
             .ReturnsAsync(admins);
 
         var result = await _service.GetAdminsAsync(CancellationToken.None);
@@ -193,7 +193,7 @@ public class TelegramUserServiceTests
     public async Task GetAdminsAsync_WhenListEmpty_ReturnsEmptyList()
     {
         _userQuery
-            .Setup(q => q.GetAllAdminsAsync(It.IsAny<CancellationToken>()))
+            .Setup(q => q.GetAllAdmins(It.IsAny<CancellationToken>()))
             .ReturnsAsync(new List<TelegramBotUser>());
 
         var result = await _service.GetAdminsAsync(CancellationToken.None);
@@ -216,7 +216,7 @@ public class TelegramUserServiceTests
         };
 
         _userQuery
-            .Setup(q => q.GetAllAsync(It.IsAny<CancellationToken>()))
+            .Setup(q => q.GetAll(It.IsAny<CancellationToken>()))
             .ReturnsAsync(users);
 
         var result = await _service.GetAllUsersAsync(CancellationToken.None);
@@ -235,7 +235,7 @@ public class TelegramUserServiceTests
         var user = new TelegramBotUser { Id = 10, TelegramId = 5555 };
 
         _userQuery
-            .Setup(q => q.GetByTelegramIdAsync(user.TelegramId, It.IsAny<CancellationToken>()))
+            .Setup(q => q.GetByTelegramId(user.TelegramId, It.IsAny<CancellationToken>()))
             .ReturnsAsync(user);
 
         var result = await _service.GetUserByTelegramIdAsync(user.TelegramId, CancellationToken.None);
@@ -249,7 +249,7 @@ public class TelegramUserServiceTests
         long telegramId = 9999;
 
         _userQuery
-            .Setup(q => q.GetByTelegramIdAsync(telegramId, It.IsAny<CancellationToken>()))
+            .Setup(q => q.GetByTelegramId(telegramId, It.IsAny<CancellationToken>()))
             .ReturnsAsync((TelegramBotUser?)null);
 
         var result = await _service.GetUserByTelegramIdAsync(telegramId, CancellationToken.None);
@@ -267,7 +267,7 @@ public class TelegramUserServiceTests
         long telegramId = 6006;
 
         _userQuery
-            .Setup(q => q.GetByTelegramIdAsync(telegramId, It.IsAny<CancellationToken>()))
+            .Setup(q => q.GetByTelegramId(telegramId, It.IsAny<CancellationToken>()))
             .ReturnsAsync((TelegramBotUser?)null);
 
         var result = await _service.BlockUserAsync(telegramId, CancellationToken.None);
@@ -275,7 +275,7 @@ public class TelegramUserServiceTests
         Assert.False(result);
 
         _userCommand.Verify(
-            c => c.UpdateAsync(It.IsAny<TelegramBotUser>(), true, It.IsAny<CancellationToken>()),
+            c => c.Update(It.IsAny<TelegramBotUser>(), true, It.IsAny<CancellationToken>()),
             Times.Never);
     }
 
@@ -286,7 +286,7 @@ public class TelegramUserServiceTests
         var user = new TelegramBotUser { TelegramId = telegramId, IsBlocked = true };
 
         _userQuery
-            .Setup(q => q.GetByTelegramIdAsync(telegramId, It.IsAny<CancellationToken>()))
+            .Setup(q => q.GetByTelegramId(telegramId, It.IsAny<CancellationToken>()))
             .ReturnsAsync(user);
 
         var result = await _service.BlockUserAsync(telegramId, CancellationToken.None);
@@ -295,7 +295,7 @@ public class TelegramUserServiceTests
         Assert.True(user.IsBlocked);
 
         _userCommand.Verify(
-            c => c.UpdateAsync(It.IsAny<TelegramBotUser>(), true, It.IsAny<CancellationToken>()),
+            c => c.Update(It.IsAny<TelegramBotUser>(), true, It.IsAny<CancellationToken>()),
             Times.Never);
     }
 
@@ -306,11 +306,11 @@ public class TelegramUserServiceTests
         var user = new TelegramBotUser { TelegramId = telegramId, IsBlocked = false };
 
         _userQuery
-            .Setup(q => q.GetByTelegramIdAsync(telegramId, It.IsAny<CancellationToken>()))
+            .Setup(q => q.GetByTelegramId(telegramId, It.IsAny<CancellationToken>()))
             .ReturnsAsync(user);
 
         _userCommand
-            .Setup(c => c.UpdateAsync(It.IsAny<TelegramBotUser>(), true, It.IsAny<CancellationToken>()))
+            .Setup(c => c.Update(It.IsAny<TelegramBotUser>(), true, It.IsAny<CancellationToken>()))
             .ReturnsAsync(1);
 
         var result = await _service.BlockUserAsync(telegramId, CancellationToken.None);
@@ -319,7 +319,7 @@ public class TelegramUserServiceTests
         Assert.True(user.IsBlocked);
 
         _userCommand.Verify(
-            c => c.UpdateAsync(It.Is<TelegramBotUser>(u => u.IsBlocked), true, It.IsAny<CancellationToken>()),
+            c => c.Update(It.Is<TelegramBotUser>(u => u.IsBlocked), true, It.IsAny<CancellationToken>()),
             Times.Once);
     }
 
@@ -333,7 +333,7 @@ public class TelegramUserServiceTests
         long telegramId = 9009;
 
         _userQuery
-            .Setup(q => q.GetByTelegramIdAsync(telegramId, It.IsAny<CancellationToken>()))
+            .Setup(q => q.GetByTelegramId(telegramId, It.IsAny<CancellationToken>()))
             .ReturnsAsync((TelegramBotUser?)null);
 
         var result = await _service.UnblockUserAsync(telegramId, CancellationToken.None);
@@ -341,7 +341,7 @@ public class TelegramUserServiceTests
         Assert.False(result);
 
         _userCommand.Verify(
-            c => c.UpdateAsync(It.IsAny<TelegramBotUser>(), true, It.IsAny<CancellationToken>()),
+            c => c.Update(It.IsAny<TelegramBotUser>(), true, It.IsAny<CancellationToken>()),
             Times.Never);
     }
 
@@ -352,7 +352,7 @@ public class TelegramUserServiceTests
         var user = new TelegramBotUser { TelegramId = telegramId, IsBlocked = false };
 
         _userQuery
-            .Setup(q => q.GetByTelegramIdAsync(telegramId, It.IsAny<CancellationToken>()))
+            .Setup(q => q.GetByTelegramId(telegramId, It.IsAny<CancellationToken>()))
             .ReturnsAsync(user);
 
         var result = await _service.UnblockUserAsync(telegramId, CancellationToken.None);
@@ -361,7 +361,7 @@ public class TelegramUserServiceTests
         Assert.False(user.IsBlocked);
 
         _userCommand.Verify(
-            c => c.UpdateAsync(It.IsAny<TelegramBotUser>(), true, It.IsAny<CancellationToken>()),
+            c => c.Update(It.IsAny<TelegramBotUser>(), true, It.IsAny<CancellationToken>()),
             Times.Never);
     }
 
@@ -372,11 +372,11 @@ public class TelegramUserServiceTests
         var user = new TelegramBotUser { TelegramId = telegramId, IsBlocked = true };
 
         _userQuery
-            .Setup(q => q.GetByTelegramIdAsync(telegramId, It.IsAny<CancellationToken>()))
+            .Setup(q => q.GetByTelegramId(telegramId, It.IsAny<CancellationToken>()))
             .ReturnsAsync(user);
 
         _userCommand
-            .Setup(c => c.UpdateAsync(It.IsAny<TelegramBotUser>(), true, It.IsAny<CancellationToken>()))
+            .Setup(c => c.Update(It.IsAny<TelegramBotUser>(), true, It.IsAny<CancellationToken>()))
             .ReturnsAsync(1);
 
         var result = await _service.UnblockUserAsync(telegramId, CancellationToken.None);
@@ -385,7 +385,7 @@ public class TelegramUserServiceTests
         Assert.False(user.IsBlocked);
 
         _userCommand.Verify(
-            c => c.UpdateAsync(It.Is<TelegramBotUser>(u => !u.IsBlocked), true, It.IsAny<CancellationToken>()),
+            c => c.Update(It.Is<TelegramBotUser>(u => !u.IsBlocked), true, It.IsAny<CancellationToken>()),
             Times.Once);
     }
 
@@ -399,7 +399,7 @@ public class TelegramUserServiceTests
         long telegramId = 12012;
 
         _userQuery
-            .Setup(q => q.GetByTelegramIdAsync(telegramId, It.IsAny<CancellationToken>()))
+            .Setup(q => q.GetByTelegramId(telegramId, It.IsAny<CancellationToken>()))
             .ReturnsAsync((TelegramBotUser?)null);
 
         var result = await _service.SetAdminAsync(telegramId, CancellationToken.None);
@@ -407,7 +407,7 @@ public class TelegramUserServiceTests
         Assert.False(result);
 
         _userCommand.Verify(
-            c => c.UpdateAsync(It.IsAny<TelegramBotUser>(), true, It.IsAny<CancellationToken>()),
+            c => c.Update(It.IsAny<TelegramBotUser>(), true, It.IsAny<CancellationToken>()),
             Times.Never);
     }
 
@@ -418,7 +418,7 @@ public class TelegramUserServiceTests
         var user = new TelegramBotUser { TelegramId = telegramId, IsAdmin = true };
 
         _userQuery
-            .Setup(q => q.GetByTelegramIdAsync(telegramId, It.IsAny<CancellationToken>()))
+            .Setup(q => q.GetByTelegramId(telegramId, It.IsAny<CancellationToken>()))
             .ReturnsAsync(user);
 
         var result = await _service.SetAdminAsync(telegramId, CancellationToken.None);
@@ -427,7 +427,7 @@ public class TelegramUserServiceTests
         Assert.True(user.IsAdmin);
 
         _userCommand.Verify(
-            c => c.UpdateAsync(It.IsAny<TelegramBotUser>(), true, It.IsAny<CancellationToken>()),
+            c => c.Update(It.IsAny<TelegramBotUser>(), true, It.IsAny<CancellationToken>()),
             Times.Never);
     }
 
@@ -438,11 +438,11 @@ public class TelegramUserServiceTests
         var user = new TelegramBotUser { TelegramId = telegramId, IsAdmin = false };
 
         _userQuery
-            .Setup(q => q.GetByTelegramIdAsync(telegramId, It.IsAny<CancellationToken>()))
+            .Setup(q => q.GetByTelegramId(telegramId, It.IsAny<CancellationToken>()))
             .ReturnsAsync(user);
 
         _userCommand
-            .Setup(c => c.UpdateAsync(It.IsAny<TelegramBotUser>(), true, It.IsAny<CancellationToken>()))
+            .Setup(c => c.Update(It.IsAny<TelegramBotUser>(), true, It.IsAny<CancellationToken>()))
             .ReturnsAsync(1);
 
         var result = await _service.SetAdminAsync(telegramId, CancellationToken.None);
@@ -451,7 +451,7 @@ public class TelegramUserServiceTests
         Assert.True(user.IsAdmin);
 
         _userCommand.Verify(
-            c => c.UpdateAsync(It.Is<TelegramBotUser>(u => u.IsAdmin), true, It.IsAny<CancellationToken>()),
+            c => c.Update(It.Is<TelegramBotUser>(u => u.IsAdmin), true, It.IsAny<CancellationToken>()),
             Times.Once);
     }
 
@@ -465,7 +465,7 @@ public class TelegramUserServiceTests
         long telegramId = 15015;
 
         _userQuery
-            .Setup(q => q.GetByTelegramIdAsync(telegramId, It.IsAny<CancellationToken>()))
+            .Setup(q => q.GetByTelegramId(telegramId, It.IsAny<CancellationToken>()))
             .ReturnsAsync((TelegramBotUser?)null);
 
         var result = await _service.UnsetAdminAsync(telegramId, CancellationToken.None);
@@ -473,7 +473,7 @@ public class TelegramUserServiceTests
         Assert.False(result);
 
         _userCommand.Verify(
-            c => c.UpdateAsync(It.IsAny<TelegramBotUser>(), true, It.IsAny<CancellationToken>()),
+            c => c.Update(It.IsAny<TelegramBotUser>(), true, It.IsAny<CancellationToken>()),
             Times.Never);
     }
 
@@ -484,7 +484,7 @@ public class TelegramUserServiceTests
         var user = new TelegramBotUser { TelegramId = telegramId, IsAdmin = false };
 
         _userQuery
-            .Setup(q => q.GetByTelegramIdAsync(telegramId, It.IsAny<CancellationToken>()))
+            .Setup(q => q.GetByTelegramId(telegramId, It.IsAny<CancellationToken>()))
             .ReturnsAsync(user);
 
         var result = await _service.UnsetAdminAsync(telegramId, CancellationToken.None);
@@ -493,7 +493,7 @@ public class TelegramUserServiceTests
         Assert.False(user.IsAdmin);
 
         _userCommand.Verify(
-            c => c.UpdateAsync(It.IsAny<TelegramBotUser>(), true, It.IsAny<CancellationToken>()),
+            c => c.Update(It.IsAny<TelegramBotUser>(), true, It.IsAny<CancellationToken>()),
             Times.Never);
     }
 
@@ -504,11 +504,11 @@ public class TelegramUserServiceTests
         var user = new TelegramBotUser { TelegramId = telegramId, IsAdmin = true };
 
         _userQuery
-            .Setup(q => q.GetByTelegramIdAsync(telegramId, It.IsAny<CancellationToken>()))
+            .Setup(q => q.GetByTelegramId(telegramId, It.IsAny<CancellationToken>()))
             .ReturnsAsync(user);
 
         _userCommand
-            .Setup(c => c.UpdateAsync(It.IsAny<TelegramBotUser>(), true, It.IsAny<CancellationToken>()))
+            .Setup(c => c.Update(It.IsAny<TelegramBotUser>(), true, It.IsAny<CancellationToken>()))
             .ReturnsAsync(1);
 
         var result = await _service.UnsetAdminAsync(telegramId, CancellationToken.None);
@@ -517,7 +517,7 @@ public class TelegramUserServiceTests
         Assert.False(user.IsAdmin);
 
         _userCommand.Verify(
-            c => c.UpdateAsync(It.Is<TelegramBotUser>(u => !u.IsAdmin), true, It.IsAny<CancellationToken>()),
+            c => c.Update(It.Is<TelegramBotUser>(u => !u.IsAdmin), true, It.IsAny<CancellationToken>()),
             Times.Once);
     }
 }

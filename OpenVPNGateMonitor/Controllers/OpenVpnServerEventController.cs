@@ -31,7 +31,7 @@ public class OpenVpnServerEventController(IOpenVpnServerEventLogQueryService ope
         if (!authResult.Succeeded)
             return Forbid();
 
-        var page = await openVpnServerEventLogQueryService.GetByVpnServerIdAsync(
+        var page = await openVpnServerEventLogQueryService.GetByVpnServerId(
             request.VpnServerId,
             request.Page,
             request.PageSize,

@@ -22,7 +22,7 @@ public class UserQuotaPlanService(
             QuotaPlanId = quotaPlanId,
         };
 
-        userQuotaPlan = await userQuotaPlanCommandService.AddAsync(userQuotaPlan, true, ct);
+        userQuotaPlan = await userQuotaPlanCommandService.Add(userQuotaPlan, true, ct);
 
         return userQuotaPlan;
     }

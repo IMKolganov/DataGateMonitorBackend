@@ -5,12 +5,12 @@ namespace OpenVPNGateMonitor.DataBase.Services.Query.ClientApplicationTable;
 
 public interface IClientApplicationQueryService
 {
-    Task<List<ClientApplication>> GetAllAsync(CancellationToken ct);
-    Task<List<ClientApplication>> GetAllIsNotRevokedAsync(CancellationToken ct);
-    Task<ClientApplication?> GetByIdAsync(int id, CancellationToken ct);
-    Task<ClientApplication?> GetByNameAsync(string name, CancellationToken ct);
-    Task<ClientApplication?> GetByClientIdAsync(string clientId, CancellationToken ct);
-    Task<ClientApplication?> GetBySystemByClientIdAsync(string clientId, CancellationToken ct);
-    Task<ClientApplication?> IsSystemConfiguredAsync(CancellationToken ct);
-    Task<IPagedResult<ClientApplication>> GetPageAsync(int page, int pageSize, CancellationToken ct);
+    Task<List<ClientApplication>> GetAll(CancellationToken ct);
+    Task<List<ClientApplication>> GetAllIsNotRevoked(CancellationToken ct);
+    Task<ClientApplication?> GetById(int id, CancellationToken ct);
+    Task<ClientApplication?> GetByName(string name, CancellationToken ct);
+    Task<ClientApplication?> GetByClientId(string clientId, CancellationToken ct);
+    Task<ClientApplication?> GetBySystemByClientId(string clientId, CancellationToken ct);
+    Task<ClientApplication?> IsSystemConfigured(CancellationToken ct);
+    Task<IPagedResult<ClientApplication>> GetPage(int page, int pageSize, CancellationToken ct);
 }

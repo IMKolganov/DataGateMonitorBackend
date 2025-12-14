@@ -7,17 +7,17 @@ namespace OpenVPNGateMonitor.DataBase.Services.Query.RoleTable;
 public class RoleQueryService(
     IQueryService<Role, int> q) : IRoleQueryService
 {
-    public Task<List<Role>> GetAllAsync(CancellationToken ct)
-        => q.GetAllAsync(ct: ct);
+    public Task<List<Role>> GetAll(CancellationToken ct)
+        => q.GetAll(ct: ct);
 
-    public Task<Role?> GetByIdAsync(int id, CancellationToken ct)
-        => q.FindByIdAsync(id, ct: ct);
+    public Task<Role?> GetById(int id, CancellationToken ct)
+        => q.FindById(id, ct: ct);
 
-    public Task<IPagedResult<Role>> GetPageAsync(int page, int pageSize, CancellationToken ct)
-        => q.PageAsync(page, pageSize, ct: ct);
+    public Task<IPagedResult<Role>> GetPage(int page, int pageSize, CancellationToken ct)
+        => q.Page(page, pageSize, ct: ct);
 
-    public Task<List<Role>> SearchAsync(
+    public Task<List<Role>> Search(
         Expression<Func<Role, bool>> predicate,
         CancellationToken ct)
-        => q.WhereAsync(predicate, ct: ct);
+        => q.Where(predicate, ct: ct);
 }

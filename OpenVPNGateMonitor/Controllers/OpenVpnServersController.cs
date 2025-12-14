@@ -46,7 +46,7 @@ public class OpenVpnServersController(ILogger<OpenVpnServersController> logger, 
     public async Task<ActionResult<ApiResponse<OpenVpnServersResponse>>> GetAllServers(
         CancellationToken ct)
     {
-        var serversList = await openVpnServerQueryService.GetAllAsync(ct);
+        var serversList = await openVpnServerQueryService.GetAll(ct);
 
         return Ok(ApiResponse<OpenVpnServersResponse>.SuccessResponse(
             serversList.Adapt<OpenVpnServersResponse>()));
@@ -56,7 +56,7 @@ public class OpenVpnServersController(ILogger<OpenVpnServersController> logger, 
     public async Task<ActionResult<ApiResponse<OpenVpnServerResponse>>> GetServer(
         [FromRoute] GetServerRequest request, CancellationToken ct)
     {
-        var server = await openVpnServerQueryService.GetByIdAsync(request.VpnServerId, ct);
+        var server = await openVpnServerQueryService.GetById(request.VpnServerId, ct);
 
         return Ok(ApiResponse<OpenVpnServerResponse>.SuccessResponse(server.Adapt<OpenVpnServerResponse>()));
     }

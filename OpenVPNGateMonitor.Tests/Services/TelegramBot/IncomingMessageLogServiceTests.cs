@@ -59,7 +59,7 @@ public class IncomingMessageLogServiceTests
         IncomingMessageLog? savedEntity = null;
 
         _command
-            .Setup(c => c.AddAsync(
+            .Setup(c => c.Add(
                 It.IsAny<IncomingMessageLog>(),
                 true,
                 It.IsAny<CancellationToken>()))
@@ -76,7 +76,7 @@ public class IncomingMessageLogServiceTests
         Assert.NotNull(response.Message);
 
         _command.Verify(
-            c => c.AddAsync(It.IsAny<IncomingMessageLog>(), true, It.IsAny<CancellationToken>()),
+            c => c.Add(It.IsAny<IncomingMessageLog>(), true, It.IsAny<CancellationToken>()),
             Times.Once);
 
         // ----- Entity mapping check -----
@@ -135,7 +135,7 @@ public class IncomingMessageLogServiceTests
         };
 
         _query
-            .Setup(q => q.GetByIdAsync(55, It.IsAny<CancellationToken>()))
+            .Setup(q => q.GetById(55, It.IsAny<CancellationToken>()))
             .ReturnsAsync(entity);
 
         // Act
@@ -157,7 +157,7 @@ public class IncomingMessageLogServiceTests
         Assert.Equal(entity.FilePath, result.FilePath);
 
         _query.Verify(
-            q => q.GetByIdAsync(55, It.IsAny<CancellationToken>()),
+            q => q.GetById(55, It.IsAny<CancellationToken>()),
             Times.Once);
     }
 
@@ -170,7 +170,7 @@ public class IncomingMessageLogServiceTests
     {
         // Arrange
         _query
-            .Setup(q => q.GetByIdAsync(99, It.IsAny<CancellationToken>()))
+            .Setup(q => q.GetById(99, It.IsAny<CancellationToken>()))
             .ReturnsAsync((IncomingMessageLog?)null);
 
         // Act
@@ -180,7 +180,7 @@ public class IncomingMessageLogServiceTests
         Assert.Null(result);
 
         _query.Verify(
-            q => q.GetByIdAsync(99, It.IsAny<CancellationToken>()),
+            q => q.GetById(99, It.IsAny<CancellationToken>()),
             Times.Once);
     }
 }

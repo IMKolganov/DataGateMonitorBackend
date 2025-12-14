@@ -31,7 +31,7 @@ public class LocalizationService(ILogger<LocalizationService> logger,
             userPreference = request.Adapt<TelegramUserLanguagePreference>();
             logger.LogInformation($"New language preference created for TelegramId: {userPreference.TelegramId} " +
                                   $"with language: {userPreference.PreferredLanguage}.");
-            await telegramUserLanguagePreferenceCommandService.AddAsync(userPreference, true, ct);
+            await telegramUserLanguagePreferenceCommandService.Add(userPreference, true, ct);
         
 
         }
@@ -41,7 +41,7 @@ public class LocalizationService(ILogger<LocalizationService> logger,
                                   $"Updating language to: {request.PreferredLanguage}.");
         
             userPreference.PreferredLanguage = request.PreferredLanguage;
-            await telegramUserLanguagePreferenceCommandService.UpdateAsync(userPreference, true, ct);
+            await telegramUserLanguagePreferenceCommandService.Update(userPreference, true, ct);
 
         }
         
@@ -82,7 +82,7 @@ public class LocalizationService(ILogger<LocalizationService> logger,
             language = telegramUserLanguagePreference?.PreferredLanguage ?? Language.English;
         }
 
-        var text = await localizationTextQueryService.GetTextValueByKeyAndLanguageAsync(key, (Language)language, ct);
+        var text = await localizationTextQueryService.GetTextValueByKeyAndLanguage(key, (Language)language, ct);
 
         return text ?? $"[Translation missing for key: {key}, language: {language}]";
     }

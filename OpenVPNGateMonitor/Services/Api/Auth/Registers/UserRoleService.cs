@@ -11,7 +11,7 @@ public class UserRoleService(IUserRoleQueryService userRoleQueryService, IRoleQu
 {
     public async Task<UserRole> AssignRoleAsync(int userId, int roleId, CancellationToken ct)
     {
-        var exists = await userRoleQueryService.GetByIdAndUserIdAsync(roleId, userId, ct);
+        var exists = await userRoleQueryService.GetByIdAndUserId(roleId, userId, ct);
 
         if (exists is not null)
             return exists;
@@ -22,19 +22,19 @@ public class UserRoleService(IUserRoleQueryService userRoleQueryService, IRoleQu
             RoleId = roleId
         };
 
-        userRole = await userRoleCommandService.AddAsync(userRole, true, ct);
+        userRole = await userRoleCommandService.Add(userRole, true, ct);
 
         return userRole;
     }
 
     public async Task<string> GetUserRoleNameAsync(int userId, CancellationToken ct)
     {
-        var role = await userRoleQueryService.GetByUserIdAsync(userId, ct);
+        var role = await userRoleQueryService.GetByUserId(userId, ct);
 
         if (role == null || role.RoleId <= 0)
             throw new Exception($"Role not found for user {userId}");
 
-        var roleName = await roleQueryService.GetByIdAsync(role.RoleId, ct);
+        var roleName = await roleQueryService.GetById(role.RoleId, ct);
         
         if (roleName is null)
             throw new Exception($"Role not found for role {role.RoleId}");

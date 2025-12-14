@@ -13,7 +13,7 @@ public class SettingsService(
 {
     public async Task<T?> GetValueAsync<T>(string key, CancellationToken ct)
     {
-        var setting = await q.FirstOrDefaultAsync(
+        var setting = await q.FirstOrDefault(
             x => x.Key == key,
             asNoTracking: true,
             ct: ct);
@@ -35,7 +35,7 @@ public class SettingsService(
     public async Task SetValueAsync<T>(string key, T value, CancellationToken ct)
     {
         // tracked query so we can update the loaded entity
-        var setting = await q.FirstOrDefaultAsync(
+        var setting = await q.FirstOrDefault(
             x => x.Key == key,
             asNoTracking: false,
             ct: ct);
@@ -89,11 +89,11 @@ public class SettingsService(
 
         if (setting.Id.Equals(default(int)))
         {
-            await cmd.AddAsync(setting, saveChanges: true, ct);
+            await cmd.Add(setting, saveChanges: true, ct);
         }
         else
         {
-            await cmd.UpdateAsync(setting, saveChanges: true, ct);
+            await cmd.Update(setting, saveChanges: true, ct);
         }
     }
 }

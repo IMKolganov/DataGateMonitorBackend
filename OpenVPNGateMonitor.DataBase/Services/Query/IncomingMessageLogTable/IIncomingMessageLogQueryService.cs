@@ -5,9 +5,9 @@ namespace OpenVPNGateMonitor.DataBase.Services.Query.IncomingMessageLogTable;
 
 public interface IIncomingMessageLogQueryService
 {
-    Task<List<IncomingMessageLog>> GetAllAsync(CancellationToken ct);
-    Task<IncomingMessageLog?> GetByIdAsync(int id, CancellationToken ct);
-    Task<IPagedResult<IncomingMessageLog>> GetPageByTelegramIdAsync(long telegramId, int page, int pageSize,
+    Task<List<IncomingMessageLog>> GetAll(CancellationToken ct);
+    Task<IncomingMessageLog?> GetById(int id, CancellationToken ct);
+    Task<IPagedResult<IncomingMessageLog>> GetPageByTelegramId(long telegramId, int page, int pageSize,
         CancellationToken ct);
-    Task<IPagedResult<IncomingMessageLog>> GetPageAsync(int page, int pageSize, CancellationToken ct);
+    Task<IPagedResult<IncomingMessageLog>> GetPage(int page, int pageSize, CancellationToken ct);
 }
