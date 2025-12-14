@@ -46,16 +46,16 @@ public class IssuedOvpnFileQueryServiceTests
     {
         var data = CreateSample();
         var (q, ctx) = CreateEfBackedQuery(data);
-        q.Setup(x => x.GetAllAsync(true, It.IsAny<CancellationToken>()))
+        q.Setup(x => x.GetAll(true, It.IsAny<CancellationToken>()))
          .ReturnsAsync(data)
          .Verifiable();
 
         var sut = new IssuedOvpnFileQueryService(q.Object);
-        var result = await sut.GetAllAsync(CancellationToken.None);
+        var result = await sut.GetAll(CancellationToken.None);
 
         Assert.Equal(data.Count, result.Count);
         Assert.True(result.SequenceEqual(data));
-        q.Verify(x => x.GetAllAsync(true, It.IsAny<CancellationToken>()), Times.Once);
+        q.Verify(x => x.GetAll(true, It.IsAny<CancellationToken>()), Times.Once);
         await ctx.DisposeAsync();
     }
 
@@ -67,7 +67,7 @@ public class IssuedOvpnFileQueryServiceTests
 
         Expression<Func<IssuedOvpnFile, bool>>? captured = null;
 
-        q.Setup(x => x.WhereAsync(
+        q.Setup(x => x.Where(
                 It.IsAny<Expression<Func<IssuedOvpnFile, bool>>>(),
                 null,
                 true,
@@ -101,7 +101,7 @@ public class IssuedOvpnFileQueryServiceTests
 
         Expression<Func<IssuedOvpnFile, bool>>? captured = null;
 
-        q.Setup(x => x.WhereAsync(
+        q.Setup(x => x.Where(
                 It.IsAny<Expression<Func<IssuedOvpnFile, bool>>>(),
                 null,
                 true,
@@ -133,7 +133,7 @@ public class IssuedOvpnFileQueryServiceTests
         var (q, ctx) = CreateEfBackedQuery(data);
         Expression<Func<IssuedOvpnFile, bool>>? captured = null;
 
-        q.Setup(x => x.WhereAsync(
+        q.Setup(x => x.Where(
                 It.IsAny<Expression<Func<IssuedOvpnFile, bool>>>(),
                 null,
                 true,
@@ -162,7 +162,7 @@ public class IssuedOvpnFileQueryServiceTests
         var (q, ctx) = CreateEfBackedQuery(data);
         Expression<Func<IssuedOvpnFile, bool>>? captured = null;
 
-        q.Setup(x => x.WhereAsync(
+        q.Setup(x => x.Where(
                 It.IsAny<Expression<Func<IssuedOvpnFile, bool>>>(),
                 null,
                 true,
@@ -189,15 +189,15 @@ public class IssuedOvpnFileQueryServiceTests
     {
         var target = new IssuedOvpnFile { Id = 99, VpnServerId = 7, ExternalId = "e", CommonName = "u", IssuedTo = "userX", FileName = "f", FilePath = "/f", PemFilePath = "/p", CertFilePath = "/c", KeyFilePath = "/k", ReqFilePath = "/r" };
         var (q, ctx) = CreateEfBackedQuery(new[] { target });
-        q.Setup(x => x.FindByIdAsync(99, true, It.IsAny<CancellationToken>(), It.IsAny<Expression<Func<IssuedOvpnFile, object>>[]>()))
+        q.Setup(x => x.FindById(99, true, It.IsAny<CancellationToken>(), It.IsAny<Expression<Func<IssuedOvpnFile, object>>[]>()))
          .ReturnsAsync(target)
          .Verifiable();
 
         var sut = new IssuedOvpnFileQueryService(q.Object);
-        var result = await sut.GetByIdAsync(99, CancellationToken.None);
+        var result = await sut.GetById(99, CancellationToken.None);
 
         Assert.Same(target, result);
-        q.Verify(x => x.FindByIdAsync(99, true, It.IsAny<CancellationToken>(), It.IsAny<Expression<Func<IssuedOvpnFile, object>>[]>()), Times.Once);
+        q.Verify(x => x.FindById(99, true, It.IsAny<CancellationToken>(), It.IsAny<Expression<Func<IssuedOvpnFile, object>>[]>()), Times.Once);
         await ctx.DisposeAsync();
     }
 
@@ -208,7 +208,7 @@ public class IssuedOvpnFileQueryServiceTests
         var (q, ctx) = CreateEfBackedQuery(data);
         var sut = new IssuedOvpnFileQueryService(q.Object);
 
-        var result = await sut.GetByIdAndIsRevokedAsync(2, true, CancellationToken.None);
+        var result = await sut.GetByIdAndIsRevoked(2, true, CancellationToken.None);
 
         Assert.NotNull(result);
         Assert.Equal(2, result!.Id);
@@ -223,7 +223,7 @@ public class IssuedOvpnFileQueryServiceTests
         var (q, ctx) = CreateEfBackedQuery(data);
         var sut = new IssuedOvpnFileQueryService(q.Object);
 
-        var result = await sut.GetByIdAndVpnServerIdAndIsRevokedAsync(1, 1, false, CancellationToken.None);
+        var result = await sut.GetByIdAndVpnServerIdAndIsRevoked(1, 1, false, CancellationToken.None);
 
         Assert.NotNull(result);
         Assert.Equal(1, result!.Id);
@@ -252,7 +252,7 @@ public class IssuedOvpnFileQueryServiceTests
         var (q, ctx) = CreateEfBackedQuery(data);
         var sut = new IssuedOvpnFileQueryService(q.Object);
 
-        var result = await sut.GetByIdAndVpnServerIdAndCommonNameAndIsRevokedAsync(2, 3, "cn-a", false, CancellationToken.None);
+        var result = await sut.GetByIdAndVpnServerIdAndCommonNameAndIsRevoked(2, 3, "cn-a", false, CancellationToken.None);
 
         Assert.NotNull(result);
         Assert.Equal(3, result!.Id);
@@ -269,7 +269,7 @@ public class IssuedOvpnFileQueryServiceTests
         var (q, ctx) = CreateEfBackedQuery(data);
         var sut = new IssuedOvpnFileQueryService(q.Object);
 
-        var result = await sut.GetByVpnServerIdAndCommonNameAsync(1, 1, "cn-a", CancellationToken.None);
+        var result = await sut.GetByVpnServerIdAndCommonName(1, 1, "cn-a", CancellationToken.None);
 
         Assert.NotNull(result);
         Assert.Equal(1, result!.Id);
@@ -285,7 +285,7 @@ public class IssuedOvpnFileQueryServiceTests
         var (q, ctx) = CreateEfBackedQuery(data);
         var sut = new IssuedOvpnFileQueryService(q.Object);
 
-        var result = await sut.GetActiveByIdVpnServerAndCommonNameAndIsRevokedAAsync(2, 3, "cn-a", false, CancellationToken.None);
+        var result = await sut.GetActiveByIdVpnServerAndCommonNameAndIsRevokedA(2, 3, "cn-a", false, CancellationToken.None);
 
         Assert.NotNull(result);
         Assert.Equal(3, result!.Id);
@@ -302,10 +302,10 @@ public class IssuedOvpnFileQueryServiceTests
         var (q, ctx) = CreateEfBackedQuery(data);
         var sut = new IssuedOvpnFileQueryService(q.Object);
 
-        var exists = await sut.ExistsActiveByVpnServerIdAndCommonNameAsync(1, "cn-a", CancellationToken.None);
+        var exists = await sut.ExistsActiveByVpnServerIdAndCommonName(1, "cn-a", CancellationToken.None);
         Assert.True(exists);
 
-        var notExists = await sut.ExistsActiveByVpnServerIdAndCommonNameAsync(2, "cn-x", CancellationToken.None);
+        var notExists = await sut.ExistsActiveByVpnServerIdAndCommonName(2, "cn-x", CancellationToken.None);
         // cn-x on server 2 is revoked in sample (Id=4), so should be false
         Assert.False(notExists);
         await ctx.DisposeAsync();
@@ -325,15 +325,15 @@ public class IssuedOvpnFileQueryServiceTests
             Items = data.Take(2).ToList()
         };
 
-        q.Setup(x => x.PageAsync(1, 2, null, null, true, It.IsAny<CancellationToken>(), It.IsAny<Expression<Func<IssuedOvpnFile, object>>[]>()))
+        q.Setup(x => x.Page(1, 2, null, null, true, It.IsAny<CancellationToken>(), It.IsAny<Expression<Func<IssuedOvpnFile, object>>[]>()))
          .ReturnsAsync(paged as IPagedResult<IssuedOvpnFile>)
          .Verifiable();
 
         var sut = new IssuedOvpnFileQueryService(q.Object);
-        var result = await sut.GetPageAsync(1, 2, CancellationToken.None);
+        var result = await sut.GetPage(1, 2, CancellationToken.None);
 
         Assert.Same(paged, result);
-        q.Verify(x => x.PageAsync(1, 2, null, null, true, It.IsAny<CancellationToken>(), It.IsAny<Expression<Func<IssuedOvpnFile, object>>[]>()), Times.Once);
+        q.Verify(x => x.Page(1, 2, null, null, true, It.IsAny<CancellationToken>(), It.IsAny<Expression<Func<IssuedOvpnFile, object>>[]>()), Times.Once);
         await ctx.DisposeAsync();
     }
 }

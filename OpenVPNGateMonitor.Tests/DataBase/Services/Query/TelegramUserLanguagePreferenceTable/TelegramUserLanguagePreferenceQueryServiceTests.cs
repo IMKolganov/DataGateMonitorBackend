@@ -45,16 +45,16 @@ public class TelegramUserLanguagePreferenceQueryServiceTests
     {
         var data = CreateSample();
         var (q, ctx) = CreateEfBackedQuery(data);
-        q.Setup(x => x.GetAllAsync(true, It.IsAny<CancellationToken>()))
+        q.Setup(x => x.GetAll(true, It.IsAny<CancellationToken>()))
          .ReturnsAsync(data)
          .Verifiable();
 
         var sut = new TelegramUserLanguagePreferenceQueryService(q.Object);
-        var result = await sut.GetAllAsync(CancellationToken.None);
+        var result = await sut.GetAll(CancellationToken.None);
 
         Assert.Equal(data.Count, result.Count);
         Assert.True(result.SequenceEqual(data));
-        q.Verify(x => x.GetAllAsync(true, It.IsAny<CancellationToken>()), Times.Once);
+        q.Verify(x => x.GetAll(true, It.IsAny<CancellationToken>()), Times.Once);
         await ctx.DisposeAsync();
     }
 
@@ -63,15 +63,15 @@ public class TelegramUserLanguagePreferenceQueryServiceTests
     {
         var target = new TelegramUserLanguagePreference { Id = 42, TelegramId = 999, PreferredLanguage = Language.Greek };
         var (q, ctx) = CreateEfBackedQuery(new[] { target });
-        q.Setup(x => x.FindByIdAsync(42, true, It.IsAny<CancellationToken>(), It.IsAny<Expression<Func<TelegramUserLanguagePreference, object>>[]>()))
+        q.Setup(x => x.FindById(42, true, It.IsAny<CancellationToken>(), It.IsAny<Expression<Func<TelegramUserLanguagePreference, object>>[]>()))
          .ReturnsAsync(target)
          .Verifiable();
 
         var sut = new TelegramUserLanguagePreferenceQueryService(q.Object);
-        var result = await sut.GetByIdAsync(42, CancellationToken.None);
+        var result = await sut.GetById(42, CancellationToken.None);
 
         Assert.Same(target, result);
-        q.Verify(x => x.FindByIdAsync(42, true, It.IsAny<CancellationToken>(), It.IsAny<Expression<Func<TelegramUserLanguagePreference, object>>[]>()), Times.Once);
+        q.Verify(x => x.FindById(42, true, It.IsAny<CancellationToken>(), It.IsAny<Expression<Func<TelegramUserLanguagePreference, object>>[]>()), Times.Once);
         await ctx.DisposeAsync();
     }
 
@@ -93,7 +93,7 @@ public class TelegramUserLanguagePreferenceQueryServiceTests
     public async Task AnyByTelegramId_Delegates_To_AnyAsync()
     {
         var (q, ctx) = CreateEfBackedQuery(Array.Empty<TelegramUserLanguagePreference>());
-        q.Setup(x => x.AnyAsync(It.IsAny<Expression<Func<TelegramUserLanguagePreference, bool>>>(), It.IsAny<CancellationToken>()))
+        q.Setup(x => x.Any(It.IsAny<Expression<Func<TelegramUserLanguagePreference, bool>>>(), It.IsAny<CancellationToken>()))
          .ReturnsAsync(true)
          .Verifiable();
 
@@ -101,7 +101,7 @@ public class TelegramUserLanguagePreferenceQueryServiceTests
         var found = await sut.AnyByTelegramId(555, CancellationToken.None);
 
         Assert.True(found);
-        q.Verify(x => x.AnyAsync(It.IsAny<Expression<Func<TelegramUserLanguagePreference, bool>>>(), It.IsAny<CancellationToken>()), Times.Once);
+        q.Verify(x => x.Any(It.IsAny<Expression<Func<TelegramUserLanguagePreference, bool>>>(), It.IsAny<CancellationToken>()), Times.Once);
         await ctx.DisposeAsync();
     }
 
@@ -119,15 +119,15 @@ public class TelegramUserLanguagePreferenceQueryServiceTests
             Items = data.Skip(2).Take(1).ToList()
         };
 
-        q.Setup(x => x.PageAsync(3, 1, null, null, true, It.IsAny<CancellationToken>(), It.IsAny<Expression<Func<TelegramUserLanguagePreference, object>>[]>()))
+        q.Setup(x => x.Page(3, 1, null, null, true, It.IsAny<CancellationToken>(), It.IsAny<Expression<Func<TelegramUserLanguagePreference, object>>[]>()))
          .ReturnsAsync(paged as IPagedResult<TelegramUserLanguagePreference>)
          .Verifiable();
 
         var sut = new TelegramUserLanguagePreferenceQueryService(q.Object);
-        var result = await sut.GetPageAsync(3, 1, CancellationToken.None);
+        var result = await sut.GetPage(3, 1, CancellationToken.None);
 
         Assert.Same(paged, result);
-        q.Verify(x => x.PageAsync(3, 1, null, null, true, It.IsAny<CancellationToken>(), It.IsAny<Expression<Func<TelegramUserLanguagePreference, object>>[]>()), Times.Once);
+        q.Verify(x => x.Page(3, 1, null, null, true, It.IsAny<CancellationToken>(), It.IsAny<Expression<Func<TelegramUserLanguagePreference, object>>[]>()), Times.Once);
         await ctx.DisposeAsync();
     }
 }

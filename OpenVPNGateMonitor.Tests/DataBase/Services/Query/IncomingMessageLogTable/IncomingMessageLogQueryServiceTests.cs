@@ -1,4 +1,5 @@
 using System.Linq.Expressions;
+using System.Linq;
 using Microsoft.EntityFrameworkCore;
 using Moq;
 using OpenVPNGateMonitor.DataBase.Services.Query.IncomingMessageLogTable;
@@ -46,17 +47,17 @@ public class IncomingMessageLogQueryServiceTests
     {
         var data = CreateSample();
         var (q, ctx) = CreateEfBackedQuery(data);
-        q.Setup(x => x.GetAllAsync(true, It.IsAny<CancellationToken>()))
+        q.Setup(x => x.GetAll(true, It.IsAny<CancellationToken>()))
          .ReturnsAsync(data)
          .Verifiable();
 
         var sut = new IncomingMessageLogQueryService(q.Object);
 
-        var result = await sut.GetAllAsync(CancellationToken.None);
+        var result = await sut.GetAll(CancellationToken.None);
 
         Assert.Equal(data.Count, result.Count);
         Assert.True(result.SequenceEqual(data));
-        q.Verify(x => x.GetAllAsync(true, It.IsAny<CancellationToken>()), Times.Once);
+        q.Verify(x => x.GetAll(true, It.IsAny<CancellationToken>()), Times.Once);
         await ctx.DisposeAsync();
     }
 
@@ -65,15 +66,15 @@ public class IncomingMessageLogQueryServiceTests
     {
         var target = new IncomingMessageLog { Id = 42, TelegramId = 999, MessageText = "hello" };
         var (q, ctx) = CreateEfBackedQuery(new[] { target });
-        q.Setup(x => x.FindByIdAsync(42, true, It.IsAny<CancellationToken>(), It.IsAny<Expression<Func<IncomingMessageLog, object>>[]>()))
+        q.Setup(x => x.FindById(42, true, It.IsAny<CancellationToken>(), It.IsAny<Expression<Func<IncomingMessageLog, object>>[]>()))
          .ReturnsAsync(target)
          .Verifiable();
 
         var sut = new IncomingMessageLogQueryService(q.Object);
-        var result = await sut.GetByIdAsync(42, CancellationToken.None);
+        var result = await sut.GetById(42, CancellationToken.None);
 
         Assert.Same(target, result);
-        q.Verify(x => x.FindByIdAsync(42, true, It.IsAny<CancellationToken>(), It.IsAny<Expression<Func<IncomingMessageLog, object>>[]>()), Times.Once);
+        q.Verify(x => x.FindById(42, true, It.IsAny<CancellationToken>(), It.IsAny<Expression<Func<IncomingMessageLog, object>>[]>()), Times.Once);
         await ctx.DisposeAsync();
     }
 
@@ -95,7 +96,7 @@ public class IncomingMessageLogQueryServiceTests
             Items = data.Where(x => x.TelegramId == 1001).OrderByDescending(x => x.Id).Take(2).ToList()
         };
 
-        q.Setup(x => x.PageAsync(
+        q.Setup(x => x.Page(
                 1,
                 2,
                 It.IsAny<Expression<Func<IncomingMessageLog, bool>>>(),
@@ -115,7 +116,7 @@ public class IncomingMessageLogQueryServiceTests
          .Verifiable();
 
         var sut = new IncomingMessageLogQueryService(q.Object);
-        var result = await sut.GetPageByTelegramIdAsync(1001, 1, 2, CancellationToken.None);
+        var result = await sut.GetPageByTelegramId(1001, 1, 2, CancellationToken.None);
 
         Assert.Same(paged, result);
         Assert.NotNull(capturedPredicate);
@@ -152,7 +153,7 @@ public class IncomingMessageLogQueryServiceTests
             Items = data.OrderByDescending(x => x.Id).Skip(10).Take(5).ToList()
         };
 
-        q.Setup(x => x.PageAsync(
+        q.Setup(x => x.Page(
                 3,
                 5,
                 null,
@@ -172,7 +173,7 @@ public class IncomingMessageLogQueryServiceTests
          .Verifiable();
 
         var sut = new IncomingMessageLogQueryService(q.Object);
-        var result = await sut.GetPageAsync(3, 5, CancellationToken.None);
+        var result = await sut.GetPage(3, 5, CancellationToken.None);
 
         Assert.Same(paged, result);
         Assert.Null(capturedPredicate);

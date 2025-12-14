@@ -16,8 +16,8 @@ public class OpenVpnServerClientQueryService(IQueryService<OpenVpnServerClient, 
         => q.FindById(id, ct: ct);
 
     public Task<OpenVpnServerClient?> GetBySessionAndServerId(Guid session, int vpnServerId, CancellationToken ct)
-    => q.FirstOrDefault(x=>x.SessionId == session && x.VpnServerId == vpnServerId, 
-        asNoTracking: true, ct: ct);
+        => q.Query()
+            .FirstOrDefaultAsync(x => x.SessionId == session && x.VpnServerId == vpnServerId, ct);
 
     public Task<IPagedResult<OpenVpnServerClient>> GetPage(int page, int pageSize, CancellationToken ct)
         => q.Page(page, pageSize, ct: ct);

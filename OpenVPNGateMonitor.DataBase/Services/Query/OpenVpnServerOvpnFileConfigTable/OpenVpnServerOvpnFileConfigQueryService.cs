@@ -14,7 +14,8 @@ public class OpenVpnServerOvpnFileConfigQueryService(
     public Task<OpenVpnServerOvpnFileConfig?> GetByVpnServerIdId(
         int vpnServerId,
         CancellationToken ct)
-        => q.FirstOrDefault(x => x.VpnServerId == vpnServerId, ct: ct);
+        => q.Query()
+            .FirstOrDefaultAsync(x => x.VpnServerId == vpnServerId, ct);
     
     public Task<bool> AnyByVpnServerId(int vpnServerId, CancellationToken ct)
         => q.Any(x => x.VpnServerId == vpnServerId, ct: ct);
