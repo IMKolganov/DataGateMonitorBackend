@@ -9,25 +9,25 @@ public class UserQueryService(
     IQueryService<UserIdentityLink, int> qUserIdentityLink
 ) : IUserQueryService
 {
-    public Task<List<User>> GetAllAsync(CancellationToken ct)
-        => q.GetAllAsync(ct: ct);
+    public Task<List<User>> GetAll(CancellationToken ct)
+        => q.GetAll(ct: ct);
 
-    public Task<User?> GetByIdAsync(int id, CancellationToken ct)
-        => q.FindByIdAsync(id, ct: ct);
+    public Task<User?> GetById(int id, CancellationToken ct)
+        => q.FindById(id, ct: ct);
 
-    public async Task<User?> GetByEmailAsync(string email, CancellationToken ct)
-        => await q.FirstOrDefaultAsync(
+    public async Task<User?> GetByEmail(string email, CancellationToken ct)
+        => await q.FirstOrDefault(
             predicate: u => u.Email != null && u.Email == email,
             asNoTracking: true,
             ct: ct
         );
 
-    public Task<bool> AnyByEmailAsync(string email, CancellationToken ct)
-        => q.AnyAsync(x => x.Email == email, ct: ct);
+    public Task<bool> AnyByEmail(string email, CancellationToken ct)
+        => q.Any(x => x.Email == email, ct: ct);
 
-    public async Task<User?> GetByExternalIdAsync(string externalId, CancellationToken ct)
+    public async Task<User?> GetByExternalId(string externalId, CancellationToken ct)
     {
-        var link = await qUserIdentityLink.FirstOrDefaultAsync(
+        var link = await qUserIdentityLink.FirstOrDefault(
             predicate: x => x.ExternalId == externalId,
             asNoTracking: true,
             ct: ct
@@ -36,18 +36,18 @@ public class UserQueryService(
         if (link is null)
             return null;
 
-        return await q.FirstOrDefaultAsync(
+        return await q.FirstOrDefault(
             predicate: x => x.Id == link.UserId,
             asNoTracking: true,
             ct: ct
         );
     }
 
-    public Task<IPagedResult<User>> GetPageAsync(int page, int pageSize, CancellationToken ct)
-        => q.PageAsync(page, pageSize, ct: ct);
+    public Task<IPagedResult<User>> GetPage(int page, int pageSize, CancellationToken ct)
+        => q.Page(page, pageSize, ct: ct);
 
-    public Task<List<User>> SearchAsync(
+    public Task<List<User>> Search(
         Expression<Func<User, bool>> predicate,
         CancellationToken ct)
-        => q.WhereAsync(predicate, ct: ct);
+        => q.Where(predicate, ct: ct);
 }

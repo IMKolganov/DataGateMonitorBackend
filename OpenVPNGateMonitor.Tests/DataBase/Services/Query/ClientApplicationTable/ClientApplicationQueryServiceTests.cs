@@ -54,17 +54,17 @@ public class ClientApplicationQueryServiceTests
     {
         var data = CreateSample();
         var (q, ctx) = CreateEfBackedQuery(data);
-        q.Setup(x => x.GetAllAsync(true, It.IsAny<CancellationToken>()))
+        q.Setup(x => x.GetAll(true, It.IsAny<CancellationToken>()))
          .ReturnsAsync(data)
          .Verifiable();
 
         var sut = new ClientApplicationQueryService(q.Object);
 
-        var result = await sut.GetAllAsync(CancellationToken.None);
+        var result = await sut.GetAll(CancellationToken.None);
 
         Assert.Equal(data.Count, result.Count);
         Assert.True(result.SequenceEqual(data));
-        q.Verify(x => x.GetAllAsync(true, It.IsAny<CancellationToken>()), Times.Once);
+        q.Verify(x => x.GetAll(true, It.IsAny<CancellationToken>()), Times.Once);
         await ctx.DisposeAsync();
     }
 
@@ -75,7 +75,7 @@ public class ClientApplicationQueryServiceTests
         var (q, ctx) = CreateEfBackedQuery(data);
         var sut = new ClientApplicationQueryService(q.Object);
 
-        var result = await sut.GetAllIsNotRevokedAsync(CancellationToken.None);
+        var result = await sut.GetAllIsNotRevoked(CancellationToken.None);
 
         Assert.All(result, x => Assert.False(x.IsRevoked));
         Assert.Equal(new[] { 1, 2 }, result.Select(x => x.Id).OrderBy(i => i));
@@ -87,15 +87,15 @@ public class ClientApplicationQueryServiceTests
     {
         var target = new ClientApplication { Id = 42, Name = "X" };
         var (q, ctx) = CreateEfBackedQuery(new[] { target });
-        q.Setup(x => x.FindByIdAsync(42, true, It.IsAny<CancellationToken>(), It.IsAny<Expression<Func<ClientApplication, object>>[]>()))
+        q.Setup(x => x.FindById(42, true, It.IsAny<CancellationToken>(), It.IsAny<Expression<Func<ClientApplication, object>>[]>()))
          .ReturnsAsync(target)
          .Verifiable();
 
         var sut = new ClientApplicationQueryService(q.Object);
-        var result = await sut.GetByIdAsync(42, CancellationToken.None);
+        var result = await sut.GetById(42, CancellationToken.None);
 
         Assert.Same(target, result);
-        q.Verify(x => x.FindByIdAsync(42, true, It.IsAny<CancellationToken>(), It.IsAny<Expression<Func<ClientApplication, object>>[]>()), Times.Once);
+        q.Verify(x => x.FindById(42, true, It.IsAny<CancellationToken>(), It.IsAny<Expression<Func<ClientApplication, object>>[]>()), Times.Once);
         await ctx.DisposeAsync();
     }
 
@@ -106,7 +106,7 @@ public class ClientApplicationQueryServiceTests
         var (q, ctx) = CreateEfBackedQuery(data);
         var sut = new ClientApplicationQueryService(q.Object);
 
-        var result = await sut.GetByNameAsync("AppB", CancellationToken.None);
+        var result = await sut.GetByName("AppB", CancellationToken.None);
 
         Assert.NotNull(result);
         Assert.Equal(2, result!.Id);
@@ -120,7 +120,7 @@ public class ClientApplicationQueryServiceTests
         var (q, ctx) = CreateEfBackedQuery(data);
         var sut = new ClientApplicationQueryService(q.Object);
 
-        var result = await sut.GetByClientIdAsync("cid-c", CancellationToken.None);
+        var result = await sut.GetByClientId("cid-c", CancellationToken.None);
 
         Assert.NotNull(result);
         Assert.Equal(3, result!.Id);
@@ -140,7 +140,7 @@ public class ClientApplicationQueryServiceTests
         var (q, ctx) = CreateEfBackedQuery(data);
         var sut = new ClientApplicationQueryService(q.Object);
 
-        var result = await sut.GetBySystemByClientIdAsync("same", CancellationToken.None);
+        var result = await sut.GetBySystemByClientId("same", CancellationToken.None);
 
         Assert.NotNull(result);
         Assert.Equal(12, result!.Id);
@@ -160,7 +160,7 @@ public class ClientApplicationQueryServiceTests
         var (q, ctx) = CreateEfBackedQuery(data);
         var sut = new ClientApplicationQueryService(q.Object);
 
-        var result = await sut.IsSystemConfiguredAsync(CancellationToken.None);
+        var result = await sut.IsSystemConfigured(CancellationToken.None);
 
         Assert.NotNull(result);
         Assert.Equal(2, result!.Id);
@@ -181,15 +181,15 @@ public class ClientApplicationQueryServiceTests
             Items = data.Take(2).ToList()
         };
 
-        q.Setup(x => x.PageAsync(2, 10, null, null, true, It.IsAny<CancellationToken>(), It.IsAny<Expression<Func<ClientApplication, object>>[]>()))
+        q.Setup(x => x.Page(2, 10, null, null, true, It.IsAny<CancellationToken>(), It.IsAny<Expression<Func<ClientApplication, object>>[]>()))
          .ReturnsAsync(paged as IPagedResult<ClientApplication>)
          .Verifiable();
 
         var sut = new ClientApplicationQueryService(q.Object);
-        var result = await sut.GetPageAsync(2, 10, CancellationToken.None);
+        var result = await sut.GetPage(2, 10, CancellationToken.None);
 
         Assert.Same(paged, result);
-        q.Verify(x => x.PageAsync(2, 10, null, null, true, It.IsAny<CancellationToken>(), It.IsAny<Expression<Func<ClientApplication, object>>[]>()), Times.Once);
+        q.Verify(x => x.Page(2, 10, null, null, true, It.IsAny<CancellationToken>(), It.IsAny<Expression<Func<ClientApplication, object>>[]>()), Times.Once);
         await ctx.DisposeAsync();
     }
 }

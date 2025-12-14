@@ -11,7 +11,7 @@ public class EfCommandService<TEntity, TKey>(IUnitOfWork uow) : ICommandService<
     where TEntity : BaseEntity<TKey>
 {
     // Create
-    public async Task<TEntity> AddAsync(TEntity entity, bool saveChanges = true, CancellationToken ct = default)
+    public async Task<TEntity> Add(TEntity entity, bool saveChanges = true, CancellationToken ct = default)
     {
         var repo = uow.GetRepository<TEntity>();
         await repo.AddAsync(entity, ct);
@@ -19,7 +19,7 @@ public class EfCommandService<TEntity, TKey>(IUnitOfWork uow) : ICommandService<
         return entity;
     }
 
-    public async Task<int> AddRangeAsync(IEnumerable<TEntity> entities, bool saveChanges = true, CancellationToken ct = default)
+    public async Task<int> AddRange(IEnumerable<TEntity> entities, bool saveChanges = true, CancellationToken ct = default)
     {
         var list = entities as IList<TEntity> ?? entities.ToList();
         if (list.Count == 0) return 0;
@@ -31,7 +31,7 @@ public class EfCommandService<TEntity, TKey>(IUnitOfWork uow) : ICommandService<
     }
 
     // Update tracked entity (full)
-    public async Task<int> UpdateAsync(TEntity entity, bool saveChanges = true, CancellationToken ct = default)
+    public async Task<int> Update(TEntity entity, bool saveChanges = true, CancellationToken ct = default)
     {
         var repo = uow.GetRepository<TEntity>();
         repo.Update(entity);
@@ -39,7 +39,7 @@ public class EfCommandService<TEntity, TKey>(IUnitOfWork uow) : ICommandService<
         return await uow.SaveChangesAsync(ct);
     }
 
-    public Task<int> UpdateWhereAsync(
+    public Task<int> UpdateWhere(
         Expression<Func<TEntity, bool>> predicate,
         Action<UpdateSettersBuilder<TEntity>> set,
         CancellationToken ct = default)
@@ -49,7 +49,7 @@ public class EfCommandService<TEntity, TKey>(IUnitOfWork uow) : ICommandService<
             .ExecuteUpdateAsync(set, ct);
 
     // Delete
-    public async Task<int> DeleteAsync(TEntity entity, bool saveChanges = true, CancellationToken ct = default)
+    public async Task<int> Delete(TEntity entity, bool saveChanges = true, CancellationToken ct = default)
     {
         var repo = uow.GetRepository<TEntity>();
         repo.Delete(entity);
@@ -57,19 +57,19 @@ public class EfCommandService<TEntity, TKey>(IUnitOfWork uow) : ICommandService<
         return await uow.SaveChangesAsync(ct);
     }
 
-    public Task<int> DeleteByIdAsync(TKey id, CancellationToken ct = default)
+    public Task<int> DeleteById(TKey id, CancellationToken ct = default)
         => uow.GetQuery<TEntity>()
               .AsQueryable()
               .Where(e => e.Id!.Equals(id))
               .ExecuteDeleteAsync(ct);
 
     // Bulk delete on server (EF Core 7+)
-    public Task<int> DeleteWhereAsync(Expression<Func<TEntity, bool>> predicate, CancellationToken ct = default)
+    public Task<int> DeleteWhere(Expression<Func<TEntity, bool>> predicate, CancellationToken ct = default)
         => uow.GetQuery<TEntity>()
               .AsQueryable()
               .Where(predicate)
               .ExecuteDeleteAsync(ct);
 
-    public Task<int> SaveChangesAsync(CancellationToken ct = default)
+    public Task<int> SaveChanges(CancellationToken ct = default)
         => uow.SaveChangesAsync(ct);
 }

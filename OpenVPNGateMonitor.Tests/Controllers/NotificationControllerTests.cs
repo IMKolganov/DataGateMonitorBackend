@@ -33,7 +33,7 @@ public class NotificationControllerTests
         var ct = CancellationToken.None;
 
         notificationServiceMock
-            .Setup(s => s.NotifyAdminsAsync(request, It.Is<IEnumerable<string>>(c => c.SequenceEqual(new[] { "web" })), ct))
+            .Setup(s => s.NotifyAdmins(request, It.Is<IEnumerable<string>>(c => c.SequenceEqual(new[] { "web" })), ct))
             .ReturnsAsync(expectedId);
 
         // Act
@@ -60,7 +60,7 @@ public class NotificationControllerTests
         var ct = CancellationToken.None;
 
         notificationServiceMock
-            .Setup(s => s.MarkDeliveredAsync(notificationId, adminUserId, channel, ct))
+            .Setup(s => s.MarkDelivered(notificationId, adminUserId, channel, ct))
             .Returns(Task.CompletedTask);
 
         // Act
@@ -86,7 +86,7 @@ public class NotificationControllerTests
         var ct = CancellationToken.None;
 
         notificationServiceMock
-            .Setup(s => s.MarkReadAsync(notificationId, adminUserId, ct))
+            .Setup(s => s.MarkRead(notificationId, adminUserId, ct))
             .Returns(Task.CompletedTask);
 
         // Act

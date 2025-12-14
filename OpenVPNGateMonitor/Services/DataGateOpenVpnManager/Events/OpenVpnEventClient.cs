@@ -271,7 +271,7 @@ public class OpenVpnEventClient(
                 openVpnServerClient.SessionId = GenerateSessionId(
                     openVpnServerClient.CommonName, openVpnServerClient.RemoteIp, openVpnServerClient.ConnectedSince);
 
-                await clientCmd.AddAsync(openVpnServerClient, saveChanges: false, CancellationToken.None);
+                await clientCmd.Add(openVpnServerClient, saveChanges: false, CancellationToken.None);
                 logger.LogInformation("VpnServerId: {Id}. Added new client session {SessionId}.",
                     _serverId, openVpnServerClient.SessionId);
             }
@@ -280,7 +280,7 @@ public class OpenVpnEventClient(
             {
                 var nowUtc = DateTimeOffset.UtcNow;
 
-                await clientCmd.UpdateWhereAsync(
+                await clientCmd.UpdateWhere(
                     x => x.VpnServerId == _serverId
                          && x.IsConnected
                          && x.CommonName == req.CommonName
@@ -294,7 +294,7 @@ public class OpenVpnEventClient(
             }
 
             // save while scope (DbContext) is still alive
-            await clientCmd.SaveChangesAsync(CancellationToken.None);
+            await clientCmd.SaveChanges(CancellationToken.None);
 
             swSave.Stop();
             logger.LogInformation("Saved event {EventType} for ServerId={ServerId}; SaveMs={ElapsedMs}",

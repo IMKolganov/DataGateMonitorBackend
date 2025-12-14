@@ -6,29 +6,32 @@ namespace OpenVPNGateMonitor.Services.DataGateOpenVpnManager.Interfaces;
 
 public interface IOvpnFileApiService
 {
-    Task<IssuedOvpnFile> GetByTokenAsync(string token, CancellationToken cancellationToken
+    Task<IssuedOvpnFile> GetByToken(string token, CancellationToken cancellationToken
         , bool isRevoked = false);
-    Task<List<IssuedOvpnFile>> GetAllByVpnServerIdAsync(int vpnServerId, CancellationToken cancellationToken);
-    Task<List<IssuedOvpnFile>> GetAllByExternalIdAsync(string externalId, 
+    Task<List<IssuedOvpnFile>> GetAllByVpnServerId(int vpnServerId, CancellationToken cancellationToken);
+    Task<List<IssuedOvpnFile>> GetAllByExternalId(string externalId, 
         CancellationToken cancellationToken);
 
-    Task<List<(IssuedOvpnFile File, IssuedOvpnFileToken? Token)>> GetAllByVpnServerIdWithTokenAsync(int vpnServerId,
+    Task<List<(IssuedOvpnFile File, IssuedOvpnFileToken? Token)>> GetAllByVpnServerIdWithToken(int vpnServerId,
         CancellationToken cancellationToken, bool isRevoked = false);
 
-    Task<List<IssuedOvpnFile>> GetAllByExternalIdAndVpnServerIdAsync(int vpnServerId, string externalId,
+    Task<List<IssuedOvpnFile>> GetAllByExternalIdAndVpnServerId(int vpnServerId, string externalId,
         CancellationToken cancellationToken, bool isRevoked = false);
     Task<List<(IssuedOvpnFile File, IssuedOvpnFileToken? Token)>> 
-        GetAllByExternalIdAndVpnServerIdWithTokenAsync(int vpnServerId, string externalId, 
+        GetAllByExternalIdAndVpnServerIdWithToken(int vpnServerId, string externalId, 
             CancellationToken cancellationToken, bool isRevoked = false);
     
-    Task<IssuedOvpnFile> AddOvpnFileAsync(AddFileRequest request, 
+    Task<IssuedOvpnFile> AddOvpnFile(AddFileRequest request, 
         CancellationToken cancellationToken);
-    Task<(IssuedOvpnFile File, IssuedOvpnFileToken Token)> AddOvpnFileWithTokenAsync(AddFileRequest request, 
+    Task<(IssuedOvpnFile File, IssuedOvpnFileToken Token)> AddOvpnFileWithToken(AddFileRequest request, 
         CancellationToken cancellationToken);
     
-    Task<IssuedOvpnFile> RevokeOvpnFileAsync(RevokeFileRequest request,
+    Task<IssuedOvpnFile> RevokeOvpnFile(RevokeFileRequest request,
         CancellationToken cancellationToken);
 
-    Task<DownloadFileResponse> DownloadOvpnFileAsync(DownloadFileRequest request,
+    Task<DownloadFileResponse> DownloadOvpnFile(DownloadFileRequest request,
+        CancellationToken cancellationToken, bool isRevoked = false);
+    
+    Task<DownloadFileResponse> DownloadOvpnFileByCn(DownloadFileRequest request,
         CancellationToken cancellationToken, bool isRevoked = false);
 }

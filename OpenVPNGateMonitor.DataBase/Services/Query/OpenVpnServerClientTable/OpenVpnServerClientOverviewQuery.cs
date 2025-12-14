@@ -110,7 +110,7 @@ public class OpenVpnServerClientOverviewQuery(
         var users = new Dictionary<string, User?>();
         foreach (var extId in externalIds)
         {
-            var user = await userQueryService.GetByExternalIdAsync(extId, ct);
+            var user = await userQueryService.GetByExternalId(extId, ct);
             users[extId] = user;
         }
 

@@ -38,7 +38,7 @@ public class EfCommandServiceTests
         var sut = new EfCommandService<TestEntity, int>(m.Uow.Object);
 
         var entity = new TestEntity { Id = 1, Name = "a" };
-        var result = await sut.AddAsync(entity, saveChanges: true, CancellationToken.None);
+        var result = await sut.Add(entity, saveChanges: true, CancellationToken.None);
 
         m.Repo.Verify(r => r.AddAsync(entity, It.IsAny<CancellationToken>()), Times.Once);
         m.Uow.Verify(u => u.SaveChangesAsync(It.IsAny<CancellationToken>()), Times.Once);
@@ -52,7 +52,7 @@ public class EfCommandServiceTests
         var sut = new EfCommandService<TestEntity, int>(m.Uow.Object);
 
         var entity = new TestEntity { Id = 2, Name = "b" };
-        var result = await sut.AddAsync(entity, saveChanges: false, CancellationToken.None);
+        var result = await sut.Add(entity, saveChanges: false, CancellationToken.None);
 
         m.Repo.Verify(r => r.AddAsync(entity, It.IsAny<CancellationToken>()), Times.Once);
         m.Uow.Verify(u => u.SaveChangesAsync(It.IsAny<CancellationToken>()), Times.Never);
@@ -73,7 +73,7 @@ public class EfCommandServiceTests
             new TestEntity { Id = 3 }
         };
 
-        var affected = await sut.AddRangeAsync(list, saveChanges: true, CancellationToken.None);
+        var affected = await sut.AddRange(list, saveChanges: true, CancellationToken.None);
 
         m.Repo.Verify(
             r => r.AddRangeAsync(
@@ -91,7 +91,7 @@ public class EfCommandServiceTests
         var m = new Mocks();
         var sut = new EfCommandService<TestEntity, int>(m.Uow.Object);
 
-        var affected = await sut.AddRangeAsync(Array.Empty<TestEntity>(), saveChanges: true, CancellationToken.None);
+        var affected = await sut.AddRange(Array.Empty<TestEntity>(), saveChanges: true, CancellationToken.None);
 
         m.Repo.Verify(
             r => r.AddRangeAsync(It.IsAny<IEnumerable<TestEntity>>(), It.IsAny<CancellationToken>()),
@@ -107,7 +107,7 @@ public class EfCommandServiceTests
         var sut = new EfCommandService<TestEntity, int>(m.Uow.Object);
 
         var list = new[] { new TestEntity { Id = 1 } };
-        var affected = await sut.AddRangeAsync(list, saveChanges: false, CancellationToken.None);
+        var affected = await sut.AddRange(list, saveChanges: false, CancellationToken.None);
 
         m.Repo.Verify(
             r => r.AddRangeAsync(
@@ -127,7 +127,7 @@ public class EfCommandServiceTests
         var sut = new EfCommandService<TestEntity, int>(m.Uow.Object);
 
         var entity = new TestEntity { Id = 5 };
-        var affected = await sut.UpdateAsync(entity, saveChanges: true, CancellationToken.None);
+        var affected = await sut.Update(entity, saveChanges: true, CancellationToken.None);
 
         m.Repo.Verify(r => r.Update(entity), Times.Once);
         m.Uow.Verify(u => u.SaveChangesAsync(It.IsAny<CancellationToken>()), Times.Once);
@@ -141,7 +141,7 @@ public class EfCommandServiceTests
         var sut = new EfCommandService<TestEntity, int>(m.Uow.Object);
 
         var entity = new TestEntity { Id = 6 };
-        var affected = await sut.UpdateAsync(entity, saveChanges: false, CancellationToken.None);
+        var affected = await sut.Update(entity, saveChanges: false, CancellationToken.None);
 
         m.Repo.Verify(r => r.Update(entity), Times.Once);
         m.Uow.Verify(u => u.SaveChangesAsync(It.IsAny<CancellationToken>()), Times.Never);
@@ -156,7 +156,7 @@ public class EfCommandServiceTests
         var sut = new EfCommandService<TestEntity, int>(m.Uow.Object);
 
         var entity = new TestEntity { Id = 10 };
-        var affected = await sut.DeleteAsync(entity, saveChanges: true, CancellationToken.None);
+        var affected = await sut.Delete(entity, saveChanges: true, CancellationToken.None);
 
         m.Repo.Verify(r => r.Delete(entity), Times.Once);
         m.Uow.Verify(u => u.SaveChangesAsync(It.IsAny<CancellationToken>()), Times.Once);
@@ -170,7 +170,7 @@ public class EfCommandServiceTests
         var sut = new EfCommandService<TestEntity, int>(m.Uow.Object);
 
         var entity = new TestEntity { Id = 11 };
-        var affected = await sut.DeleteAsync(entity, saveChanges: false, CancellationToken.None);
+        var affected = await sut.Delete(entity, saveChanges: false, CancellationToken.None);
 
         m.Repo.Verify(r => r.Delete(entity), Times.Once);
         m.Uow.Verify(u => u.SaveChangesAsync(It.IsAny<CancellationToken>()), Times.Never);
@@ -184,7 +184,7 @@ public class EfCommandServiceTests
         m.Uow.Setup(u => u.SaveChangesAsync(It.IsAny<CancellationToken>())).ReturnsAsync(42);
         var sut = new EfCommandService<TestEntity, int>(m.Uow.Object);
 
-        var affected = await sut.SaveChangesAsync(CancellationToken.None);
+        var affected = await sut.SaveChanges(CancellationToken.None);
 
         m.Uow.Verify(u => u.SaveChangesAsync(It.IsAny<CancellationToken>()), Times.Once);
         Assert.Equal(42, affected);
@@ -234,7 +234,7 @@ public class EfCommandServiceTests
         var sut = new EfCommandService<TestEntity, int>(uowMock.Object);
 
         await Assert.ThrowsAsync<InvalidOperationException>(
-            () => sut.DeleteByIdAsync(1, CancellationToken.None));
+            () => sut.DeleteById(1, CancellationToken.None));
     }
 
     [Fact]
@@ -256,7 +256,7 @@ public class EfCommandServiceTests
         var sut = new EfCommandService<TestEntity, int>(uowMock.Object);
 
         await Assert.ThrowsAsync<InvalidOperationException>(
-            () => sut.DeleteWhereAsync(e => !e.IsActive, CancellationToken.None));
+            () => sut.DeleteWhere(e => !e.IsActive, CancellationToken.None));
     }
 
     [Fact]
@@ -278,7 +278,7 @@ public class EfCommandServiceTests
         var sut = new EfCommandService<TestEntity, int>(uowMock.Object);
 
         await Assert.ThrowsAsync<InvalidOperationException>(
-            () => sut.UpdateWhereAsync(
+            () => sut.UpdateWhere(
                 e => !e.IsActive,
                 set => set.SetProperty(e => e.IsActive, _ => true),
                 CancellationToken.None));

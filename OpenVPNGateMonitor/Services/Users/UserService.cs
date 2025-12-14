@@ -33,7 +33,7 @@ public class UserService(
 
         // 1) Ensure TelegramBotUser exists (read via query, mutate via command)
         var telegramBotUser = await telegramBotUserQueryService
-            .GetByTelegramIdAsync(request.TelegramId, cancellationToken);
+            .GetByTelegramId(request.TelegramId, cancellationToken);
 
         if (telegramBotUser == null)
         {
@@ -43,7 +43,7 @@ public class UserService(
             telegramBotUser.IsBlocked = false;
             telegramBotUser.IsAdmin = false;
 
-            telegramBotUser = await telegramBotUserCommandService.AddAsync(telegramBotUser, saveChanges: true,
+            telegramBotUser = await telegramBotUserCommandService.Add(telegramBotUser, saveChanges: true,
                 cancellationToken);
             logger.LogInformation("Telegram user {TelegramId} created", request.TelegramId);
         }
@@ -52,12 +52,12 @@ public class UserService(
             request.Adapt(telegramBotUser);
             telegramBotUser.LastUpdate = now;
 
-            await telegramBotUserCommandService.UpdateAsync(telegramBotUser, saveChanges: true, cancellationToken);
+            await telegramBotUserCommandService.Update(telegramBotUser, saveChanges: true, cancellationToken);
             logger.LogInformation("Telegram user {TelegramId} updated", request.TelegramId);
         }
 
         // 2) Resolve dashboard User via identity link (read via query)
-        var link = await userIdentityLinkQueryService.GetByProviderAndExternalIdAsync(
+        var link = await userIdentityLinkQueryService.GetByProviderAndExternalId(
             "telegram", request.TelegramId.ToString(), cancellationToken);
 
         User user;
@@ -83,7 +83,7 @@ public class UserService(
                 LastUpdate = now
             };
 
-            user = await userCommandService.AddAsync(user, saveChanges: true, cancellationToken);
+            user = await userCommandService.Add(user, saveChanges: true, cancellationToken);
             logger.LogInformation("Dashboard user created for Telegram {TelegramId}", request.TelegramId);
 
             // Create identity link (mutate via command)
@@ -97,11 +97,11 @@ public class UserService(
                 LastUpdate = now
             };
 
-            await userIdentityLinkCommandService.AddAsync(identityLink, saveChanges: true, cancellationToken);
+            await userIdentityLinkCommandService.Add(identityLink, saveChanges: true, cancellationToken);
             logger.LogInformation("UserIdentityLink created for user {UserId}", user.Id);
 
             // Assign default quota (read default plan via query, mutate via command)
-            var defaultPlan = await quotaPlanQueryService.GetDefaultAsync(cancellationToken);
+            var defaultPlan = await quotaPlanQueryService.GetDefault(cancellationToken);
             if (defaultPlan != null)
             {
                 var quotaPlan = new UserQuotaPlan
@@ -115,14 +115,14 @@ public class UserService(
                     LastUpdate = now
                 };
 
-                await userQuotaPlanCommandService.AddAsync(quotaPlan, saveChanges: true, cancellationToken);
+                await userQuotaPlanCommandService.Add(quotaPlan, saveChanges: true, cancellationToken);
                 logger.LogInformation("Default quota plan {PlanId} assigned to user {UserId}", defaultPlan.Id, user.Id);
             }
         }
         else
         {
             // Load user via query by link.UserId
-            user = await userQueryService.GetByIdAsync(link.UserId, cancellationToken)
+            user = await userQueryService.GetById(link.UserId, cancellationToken)
                    ?? throw new InvalidOperationException($"Linked user not found: {link.UserId}");
         }
 
@@ -139,7 +139,7 @@ public class UserService(
     public async Task<GetAllUsersResponse> GetAllUsers(CancellationToken cancellationToken)
     {
         // Get all dashboard users
-        var users = await userQueryService.GetAllAsync(cancellationToken);
+        var users = await userQueryService.GetAll(cancellationToken);
 
         // NOTE: Simple and clear implementation.
         // If needed, this can be optimized later by adding a batch query for identity links.
@@ -156,7 +156,7 @@ public class UserService(
     public async Task<UsersResponse> GetUserById(GetUserByIdRequest request, CancellationToken cancellationToken)
     {
         // Load user by id or fail fast
-        var user = await userQueryService.GetByIdAsync(request.Id, cancellationToken)
+        var user = await userQueryService.GetById(request.Id, cancellationToken)
                    ?? throw new KeyNotFoundException($"User {request.Id} not found");
 
         var dto = await BuildUserDtoAsync(user, cancellationToken);
@@ -168,14 +168,14 @@ public class UserService(
     {
         // Resolve link first (provider + external id)
         var link = await userIdentityLinkQueryService
-            .GetByExternalIdAsync(request.ExternalId, cancellationToken);
+            .GetByExternalId(request.ExternalId, cancellationToken);
 
         if (link == null)
             throw new KeyNotFoundException(
                 $"Identity link not found for externalId '{request.ExternalId}'");
 
         // Load user by link
-        var user = await userQueryService.GetByIdAsync(link.UserId, cancellationToken)
+        var user = await userQueryService.GetById(link.UserId, cancellationToken)
                    ?? throw new InvalidOperationException($"Linked user not found: {link.UserId}");
 
         var dto = await BuildUserDtoAsync(user, cancellationToken);
@@ -191,7 +191,7 @@ public class UserService(
 
         // Try enrich with identity link (first link if multiple)
         // Requires IUserIdentityLinkQueryService.GetByUserIdAsync(int userId, CancellationToken ct)
-        var link = await userIdentityLinkQueryService.GetByUserIdAsync(user.Id, ct);
+        var link = await userIdentityLinkQueryService.GetByUserId(user.Id, ct);
 
         if (link != null)
         {

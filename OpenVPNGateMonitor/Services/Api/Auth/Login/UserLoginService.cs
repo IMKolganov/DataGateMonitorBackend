@@ -44,7 +44,7 @@ public sealed class UserLoginService(
         if (credential is null)
             throw new UnauthorizedAccessException("Invalid login or password.");
 
-        var user = await userQueryService.GetByIdAsync(credential.UserId, ct)
+        var user = await userQueryService.GetById(credential.UserId, ct)
                    ?? throw new InvalidOperationException("User record is missing.");
 
         if (user.IsBlocked)
@@ -80,20 +80,20 @@ public sealed class UserLoginService(
         var externalId = googleUser.Subject;
 
         var existingLink = await userIdentityLinkQueryService
-            .GetByProviderAndExternalIdAsync(provider, externalId, ct);
+            .GetByProviderAndExternalId(provider, externalId, ct);
 
         User? user = null;
         var isNew = false;
 
         if (existingLink is { UserId: > 0 })
         {
-            user = await userQueryService.GetByIdAsync(existingLink.UserId, ct)
+            user = await userQueryService.GetById(existingLink.UserId, ct)
                    ?? throw new InvalidOperationException("User linked to Google account not found.");
         }
         else
         {
             if (!string.IsNullOrEmpty(googleUser.Email))
-                user = await userQueryService.GetByEmailAsync(googleUser.Email, ct);
+                user = await userQueryService.GetByEmail(googleUser.Email, ct);
 
             if (user is null)
             {
@@ -113,7 +113,7 @@ public sealed class UserLoginService(
                 ExternalId = externalId
             };
 
-            await userIdentityLinkCommandService.AddAsync(link, saveChanges: true, ct);
+            await userIdentityLinkCommandService.Add(link, saveChanges: true, ct);
         }
 
         var (token, expires) = await CreateJwtAsync(user, ct);

@@ -30,7 +30,7 @@ public class OpenVpnServerOvpnFileConfigServiceTests
     {
         var (svc, _, q, _) = CreateService();
         var entity = new OpenVpnServerOvpnFileConfig { Id = 1, VpnServerId = 77, VpnServerIp = "1.2.3.4", VpnServerPort = 1194 };
-        q.Setup(x => x.GetByVpnServerIdIdAsync(77, It.IsAny<CancellationToken>()))
+        q.Setup(x => x.GetByVpnServerIdId(77, It.IsAny<CancellationToken>()))
             .ReturnsAsync(entity);
 
         var result = await svc.GetOpenVpnServerOvpnFileConfigByServerId(77, CancellationToken.None);
@@ -43,7 +43,7 @@ public class OpenVpnServerOvpnFileConfigServiceTests
     public async Task GetByServerId_Throws_When_NotFound()
     {
         var (svc, _, q, _) = CreateService();
-        q.Setup(x => x.GetByVpnServerIdIdAsync(42, It.IsAny<CancellationToken>()))
+        q.Setup(x => x.GetByVpnServerIdId(42, It.IsAny<CancellationToken>()))
             .ReturnsAsync((OpenVpnServerOvpnFileConfig?)null);
 
         var ex = await Assert.ThrowsAsync<InvalidOperationException>(() =>
@@ -70,11 +70,11 @@ public class OpenVpnServerOvpnFileConfigServiceTests
         };
 
         // First call returns existing entity, second call (after update) returns same updated reference
-        q.SetupSequence(x => x.GetByVpnServerIdIdAsync(100, It.IsAny<CancellationToken>()))
+        q.SetupSequence(x => x.GetByVpnServerIdId(100, It.IsAny<CancellationToken>()))
             .ReturnsAsync(existing)
             .ReturnsAsync(existing);
 
-        cmd.Setup(c => c.UpdateAsync(existing, true, It.IsAny<CancellationToken>()))
+        cmd.Setup(c => c.Update(existing, true, It.IsAny<CancellationToken>()))
             .ReturnsAsync(1)
             .Verifiable();
 
@@ -107,10 +107,10 @@ public class OpenVpnServerOvpnFileConfigServiceTests
         OpenVpnServerOvpnFileConfig? added = null;
 
         // First lookup returns null, second re-fetch returns the same object that was added
-        q.SetupSequence(x => x.GetByVpnServerIdIdAsync(serverId, It.IsAny<CancellationToken>()))
+        q.SetupSequence(x => x.GetByVpnServerIdId(serverId, It.IsAny<CancellationToken>()))
             .ReturnsAsync((OpenVpnServerOvpnFileConfig?)null)
             .ReturnsAsync(() => added!);
-        cmd.Setup(c => c.AddAsync(It.IsAny<OpenVpnServerOvpnFileConfig>(), true, It.IsAny<CancellationToken>()))
+        cmd.Setup(c => c.Add(It.IsAny<OpenVpnServerOvpnFileConfig>(), true, It.IsAny<CancellationToken>()))
             .Callback<OpenVpnServerOvpnFileConfig, bool, CancellationToken>((e, _, _) => added = e)
             .ReturnsAsync((OpenVpnServerOvpnFileConfig e, bool _, CancellationToken __) => e);
 
@@ -136,7 +136,7 @@ public class OpenVpnServerOvpnFileConfigServiceTests
 
         Assert.Same(added, result);
 
-        cmd.Verify(c => c.AddAsync(It.IsAny<OpenVpnServerOvpnFileConfig>(), true, It.IsAny<CancellationToken>()), Times.Once);
+        cmd.Verify(c => c.Add(It.IsAny<OpenVpnServerOvpnFileConfig>(), true, It.IsAny<CancellationToken>()), Times.Once);
         q.VerifyAll();
     }
 
@@ -146,11 +146,11 @@ public class OpenVpnServerOvpnFileConfigServiceTests
         var (svc, _, q, cmd) = CreateService();
         var serverId = 300;
 
-        q.SetupSequence(x => x.GetByVpnServerIdIdAsync(serverId, It.IsAny<CancellationToken>()))
+        q.SetupSequence(x => x.GetByVpnServerIdId(serverId, It.IsAny<CancellationToken>()))
             .ReturnsAsync((OpenVpnServerOvpnFileConfig?)null)
             .ReturnsAsync((OpenVpnServerOvpnFileConfig?)null);
 
-        cmd.Setup(c => c.AddAsync(It.IsAny<OpenVpnServerOvpnFileConfig>(), true, It.IsAny<CancellationToken>()))
+        cmd.Setup(c => c.Add(It.IsAny<OpenVpnServerOvpnFileConfig>(), true, It.IsAny<CancellationToken>()))
             .ReturnsAsync((OpenVpnServerOvpnFileConfig e, bool _, CancellationToken __) => e);
 
         var incoming = new OpenVpnServerOvpnFileConfig
@@ -166,6 +166,6 @@ public class OpenVpnServerOvpnFileConfigServiceTests
 
         Assert.Contains(serverId.ToString(), ex.Message);
         q.VerifyAll();
-        cmd.Verify(c => c.AddAsync(It.IsAny<OpenVpnServerOvpnFileConfig>(), true, It.IsAny<CancellationToken>()), Times.Once);
+        cmd.Verify(c => c.Add(It.IsAny<OpenVpnServerOvpnFileConfig>(), true, It.IsAny<CancellationToken>()), Times.Once);
     }
 }

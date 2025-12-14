@@ -6,10 +6,10 @@ namespace OpenVPNGateMonitor.DataBase.Services.Query.LocalizationTextTable;
 
 public interface ILocalizationTextQueryService
 {
-    Task<List<LocalizationText>> GetAllAsync(CancellationToken ct);
-    Task<LocalizationText?> GetByIdAsync(int id, CancellationToken ct);
-    Task<string?> GetTextValueByKeyAndLanguageAsync(string key, Language language, CancellationToken ct);
-    Task<IPagedResult<LocalizationText>> GetPageAsync(int page, int pageSize, CancellationToken ct);
+    Task<List<LocalizationText>> GetAll(CancellationToken ct);
+    Task<LocalizationText?> GetById(int id, CancellationToken ct);
+    Task<string?> GetTextValueByKeyAndLanguage(string key, Language language, CancellationToken ct);
+    Task<IPagedResult<LocalizationText>> GetPage(int page, int pageSize, CancellationToken ct);
     
     
 }

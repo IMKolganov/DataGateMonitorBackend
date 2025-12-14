@@ -22,39 +22,39 @@ public class QuotaPlanServiceTests
     public async Task GetAll_DelegatesToQuery()
     {
         var plans = new List<QuotaPlan> { new() { Id = 1, Name = "A" } };
-        _query.Setup(q => q.GetAllAsync(It.IsAny<CancellationToken>())).ReturnsAsync(plans);
+        _query.Setup(q => q.GetAll(It.IsAny<CancellationToken>())).ReturnsAsync(plans);
 
         var svc = CreateService();
         var result = await svc.GetAllAsync();
 
         Assert.Same(plans, result);
-        _query.Verify(q => q.GetAllAsync(It.IsAny<CancellationToken>()), Times.Once);
+        _query.Verify(q => q.GetAll(It.IsAny<CancellationToken>()), Times.Once);
     }
 
     [Fact]
     public async Task GetById_DelegatesToQuery()
     {
         var plan = new QuotaPlan { Id = 7, Name = "P" };
-        _query.Setup(q => q.GetByIdAsync(7, It.IsAny<CancellationToken>())).ReturnsAsync(plan);
+        _query.Setup(q => q.GetById(7, It.IsAny<CancellationToken>())).ReturnsAsync(plan);
 
         var svc = CreateService();
         var result = await svc.GetByIdAsync(7);
 
         Assert.Same(plan, result);
-        _query.Verify(q => q.GetByIdAsync(7, It.IsAny<CancellationToken>()), Times.Once);
+        _query.Verify(q => q.GetById(7, It.IsAny<CancellationToken>()), Times.Once);
     }
 
     [Fact]
     public async Task GetPage_DelegatesToQuery()
     {
         var paged = Mock.Of<SharedModels.Responses.IPagedResult<QuotaPlan>>();
-        _query.Setup(q => q.GetPageAsync(2, 5, It.IsAny<CancellationToken>())).ReturnsAsync(paged);
+        _query.Setup(q => q.GetPage(2, 5, It.IsAny<CancellationToken>())).ReturnsAsync(paged);
 
         var svc = CreateService();
         var result = await svc.GetPageAsync(2, 5);
 
         Assert.Same(paged, result);
-        _query.Verify(q => q.GetPageAsync(2, 5, It.IsAny<CancellationToken>()), Times.Once);
+        _query.Verify(q => q.GetPage(2, 5, It.IsAny<CancellationToken>()), Times.Once);
     }
 
     [Fact]
@@ -66,7 +66,7 @@ public class QuotaPlanServiceTests
             new() { Id = 2, Name = "B", IsDefault = true },
             new() { Id = 3, Name = "C", IsDefault = true },
         };
-        _query.Setup(q => q.GetAllAsync(It.IsAny<CancellationToken>())).ReturnsAsync(list);
+        _query.Setup(q => q.GetAll(It.IsAny<CancellationToken>())).ReturnsAsync(list);
 
         var svc = CreateService();
         var result = await svc.GetDefaultAsync();
@@ -78,7 +78,7 @@ public class QuotaPlanServiceTests
     [Fact]
     public async Task GetDefault_ReturnsNullWhenNone()
     {
-        _query.Setup(q => q.GetAllAsync(It.IsAny<CancellationToken>())).ReturnsAsync(new List<QuotaPlan>());
+        _query.Setup(q => q.GetAll(It.IsAny<CancellationToken>())).ReturnsAsync(new List<QuotaPlan>());
         var svc = CreateService();
         var result = await svc.GetDefaultAsync();
         Assert.Null(result);
@@ -89,14 +89,14 @@ public class QuotaPlanServiceTests
     {
         var input = new QuotaPlan { Id = 123, Name = "Plan" };
         var created = new QuotaPlan { Id = 10, Name = "Plan" };
-        _command.Setup(c => c.AddAsync(It.IsAny<QuotaPlan>(), true, It.IsAny<CancellationToken>())).ReturnsAsync(created);
+        _command.Setup(c => c.Add(It.IsAny<QuotaPlan>(), true, It.IsAny<CancellationToken>())).ReturnsAsync(created);
 
         var svc = CreateService();
         var result = await svc.CreateAsync(input);
 
         Assert.Same(created, result);
         _command.Verify(
-            c => c.AddAsync(
+            c => c.Add(
                 It.Is<QuotaPlan>(p => p.Id == 0 && p.Name == "Plan"),
                 true,
                 It.IsAny<CancellationToken>()),
@@ -109,14 +109,14 @@ public class QuotaPlanServiceTests
         var unsetCalls = 0;
 
         _command
-            .Setup(c => c.UpdateWhereAsync(
+            .Setup(c => c.UpdateWhere(
                 It.IsAny<Expression<Func<QuotaPlan, bool>>>(),
                 It.IsAny<Action<UpdateSettersBuilder<QuotaPlan>>>(),
                 It.IsAny<CancellationToken>()))
             .Callback(() => unsetCalls++)
             .ReturnsAsync(1);
 
-        _command.Setup(c => c.AddAsync(It.IsAny<QuotaPlan>(), true, It.IsAny<CancellationToken>()))
+        _command.Setup(c => c.Add(It.IsAny<QuotaPlan>(), true, It.IsAny<CancellationToken>()))
             .ReturnsAsync((QuotaPlan p, bool _, CancellationToken _) => new QuotaPlan
             {
                 Id = 42,
@@ -155,14 +155,14 @@ public class QuotaPlanServiceTests
         var unsetCalls = 0;
 
         _command
-            .Setup(c => c.UpdateWhereAsync(
+            .Setup(c => c.UpdateWhere(
                 It.IsAny<Expression<Func<QuotaPlan, bool>>>(),
                 It.IsAny<Action<UpdateSettersBuilder<QuotaPlan>>>(),
                 It.IsAny<CancellationToken>()))
             .Callback(() => unsetCalls++)
             .ReturnsAsync(3);
 
-        _command.Setup(c => c.UpdateAsync(It.IsAny<QuotaPlan>(), true, It.IsAny<CancellationToken>()))
+        _command.Setup(c => c.Update(It.IsAny<QuotaPlan>(), true, It.IsAny<CancellationToken>()))
             .ReturnsAsync(1);
 
         var svc = CreateService();
@@ -171,7 +171,7 @@ public class QuotaPlanServiceTests
         Assert.Equal(1, affected);
         Assert.Equal(1, unsetCalls);
         _command.Verify(
-            c => c.UpdateAsync(
+            c => c.Update(
                 It.Is<QuotaPlan>(p => p.Id == 5 && p.IsDefault),
                 true,
                 It.IsAny<CancellationToken>()),
@@ -184,7 +184,7 @@ public class QuotaPlanServiceTests
         Expression<Func<QuotaPlan, bool>>? capturedPredicate = null;
 
         _command
-            .Setup(c => c.UpdateWhereAsync(
+            .Setup(c => c.UpdateWhere(
                 It.IsAny<Expression<Func<QuotaPlan, bool>>>(),
                 It.IsAny<Action<UpdateSettersBuilder<QuotaPlan>>>(),
                 It.IsAny<CancellationToken>()))
@@ -212,7 +212,7 @@ public class QuotaPlanServiceTests
         Expression<Func<QuotaPlan, bool>>? capturedPredicate = null;
 
         _command
-            .Setup(c => c.UpdateWhereAsync(
+            .Setup(c => c.UpdateWhere(
                 It.IsAny<Expression<Func<QuotaPlan, bool>>>(),
                 It.IsAny<Action<UpdateSettersBuilder<QuotaPlan>>>(),
                 It.IsAny<CancellationToken>()))
@@ -237,11 +237,11 @@ public class QuotaPlanServiceTests
     [Fact]
     public async Task Delete_DelegatesToCommand()
     {
-        _command.Setup(c => c.DeleteByIdAsync(11, It.IsAny<CancellationToken>())).ReturnsAsync(1);
+        _command.Setup(c => c.DeleteById(11, It.IsAny<CancellationToken>())).ReturnsAsync(1);
         var svc = CreateService();
         var rows = await svc.DeleteAsync(11);
         Assert.Equal(1, rows);
-        _command.Verify(c => c.DeleteByIdAsync(11, It.IsAny<CancellationToken>()), Times.Once);
+        _command.Verify(c => c.DeleteById(11, It.IsAny<CancellationToken>()), Times.Once);
     }
 
     [Fact]
@@ -250,7 +250,7 @@ public class QuotaPlanServiceTests
         var calls = 0;
 
         _command
-            .Setup(c => c.UpdateWhereAsync(
+            .Setup(c => c.UpdateWhere(
                 It.IsAny<Expression<Func<QuotaPlan, bool>>>(),
                 It.IsAny<Action<UpdateSettersBuilder<QuotaPlan>>>(),
                 It.IsAny<CancellationToken>()))
@@ -269,7 +269,7 @@ public class QuotaPlanServiceTests
         var calls = 0;
 
         _command
-            .Setup(c => c.UpdateWhereAsync(
+            .Setup(c => c.UpdateWhere(
                 It.IsAny<Expression<Func<QuotaPlan, bool>>>(),
                 It.IsAny<Action<UpdateSettersBuilder<QuotaPlan>>>(),
                 It.IsAny<CancellationToken>()))

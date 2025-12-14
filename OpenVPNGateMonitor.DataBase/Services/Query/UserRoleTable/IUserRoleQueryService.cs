@@ -6,12 +6,12 @@ namespace OpenVPNGateMonitor.DataBase.Services.Query.UserRoleTable;
 
 public interface IUserRoleQueryService
 {
-    Task<List<UserRole>> GetAllAsync(CancellationToken ct);
-    Task<UserRole?> GetByIdAsync(int id, CancellationToken ct);
-    Task<UserRole?> GetByUserIdAsync(int userId, CancellationToken ct);
-    Task<UserRole?> GetByIdAndUserIdAsync(int id, int userId, CancellationToken ct);
-    Task<IPagedResult<UserRole>> GetPageAsync(int page, int pageSize, CancellationToken ct);
-    public Task<List<UserRole>> SearchAsync(
+    Task<List<UserRole>> GetAll(CancellationToken ct);
+    Task<UserRole?> GetById(int id, CancellationToken ct);
+    Task<UserRole?> GetByUserId(int userId, CancellationToken ct);
+    Task<UserRole?> GetByIdAndUserId(int id, int userId, CancellationToken ct);
+    Task<IPagedResult<UserRole>> GetPage(int page, int pageSize, CancellationToken ct);
+    public Task<List<UserRole>> Search(
         Expression<Func<UserRole, bool>> predicate,
         CancellationToken ct);
 }

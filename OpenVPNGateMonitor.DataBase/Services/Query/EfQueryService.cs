@@ -6,37 +6,33 @@ using OpenVPNGateMonitor.SharedModels.Responses;
 
 namespace OpenVPNGateMonitor.DataBase.Services.Query;
 
-public class EfQueryService<TEntity, TKey> : IQueryService<TEntity, TKey>
+public class EfQueryService<TEntity, TKey>(IUnitOfWork uow) : IQueryService<TEntity, TKey>
     where TEntity : BaseEntity<TKey>
 {
-    private readonly IUnitOfWork _uow;
-
-    public EfQueryService(IUnitOfWork uow) => _uow = uow;
-
-    public async Task<List<TEntity>> GetAllAsync(bool asNoTracking = true, CancellationToken ct = default)
-        => await ApplyTracking(_uow.GetQuery<TEntity>().AsQueryable(), asNoTracking)
+    public async Task<List<TEntity>> GetAll(bool asNoTracking = true, CancellationToken ct = default)
+        => await ApplyTracking(uow.GetQuery<TEntity>().AsQueryable(), asNoTracking)
             .OrderBy(e => e.Id)
             .ToListAsync(ct);
 
-    public async Task<TEntity?> FindByIdAsync(
+    public async Task<TEntity?> FindById(
         TKey id,
         bool asNoTracking = true,
         CancellationToken ct = default,
         params Expression<Func<TEntity, object>>[] includes)
     {
-        var q = ApplyIncludes(_uow.GetQuery<TEntity>().AsQueryable(), includes);
+        var q = ApplyIncludes(uow.GetQuery<TEntity>().AsQueryable(), includes);
         q = ApplyTracking(q, asNoTracking);
         return await q.FirstOrDefaultAsync(e => e.Id!.Equals(id), ct);
     }
 
-    public async Task<List<TEntity>> WhereAsync(
+    public async Task<List<TEntity>> Where(
         Expression<Func<TEntity, bool>> predicate,
         Func<IQueryable<TEntity>, IOrderedQueryable<TEntity>>? orderBy = null,
         bool asNoTracking = true,
         CancellationToken ct = default,
         params Expression<Func<TEntity, object>>[] includes)
     {
-        var q = ApplyIncludes(_uow.GetQuery<TEntity>().AsQueryable(), includes)
+        var q = ApplyIncludes(uow.GetQuery<TEntity>().AsQueryable(), includes)
             .Where(predicate);
 
         q = ApplyTracking(q, asNoTracking);
@@ -45,7 +41,7 @@ public class EfQueryService<TEntity, TKey> : IQueryService<TEntity, TKey>
         return await q.ToListAsync(ct);
     }
 
-    public async Task<IPagedResult<TEntity>> PageAsync(
+    public async Task<IPagedResult<TEntity>> Page(
         int page,
         int pageSize,
         Expression<Func<TEntity, bool>>? predicate = null,
@@ -57,7 +53,7 @@ public class EfQueryService<TEntity, TKey> : IQueryService<TEntity, TKey>
         if (page < 1) page = 1;
         if (pageSize < 1) pageSize = 10;
 
-        var baseQuery = ApplyIncludes(_uow.GetQuery<TEntity>().AsQueryable(), includes);
+        var baseQuery = ApplyIncludes(uow.GetQuery<TEntity>().AsQueryable(), includes);
         if (predicate != null) baseQuery = baseQuery.Where(predicate);
 
         var total = await baseQuery.CountAsync(ct);
@@ -76,29 +72,29 @@ public class EfQueryService<TEntity, TKey> : IQueryService<TEntity, TKey>
         };
     }
 
-    public async Task<int> CountAsync(
+    public async Task<int> Count(
         Expression<Func<TEntity, bool>>? predicate = null,
         CancellationToken ct = default)
     {
-        var q = _uow.GetQuery<TEntity>().AsQueryable();
+        var q = uow.GetQuery<TEntity>().AsQueryable();
         if (predicate != null) q = q.Where(predicate);
         return await q.CountAsync(ct);
     }
 
-    public async Task<bool> AnyAsync(
+    public async Task<bool> Any(
         Expression<Func<TEntity, bool>> predicate,
         CancellationToken ct = default)
-        => await _uow.GetQuery<TEntity>().AsQueryable().AnyAsync(predicate, ct);
+        => await uow.GetQuery<TEntity>().AsQueryable().AnyAsync(predicate, ct);
 
     public IQueryable<TEntity> Query(
         bool asNoTracking = true,
         params Expression<Func<TEntity, object>>[] includes)
     {
-        var q = ApplyIncludes(_uow.GetQuery<TEntity>().AsQueryable(), includes);
+        var q = ApplyIncludes(uow.GetQuery<TEntity>().AsQueryable(), includes);
         return ApplyTracking(q, asNoTracking);
     }
     
-    public async Task<TEntity?> FirstOrDefaultAsync(
+    public async Task<TEntity?> FirstOrDefault(
         Expression<Func<TEntity, bool>>? predicate = null,
         Func<IQueryable<TEntity>, IOrderedQueryable<TEntity>>? orderBy = null,
         bool asNoTracking = true,

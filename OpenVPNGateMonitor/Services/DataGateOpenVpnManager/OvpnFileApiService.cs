@@ -32,22 +32,22 @@ public class OvpnFileApiService(
     private int TokenExpireDays =>
         configuration.GetValue<int?>("OvpnFileToken:ExpireDays") ?? DefaultTokenExpireDays;
 
-    public async Task<IssuedOvpnFile> GetByTokenAsync(string token, CancellationToken ct, bool isRevoked = false)
+    public async Task<IssuedOvpnFile> GetByToken(string token, CancellationToken ct, bool isRevoked = false)
     {
         var issuedOvpnFileToken = await issuedOvpnFileTokenQueryService
-            .GetByTokenAsync(token, ct)
+            .GetByToken(token, ct)
             ?? throw new InvalidOperationException(
                 $"IssuedOvpnFileToken not found for token='{token}'. " +
                 "Possible reasons: the token is invalid, expired, or already used/revoked.");
 
         var issuedOvpnFile = await issuedOvpnFileQueryService
-                .GetByIdAndIsRevokedAsync(issuedOvpnFileToken.IssuedOvpnFileId, isRevoked, ct)
+                .GetByIdAndIsRevoked(issuedOvpnFileToken.IssuedOvpnFileId, isRevoked, ct)
             ?? throw new InvalidOperationException(
                 $"IssuedOvpnFile not found for token='{token}'. " +
                 $"IssuedOvpnFileId={issuedOvpnFileToken.IssuedOvpnFileId}, IsRevokedFilter={isRevoked}. " +
                 "Possible reasons: the file was deleted, or its revoked state does not match the requested filter.");
 
-        await ovpnFileNotificationService.NotifyReadByTokenAsync(
+        await ovpnFileNotificationService.NotifyReadByToken(
             token,
             issuedOvpnFile.Id,
             issuedOvpnFile.VpnServerId,
@@ -57,31 +57,31 @@ public class OvpnFileApiService(
         return issuedOvpnFile;
     }
     
-    public async Task<List<IssuedOvpnFile>> GetAllByExternalIdAsync(string externalId, CancellationToken ct)
+    public async Task<List<IssuedOvpnFile>> GetAllByExternalId(string externalId, CancellationToken ct)
     {
         var issuedFiles = await issuedOvpnFileQueryService.GetAllByExternalId(externalId, ct);
         
-        await ovpnFileNotificationService.NotifyReadByExternalIdAsync(externalId, issuedFiles.Count, ct);
+        await ovpnFileNotificationService.NotifyReadByExternalId(externalId, issuedFiles.Count, ct);
 
         return issuedFiles;
     }
     
-    public async Task<List<IssuedOvpnFile>> GetAllByVpnServerIdAsync(int vpnServerId, CancellationToken ct)
+    public async Task<List<IssuedOvpnFile>> GetAllByVpnServerId(int vpnServerId, CancellationToken ct)
     {
         var issuedFiles = await issuedOvpnFileQueryService.GetAllByVpnServerId(vpnServerId, ct);
         
-        await ovpnFileNotificationService.NotifyReadAllAsync(vpnServerId, issuedFiles.Count, ct);
+        await ovpnFileNotificationService.NotifyReadAll(vpnServerId, issuedFiles.Count, ct);
 
         return issuedFiles;
     }
 
-    public async Task<List<(IssuedOvpnFile File, IssuedOvpnFileToken? Token)>> GetAllByVpnServerIdWithTokenAsync(
+    public async Task<List<(IssuedOvpnFile File, IssuedOvpnFileToken? Token)>> GetAllByVpnServerIdWithToken(
         int vpnServerId, CancellationToken ct, bool isRevoked = false)
     {
         var issuedFiles = await issuedOvpnFileQueryService.GetAllByVpnServerIdAndIsRevoked(
             vpnServerId, isRevoked, ct);
         
-        var tokens = await issuedOvpnFileTokenQueryService.GetByIssuedFileIdsAsync(
+        var tokens = await issuedOvpnFileTokenQueryService.GetByIssuedFileIds(
             issuedFiles.Select(x => x.Id).ToList(), ct);
 
         var result = issuedFiles.Select(file =>
@@ -91,31 +91,31 @@ public class OvpnFileApiService(
         }).ToList();
 
         
-        await ovpnFileNotificationService.NotifyReadAllWithTokenAsync(vpnServerId, result.Count, isRevoked, ct);
+        await ovpnFileNotificationService.NotifyReadAllWithToken(vpnServerId, result.Count, isRevoked, ct);
         
         return result;
     }
 
-    public async Task<List<IssuedOvpnFile>> GetAllByExternalIdAndVpnServerIdAsync(int vpnServerId, string externalId,
+    public async Task<List<IssuedOvpnFile>> GetAllByExternalIdAndVpnServerId(int vpnServerId, string externalId,
         CancellationToken ct, bool isRevoked = false)
     {
         var result = await issuedOvpnFileQueryService.GetAllByVpnServerIdAndExternalIdAndIsRevoked(
             vpnServerId, externalId, isRevoked, ct);
-        await ovpnFileNotificationService.NotifyReadByExternalIdAndVpnServerIdAsync(vpnServerId, externalId, result.Count,
+        await ovpnFileNotificationService.NotifyReadByExternalIdAndVpnServerId(vpnServerId, externalId, result.Count,
             isRevoked, ct);
 
         return result;
     }
 
     public async Task<List<(IssuedOvpnFile File, IssuedOvpnFileToken? Token)>> 
-        GetAllByExternalIdAndVpnServerIdWithTokenAsync(int vpnServerId, string externalId, 
+        GetAllByExternalIdAndVpnServerIdWithToken(int vpnServerId, string externalId, 
             CancellationToken ct, bool isRevoked = false)
     {
         var issuedFiles =
             await issuedOvpnFileQueryService.GetAllByVpnServerIdAndExternalIdAndIsRevoked(vpnServerId, externalId,
                 isRevoked, ct);
 
-        var tokens = await issuedOvpnFileTokenQueryService.GetByIssuedFileIdsAsync(
+        var tokens = await issuedOvpnFileTokenQueryService.GetByIssuedFileIds(
             issuedFiles.Select(x => x.Id).ToList(), ct);
 
         var result = issuedFiles
@@ -126,27 +126,27 @@ public class OvpnFileApiService(
             })
             .ToList();
         
-        await ovpnFileNotificationService.NotifyReadByExternalIdWithTokenAsync(vpnServerId, externalId, result.Count, 
+        await ovpnFileNotificationService.NotifyReadByExternalIdWithToken(vpnServerId, externalId, result.Count, 
             isRevoked, ct);
 
         return result;
     }
 
-    public async Task<(IssuedOvpnFile File, IssuedOvpnFileToken Token)> AddOvpnFileWithTokenAsync(
+    public async Task<(IssuedOvpnFile File, IssuedOvpnFileToken Token)> AddOvpnFileWithToken(
         AddFileRequest request,
         CancellationToken ct)
     {
-        var issuedOvpnFile = await AddOvpnFileAsync(request, ct);
-        var token = await MakeTokenForFileAsync(issuedOvpnFile, ct);
+        var issuedOvpnFile = await AddOvpnFile(request, ct);
+        var token = await MakeTokenForFile(issuedOvpnFile, ct);
 
-        await ovpnFileNotificationService.NotifyIssuedWithTokenAsync(
+        await ovpnFileNotificationService.NotifyIssuedWithToken(
             issuedOvpnFile.VpnServerId, issuedOvpnFile.Id, issuedOvpnFile.FileName,
             issuedOvpnFile.ExternalId, token.Id, /* todo: user ID*/ ct);
         
         return (issuedOvpnFile, token);
     }
     
-    public async Task<IssuedOvpnFile> AddOvpnFileAsync(
+    public async Task<IssuedOvpnFile> AddOvpnFile(
         AddFileRequest request, 
         CancellationToken ct)
     {
@@ -156,7 +156,7 @@ public class OvpnFileApiService(
             request.VpnServerId);
         
         if (await issuedOvpnFileQueryService
-                .ExistsActiveByVpnServerIdAndCommonNameAsync(request.VpnServerId, request.CommonName, ct))
+                .ExistsActiveByVpnServerIdAndCommonName(request.VpnServerId, request.CommonName, ct))
         {
             logger.LogWarning(
                 "OVPN file already exists: CommonName={CommonName}, VpnServerId={VpnServerId}",
@@ -179,7 +179,7 @@ public class OvpnFileApiService(
         generateOvpnFileRequest.ServerIp = ovpnFileConfig.VpnServerIp;
         generateOvpnFileRequest.ServerPort = ovpnFileConfig.VpnServerPort;
         
-        var result = await ovpnFileApiClient.AddOvpnFileAsync(
+        var result = await ovpnFileApiClient.AddOvpnFile(
             request.VpnServerId,
             generateOvpnFileRequest,
             ct);
@@ -190,7 +190,7 @@ public class OvpnFileApiService(
         issuedOvpnFile.ReqFilePath = "unavailable";
         issuedOvpnFile.IsRevoked = false;
 
-        var newIssuedOvpnFile = await issuedOvpnFileCommandService.AddAsync(
+        var newIssuedOvpnFile = await issuedOvpnFileCommandService.Add(
             issuedOvpnFile,
             true,
             ct);
@@ -207,7 +207,7 @@ public class OvpnFileApiService(
             request.CommonName,
             request.VpnServerId);
         
-        await ovpnFileNotificationService.NotifyIssuedAsync(
+        await ovpnFileNotificationService.NotifyIssued(
             issuedOvpnFile.VpnServerId,
             issuedOvpnFile.Id,
             issuedOvpnFile.FileName,
@@ -215,7 +215,7 @@ public class OvpnFileApiService(
             /* todo: user ID*/ ct);
 
         return await issuedOvpnFileQueryService
-                   .GetByVpnServerIdAndCommonNameAsync(
+                   .GetByVpnServerIdAndCommonName(
                        newIssuedOvpnFile.Id,
                        request.VpnServerId,
                        request.CommonName,
@@ -229,7 +229,7 @@ public class OvpnFileApiService(
                    "(server id / common name) do not match the stored record.");
     }
 
-    public async Task<IssuedOvpnFile> RevokeOvpnFileAsync(
+    public async Task<IssuedOvpnFile> RevokeOvpnFile(
         RevokeFileRequest request,
         CancellationToken ct)
     {
@@ -242,7 +242,7 @@ public class OvpnFileApiService(
             request.IsRevoked);
 
         var issuedOvpnFile = await issuedOvpnFileQueryService
-            .GetByIdAndVpnServerIdAndCommonNameAndIsRevokedAsync(
+            .GetByIdAndVpnServerIdAndCommonNameAndIsRevoked(
                 request.VpnServerId,
                 request.OvpnFileId,
                 request.CommonName,
@@ -280,14 +280,14 @@ public class OvpnFileApiService(
 
         revokeOvpnFileRequest.OvpnFilePath = issuedOvpnFile.FilePath;
             
-        var result = await ovpnFileApiClient.RevokeOvpnFileAsync(
+        var result = await ovpnFileApiClient.RevokeOvpnFile(
             request.VpnServerId,
             revokeOvpnFileRequest,
             ct);
 
         issuedOvpnFile.IsRevoked = result;
         
-        await issuedOvpnFileCommandService.UpdateAsync(
+        await issuedOvpnFileCommandService.Update(
             issuedOvpnFile,
             true,
             ct);
@@ -301,7 +301,7 @@ public class OvpnFileApiService(
             issuedOvpnFile.ExternalId,
             issuedOvpnFile.IsRevoked);
         
-        await ovpnFileNotificationService.NotifyRevokedAsync(
+        await ovpnFileNotificationService.NotifyRevoked(
             issuedOvpnFile.VpnServerId,
             issuedOvpnFile.Id,
             issuedOvpnFile.FileName,
@@ -309,7 +309,7 @@ public class OvpnFileApiService(
             /* todo: user ID*/ ct);
 
         return await issuedOvpnFileQueryService
-                   .GetByVpnServerIdAndCommonNameAsync(
+                   .GetByVpnServerIdAndCommonName(
                        issuedOvpnFile.Id,
                        request.VpnServerId,
                        request.CommonName,
@@ -323,7 +323,7 @@ public class OvpnFileApiService(
                    "(server id / common name / revoked state) are correct.");
     }
 
-    public async Task<DownloadFileResponse> DownloadOvpnFileAsync(DownloadFileRequest request, 
+    public async Task<DownloadFileResponse> DownloadOvpnFile(DownloadFileRequest request, 
         CancellationToken ct, bool isRevoked = false)
     {
         logger.LogInformation("Start downloading OVPN file:" +
@@ -331,7 +331,7 @@ public class OvpnFileApiService(
             request.VpnServerId, request.IssuedOvpnFileId);
 
         var issuedOvpnFile = await issuedOvpnFileQueryService
-                .GetByIdAndVpnServerIdAndIsRevokedAsync(
+                .GetByIdAndVpnServerIdAndIsRevoked(
                     request.IssuedOvpnFileId,
                     request.VpnServerId,
                     isRevoked,
@@ -351,7 +351,7 @@ public class OvpnFileApiService(
                 FileName = issuedOvpnFile.FileName,
                 FilePath = issuedOvpnFile.FilePath
             };
-        var result = await ovpnFileApiClient.DownloadOvpnFileAsync(
+        var result = await ovpnFileApiClient.DownloadOvpnFile(
             request.VpnServerId, requestApi, ct);
 
         if (result.Content == null)
@@ -369,7 +369,7 @@ public class OvpnFileApiService(
         logger.LogInformation("Successfully downloaded OVPN file: FileName={FileName}, Size={Size} bytes",
             result.FileName, result.Content.LongLength);
         
-        await ovpnFileNotificationService.NotifyDownloadedAsync(
+        await ovpnFileNotificationService.NotifyDownloaded(
             issuedOvpnFile.VpnServerId, issuedOvpnFile.FileName, issuedOvpnFile.ExternalId,
             isRevoked, /* todo: user ID*/ ct);
 
@@ -381,7 +381,7 @@ public class OvpnFileApiService(
         };
     }
 
-    private async Task<IssuedOvpnFileToken> MakeTokenForFileAsync(IssuedOvpnFile issuedOvpnFile, CancellationToken ct)
+    private async Task<IssuedOvpnFileToken> MakeTokenForFile(IssuedOvpnFile issuedOvpnFile, CancellationToken ct)
     {
         var token = new IssuedOvpnFileToken
         {
@@ -393,20 +393,20 @@ public class OvpnFileApiService(
             Purpose = "download"
         };
 
-        await issuedOvpnFileTokenCommandService.AddAsync(token, true, ct);
+        await issuedOvpnFileTokenCommandService.Add(token, true, ct);
         return token;
     }
 
     private async Task<OpenVpnServerOvpnFileConfig> GetOpenVpnServerOvpnFileConfig(int vpnServerId, 
         CancellationToken ct)
     {
-        return await openVpnServerOvpnFileConfigQueryService.GetByVpnServerIdIdAsync(vpnServerId, ct) 
+        return await openVpnServerOvpnFileConfigQueryService.GetByVpnServerIdId(vpnServerId, ct) 
                ?? throw new InvalidOperationException("OpenVPN File Server Config not found");
     }
     
     private async Task<string> MakeFriendlyName(int vpnServerId, string commonName, CancellationToken ct)
     {
-        var vpnServer = await openVpnServerQueryService.GetByIdAsync(vpnServerId, ct)
+        var vpnServer = await openVpnServerQueryService.GetById(vpnServerId, ct)
                         ?? throw new InvalidOperationException("OpenVPN Server not found");
 
         var lastNumber = ExtractLastNumber(commonName);
@@ -420,5 +420,10 @@ public class OvpnFileApiService(
     {
         var match = Regex.Match(input, @"(\d+)$");
         return match.Success ? match.Value : null;
+    }
+    
+    public Task<DownloadFileResponse> DownloadOvpnFileByCn(DownloadFileRequest request, CancellationToken cancellationToken, bool isRevoked = false)
+    {
+        throw new NotImplementedException();
     }
 }

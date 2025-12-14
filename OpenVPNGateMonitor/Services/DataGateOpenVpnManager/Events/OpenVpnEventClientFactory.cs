@@ -32,7 +32,7 @@ public class OpenVpnEventClientFactory(IServiceProvider rootProvider) : IOpenVpn
 
         using var scope = rootProvider.CreateScope();
         var serverQuery = scope.ServiceProvider.GetRequiredService<IOpenVpnServerQueryService>();
-        var server = await serverQuery.GetByIdAsync(serverId, cancellationToken);
+        var server = await serverQuery.GetById(serverId, cancellationToken);
         if (server is null) return null;
 
         return Create(server);

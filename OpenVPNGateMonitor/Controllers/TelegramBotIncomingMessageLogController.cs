@@ -32,7 +32,7 @@ public class TelegramBotIncomingMessageLogController(
     public async Task<ActionResult<ApiResponse<GetAllMessagesResponse>>> GetAllMessages(
         [FromQuery] GetAllMessagesRequest request, CancellationToken cancellationToken)
     {
-        var messages = await incomingMessageLogQueryService.GetPageAsync(
+        var messages = await incomingMessageLogQueryService.GetPage(
             request.Page, request.PageSize, cancellationToken);
 
         var response = new GetAllMessagesResponse
@@ -47,7 +47,7 @@ public class TelegramBotIncomingMessageLogController(
     public async Task<ActionResult<ApiResponse<GetByTelegramIdMessagesResponse>>> GetAllMessages(
         [FromRoute] GetAllByTelegramIdMessagesRequest request, CancellationToken ct)
     {
-        var messages= await incomingMessageLogQueryService.GetPageByTelegramIdAsync(
+        var messages= await incomingMessageLogQueryService.GetPageByTelegramId(
             request.TelegramId, request.Page, request.PageSize, ct);
         
         var response = new GetByTelegramIdMessagesResponse

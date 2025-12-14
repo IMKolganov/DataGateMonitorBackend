@@ -5,8 +5,8 @@ namespace OpenVPNGateMonitor.DataBase.Services.Query.QuotaPlanTable;
 
 public interface IQuotaPlanQueryService
 {
-    Task<List<QuotaPlan>> GetAllAsync(CancellationToken ct);
-    Task<QuotaPlan?> GetByIdAsync(int id, CancellationToken ct);
-    Task<QuotaPlan?> GetDefaultAsync(CancellationToken ct);
-    Task<IPagedResult<QuotaPlan>> GetPageAsync(int page, int pageSize, CancellationToken ct);
+    Task<List<QuotaPlan>> GetAll(CancellationToken ct);
+    Task<QuotaPlan?> GetById(int id, CancellationToken ct);
+    Task<QuotaPlan?> GetDefault(CancellationToken ct);
+    Task<IPagedResult<QuotaPlan>> GetPage(int page, int pageSize, CancellationToken ct);
 }
