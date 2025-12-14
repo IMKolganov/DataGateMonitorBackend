@@ -39,6 +39,13 @@ public class IssuedOvpnFileQueryService(IQueryService<IssuedOvpnFile, int> q) : 
             .FirstOrDefaultAsync(x => 
                 x.Id == id && x.VpnServerId == vpnServerId && x.IsRevoked == isRevoked, ct);
     
+    public Task<IssuedOvpnFile?> GetByCommonNameAndVpnServerIdAndIsRevoked(string commonName, int vpnServerId, 
+        bool isRevoked, CancellationToken ct)
+        => q.Query()
+            .AsNoTracking()
+            .FirstOrDefaultAsync(x => 
+                x.CommonName == commonName && x.VpnServerId == vpnServerId && x.IsRevoked == isRevoked, ct);
+    
     public Task<string?> GetExternalIdByCommonName(string commonName, int vpnServerId, CancellationToken ct) =>
         q.Query()
             .AsNoTracking()

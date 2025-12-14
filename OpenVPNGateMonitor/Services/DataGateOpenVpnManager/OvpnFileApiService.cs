@@ -426,18 +426,18 @@ public class OvpnFileApiService(
         bool isRevoked = false)
     {
         logger.LogInformation("Start downloading OVPN file:" +
-                              " VpnServerId={VpnServerId}, IssuedOvpnFileId={IssuedOvpnFileId}",
-            request.VpnServerId, request.IssuedOvpnFileId);
+                              " VpnServerId={VpnServerId}, CommonName={CommonName}",
+            request.VpnServerId, request.CommonName);
 
         var issuedOvpnFile = await issuedOvpnFileQueryService
-                .GetByIdAndVpnServerIdAndIsRevoked(
-                    request.IssuedOvpnFileId,
+                .GetByCommonNameAndVpnServerIdAndIsRevoked(
+                    request.CommonName,
                     request.VpnServerId,
                     isRevoked,
                     ct)
             ?? throw new InvalidOperationException(
                 $"Issued OVPN file not found. " +
-                $"Requested IssuedOvpnFileId={request.IssuedOvpnFileId}, " +
+                $"Requested CommonName={request.CommonName}, " +
                 $"VpnServerId={request.VpnServerId}, " +
                 $"IsRevoked={isRevoked}. " +
                 "Possible reasons: the file does not exist, belongs to another server, " +
