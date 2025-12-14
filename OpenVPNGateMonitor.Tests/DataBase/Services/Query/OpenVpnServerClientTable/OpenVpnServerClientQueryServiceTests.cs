@@ -45,12 +45,12 @@ public class OpenVpnServerClientQueryServiceTests
         var data = Sample();
         var (q, ctx) = CreateEfBackedQuery(data);
 
-        q.Setup(x => x.GetAllAsync(true, It.IsAny<CancellationToken>()))
+        q.Setup(x => x.GetAll(true, It.IsAny<CancellationToken>()))
          .ReturnsAsync(data)
          .Verifiable();
 
         var sut = new OpenVpnServerClientQueryService(q.Object);
-        var result = await sut.GetAllAsync(CancellationToken.None);
+        var result = await sut.GetAll(CancellationToken.None);
 
         Assert.Equal(3, result.Count);
         q.Verify();
@@ -65,7 +65,7 @@ public class OpenVpnServerClientQueryServiceTests
 
         Expression<Func<OpenVpnServerClient, bool>>? captured = null;
 
-        q.Setup(x => x.WhereAsync(
+        q.Setup(x => x.Where(
                 It.IsAny<Expression<Func<OpenVpnServerClient, bool>>>(),
                 null,
                 true,
@@ -82,7 +82,7 @@ public class OpenVpnServerClientQueryServiceTests
          .Verifiable();
 
         var sut = new OpenVpnServerClientQueryService(q.Object);
-        var result = await sut.GetAllConnectedByVpnServerIdAsync(10, CancellationToken.None);
+        var result = await sut.GetAllConnectedByVpnServerId(10, CancellationToken.None);
 
         Assert.All(result, x => { Assert.Equal(10, x.VpnServerId); Assert.True(x.IsConnected); });
         Assert.NotNull(captured);
@@ -98,12 +98,12 @@ public class OpenVpnServerClientQueryServiceTests
         var entity = new OpenVpnServerClient { Id = 42, VpnServerId = 10, IsConnected = true, SessionId = Guid.NewGuid(), ConnectedSince = DateTimeOffset.UtcNow };
         var (q, ctx) = CreateEfBackedQuery(new[] { entity });
 
-        q.Setup(x => x.FindByIdAsync(42, true, It.IsAny<CancellationToken>(), It.IsAny<Expression<Func<OpenVpnServerClient, object>>[]>()))
+        q.Setup(x => x.FindById(42, true, It.IsAny<CancellationToken>(), It.IsAny<Expression<Func<OpenVpnServerClient, object>>[]>()))
          .ReturnsAsync(entity)
          .Verifiable();
 
         var sut = new OpenVpnServerClientQueryService(q.Object);
-        var res = await sut.GetByIdAsync(42, CancellationToken.None);
+        var res = await sut.GetById(42, CancellationToken.None);
         Assert.Same(entity, res);
         q.Verify();
         await ctx.DisposeAsync();
@@ -123,7 +123,7 @@ public class OpenVpnServerClientQueryServiceTests
         var (q, ctx) = CreateEfBackedQuery(data);
         var sut = new OpenVpnServerClientQueryService(q.Object);
 
-        var found = await sut.GetBySessionAndServerIdAsync(s2, 10, CancellationToken.None);
+        var found = await sut.GetBySessionAndServerId(s2, 10, CancellationToken.None);
         Assert.NotNull(found);
         Assert.Equal(2, found!.Id);
 
@@ -144,12 +144,12 @@ public class OpenVpnServerClientQueryServiceTests
             Items = data.Take(2).ToList()
         };
 
-        q.Setup(x => x.PageAsync(1, 2, null, null, true, It.IsAny<CancellationToken>(), It.IsAny<Expression<Func<OpenVpnServerClient, object>>[]>()))
+        q.Setup(x => x.Page(1, 2, null, null, true, It.IsAny<CancellationToken>(), It.IsAny<Expression<Func<OpenVpnServerClient, object>>[]>()))
          .ReturnsAsync(paged as IPagedResult<OpenVpnServerClient>)
          .Verifiable();
 
         var sut = new OpenVpnServerClientQueryService(q.Object);
-        var res = await sut.GetPageAsync(1, 2, CancellationToken.None);
+        var res = await sut.GetPage(1, 2, CancellationToken.None);
         Assert.Same(paged, res);
         q.Verify();
         await ctx.DisposeAsync();

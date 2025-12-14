@@ -45,9 +45,9 @@ public class OpenVpnServerClientOverviewQueryTests
         var (uow, ctx) = CreateUowWithData(data);
 
         var users = new Mock<IUserQueryService>();
-        users.Setup(x => x.GetByExternalIdAsync("ext-1", It.IsAny<CancellationToken>()))
+        users.Setup(x => x.GetByExternalId("ext-1", It.IsAny<CancellationToken>()))
              .ReturnsAsync(new User { Id = 10, DisplayName = "DN-ext-1" });
-        users.Setup(x => x.GetByExternalIdAsync("ext-3", It.IsAny<CancellationToken>()))
+        users.Setup(x => x.GetByExternalId("ext-3", It.IsAny<CancellationToken>()))
              .ReturnsAsync(new User { Id = 11, DisplayName = "DN-ext-3" });
 
         var sut = new OpenVpnServerClientOverviewQuery(uow.Object, users.Object);
@@ -76,7 +76,7 @@ public class OpenVpnServerClientOverviewQueryTests
 
         var (uow, ctx) = CreateUowWithData(data);
         var users = new Mock<IUserQueryService>();
-        users.Setup(x => x.GetByExternalIdAsync(It.IsAny<string>(), It.IsAny<CancellationToken>()))
+        users.Setup(x => x.GetByExternalId(It.IsAny<string>(), It.IsAny<CancellationToken>()))
              .ReturnsAsync((string extId, CancellationToken _) => new User { Id = 100, DisplayName = $"DN-{extId}" });
 
         var sut = new OpenVpnServerClientOverviewQuery(uow.Object, users.Object);

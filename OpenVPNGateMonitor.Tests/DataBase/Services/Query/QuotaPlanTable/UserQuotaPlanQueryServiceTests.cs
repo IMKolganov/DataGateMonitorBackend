@@ -1,4 +1,5 @@
 using System.Linq.Expressions;
+using System.Linq;
 using Moq;
 using OpenVPNGateMonitor.DataBase.Services.Query.QuotaPlanTable;
 using OpenVPNGateMonitor.Models;
@@ -19,15 +20,15 @@ public class UserQuotaPlanQueryServiceTests
         };
 
         var q = new Mock<IQueryService<QuotaPlan, int>>();
-        q.Setup(x => x.GetAllAsync(true, It.IsAny<CancellationToken>()))
+        q.Setup(x => x.GetAll(true, It.IsAny<CancellationToken>()))
          .ReturnsAsync(data)
          .Verifiable();
 
         var sut = new QuotaPlanQueryService(q.Object);
-        var res = await sut.GetAllAsync(CancellationToken.None);
+        var res = await sut.GetAll(CancellationToken.None);
 
         Assert.Equal(2, res.Count);
-        q.Verify(x => x.GetAllAsync(true, It.IsAny<CancellationToken>()), Times.Once);
+        q.Verify(x => x.GetAll(true, It.IsAny<CancellationToken>()), Times.Once);
     }
 
     [Fact]
@@ -35,12 +36,12 @@ public class UserQuotaPlanQueryServiceTests
     {
         var plan = new QuotaPlan { Id = 42, Name = "Test" };
         var q = new Mock<IQueryService<QuotaPlan, int>>();
-        q.Setup(x => x.FindByIdAsync(42, true, It.IsAny<CancellationToken>(), It.IsAny<Expression<Func<QuotaPlan, object>>[]>()))
+        q.Setup(x => x.FindById(42, true, It.IsAny<CancellationToken>(), It.IsAny<Expression<Func<QuotaPlan, object>>[]>()))
          .ReturnsAsync(plan)
          .Verifiable();
 
         var sut = new QuotaPlanQueryService(q.Object);
-        var res = await sut.GetByIdAsync(42, CancellationToken.None);
+        var res = await sut.GetById(42, CancellationToken.None);
 
         Assert.Same(plan, res);
         q.Verify();
@@ -54,7 +55,7 @@ public class UserQuotaPlanQueryServiceTests
 
         var expected = new QuotaPlan { Id = 10, Name = "Default", IsDefault = true, IsActive = true };
         var q = new Mock<IQueryService<QuotaPlan, int>>();
-        q.Setup(x => x.FirstOrDefaultAsync(
+        q.Setup(x => x.FirstOrDefault(
                 It.IsAny<Expression<Func<QuotaPlan, bool>>>(),
                 It.IsAny<Func<IQueryable<QuotaPlan>, IOrderedQueryable<QuotaPlan>>>(),
                 true,
@@ -71,7 +72,7 @@ public class UserQuotaPlanQueryServiceTests
          .Verifiable();
 
         var sut = new QuotaPlanQueryService(q.Object);
-        var res = await sut.GetDefaultAsync(CancellationToken.None);
+        var res = await sut.GetDefault(CancellationToken.None);
 
         Assert.Same(expected, res);
         Assert.NotNull(capturedPredicate);
@@ -109,12 +110,12 @@ public class UserQuotaPlanQueryServiceTests
         } as IPagedResult<QuotaPlan>;
 
         var q = new Mock<IQueryService<QuotaPlan, int>>();
-        q.Setup(x => x.PageAsync(1, 10, null, null, true, It.IsAny<CancellationToken>(), It.IsAny<Expression<Func<QuotaPlan, object>>[]>()))
+        q.Setup(x => x.Page(1, 10, null, null, true, It.IsAny<CancellationToken>(), It.IsAny<Expression<Func<QuotaPlan, object>>[]>()))
          .ReturnsAsync(paged)
          .Verifiable();
 
         var sut = new QuotaPlanQueryService(q.Object);
-        var res = await sut.GetPageAsync(1, 10, CancellationToken.None);
+        var res = await sut.GetPage(1, 10, CancellationToken.None);
 
         Assert.Same(paged, res);
         q.Verify();

@@ -13,7 +13,8 @@ public class TelegramUserLanguagePreferenceQueryService(IQueryService<TelegramUs
         => q.FindById(id, ct: ct);
 
     public Task<TelegramUserLanguagePreference?> GetByTelegramId(long telegramId, CancellationToken ct)
-        => q.FirstOrDefault(x => x.TelegramId == telegramId, asNoTracking: true, ct: ct);
+        => q.Query()
+            .FirstOrDefaultAsync(x => x.TelegramId == telegramId, ct);
 
     public Task<bool> AnyByTelegramId(long telegramId, CancellationToken ct)
         => q.Any(x => x.TelegramId == telegramId, ct: ct);
