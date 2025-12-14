@@ -1,4 +1,5 @@
 using System.Linq.Expressions;
+using System.Linq;
 using Microsoft.EntityFrameworkCore;
 using Moq;
 using OpenVPNGateMonitor.DataBase.Services.Query.LocalizationTextTable;
@@ -46,17 +47,17 @@ public class LocalizationTextQueryServiceTests
     {
         var data = CreateSample();
         var (q, ctx) = CreateEfBackedQuery(data);
-        q.Setup(x => x.GetAllAsync(true, It.IsAny<CancellationToken>()))
+        q.Setup(x => x.GetAll(true, It.IsAny<CancellationToken>()))
          .ReturnsAsync(data)
          .Verifiable();
 
         var sut = new LocalizationTextQueryService(q.Object);
 
-        var result = await sut.GetAllAsync(CancellationToken.None);
+        var result = await sut.GetAll(CancellationToken.None);
 
         Assert.Equal(data.Count, result.Count);
         Assert.True(result.SequenceEqual(data));
-        q.Verify(x => x.GetAllAsync(true, It.IsAny<CancellationToken>()), Times.Once);
+        q.Verify(x => x.GetAll(true, It.IsAny<CancellationToken>()), Times.Once);
         await ctx.DisposeAsync();
     }
 
@@ -65,15 +66,15 @@ public class LocalizationTextQueryServiceTests
     {
         var target = new LocalizationText { Id = 42, Key = "k", Language = Language.English, Text = "v" };
         var (q, ctx) = CreateEfBackedQuery(new[] { target });
-        q.Setup(x => x.FindByIdAsync(42, true, It.IsAny<CancellationToken>(), It.IsAny<Expression<Func<LocalizationText, object>>[]>()))
+        q.Setup(x => x.FindById(42, true, It.IsAny<CancellationToken>(), It.IsAny<Expression<Func<LocalizationText, object>>[]>()))
          .ReturnsAsync(target)
          .Verifiable();
 
         var sut = new LocalizationTextQueryService(q.Object);
-        var result = await sut.GetByIdAsync(42, CancellationToken.None);
+        var result = await sut.GetById(42, CancellationToken.None);
 
         Assert.Same(target, result);
-        q.Verify(x => x.FindByIdAsync(42, true, It.IsAny<CancellationToken>(), It.IsAny<Expression<Func<LocalizationText, object>>[]>()), Times.Once);
+        q.Verify(x => x.FindById(42, true, It.IsAny<CancellationToken>(), It.IsAny<Expression<Func<LocalizationText, object>>[]>()), Times.Once);
         await ctx.DisposeAsync();
     }
 
@@ -84,7 +85,7 @@ public class LocalizationTextQueryServiceTests
         var (q, ctx) = CreateEfBackedQuery(data);
         var sut = new LocalizationTextQueryService(q.Object);
 
-        var text = await sut.GetTextValueByKeyAndLanguageAsync("hello", Language.Russian, CancellationToken.None);
+        var text = await sut.GetTextValueByKeyAndLanguage("hello", Language.Russian, CancellationToken.None);
 
         Assert.Equal("Привет", text);
         await ctx.DisposeAsync();
@@ -97,7 +98,7 @@ public class LocalizationTextQueryServiceTests
         var (q, ctx) = CreateEfBackedQuery(data);
         var sut = new LocalizationTextQueryService(q.Object);
 
-        var text = await sut.GetTextValueByKeyAndLanguageAsync("missing", Language.English, CancellationToken.None);
+        var text = await sut.GetTextValueByKeyAndLanguage("missing", Language.English, CancellationToken.None);
 
         Assert.Null(text);
         await ctx.DisposeAsync();
@@ -117,15 +118,15 @@ public class LocalizationTextQueryServiceTests
             Items = data.Take(2).ToList()
         };
 
-        q.Setup(x => x.PageAsync(1, 2, null, null, true, It.IsAny<CancellationToken>(), It.IsAny<Expression<Func<LocalizationText, object>>[]>()))
+        q.Setup(x => x.Page(1, 2, null, null, true, It.IsAny<CancellationToken>(), It.IsAny<Expression<Func<LocalizationText, object>>[]>()))
          .ReturnsAsync(paged as IPagedResult<LocalizationText>)
          .Verifiable();
 
         var sut = new LocalizationTextQueryService(q.Object);
-        var result = await sut.GetPageAsync(1, 2, CancellationToken.None);
+        var result = await sut.GetPage(1, 2, CancellationToken.None);
 
         Assert.Same(paged, result);
-        q.Verify(x => x.PageAsync(1, 2, null, null, true, It.IsAny<CancellationToken>(), It.IsAny<Expression<Func<LocalizationText, object>>[]>()), Times.Once);
+        q.Verify(x => x.Page(1, 2, null, null, true, It.IsAny<CancellationToken>(), It.IsAny<Expression<Func<LocalizationText, object>>[]>()), Times.Once);
         await ctx.DisposeAsync();
     }
 }

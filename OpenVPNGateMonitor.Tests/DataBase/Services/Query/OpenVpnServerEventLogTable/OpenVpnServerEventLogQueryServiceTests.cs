@@ -48,16 +48,16 @@ public class OpenVpnServerEventLogQueryServiceTests
     public async Task GetAllAsync_Delegates_To_IQueryService()
     {
         var (q, ctx, data) = CreateEfBackedQuery();
-        q.Setup(x => x.GetAllAsync(true, It.IsAny<CancellationToken>()))
+        q.Setup(x => x.GetAll(true, It.IsAny<CancellationToken>()))
          .ReturnsAsync(data)
          .Verifiable();
 
         var sut = new OpenVpnServerEventLogQueryService(q.Object);
-        var result = await sut.GetAllAsync(CancellationToken.None);
+        var result = await sut.GetAll(CancellationToken.None);
 
         Assert.Equal(data.Count, result.Count);
         Assert.True(result.SequenceEqual(data));
-        q.Verify(x => x.GetAllAsync(true, It.IsAny<CancellationToken>()), Times.Once);
+        q.Verify(x => x.GetAll(true, It.IsAny<CancellationToken>()), Times.Once);
         await ctx.DisposeAsync();
     }
 
@@ -66,15 +66,15 @@ public class OpenVpnServerEventLogQueryServiceTests
     {
         var (q, ctx, _) = CreateEfBackedQuery();
         var expected = new OpenVpnServerEventLog { Id = 42, VpnServerId = 99 };
-        q.Setup(x => x.FindByIdAsync(42, true, It.IsAny<CancellationToken>(), It.IsAny<Expression<Func<OpenVpnServerEventLog, object>>[]>()))
+        q.Setup(x => x.FindById(42, true, It.IsAny<CancellationToken>(), It.IsAny<Expression<Func<OpenVpnServerEventLog, object>>[]>()))
          .ReturnsAsync(expected)
          .Verifiable();
 
         var sut = new OpenVpnServerEventLogQueryService(q.Object);
-        var result = await sut.GetByIdAsync(42, CancellationToken.None);
+        var result = await sut.GetById(42, CancellationToken.None);
 
         Assert.Same(expected, result);
-        q.Verify(x => x.FindByIdAsync(42, true, It.IsAny<CancellationToken>(), It.IsAny<Expression<Func<OpenVpnServerEventLog, object>>[]>()), Times.Once);
+        q.Verify(x => x.FindById(42, true, It.IsAny<CancellationToken>(), It.IsAny<Expression<Func<OpenVpnServerEventLog, object>>[]>()), Times.Once);
         await ctx.DisposeAsync();
     }
 
@@ -85,13 +85,13 @@ public class OpenVpnServerEventLogQueryServiceTests
         var sut = new OpenVpnServerEventLogQueryService(q.Object);
 
         // Pass invalid page/pageSize to test normalization to 1 and 10
-        var pageResult = await sut.GetByVpnServerIdAsync(10, 0, 0, CancellationToken.None);
+        var pageResult = await sut.GetByVpnServerId(10, 0, 0, CancellationToken.None);
 
         Assert.Equal(1, pageResult.Page);
         Assert.Equal(10, pageResult.PageSize);
 
         // Now request page 1 size 2 to test ordering and paging
-        var result = await sut.GetByVpnServerIdAsync(10, 1, 2, CancellationToken.None);
+        var result = await sut.GetByVpnServerId(10, 1, 2, CancellationToken.None);
 
         var expectedAll = data.Where(x => x.VpnServerId == 10).OrderByDescending(x => x.Id).ToList();
         Assert.Equal(expectedAll.Count, result.TotalCount);
@@ -104,7 +104,7 @@ public class OpenVpnServerEventLogQueryServiceTests
             i => Assert.Equal(4, i.Id));
 
         // Next page should contain next two items: Id=2 and Id=1 (only those with serverId 10)
-        var result2 = await sut.GetByVpnServerIdAsync(10, 2, 2, CancellationToken.None);
+        var result2 = await sut.GetByVpnServerId(10, 2, 2, CancellationToken.None);
         Assert.Collection(result2.Items,
             i => Assert.Equal(2, i.Id),
             i => Assert.Equal(1, i.Id));
@@ -125,15 +125,15 @@ public class OpenVpnServerEventLogQueryServiceTests
             Items = data.Skip(2).Take(2).ToList()
         } as IPagedResult<OpenVpnServerEventLog>;
 
-        q.Setup(x => x.PageAsync(2, 2, null, null, true, It.IsAny<CancellationToken>(), It.IsAny<Expression<Func<OpenVpnServerEventLog, object>>[]>()))
+        q.Setup(x => x.Page(2, 2, null, null, true, It.IsAny<CancellationToken>(), It.IsAny<Expression<Func<OpenVpnServerEventLog, object>>[]>()))
          .ReturnsAsync(paged)
          .Verifiable();
 
         var sut = new OpenVpnServerEventLogQueryService(q.Object);
-        var result = await sut.GetPageAsync(2, 2, CancellationToken.None);
+        var result = await sut.GetPage(2, 2, CancellationToken.None);
 
         Assert.Same(paged, result);
-        q.Verify(x => x.PageAsync(2, 2, null, null, true, It.IsAny<CancellationToken>(), It.IsAny<Expression<Func<OpenVpnServerEventLog, object>>[]>()), Times.Once);
+        q.Verify(x => x.Page(2, 2, null, null, true, It.IsAny<CancellationToken>(), It.IsAny<Expression<Func<OpenVpnServerEventLog, object>>[]>()), Times.Once);
         await ctx.DisposeAsync();
     }
 }
