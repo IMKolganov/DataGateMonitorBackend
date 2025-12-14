@@ -7,26 +7,14 @@ using OpenVPNGateMonitor.SharedModels.DataGateMonitorBackend.OpenVpnServers.Resp
 
 namespace OpenVPNGateMonitor.Hubs.BackgroundService;
 
-public sealed class OpenVpnStatusStreamPublisher : Microsoft.Extensions.Hosting.BackgroundService
+public sealed class OpenVpnStatusStreamPublisher(
+    IHubContext<OpenVpnStatusHub> hubContext,
+    IOpenVpnBackgroundService openVpnBackgroundService,
+    IServiceScopeFactory scopeFactory,
+    ILogger<OpenVpnStatusStreamPublisher> logger)
+    : Microsoft.Extensions.Hosting.BackgroundService
 {
-    private readonly IHubContext<OpenVpnStatusHub> hubContext;
-    private readonly IOpenVpnBackgroundService openVpnBackgroundService;
-    private readonly IServiceScopeFactory scopeFactory;
-    private readonly ILogger<OpenVpnStatusStreamPublisher> logger;
-
     private const string GroupName = "status-stream";
-
-    public OpenVpnStatusStreamPublisher(
-        IHubContext<OpenVpnStatusHub> hubContext,
-        IOpenVpnBackgroundService openVpnBackgroundService,
-        IServiceScopeFactory scopeFactory,
-        ILogger<OpenVpnStatusStreamPublisher> logger)
-    {
-        this.hubContext = hubContext;
-        this.openVpnBackgroundService = openVpnBackgroundService;
-        this.scopeFactory = scopeFactory;
-        this.logger = logger;
-    }
 
     protected override async Task ExecuteAsync(CancellationToken stoppingToken)
     {
@@ -72,7 +60,7 @@ public sealed class OpenVpnStatusStreamPublisher : Microsoft.Extensions.Hosting.
                 logger.LogError(ex, "Status stream publish error");
             }
 
-            await Task.Delay(1000, stoppingToken);//todo: move to settings
+            await Task.Delay(700, stoppingToken);//todo: move to settings
         }
     }
 }
