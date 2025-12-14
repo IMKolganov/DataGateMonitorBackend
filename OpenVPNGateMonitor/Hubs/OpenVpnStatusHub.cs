@@ -10,7 +10,7 @@ public sealed class OpenVpnStatusHub : Hub
 
     public override async Task OnConnectedAsync()
     {
-        // await Groups.AddToGroupAsync(Context.ConnectionId, GroupName);
+        await Groups.AddToGroupAsync(Context.ConnectionId, GroupName);
         await base.OnConnectedAsync();
     }
 
