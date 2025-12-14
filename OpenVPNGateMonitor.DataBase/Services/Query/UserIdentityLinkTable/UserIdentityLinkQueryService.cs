@@ -14,14 +14,16 @@ public class UserIdentityLinkQueryService(IQueryService<UserIdentityLink, int> q
 
     public Task<UserIdentityLink?> GetByProviderAndExternalId(string provider, string externalId, 
         CancellationToken ct)
-        => q.FirstOrDefault(x => x.Provider == provider && x.ExternalId == externalId, 
-            asNoTracking: true, ct: ct);
+        => q.Query()
+            .FirstOrDefaultAsync(x => x.Provider == provider && x.ExternalId == externalId, ct);
     
     public Task<UserIdentityLink?> GetByExternalId(string externalId, CancellationToken ct)
-        => q.FirstOrDefault(x => x.ExternalId == externalId, asNoTracking: true, ct: ct);
+        => q.Query()
+            .FirstOrDefaultAsync(x => x.ExternalId == externalId, ct);
 
     public Task<UserIdentityLink?> GetByUserId(int userId, CancellationToken ct)
-        => q.FirstOrDefault(x => x.UserId == userId, asNoTracking: true, ct: ct);
+        => q.Query()
+            .FirstOrDefaultAsync(x => x.UserId == userId, ct);
 
     public Task<bool> AnyByUserId(int userId, CancellationToken ct)
         => q.Any(x => x.UserId == userId, ct: ct);

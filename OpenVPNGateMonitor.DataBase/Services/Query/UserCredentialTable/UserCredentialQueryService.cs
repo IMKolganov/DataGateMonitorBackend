@@ -14,16 +14,19 @@ public class UserCredentialQueryService(IQueryService<UserCredential, int> q)
         => q.FindById(id, ct: ct);
 
     public Task<UserCredential?> GetByNormalizedLogin(string normalizedLogin, CancellationToken ct)
-        => q.FirstOrDefault(x => x.NormalizedLogin == normalizedLogin, asNoTracking: true, ct: ct);
+        => q.Query()
+            .FirstOrDefaultAsync(x => x.NormalizedLogin == normalizedLogin, ct);
 
     public Task<UserCredential?> GetByLogin(string login, CancellationToken ct)
     {
         var normalized = login.ToUpperInvariant();
-        return q.FirstOrDefault(x => x.NormalizedLogin == normalized, asNoTracking: true, ct: ct);
+        return q.Query()
+            .FirstOrDefaultAsync(x => x.NormalizedLogin == normalized, ct);
     }
 
     public Task<UserCredential?> GetByUserId(int userId, CancellationToken ct)
-        => q.FirstOrDefault(x => x.UserId == userId, asNoTracking: true, ct: ct);
+        => q.Query()
+            .FirstOrDefaultAsync(x => x.UserId == userId, ct);
 
     public Task<bool> AnyByUserId(int userId, CancellationToken ct)
         => q.Any(x => x.UserId == userId, ct: ct);

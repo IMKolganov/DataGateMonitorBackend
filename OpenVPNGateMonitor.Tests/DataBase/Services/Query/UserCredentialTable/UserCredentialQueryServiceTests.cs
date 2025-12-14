@@ -1,4 +1,5 @@
 using System.Linq.Expressions;
+using System.Linq;
 using Microsoft.EntityFrameworkCore;
 using Moq;
 using OpenVPNGateMonitor.DataBase.Services.Query.UserCredentialTable;
@@ -40,15 +41,15 @@ public class UserCredentialQueryServiceTests
         };
 
         var q = new Mock<IQueryService<UserCredential, int>>();
-        q.Setup(x => x.GetAllAsync(true, It.IsAny<CancellationToken>()))
+        q.Setup(x => x.GetAll(true, It.IsAny<CancellationToken>()))
          .ReturnsAsync(items)
          .Verifiable();
 
         var sut = new UserCredentialQueryService(q.Object);
-        var res = await sut.GetAllAsync(CancellationToken.None);
+        var res = await sut.GetAll(CancellationToken.None);
 
         Assert.Equal(2, res.Count);
-        q.Verify();
+        q.Verify(x => x.GetAll(true, It.IsAny<CancellationToken>()), Times.Once);
     }
 
     [Fact]
@@ -56,12 +57,12 @@ public class UserCredentialQueryServiceTests
     {
         var item = new UserCredential { Id = 77, NormalizedLogin = "U77", UserId = 777 };
         var q = new Mock<IQueryService<UserCredential, int>>();
-        q.Setup(x => x.FindByIdAsync(77, true, It.IsAny<CancellationToken>(), It.IsAny<Expression<Func<UserCredential, object>>[]>()))
+        q.Setup(x => x.FindById(77, true, It.IsAny<CancellationToken>(), It.IsAny<Expression<Func<UserCredential, object>>[]>()))
          .ReturnsAsync(item)
          .Verifiable();
 
         var sut = new UserCredentialQueryService(q.Object);
-        var res = await sut.GetByIdAsync(77, CancellationToken.None);
+        var res = await sut.GetById(77, CancellationToken.None);
         Assert.Same(item, res);
         q.Verify();
     }
@@ -107,7 +108,7 @@ public class UserCredentialQueryServiceTests
     {
         Expression<Func<UserCredential, bool>>? captured = null;
         var q = new Mock<IQueryService<UserCredential, int>>();
-        q.Setup(x => x.AnyAsync(It.IsAny<Expression<Func<UserCredential, bool>>>(), It.IsAny<CancellationToken>()))
+        q.Setup(x => x.Any(It.IsAny<Expression<Func<UserCredential, bool>>>(), It.IsAny<CancellationToken>()))
          .Callback((Expression<Func<UserCredential, bool>> predicate, CancellationToken _) => captured = predicate)
          .ReturnsAsync(true)
          .Verifiable();
@@ -142,12 +143,12 @@ public class UserCredentialQueryServiceTests
         } as IPagedResult<UserCredential>;
 
         var q = new Mock<IQueryService<UserCredential, int>>();
-        q.Setup(x => x.PageAsync(2, 10, null, null, true, It.IsAny<CancellationToken>(), It.IsAny<Expression<Func<UserCredential, object>>[]>()))
+        q.Setup(x => x.Page(2, 10, null, null, true, It.IsAny<CancellationToken>(), It.IsAny<Expression<Func<UserCredential, object>>[]>()))
          .ReturnsAsync(paged)
          .Verifiable();
 
         var sut = new UserCredentialQueryService(q.Object);
-        var res = await sut.GetPageAsync(2, 10, CancellationToken.None);
+        var res = await sut.GetPage(2, 10, CancellationToken.None);
         Assert.Same(paged, res);
         q.Verify();
     }

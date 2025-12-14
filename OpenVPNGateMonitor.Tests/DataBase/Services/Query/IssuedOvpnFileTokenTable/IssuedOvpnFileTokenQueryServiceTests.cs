@@ -1,4 +1,5 @@
 using System.Linq.Expressions;
+using System.Linq;
 using Microsoft.EntityFrameworkCore;
 using Moq;
 using OpenVPNGateMonitor.DataBase.Services.Query.IssuedOvpnFileTokenTable;
@@ -45,16 +46,16 @@ public class IssuedOvpnFileTokenQueryServiceTests
     {
         var data = CreateSample();
         var (q, ctx) = CreateEfBackedQuery(data);
-        q.Setup(x => x.GetAllAsync(true, It.IsAny<CancellationToken>()))
+        q.Setup(x => x.GetAll(true, It.IsAny<CancellationToken>()))
          .ReturnsAsync(data)
          .Verifiable();
 
         var sut = new IssuedOvpnFileTokenQueryService(q.Object);
-        var result = await sut.GetAllAsync(CancellationToken.None);
+        var result = await sut.GetAll(CancellationToken.None);
 
         Assert.Equal(data.Count, result.Count);
         Assert.True(result.SequenceEqual(data));
-        q.Verify(x => x.GetAllAsync(true, It.IsAny<CancellationToken>()), Times.Once);
+        q.Verify(x => x.GetAll(true, It.IsAny<CancellationToken>()), Times.Once);
         await ctx.DisposeAsync();
     }
 
@@ -63,15 +64,15 @@ public class IssuedOvpnFileTokenQueryServiceTests
     {
         var target = new IssuedOvpnFileToken { Id = 42, IssuedOvpnFileId = 77, Token = "tok-x", CreatedAt = DateTimeOffset.UtcNow };
         var (q, ctx) = CreateEfBackedQuery(new[] { target });
-        q.Setup(x => x.FindByIdAsync(42, true, It.IsAny<CancellationToken>(), It.IsAny<Expression<Func<IssuedOvpnFileToken, object>>[]>()))
+        q.Setup(x => x.FindById(42, true, It.IsAny<CancellationToken>(), It.IsAny<Expression<Func<IssuedOvpnFileToken, object>>[]>()))
          .ReturnsAsync(target)
          .Verifiable();
 
         var sut = new IssuedOvpnFileTokenQueryService(q.Object);
-        var result = await sut.GetByIdAsync(42, CancellationToken.None);
+        var result = await sut.GetById(42, CancellationToken.None);
 
         Assert.Same(target, result);
-        q.Verify(x => x.FindByIdAsync(42, true, It.IsAny<CancellationToken>(), It.IsAny<Expression<Func<IssuedOvpnFileToken, object>>[]>()), Times.Once);
+        q.Verify(x => x.FindById(42, true, It.IsAny<CancellationToken>(), It.IsAny<Expression<Func<IssuedOvpnFileToken, object>>[]>()), Times.Once);
         await ctx.DisposeAsync();
     }
 
@@ -89,15 +90,15 @@ public class IssuedOvpnFileTokenQueryServiceTests
             Items = data.Skip(1).Take(2).ToList()
         };
 
-        q.Setup(x => x.PageAsync(2, 10, null, null, true, It.IsAny<CancellationToken>(), It.IsAny<Expression<Func<IssuedOvpnFileToken, object>>[]>()))
+        q.Setup(x => x.Page(2, 10, null, null, true, It.IsAny<CancellationToken>(), It.IsAny<Expression<Func<IssuedOvpnFileToken, object>>[]>()))
          .ReturnsAsync(paged as IPagedResult<IssuedOvpnFileToken>)
          .Verifiable();
 
         var sut = new IssuedOvpnFileTokenQueryService(q.Object);
-        var result = await sut.GetPageAsync(2, 10, CancellationToken.None);
+        var result = await sut.GetPage(2, 10, CancellationToken.None);
 
         Assert.Same(paged, result);
-        q.Verify(x => x.PageAsync(2, 10, null, null, true, It.IsAny<CancellationToken>(), It.IsAny<Expression<Func<IssuedOvpnFileToken, object>>[]>()), Times.Once);
+        q.Verify(x => x.Page(2, 10, null, null, true, It.IsAny<CancellationToken>(), It.IsAny<Expression<Func<IssuedOvpnFileToken, object>>[]>()), Times.Once);
         await ctx.DisposeAsync();
     }
 
@@ -109,7 +110,7 @@ public class IssuedOvpnFileTokenQueryServiceTests
         q.Setup(x => x.Query(It.IsAny<bool>(), It.IsAny<Expression<Func<IssuedOvpnFileToken, object>>[]>())).Verifiable();
 
         var sut = new IssuedOvpnFileTokenQueryService(q.Object);
-        var result = await sut.GetByIssuedFileIdsAsync(null!, CancellationToken.None);
+        var result = await sut.GetByIssuedFileIds(null!, CancellationToken.None);
 
         Assert.NotNull(result);
         Assert.Empty(result);
@@ -123,7 +124,7 @@ public class IssuedOvpnFileTokenQueryServiceTests
         q.Setup(x => x.Query(It.IsAny<bool>(), It.IsAny<Expression<Func<IssuedOvpnFileToken, object>>[]>())).Verifiable();
 
         var sut = new IssuedOvpnFileTokenQueryService(q.Object);
-        var result = await sut.GetByIssuedFileIdsAsync(Array.Empty<int>(), CancellationToken.None);
+        var result = await sut.GetByIssuedFileIds(Array.Empty<int>(), CancellationToken.None);
 
         Assert.NotNull(result);
         Assert.Empty(result);
@@ -137,7 +138,7 @@ public class IssuedOvpnFileTokenQueryServiceTests
         var (q, ctx) = CreateEfBackedQuery(data);
         var sut = new IssuedOvpnFileTokenQueryService(q.Object);
 
-        var result = await sut.GetByIssuedFileIdsAsync(new[] { 10, 10, 30, 999 }, CancellationToken.None);
+        var result = await sut.GetByIssuedFileIds(new[] { 10, 10, 30, 999 }, CancellationToken.None);
 
         // Expect tokens with IssuedOvpnFileId == 10 or 30
         Assert.True(result.All(x => x.IssuedOvpnFileId == 10 || x.IssuedOvpnFileId == 30));
@@ -159,7 +160,7 @@ public class IssuedOvpnFileTokenQueryServiceTests
         var (q, ctx) = CreateEfBackedQuery(data);
         var sut = new IssuedOvpnFileTokenQueryService(q.Object);
 
-        var result = await sut.GetByTokenAsync("tok-3", CancellationToken.None);
+        var result = await sut.GetByToken("tok-3", CancellationToken.None);
 
         Assert.NotNull(result);
         Assert.Equal("tok-3", result!.Token);
@@ -174,7 +175,7 @@ public class IssuedOvpnFileTokenQueryServiceTests
         var (q, ctx) = CreateEfBackedQuery(data);
         var sut = new IssuedOvpnFileTokenQueryService(q.Object);
 
-        var result = await sut.GetRequiredByTokenAsync("tok-4", CancellationToken.None);
+        var result = await sut.GetRequiredByToken("tok-4", CancellationToken.None);
 
         Assert.NotNull(result);
         Assert.Equal(30, result.IssuedOvpnFileId);
@@ -189,7 +190,7 @@ public class IssuedOvpnFileTokenQueryServiceTests
         var sut = new IssuedOvpnFileTokenQueryService(q.Object);
 
         var ex = await Assert.ThrowsAsync<InvalidOperationException>(async () =>
-            await sut.GetRequiredByTokenAsync("missing-token", CancellationToken.None));
+            await sut.GetRequiredByToken("missing-token", CancellationToken.None));
 
         Assert.Contains("missing-token", ex.Message);
         await ctx.DisposeAsync();

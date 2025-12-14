@@ -45,16 +45,16 @@ public class UserIdentityLinkQueryServiceTests
     {
         var data = CreateSample();
         var (q, ctx) = CreateEfBackedQuery(data);
-        q.Setup(x => x.GetAllAsync(true, It.IsAny<CancellationToken>()))
+        q.Setup(x => x.GetAll(true, It.IsAny<CancellationToken>()))
          .ReturnsAsync(data)
          .Verifiable();
 
         var sut = new UserIdentityLinkQueryService(q.Object);
-        var result = await sut.GetAllAsync(CancellationToken.None);
+        var result = await sut.GetAll(CancellationToken.None);
 
         Assert.Equal(data.Count, result.Count);
         Assert.True(result.SequenceEqual(data));
-        q.Verify(x => x.GetAllAsync(true, It.IsAny<CancellationToken>()), Times.Once);
+        q.Verify(x => x.GetAll(true, It.IsAny<CancellationToken>()), Times.Once);
         await ctx.DisposeAsync();
     }
 
@@ -63,15 +63,15 @@ public class UserIdentityLinkQueryServiceTests
     {
         var target = new UserIdentityLink { Id = 42, UserId = 500, Provider = "tg", ExternalId = "E-42" };
         var (q, ctx) = CreateEfBackedQuery(new[] { target });
-        q.Setup(x => x.FindByIdAsync(42, true, It.IsAny<CancellationToken>(), It.IsAny<Expression<Func<UserIdentityLink, object>>[]>()))
+        q.Setup(x => x.FindById(42, true, It.IsAny<CancellationToken>(), It.IsAny<Expression<Func<UserIdentityLink, object>>[]>()))
          .ReturnsAsync(target)
          .Verifiable();
 
         var sut = new UserIdentityLinkQueryService(q.Object);
-        var result = await sut.GetByIdAsync(42, CancellationToken.None);
+        var result = await sut.GetById(42, CancellationToken.None);
 
         Assert.Same(target, result);
-        q.Verify(x => x.FindByIdAsync(42, true, It.IsAny<CancellationToken>(), It.IsAny<Expression<Func<UserIdentityLink, object>>[]>()), Times.Once);
+        q.Verify(x => x.FindById(42, true, It.IsAny<CancellationToken>(), It.IsAny<Expression<Func<UserIdentityLink, object>>[]>()), Times.Once);
         await ctx.DisposeAsync();
     }
 
@@ -82,7 +82,7 @@ public class UserIdentityLinkQueryServiceTests
         var (q, ctx) = CreateEfBackedQuery(data);
         var sut = new UserIdentityLinkQueryService(q.Object);
 
-        var result = await sut.GetByProviderAndExternalIdAsync("google", "ext-2", CancellationToken.None);
+        var result = await sut.GetByProviderAndExternalId("google", "ext-2", CancellationToken.None);
 
         Assert.NotNull(result);
         Assert.Equal("google", result!.Provider);
@@ -97,7 +97,7 @@ public class UserIdentityLinkQueryServiceTests
         var (q, ctx) = CreateEfBackedQuery(data);
         var sut = new UserIdentityLinkQueryService(q.Object);
 
-        var result = await sut.GetByExternalIdAsync("ext-3", CancellationToken.None);
+        var result = await sut.GetByExternalId("ext-3", CancellationToken.None);
 
         Assert.NotNull(result);
         Assert.Equal("ext-3", result!.ExternalId);
@@ -111,7 +111,7 @@ public class UserIdentityLinkQueryServiceTests
         var (q, ctx) = CreateEfBackedQuery(data);
         var sut = new UserIdentityLinkQueryService(q.Object);
 
-        var result = await sut.GetByUserIdAsync(100, CancellationToken.None);
+        var result = await sut.GetByUserId(100, CancellationToken.None);
 
         Assert.NotNull(result);
         Assert.Equal(100, result!.UserId);
@@ -122,15 +122,15 @@ public class UserIdentityLinkQueryServiceTests
     public async Task AnyByUserIdAsync_Delegates_To_AnyAsync()
     {
         var (q, ctx) = CreateEfBackedQuery(Array.Empty<UserIdentityLink>());
-        q.Setup(x => x.AnyAsync(It.IsAny<Expression<Func<UserIdentityLink, bool>>>(), It.IsAny<CancellationToken>()))
+        q.Setup(x => x.Any(It.IsAny<Expression<Func<UserIdentityLink, bool>>>(), It.IsAny<CancellationToken>()))
          .ReturnsAsync(true)
          .Verifiable();
 
         var sut = new UserIdentityLinkQueryService(q.Object);
-        var found = await sut.AnyByUserIdAsync(777, CancellationToken.None);
+        var found = await sut.AnyByUserId(777, CancellationToken.None);
 
         Assert.True(found);
-        q.Verify(x => x.AnyAsync(It.IsAny<Expression<Func<UserIdentityLink, bool>>>(), It.IsAny<CancellationToken>()), Times.Once);
+        q.Verify(x => x.Any(It.IsAny<Expression<Func<UserIdentityLink, bool>>>(), It.IsAny<CancellationToken>()), Times.Once);
         await ctx.DisposeAsync();
     }
 
@@ -148,15 +148,15 @@ public class UserIdentityLinkQueryServiceTests
             Items = data.Take(2).ToList()
         };
 
-        q.Setup(x => x.PageAsync(1, 2, null, null, true, It.IsAny<CancellationToken>(), It.IsAny<Expression<Func<UserIdentityLink, object>>[]>()))
+        q.Setup(x => x.Page(1, 2, null, null, true, It.IsAny<CancellationToken>(), It.IsAny<Expression<Func<UserIdentityLink, object>>[]>()))
          .ReturnsAsync(paged as IPagedResult<UserIdentityLink>)
          .Verifiable();
 
         var sut = new UserIdentityLinkQueryService(q.Object);
-        var result = await sut.GetPageAsync(1, 2, CancellationToken.None);
+        var result = await sut.GetPage(1, 2, CancellationToken.None);
 
         Assert.Same(paged, result);
-        q.Verify(x => x.PageAsync(1, 2, null, null, true, It.IsAny<CancellationToken>(), It.IsAny<Expression<Func<UserIdentityLink, object>>[]>()), Times.Once);
+        q.Verify(x => x.Page(1, 2, null, null, true, It.IsAny<CancellationToken>(), It.IsAny<Expression<Func<UserIdentityLink, object>>[]>()), Times.Once);
         await ctx.DisposeAsync();
     }
 }

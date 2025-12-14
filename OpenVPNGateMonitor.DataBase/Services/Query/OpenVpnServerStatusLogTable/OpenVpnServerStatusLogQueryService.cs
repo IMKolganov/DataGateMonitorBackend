@@ -13,14 +13,15 @@ public class OpenVpnServerStatusLogQueryService(IQueryService<OpenVpnServerStatu
         => q.Where(x => x.VpnServerId == vpnServerId, ct: ct);
 
     public Task<OpenVpnServerStatusLog?> GetBySessionIdAndVpnServerId(Guid sessionId, int vpnServerId, CancellationToken ct)
-        => q.FirstOrDefault(x => x.SessionId == sessionId && x.VpnServerId == vpnServerId, 
-            asNoTracking: true, ct:ct);
+        => q.Query()
+            .FirstOrDefaultAsync(x => x.SessionId == sessionId && x.VpnServerId == vpnServerId, ct);
 
     public Task<OpenVpnServerStatusLog?> GetById(int id, CancellationToken ct)
         => q.FindById(id, ct: ct);
     
     public Task<OpenVpnServerStatusLog?> GetByIdAndVpnServerId(int id, int vpnServerId, CancellationToken ct)
-        => q.FirstOrDefault(x => x.Id == id && x.VpnServerId == vpnServerId, asNoTracking: true, ct:ct);
+        => q.Query()
+            .FirstOrDefaultAsync(x => x.Id == id && x.VpnServerId == vpnServerId, ct);
     
     public Task<IPagedResult<OpenVpnServerStatusLog>> GetPage(int page, int pageSize, CancellationToken ct)
         => q.Page(page, pageSize, ct: ct);

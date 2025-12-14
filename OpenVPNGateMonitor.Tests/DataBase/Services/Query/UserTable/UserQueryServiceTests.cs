@@ -42,7 +42,7 @@ public class UserQueryServiceTests
         );
         await ctx.SaveChangesAsync();
 
-        var user = await sut.GetByExternalIdAsync("ext-1", CancellationToken.None);
+        var user = await sut.GetByExternalId("ext-1", CancellationToken.None);
         Assert.NotNull(user);
         Assert.Equal(2, user!.Id);
         Assert.Equal("u2", user.DisplayName);
@@ -55,7 +55,7 @@ public class UserQueryServiceTests
         await ctx.Users.AddAsync(new User { Id = 1, DisplayName = "u1" });
         await ctx.SaveChangesAsync();
 
-        var user = await sut.GetByExternalIdAsync("missing", CancellationToken.None);
+        var user = await sut.GetByExternalId("missing", CancellationToken.None);
         Assert.Null(user);
     }
 
@@ -66,7 +66,7 @@ public class UserQueryServiceTests
         await ctx.Users.AddRangeAsync(Enumerable.Range(1, 15).Select(i => new User { Id = i, DisplayName = $"u{i}" }));
         await ctx.SaveChangesAsync();
 
-        var page = await sut.GetPageAsync(2, 10, CancellationToken.None);
+        var page = await sut.GetPage(2, 10, CancellationToken.None);
         Assert.Equal(2, page.Page);
         Assert.Equal(10, page.PageSize);
         Assert.Equal(15, page.TotalCount);
