@@ -29,7 +29,7 @@ public class OpenVpnFilesController(IOvpnFileApiService ovpnFileApiService,
 
         try
         {
-            var result = await ovpnFileApiService.GetByTokenAsync(request.Token, cancellationToken);
+            var result = await ovpnFileApiService.GetByToken(request.Token, cancellationToken);
             var response = result.Adapt<OvpnFileResponse>();
             return Ok(ApiResponse<OvpnFileResponse>.SuccessResponse(response));
         }
@@ -46,7 +46,7 @@ public class OpenVpnFilesController(IOvpnFileApiService ovpnFileApiService,
     {
         try
         {
-            var result = await ovpnFileApiService.GetAllByVpnServerIdAsync(request.VpnServerId, 
+            var result = await ovpnFileApiService.GetAllByVpnServerId(request.VpnServerId, 
                 cancellationToken);
             var response = result.Adapt<OvpnFilesResponse>();
             return Ok(ApiResponse<OvpnFilesResponse>.SuccessResponse(response));
@@ -64,7 +64,7 @@ public class OpenVpnFilesController(IOvpnFileApiService ovpnFileApiService,
     {
         try
         {
-            var result = await ovpnFileApiService.GetAllByExternalIdAndVpnServerIdAsync(
+            var result = await ovpnFileApiService.GetAllByExternalIdAndVpnServerId(
                 request.VpnServerId, request.ExternalId, cancellationToken);
 
             var response = result.Adapt<OvpnFilesResponse>();
@@ -85,7 +85,7 @@ public class OpenVpnFilesController(IOvpnFileApiService ovpnFileApiService,
     {
         try
         {
-            var result = await ovpnFileApiService.GetAllByVpnServerIdWithTokenAsync(
+            var result = await ovpnFileApiService.GetAllByVpnServerIdWithToken(
                 request.VpnServerId, cancellationToken);
 
             return Ok(ApiResponse<OvpnFilesWithTokensResponse>.SuccessResponse(
@@ -105,7 +105,7 @@ public class OpenVpnFilesController(IOvpnFileApiService ovpnFileApiService,
     {
         try
         {
-            var result = await ovpnFileApiService.GetAllByExternalIdAndVpnServerIdWithTokenAsync(
+            var result = await ovpnFileApiService.GetAllByExternalIdAndVpnServerIdWithToken(
                 request.VpnServerId, request.ExternalId, cancellationToken);
 
             var response = result.Adapt<OvpnFilesWithTokensResponse>();
@@ -127,7 +127,7 @@ public class OpenVpnFilesController(IOvpnFileApiService ovpnFileApiService,
     {
         try
         {
-            var result = await ovpnFileApiService.GetAllByExternalIdAsync(
+            var result = await ovpnFileApiService.GetAllByExternalId(
                 request.ExternalId, cancellationToken);
 
             var response = result.Adapt<OvpnFilesResponse>();
@@ -147,7 +147,7 @@ public class OpenVpnFilesController(IOvpnFileApiService ovpnFileApiService,
     {
         try
         {
-            var result = await ovpnFileApiService.AddOvpnFileAsync(request, cancellationToken);
+            var result = await ovpnFileApiService.AddOvpnFile(request, cancellationToken);
 
             return Ok(ApiResponse<OvpnFileResponse>.SuccessResponse( result.Adapt<OvpnFileResponse>()));
         }
@@ -165,7 +165,7 @@ public class OpenVpnFilesController(IOvpnFileApiService ovpnFileApiService,
     {
         try
         {
-            var (file, token) = await ovpnFileApiService.AddOvpnFileWithTokenAsync(request, cancellationToken);
+            var (file, token) = await ovpnFileApiService.AddOvpnFileWithToken(request, cancellationToken);
 
             var response = (file, token).Adapt<OvpnFileWithTokenResponse>();
             
@@ -185,7 +185,7 @@ public class OpenVpnFilesController(IOvpnFileApiService ovpnFileApiService,
     {
         try
         {
-            var result = await ovpnFileApiService.RevokeOvpnFileAsync(request, cancellationToken);
+            var result = await ovpnFileApiService.RevokeOvpnFile(request, cancellationToken);
             var response = result.Adapt<OvpnFileResponse>();
             return Ok(ApiResponse<OvpnFileResponse>.SuccessResponse(response));
         }
@@ -203,7 +203,7 @@ public class OpenVpnFilesController(IOvpnFileApiService ovpnFileApiService,
     {
         try
         {
-            var content = await ovpnFileApiService.DownloadOvpnFileAsync(request, 
+            var content = await ovpnFileApiService.DownloadOvpnFile(request, 
                 cancellationToken);
             return Ok(ApiResponse<DownloadFileResponse>.SuccessResponse(content));
         }
@@ -211,6 +211,24 @@ public class OpenVpnFilesController(IOvpnFileApiService ovpnFileApiService,
         {
             logger.LogError(ex, "Failed to download OVPN file {IssuedOvpnFileId} for {VpnServerId}", 
                 request.IssuedOvpnFileId, request.VpnServerId);
+            return BadRequest(ApiResponse<string>.ErrorResponse(ex.Message));
+        }
+    }
+    
+    [HttpPost("download-file-by-cn")]
+    public async Task<ActionResult<ApiResponse<DownloadFileResponse>>> DownloadFileByCn(
+        [FromBody] DownloadFileByCnRequest request, CancellationToken cancellationToken)
+    {
+        try
+        {
+            var content = await ovpnFileApiService.DownloadOvpnFileByCn(request, 
+                cancellationToken);
+            return Ok(ApiResponse<DownloadFileResponse>.SuccessResponse(content));
+        }
+        catch (Exception ex)
+        {
+            logger.LogError(ex, "Failed to download OVPN file {CommonName} for {VpnServerId}", 
+                request.CommonName, request.VpnServerId);
             return BadRequest(ApiResponse<string>.ErrorResponse(ex.Message));
         }
     }

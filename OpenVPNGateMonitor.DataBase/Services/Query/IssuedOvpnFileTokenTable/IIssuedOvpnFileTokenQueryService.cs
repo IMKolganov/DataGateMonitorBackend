@@ -5,12 +5,12 @@ namespace OpenVPNGateMonitor.DataBase.Services.Query.IssuedOvpnFileTokenTable;
 
 public interface IIssuedOvpnFileTokenQueryService
 {
-    Task<List<IssuedOvpnFileToken>> GetAllAsync(CancellationToken ct);
-    Task<IssuedOvpnFileToken?> GetByIdAsync(int id, CancellationToken ct);
-    Task<IPagedResult<IssuedOvpnFileToken>> GetPageAsync(int page, int pageSize, CancellationToken ct);
-    Task<List<IssuedOvpnFileToken>> GetByIssuedFileIdsAsync(IEnumerable<int> fileIds, CancellationToken ct);
-    Task<IssuedOvpnFileToken?> GetByTokenAsync(string token, CancellationToken ct);
+    Task<List<IssuedOvpnFileToken>> GetAll(CancellationToken ct);
+    Task<IssuedOvpnFileToken?> GetById(int id, CancellationToken ct);
+    Task<IPagedResult<IssuedOvpnFileToken>> GetPage(int page, int pageSize, CancellationToken ct);
+    Task<List<IssuedOvpnFileToken>> GetByIssuedFileIds(IEnumerable<int> fileIds, CancellationToken ct);
+    Task<IssuedOvpnFileToken?> GetByToken(string token, CancellationToken ct);
 
     // Optional: throws if not found
-    Task<IssuedOvpnFileToken> GetRequiredByTokenAsync(string token, CancellationToken ct);
+    Task<IssuedOvpnFileToken> GetRequiredByToken(string token, CancellationToken ct);
 }

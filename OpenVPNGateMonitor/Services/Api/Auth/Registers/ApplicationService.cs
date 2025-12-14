@@ -12,7 +12,7 @@ public class ApplicationService(IClientApplicationQueryService clientApplication
 {
     public async Task<ClientApplication> RegisterApplicationAsync(string name, CancellationToken ct)
     {
-        var existClientApplication = await clientApplicationQueryService.GetByNameAsync(name, ct);
+        var existClientApplication = await clientApplicationQueryService.GetByName(name, ct);
         
         if (existClientApplication != null)
         {
@@ -24,46 +24,46 @@ public class ApplicationService(IClientApplicationQueryService clientApplication
             Name = name
         };
 
-        await clientApplicationCommandService.AddAsync(clientApplication, true, ct);
+        await clientApplicationCommandService.Add(clientApplication, true, ct);
         return clientApplication;
     }
 
     public async Task<ClientApplication?> GetApplicationByClientIdAsync(string clientId, 
         CancellationToken ct)
     {
-        return await clientApplicationQueryService.GetByClientIdAsync(clientId, ct);
+        return await clientApplicationQueryService.GetByClientId(clientId, ct);
     }
     
     public async Task<ClientApplication?> GetApplicationSystemByClientIdAsync(string clientId, 
         CancellationToken ct)
     {
-        return await clientApplicationQueryService.GetBySystemByClientIdAsync(clientId, ct);
+        return await clientApplicationQueryService.GetBySystemByClientId(clientId, ct);
 
     }
     
     public async Task<bool> IsSystemApplicationSetAsync(CancellationToken ct)
     {
-        var systemApp = await clientApplicationQueryService.IsSystemConfiguredAsync(ct);
+        var systemApp = await clientApplicationQueryService.IsSystemConfigured(ct);
 
         return systemApp != null && !string.IsNullOrEmpty(systemApp.ClientSecret);
     }
 
     public async Task<List<ClientApplication>> GetAllApplicationsAsync(CancellationToken ct)
     {
-        return await clientApplicationQueryService.GetAllAsync(ct);
+        return await clientApplicationQueryService.GetAll(ct);
     }
     
     public async Task<ClientApplication> UpdateApplicationAsync(ClientApplication clientApplication, 
         CancellationToken ct)
     {
-        await clientApplicationCommandService.UpdateAsync(clientApplication, true, ct);
+        await clientApplicationCommandService.Update(clientApplication, true, ct);
     
         return clientApplication;
     }
 
     public async Task<bool> RevokeApplicationAsync(string clientId, CancellationToken ct)
     {
-        var clientApplication = await clientApplicationQueryService.GetByClientIdAsync(clientId, ct);
+        var clientApplication = await clientApplicationQueryService.GetByClientId(clientId, ct);
 
         if (clientApplication == null)
         {
@@ -72,7 +72,7 @@ public class ApplicationService(IClientApplicationQueryService clientApplication
 
         clientApplication.IsRevoked = true;
         
-        await clientApplicationCommandService.UpdateAsync(clientApplication, true, ct);
+        await clientApplicationCommandService.Update(clientApplication, true, ct);
         return true;
     }
 }

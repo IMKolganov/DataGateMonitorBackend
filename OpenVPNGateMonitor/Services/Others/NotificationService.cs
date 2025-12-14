@@ -15,13 +15,13 @@ public class NotificationService(
     ILogger<NotificationService> logger
 ) : INotificationService
 {
-    public async Task<int> NotifyAdminsAsync(
+    public async Task<int> NotifyAdmins(
         NotificationRequest request,
         IEnumerable<string>? channels = null,
         CancellationToken ct = default)
     {
         // 1) Resolve recipients (all admins from Telegram users for now)
-        var admins = await telegramBotUserQueryService.GetAllAdminsAsync(ct) ?? new List<TelegramBotUser>();
+        var admins = await telegramBotUserQueryService.GetAllAdmins(ct) ?? new List<TelegramBotUser>();
         if (admins.Count == 0)
         {
             logger.LogError("No admins found. Skipping notification: {Type} - {Title}", request.Type, request.Title);
@@ -61,7 +61,7 @@ public class NotificationService(
             LastUpdate = now
         };
 
-        var created = await notificationCommandServices.AddAsync(notification, saveChanges: true, ct);
+        var created = await notificationCommandServices.Add(notification, saveChanges: true, ct);
         var notificationId = created.Id;
 
         // 4) Persist recipients (admin × channel)
@@ -78,7 +78,7 @@ public class NotificationService(
                           }).ToList();
 
         if (recipients.Count > 0)
-            await notificationRecipientCommandServices.AddRangeAsync(recipients, saveChanges: true, ct);
+            await notificationRecipientCommandServices.AddRange(recipients, saveChanges: true, ct);
 
         // 5) Fan-out sending (best-effort)
         if (activeNotifiers.Count > 0)
@@ -88,7 +88,7 @@ public class NotificationService(
             {
                 foreach (var notifier in activeNotifiers)
                 {
-                    tasks.Add(SendSafeAsync(notifier, created, admin.Id, ct));
+                    tasks.Add(SendSafe(notifier, created, admin.Id, ct));
                 }
             }
 
@@ -105,10 +105,10 @@ public class NotificationService(
         return notificationId;
     }
 
-    public Task MarkDeliveredAsync(int notificationId, int adminUserId, string channel, CancellationToken ct = default)
+    public Task MarkDelivered(int notificationId, int adminUserId, string channel, CancellationToken ct = default)
     {
         // Update status to Sent (successfully delivered)
-        return notificationRecipientCommandServices.UpdateWhereAsync(
+        return notificationRecipientCommandServices.UpdateWhere(
             predicate: r => r.NotificationId == notificationId
                             && r.AdminUserId == adminUserId
                             && r.DeliveryChannel == channel,
@@ -120,10 +120,10 @@ public class NotificationService(
         );
     }
 
-    public Task MarkReadAsync(int notificationId, int adminUserId, CancellationToken ct = default)
+    public Task MarkRead(int notificationId, int adminUserId, CancellationToken ct = default)
     {
         // Mark as read (applies to all recipient channels for this admin)
-        return notificationRecipientCommandServices.UpdateWhereAsync(
+        return notificationRecipientCommandServices.UpdateWhere(
             predicate: r => r.NotificationId == notificationId
                             && r.AdminUserId == adminUserId,
             set: calls => calls
@@ -137,14 +137,14 @@ public class NotificationService(
     // ----------------------
     // Helpers
     // ----------------------
-    private async Task SendSafeAsync(INotifier notifier, Notification notification, int adminUserId, CancellationToken ct)
+    private async Task SendSafe(INotifier notifier, Notification notification, int adminUserId, CancellationToken ct)
     {
         try
         {
-            await notifier.SendAsync(notification, adminUserId, ct);
+            await notifier.Send(notification, adminUserId, ct);
 
             // mark as Sent on success
-            await notificationRecipientCommandServices.UpdateWhereAsync(
+            await notificationRecipientCommandServices.UpdateWhere(
                 predicate: r => r.NotificationId == notification.Id
                                 && r.AdminUserId == adminUserId
                                 && r.DeliveryChannel == notifier.Channel,
@@ -169,7 +169,7 @@ public class NotificationService(
                 notification.Id, notifier.Channel, adminUserId);
 
             // mark as Failed
-            await notificationRecipientCommandServices.UpdateWhereAsync(
+            await notificationRecipientCommandServices.UpdateWhere(
                 predicate: r => r.NotificationId == notification.Id
                                 && r.AdminUserId == adminUserId
                                 && r.DeliveryChannel == notifier.Channel,

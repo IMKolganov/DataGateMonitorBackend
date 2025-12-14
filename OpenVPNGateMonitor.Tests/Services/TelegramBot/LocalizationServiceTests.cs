@@ -57,7 +57,7 @@ public class LocalizationServiceTests
             .ReturnsAsync(stored);                               // second call
 
         _userPrefCommand
-            .Setup(s => s.AddAsync(
+            .Setup(s => s.Add(
                 It.IsAny<TelegramUserLanguagePreference>(),
                 true,
                 It.IsAny<CancellationToken>()))
@@ -84,11 +84,11 @@ public class LocalizationServiceTests
             Times.Exactly(2));
 
         _userPrefCommand.Verify(
-            s => s.AddAsync(It.IsAny<TelegramUserLanguagePreference>(), true, It.IsAny<CancellationToken>()),
+            s => s.Add(It.IsAny<TelegramUserLanguagePreference>(), true, It.IsAny<CancellationToken>()),
             Times.Once);
 
         _userPrefCommand.Verify(
-            s => s.UpdateAsync(It.IsAny<TelegramUserLanguagePreference>(), true, It.IsAny<CancellationToken>()),
+            s => s.Update(It.IsAny<TelegramUserLanguagePreference>(), true, It.IsAny<CancellationToken>()),
             Times.Never);
     }
 
@@ -117,7 +117,7 @@ public class LocalizationServiceTests
             .ReturnsAsync(existing); // second call
 
         _userPrefCommand
-            .Setup(s => s.UpdateAsync(
+            .Setup(s => s.Update(
                 It.IsAny<TelegramUserLanguagePreference>(),
                 true,
                 It.IsAny<CancellationToken>()))
@@ -144,11 +144,11 @@ public class LocalizationServiceTests
             Times.Exactly(2));
 
         _userPrefCommand.Verify(
-            s => s.UpdateAsync(It.IsAny<TelegramUserLanguagePreference>(), true, It.IsAny<CancellationToken>()),
+            s => s.Update(It.IsAny<TelegramUserLanguagePreference>(), true, It.IsAny<CancellationToken>()),
             Times.Once);
 
         _userPrefCommand.Verify(
-            s => s.AddAsync(It.IsAny<TelegramUserLanguagePreference>(), true, It.IsAny<CancellationToken>()),
+            s => s.Add(It.IsAny<TelegramUserLanguagePreference>(), true, It.IsAny<CancellationToken>()),
             Times.Never);
     }
 
@@ -168,7 +168,7 @@ public class LocalizationServiceTests
             .ReturnsAsync((TelegramUserLanguagePreference?)null); // second
 
         _userPrefCommand
-            .Setup(s => s.AddAsync(
+            .Setup(s => s.Add(
                 It.IsAny<TelegramUserLanguagePreference>(),
                 true,
                 It.IsAny<CancellationToken>()))
@@ -258,7 +258,7 @@ public class LocalizationServiceTests
         long telegramId = 80;
 
         _textQuery
-            .Setup(s => s.GetTextValueByKeyAndLanguageAsync(
+            .Setup(s => s.GetTextValueByKeyAndLanguage(
                 key,
                 Language.Greek,
                 It.IsAny<CancellationToken>()))
@@ -294,7 +294,7 @@ public class LocalizationServiceTests
             .ReturnsAsync(pref);
 
         _textQuery
-            .Setup(s => s.GetTextValueByKeyAndLanguageAsync(
+            .Setup(s => s.GetTextValueByKeyAndLanguage(
                 key,
                 Language.Russian,
                 It.IsAny<CancellationToken>()))
@@ -319,7 +319,7 @@ public class LocalizationServiceTests
             .ReturnsAsync((TelegramUserLanguagePreference?)null);
 
         _textQuery
-            .Setup(s => s.GetTextValueByKeyAndLanguageAsync(
+            .Setup(s => s.GetTextValueByKeyAndLanguage(
                 key,
                 Language.English,
                 It.IsAny<CancellationToken>()))
@@ -344,7 +344,7 @@ public class LocalizationServiceTests
             .ReturnsAsync((TelegramUserLanguagePreference?)null);
 
         _textQuery
-            .Setup(s => s.GetTextValueByKeyAndLanguageAsync(
+            .Setup(s => s.GetTextValueByKeyAndLanguage(
                 key,
                 Language.English,
                 It.IsAny<CancellationToken>()))

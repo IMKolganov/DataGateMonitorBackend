@@ -27,7 +27,7 @@ public class SettingsServiceTests
     public async Task GetValueAsync_ReturnsDefault_When_NotFound()
     {
         var (svc, q, _) = CreateService();
-        q.Setup(x => x.FirstOrDefaultAsync(It.IsAny<Expression<Func<Setting, bool>>>(), null, true, It.IsAny<CancellationToken>(), It.IsAny<Expression<Func<Setting, object>>[]>()))
+        q.Setup(x => x.FirstOrDefault(It.IsAny<Expression<Func<Setting, bool>>>(), null, true, It.IsAny<CancellationToken>(), It.IsAny<Expression<Func<Setting, object>>[]>()))
             .ReturnsAsync((Setting?)null);
 
         var result = await svc.GetValueAsync<string>("NoKey", CancellationToken.None);
@@ -39,7 +39,7 @@ public class SettingsServiceTests
     public async Task GetValueAsync_ReturnsDefault_When_ValueType_Null()
     {
         var (svc, q, _) = CreateService();
-        q.Setup(x => x.FirstOrDefaultAsync(It.IsAny<Expression<Func<Setting, bool>>>(), null, true, It.IsAny<CancellationToken>(), It.IsAny<Expression<Func<Setting, object>>[]>()))
+        q.Setup(x => x.FirstOrDefault(It.IsAny<Expression<Func<Setting, bool>>>(), null, true, It.IsAny<CancellationToken>(), It.IsAny<Expression<Func<Setting, object>>[]>()))
             .ReturnsAsync(new Setting { Id = 1, Key = "A", ValueType = "null" });
 
         var result = await svc.GetValueAsync<int>("A", CancellationToken.None);
@@ -51,7 +51,7 @@ public class SettingsServiceTests
     public async Task GetValueAsync_Returns_Int()
     {
         var (svc, q, _) = CreateService();
-        q.Setup(x => x.FirstOrDefaultAsync(It.IsAny<Expression<Func<Setting, bool>>>(), null, true, It.IsAny<CancellationToken>(), It.IsAny<Expression<Func<Setting, object>>[]>()))
+        q.Setup(x => x.FirstOrDefault(It.IsAny<Expression<Func<Setting, bool>>>(), null, true, It.IsAny<CancellationToken>(), It.IsAny<Expression<Func<Setting, object>>[]>()))
             .ReturnsAsync(new Setting { Id = 1, Key = "IntKey", ValueType = "int", IntValue = 42 });
 
         var result = await svc.GetValueAsync<int>("IntKey", CancellationToken.None);
@@ -63,7 +63,7 @@ public class SettingsServiceTests
     public async Task GetValueAsync_Returns_Bool()
     {
         var (svc, q, _) = CreateService();
-        q.Setup(x => x.FirstOrDefaultAsync(It.IsAny<Expression<Func<Setting, bool>>>(), null, true, It.IsAny<CancellationToken>(), It.IsAny<Expression<Func<Setting, object>>[]>()))
+        q.Setup(x => x.FirstOrDefault(It.IsAny<Expression<Func<Setting, bool>>>(), null, true, It.IsAny<CancellationToken>(), It.IsAny<Expression<Func<Setting, object>>[]>()))
             .ReturnsAsync(new Setting { Id = 2, Key = "Flag", ValueType = "bool", BoolValue = true });
 
         var result = await svc.GetValueAsync<bool>("Flag", CancellationToken.None);
@@ -75,7 +75,7 @@ public class SettingsServiceTests
     public async Task GetValueAsync_Returns_Double()
     {
         var (svc, q, _) = CreateService();
-        q.Setup(x => x.FirstOrDefaultAsync(It.IsAny<Expression<Func<Setting, bool>>>(), null, true, It.IsAny<CancellationToken>(), It.IsAny<Expression<Func<Setting, object>>[]>()))
+        q.Setup(x => x.FirstOrDefault(It.IsAny<Expression<Func<Setting, bool>>>(), null, true, It.IsAny<CancellationToken>(), It.IsAny<Expression<Func<Setting, object>>[]>()))
             .ReturnsAsync(new Setting { Id = 3, Key = "Pi", ValueType = "double", DoubleValue = 3.14 });
 
         var result = await svc.GetValueAsync<double>("Pi", CancellationToken.None);
@@ -88,7 +88,7 @@ public class SettingsServiceTests
     {
         var moment = DateTimeOffset.UtcNow.AddMinutes(-1);
         var (svc, q, _) = CreateService();
-        q.Setup(x => x.FirstOrDefaultAsync(It.IsAny<Expression<Func<Setting, bool>>>(), null, true, It.IsAny<CancellationToken>(), It.IsAny<Expression<Func<Setting, object>>[]>()))
+        q.Setup(x => x.FirstOrDefault(It.IsAny<Expression<Func<Setting, bool>>>(), null, true, It.IsAny<CancellationToken>(), It.IsAny<Expression<Func<Setting, object>>[]>()))
             .ReturnsAsync(new Setting { Id = 4, Key = "When", ValueType = "datetime", DateTimeValue = moment });
 
         var result = await svc.GetValueAsync<DateTimeOffset>("When", CancellationToken.None);
@@ -100,7 +100,7 @@ public class SettingsServiceTests
     public async Task GetValueAsync_Returns_String()
     {
         var (svc, q, _) = CreateService();
-        q.Setup(x => x.FirstOrDefaultAsync(It.IsAny<Expression<Func<Setting, bool>>>(), null, true, It.IsAny<CancellationToken>(), It.IsAny<Expression<Func<Setting, object>>[]>()))
+        q.Setup(x => x.FirstOrDefault(It.IsAny<Expression<Func<Setting, bool>>>(), null, true, It.IsAny<CancellationToken>(), It.IsAny<Expression<Func<Setting, object>>[]>()))
             .ReturnsAsync(new Setting { Id = 5, Key = "Name", ValueType = "string", StringValue = "Alice" });
 
         var result = await svc.GetValueAsync<string>("Name", CancellationToken.None);
@@ -114,11 +114,11 @@ public class SettingsServiceTests
     public async Task SetValueAsync_Creates_New_With_Null()
     {
         var (svc, q, cmd) = CreateService();
-        q.Setup(x => x.FirstOrDefaultAsync(It.IsAny<Expression<Func<Setting, bool>>>(), null, false, It.IsAny<CancellationToken>(), It.IsAny<Expression<Func<Setting, object>>[]>()))
+        q.Setup(x => x.FirstOrDefault(It.IsAny<Expression<Func<Setting, bool>>>(), null, false, It.IsAny<CancellationToken>(), It.IsAny<Expression<Func<Setting, object>>[]>()))
             .ReturnsAsync((Setting?)null);
 
         Setting? saved = null;
-        cmd.Setup(c => c.AddAsync(It.IsAny<Setting>(), true, It.IsAny<CancellationToken>()))
+        cmd.Setup(c => c.Add(It.IsAny<Setting>(), true, It.IsAny<CancellationToken>()))
             .Callback<Setting, bool, CancellationToken>((s, _, _) => saved = s)
             .ReturnsAsync((Setting s, bool _, CancellationToken __) => s);
 
@@ -135,7 +135,7 @@ public class SettingsServiceTests
         saved.CreateDate.Should().NotBe(default);
         saved.LastUpdate.Should().NotBe(default);
 
-        cmd.Verify(c => c.AddAsync(It.IsAny<Setting>(), true, It.IsAny<CancellationToken>()), Times.Once);
+        cmd.Verify(c => c.Add(It.IsAny<Setting>(), true, It.IsAny<CancellationToken>()), Times.Once);
         q.VerifyAll();
         cmd.VerifyAll();
     }
@@ -144,11 +144,11 @@ public class SettingsServiceTests
     public async Task SetValueAsync_Creates_New_With_Int()
     {
         var (svc, q, cmd) = CreateService();
-        q.Setup(x => x.FirstOrDefaultAsync(It.IsAny<Expression<Func<Setting, bool>>>(), null, false, It.IsAny<CancellationToken>(), It.IsAny<Expression<Func<Setting, object>>[]>()))
+        q.Setup(x => x.FirstOrDefault(It.IsAny<Expression<Func<Setting, bool>>>(), null, false, It.IsAny<CancellationToken>(), It.IsAny<Expression<Func<Setting, object>>[]>()))
             .ReturnsAsync((Setting?)null);
 
         Setting? saved = null;
-        cmd.Setup(c => c.AddAsync(It.IsAny<Setting>(), true, It.IsAny<CancellationToken>()))
+        cmd.Setup(c => c.Add(It.IsAny<Setting>(), true, It.IsAny<CancellationToken>()))
             .Callback<Setting, bool, CancellationToken>((s, _, _) => saved = s)
             .ReturnsAsync((Setting s, bool _, CancellationToken __) => s);
 
@@ -163,7 +163,7 @@ public class SettingsServiceTests
         saved.DateTimeValue.Should().BeNull();
         saved.StringValue.Should().BeNull();
 
-        cmd.Verify(c => c.AddAsync(It.IsAny<Setting>(), true, It.IsAny<CancellationToken>()), Times.Once);
+        cmd.Verify(c => c.Add(It.IsAny<Setting>(), true, It.IsAny<CancellationToken>()), Times.Once);
     }
 
     [Fact]
@@ -184,10 +184,10 @@ public class SettingsServiceTests
         };
 
         var (svc, q, cmd) = CreateService();
-        q.Setup(x => x.FirstOrDefaultAsync(It.IsAny<Expression<Func<Setting, bool>>>(), null, false, It.IsAny<CancellationToken>(), It.IsAny<Expression<Func<Setting, object>>[]>()))
+        q.Setup(x => x.FirstOrDefault(It.IsAny<Expression<Func<Setting, bool>>>(), null, false, It.IsAny<CancellationToken>(), It.IsAny<Expression<Func<Setting, object>>[]>()))
             .ReturnsAsync(existing);
 
-        cmd.Setup(c => c.UpdateAsync(It.IsAny<Setting>(), true, It.IsAny<CancellationToken>()))
+        cmd.Setup(c => c.Update(It.IsAny<Setting>(), true, It.IsAny<CancellationToken>()))
             .ReturnsAsync(1);
 
         await svc.SetValueAsync("UserName", "Bob", CancellationToken.None);
@@ -200,7 +200,7 @@ public class SettingsServiceTests
         existing.DateTimeValue.Should().BeNull();
         existing.CreateDate.Should().BeOnOrBefore(existing.LastUpdate);
 
-        cmd.Verify(c => c.UpdateAsync(It.IsAny<Setting>(), true, It.IsAny<CancellationToken>()), Times.Once);
+        cmd.Verify(c => c.Update(It.IsAny<Setting>(), true, It.IsAny<CancellationToken>()), Times.Once);
     }
 
     [Fact]
@@ -217,10 +217,10 @@ public class SettingsServiceTests
         };
 
         var (svc, q, cmd) = CreateService();
-        q.Setup(x => x.FirstOrDefaultAsync(It.IsAny<Expression<Func<Setting, bool>>>(), null, false, It.IsAny<CancellationToken>(), It.IsAny<Expression<Func<Setting, object>>[]>()))
+        q.Setup(x => x.FirstOrDefault(It.IsAny<Expression<Func<Setting, bool>>>(), null, false, It.IsAny<CancellationToken>(), It.IsAny<Expression<Func<Setting, object>>[]>()))
             .ReturnsAsync(existing);
 
-        cmd.Setup(c => c.UpdateAsync(It.IsAny<Setting>(), true, It.IsAny<CancellationToken>()))
+        cmd.Setup(c => c.Update(It.IsAny<Setting>(), true, It.IsAny<CancellationToken>()))
             .ReturnsAsync(1);
 
         var now = DateTimeOffset.UtcNow;
@@ -231,6 +231,6 @@ public class SettingsServiceTests
         existing.StringValue.Should().BeNull();
         existing.LastUpdate.Should().BeOnOrAfter(existing.CreateDate);
 
-        cmd.Verify(c => c.UpdateAsync(It.IsAny<Setting>(), true, It.IsAny<CancellationToken>()), Times.Once);
+        cmd.Verify(c => c.Update(It.IsAny<Setting>(), true, It.IsAny<CancellationToken>()), Times.Once);
     }
 }

@@ -6,27 +6,23 @@ namespace OpenVPNGateMonitor.DataBase.Services.Query.OpenVpnServerStatusLogTable
 
 public class OpenVpnServerStatusLogQueryService(IQueryService<OpenVpnServerStatusLog, int> q) : IOpenVpnServerStatusLogQueryService
 {
-    public Task<List<OpenVpnServerStatusLog>> GetAllAsync(CancellationToken ct)
-        => q.GetAllAsync(ct: ct);
+    public Task<List<OpenVpnServerStatusLog>> GetAll(CancellationToken ct)
+        => q.GetAll(ct: ct);
 
     public Task<List<OpenVpnServerStatusLog>> GetAllByVpnServerId(int vpnServerId, CancellationToken ct)
-        => q.WhereAsync(x => x.VpnServerId == vpnServerId, ct: ct);
+        => q.Where(x => x.VpnServerId == vpnServerId, ct: ct);
 
-    public Task<OpenVpnServerStatusLog?> GetBySessionIdAndVpnServerIdAsync(Guid sessionId, int vpnServerId, CancellationToken ct)
+    public Task<OpenVpnServerStatusLog?> GetBySessionIdAndVpnServerId(Guid sessionId, int vpnServerId, CancellationToken ct)
         => q.Query()
-            .AsNoTracking()
-            .FirstOrDefaultAsync(x => 
-                x.SessionId == sessionId && x.VpnServerId == vpnServerId, ct);
+            .FirstOrDefaultAsync(x => x.SessionId == sessionId && x.VpnServerId == vpnServerId, ct);
 
-    public Task<OpenVpnServerStatusLog?> GetByIdAsync(int id, CancellationToken ct)
-        => q.FindByIdAsync(id, ct: ct);
+    public Task<OpenVpnServerStatusLog?> GetById(int id, CancellationToken ct)
+        => q.FindById(id, ct: ct);
     
-    public Task<OpenVpnServerStatusLog?> GetByIdAndVpnServerIdAsync(int id, int vpnServerId, CancellationToken ct)
+    public Task<OpenVpnServerStatusLog?> GetByIdAndVpnServerId(int id, int vpnServerId, CancellationToken ct)
         => q.Query()
-            .AsNoTracking()
-            .FirstOrDefaultAsync(x => 
-                x.Id == id && x.VpnServerId == vpnServerId, ct);
+            .FirstOrDefaultAsync(x => x.Id == id && x.VpnServerId == vpnServerId, ct);
     
-    public Task<IPagedResult<OpenVpnServerStatusLog>> GetPageAsync(int page, int pageSize, CancellationToken ct)
-        => q.PageAsync(page, pageSize, ct: ct);
+    public Task<IPagedResult<OpenVpnServerStatusLog>> GetPage(int page, int pageSize, CancellationToken ct)
+        => q.Page(page, pageSize, ct: ct);
 }

@@ -36,7 +36,7 @@ public class OpenVpnMicroserviceClientFactory(IServiceProvider serviceProvider) 
     {
         using var scope = serviceProvider.CreateScope();
         var openVpnOverviewQuery = scope.ServiceProvider.GetRequiredService<IOpenVpnServerQueryService>();
-        var server = await openVpnOverviewQuery.GetByIdAsync(serverId, cancellationToken)
+        var server = await openVpnOverviewQuery.GetById(serverId, cancellationToken)
                      ?? throw new Exception($"OpenVPN server not found with id {serverId}");
 
         return Create(server);

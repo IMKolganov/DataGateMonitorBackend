@@ -3,26 +3,26 @@
 
 public interface IOvpnFileNotificationService
 {
-    Task NotifyReadByTokenAsync(string token, int fileId, int vpnServerId, bool isRevoked, CancellationToken ct);
-    Task NotifyReadAllAsync(int vpnServerId, int count, CancellationToken ct);
-    Task NotifyReadAllWithTokenAsync(int vpnServerId, int count, bool isRevoked, CancellationToken ct);
+    Task NotifyReadByToken(string token, int fileId, int vpnServerId, bool isRevoked, CancellationToken ct);
+    Task NotifyReadAll(int vpnServerId, int count, CancellationToken ct);
+    Task NotifyReadAllWithToken(int vpnServerId, int count, bool isRevoked, CancellationToken ct);
 
-    Task NotifyReadByExternalIdAsync(string externalId, int count, CancellationToken ct);
-    Task NotifyReadByExternalIdAndVpnServerIdAsync(int vpnServerId, string externalId, int count, bool isRevoked,
+    Task NotifyReadByExternalId(string externalId, int count, CancellationToken ct);
+    Task NotifyReadByExternalIdAndVpnServerId(int vpnServerId, string externalId, int count, bool isRevoked,
         CancellationToken ct);
 
-    Task NotifyReadByExternalIdWithTokenAsync(int vpnServerId, string externalId, int count, bool isRevoked,
+    Task NotifyReadByExternalIdWithToken(int vpnServerId, string externalId, int count, bool isRevoked,
         CancellationToken ct);
 
-    Task NotifyIssuedAsync(int vpnServerId, int fileId, string fileName, string externalId, /*todo: int actorUserId,*/
+    Task NotifyIssued(int vpnServerId, int fileId, string fileName, string externalId, /*todo: int actorUserId,*/
         CancellationToken ct);
 
-    Task NotifyIssuedWithTokenAsync(int vpnServerId, int fileId, string fileName, string externalId,
+    Task NotifyIssuedWithToken(int vpnServerId, int fileId, string fileName, string externalId,
         int tokenId, /*todo: int actorUserId,*/ CancellationToken ct);
 
-    Task NotifyRevokedAsync(int vpnServerId, int fileId, string fileName, string externalId, /*todo: int actorUserId,*/
+    Task NotifyRevoked(int vpnServerId, int fileId, string fileName, string externalId, /*todo: int actorUserId,*/
         CancellationToken ct);
 
-    Task NotifyDownloadedAsync(int vpnServerId, string fileName, string externalId, /*todo: int actorUserId,*/
+    Task NotifyDownloaded(int vpnServerId, string fileName, string externalId, /*todo: int actorUserId,*/
         bool isRevoked, CancellationToken ct);
 }

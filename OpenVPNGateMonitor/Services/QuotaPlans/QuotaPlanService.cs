@@ -19,17 +19,17 @@ public class QuotaPlanService(
     // ---------- Read ----------
 
     public Task<List<QuotaPlan>> GetAllAsync(CancellationToken ct = default) =>
-        quotaPlanQueryService.GetAllAsync(ct);
+        quotaPlanQueryService.GetAll(ct);
 
     public Task<QuotaPlan?> GetByIdAsync(int id, CancellationToken ct = default) =>
-        quotaPlanQueryService.GetByIdAsync(id, ct);
+        quotaPlanQueryService.GetById(id, ct);
 
     public Task<IPagedResult<QuotaPlan>> GetPageAsync(int page, int pageSize, CancellationToken ct = default) =>
-        quotaPlanQueryService.GetPageAsync(page, pageSize, ct);
+        quotaPlanQueryService.GetPage(page, pageSize, ct);
 
     public async Task<QuotaPlan?> GetDefaultAsync(CancellationToken ct = default)
     {
-        var all = await quotaPlanQueryService.GetAllAsync(ct);
+        var all = await quotaPlanQueryService.GetAll(ct);
         return all.FirstOrDefault(x => x.IsDefault);
     }
 
@@ -48,7 +48,7 @@ public class QuotaPlanService(
             input.IsDefault = true;
         }
 
-        var created = await quotaPlanCommandService.AddAsync(input, saveChanges: true, ct);
+        var created = await quotaPlanCommandService.Add(input, saveChanges: true, ct);
         logger.LogInformation("QuotaPlan created: {Id} ({Name})", created.Id, created.Name);
         return created;
     }
@@ -65,19 +65,19 @@ public class QuotaPlanService(
             input.IsDefault = true;
         }
 
-        var affected = await quotaPlanCommandService.UpdateAsync(input, saveChanges: true, ct);
+        var affected = await quotaPlanCommandService.Update(input, saveChanges: true, ct);
         logger.LogInformation("QuotaPlan updated: {Id} ({Name}), rows: {Rows}", input.Id, input.Name, affected);
         return affected;
     }
 
     public Task<int> DeleteAsync(int id, CancellationToken ct = default) =>
-        quotaPlanCommandService.DeleteByIdAsync(id, ct);
+        quotaPlanCommandService.DeleteById(id, ct);
 
     // ---------- State toggles ----------
 
     public async Task<int> ActivateAsync(int id, CancellationToken ct = default)
     {
-        var rows = await quotaPlanCommandService.UpdateWhereAsync(
+        var rows = await quotaPlanCommandService.UpdateWhere(
             p => p.Id == id,
             set => set.SetProperty(x => x.IsActive, true),
             ct);
@@ -87,7 +87,7 @@ public class QuotaPlanService(
 
     public async Task<int> DeactivateAsync(int id, CancellationToken ct = default)
     {
-        var rows = await quotaPlanCommandService.UpdateWhereAsync(
+        var rows = await quotaPlanCommandService.UpdateWhere(
             p => p.Id == id,
             set => set.SetProperty(x => x.IsActive, false),
             ct);
@@ -106,7 +106,7 @@ public class QuotaPlanService(
         await UnsetDefaultForAllAsync(ct);
 
         // Set target plan as default
-        var rows = await quotaPlanCommandService.UpdateWhereAsync(
+        var rows = await quotaPlanCommandService.UpdateWhere(
             p => p.Id == id,
             set => set.SetProperty(x => x.IsDefault, true),
             ct);
@@ -122,7 +122,7 @@ public class QuotaPlanService(
     /// </summary>
     private Task<int> UnsetDefaultForAllAsync(CancellationToken ct)
     {
-        return quotaPlanCommandService.UpdateWhereAsync(
+        return quotaPlanCommandService.UpdateWhere(
             p => p.IsDefault,
             set => set.SetProperty(x => x.IsDefault, false),
             ct);

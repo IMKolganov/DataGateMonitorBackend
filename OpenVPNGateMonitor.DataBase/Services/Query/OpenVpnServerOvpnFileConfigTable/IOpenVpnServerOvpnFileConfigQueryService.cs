@@ -5,9 +5,9 @@ namespace OpenVPNGateMonitor.DataBase.Services.Query.OpenVpnServerOvpnFileConfig
 
 public interface IOpenVpnServerOvpnFileConfigQueryService
 {
-    Task<List<OpenVpnServerOvpnFileConfig>> GetAllAsync(CancellationToken ct);
-    Task<OpenVpnServerOvpnFileConfig?> GetByIdAsync(int id, CancellationToken ct);
-    Task<OpenVpnServerOvpnFileConfig?> GetByVpnServerIdIdAsync(int vpnServerId, CancellationToken ct);
+    Task<List<OpenVpnServerOvpnFileConfig>> GetAll(CancellationToken ct);
+    Task<OpenVpnServerOvpnFileConfig?> GetById(int id, CancellationToken ct);
+    Task<OpenVpnServerOvpnFileConfig?> GetByVpnServerIdId(int vpnServerId, CancellationToken ct);
     Task<bool> AnyByVpnServerId(int vpnServerId, CancellationToken ct);
-    Task<IPagedResult<OpenVpnServerOvpnFileConfig>> GetPageAsync(int page, int pageSize, CancellationToken ct);
+    Task<IPagedResult<OpenVpnServerOvpnFileConfig>> GetPage(int page, int pageSize, CancellationToken ct);
 }

@@ -12,7 +12,7 @@ public interface INotificationService
     /// If <paramref name="channels"/> is null or empty, all available channels are used.
     /// Returns the created notification ID.
     /// </summary>
-    Task<int> NotifyAdminsAsync(
+    Task<int> NotifyAdmins(
         NotificationRequest request,
         IEnumerable<string>? channels = null,
         CancellationToken ct = default);
@@ -20,7 +20,7 @@ public interface INotificationService
     /// <summary>
     /// Marks a notification as successfully delivered ("sent") for a specific admin and channel.
     /// </summary>
-    Task MarkDeliveredAsync(
+    Task MarkDelivered(
         int notificationId,
         int adminUserId,
         string channel,
@@ -29,7 +29,7 @@ public interface INotificationService
     /// <summary>
     /// Marks a notification as read by the specified admin (for all channels).
     /// </summary>
-    Task MarkReadAsync(
+    Task MarkRead(
         int notificationId,
         int adminUserId,
         CancellationToken ct = default);
