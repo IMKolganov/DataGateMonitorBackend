@@ -11,7 +11,7 @@ public sealed class OpenVpnStatusStreamPublisher : Microsoft.Extensions.Hosting.
 {
     private readonly IHubContext<OpenVpnStatusHub> hubContext;
     private readonly IOpenVpnBackgroundService openVpnBackgroundService;
-    private readonly IOpenVpnServerOverviewQuery openVpnServerOverviewQuery;
+    private readonly IServiceScopeFactory scopeFactory;
     private readonly ILogger<OpenVpnStatusStreamPublisher> logger;
 
     private const string GroupName = "status-stream";
@@ -19,12 +19,12 @@ public sealed class OpenVpnStatusStreamPublisher : Microsoft.Extensions.Hosting.
     public OpenVpnStatusStreamPublisher(
         IHubContext<OpenVpnStatusHub> hubContext,
         IOpenVpnBackgroundService openVpnBackgroundService,
-        IOpenVpnServerOverviewQuery openVpnServerOverviewQuery,
+        IServiceScopeFactory scopeFactory,
         ILogger<OpenVpnStatusStreamPublisher> logger)
     {
         this.hubContext = hubContext;
         this.openVpnBackgroundService = openVpnBackgroundService;
-        this.openVpnServerOverviewQuery = openVpnServerOverviewQuery;
+        this.scopeFactory = scopeFactory;
         this.logger = logger;
     }
 
@@ -39,6 +39,9 @@ public sealed class OpenVpnStatusStreamPublisher : Microsoft.Extensions.Hosting.
                 var statuses = rawStatuses.Values
                     .Select(x => x.Adapt<ServiceStatusResponse>())
                     .ToList();
+
+                using var scope = scopeFactory.CreateScope();
+                var openVpnServerOverviewQuery = scope.ServiceProvider.GetRequiredService<IOpenVpnServerOverviewQuery>();
 
                 foreach (var status in statuses)
                 {
@@ -69,7 +72,7 @@ public sealed class OpenVpnStatusStreamPublisher : Microsoft.Extensions.Hosting.
                 logger.LogError(ex, "Status stream publish error");
             }
 
-            await Task.Delay(1000, stoppingToken);
+            await Task.Delay(1000, stoppingToken);//todo: move to settings
         }
     }
 }
