@@ -227,8 +227,8 @@ public class OpenVpnFilesController(IOvpnFileApiService ovpnFileApiService,
         }
         catch (Exception ex)
         {
-            logger.LogError(ex, "Failed to download OVPN file {IssuedOvpnFileId} for {VpnServerId}", 
-                request.IssuedOvpnFileId, request.VpnServerId);
+            logger.LogError(ex, "Failed to download OVPN file {CommonName} for {VpnServerId}", 
+                request.CommonName, request.VpnServerId);
             return BadRequest(ApiResponse<string>.ErrorResponse(ex.Message));
         }
     }
