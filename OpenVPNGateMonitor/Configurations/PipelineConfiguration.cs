@@ -1,5 +1,6 @@
 ﻿using System.Reflection;
 using Microsoft.AspNetCore.Diagnostics.HealthChecks;
+using Microsoft.AspNetCore.Http.Connections;
 using Microsoft.AspNetCore.HttpOverrides;
 using Microsoft.Extensions.Diagnostics.HealthChecks;
 using Microsoft.OpenApi;
@@ -102,7 +103,10 @@ public static class PipelineConfiguration
         app.MapHub<GeoLiteHub>("/api/hubs/geoLite");
         app.MapHub<OpenVpnFrontendHub>("/api/hubs/frontend");
         app.MapHub<AdminNotificationHub>("/api/hubs/admin-notify");
-        app.MapHub<OpenVpnStatusHub>("/api/hubs/status-stream");
+        app.MapHub<OpenVpnStatusHub>("/api/hubs/status-stream", options =>
+        {
+            options.Transports = HttpTransportType.WebSockets;
+        });
 
         var version = Assembly.GetExecutingAssembly().GetName().Version?.ToString() ?? "Unknown version";
         var environmentName = app.Environment.EnvironmentName;

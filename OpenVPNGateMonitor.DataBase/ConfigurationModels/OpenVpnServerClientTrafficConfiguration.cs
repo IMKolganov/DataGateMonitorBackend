@@ -12,6 +12,7 @@ public class OpenVpnServerClientTrafficConfiguration : BaseEntityConfiguration<O
 
         entity.Property(e => e.VpnServerId).IsRequired();
         entity.Property(e => e.ExternalId).HasMaxLength(255);
+        entity.Property(e => e.UserId);
         entity.Property(e => e.SessionId).IsRequired();
         entity.Property(e => e.BytesReceived).IsRequired();
         entity.Property(e => e.BytesSent).IsRequired();

@@ -5,6 +5,7 @@ using OpenVPNGateMonitor.DataBase.Services.Command;
 using OpenVPNGateMonitor.DataBase.Services.Command.Interfaces;
 using OpenVPNGateMonitor.DataBase.Services.Query.IssuedOvpnFileTable;
 using OpenVPNGateMonitor.DataBase.Services.Query.OpenVpnServerStatusLogTable;
+using OpenVPNGateMonitor.DataBase.Services.Query.UserTable;
 using OpenVPNGateMonitor.Models;
 using OpenVPNGateMonitor.Models.Helpers.Services;
 using OpenVPNGateMonitor.Services.BackgroundServices.Interfaces;
@@ -23,6 +24,7 @@ public class OpenVpnServerService(
     IOpenVpnServerStatusLogQueryService openVpnServerStatusLogQueryService,
     IExternalIpAddressService externalIpAddressService,
     ITransactionRunner transactionRunner,
+    IUserQueryService userQueryService,
     ICommandService<OpenVpnServerClient, int> openVpnServerClientCommandService,
     ICommandService<OpenVpnServerStatusLog, int> openVpnServerStatusLogCommandService,
     ICommandService<OpenVpnServerClientTraffic, int> openVpnClientTrafficCommandService) : IOpenVpnServerService
@@ -38,6 +40,7 @@ public class OpenVpnServerService(
                 openVpnServer.Id, openVpnClientsFromMng.Count);
 
             var nowUtc = DateTimeOffset.UtcNow;
+            User? user;
 
             // Build current sessions set to mark stale ones as disconnected
             var currentSessionIds = new HashSet<Guid>(
@@ -61,11 +64,13 @@ public class OpenVpnServerService(
                 var sessionId = GenerateSessionId(m.CommonName, m.RemoteIp, m.ConnectedSince);
                 var externalId = await openVpnFileQueryService.GetExternalIdByCommonName(
                     m.CommonName, openVpnServer.Id, ct) ?? string.Empty;
-
+                user = await userQueryService.GetByExternalId(externalId, ct) ?? null;
+                
                 // ---- Upsert main client row ----
                 var rows = await openVpnServerClientCommandService.UpdateWhere(
                     x => x.VpnServerId == openVpnServer.Id && x.SessionId == sessionId,
                     s => s
+                        .SetProperty(c => c.UserId, user?.Id)
                         .SetProperty(c => c.CommonName, m.CommonName)
                         .SetProperty(c => c.RemoteIp, m.RemoteIp)
                         .SetProperty(c => c.LocalIp, m.LocalIp)
@@ -88,6 +93,7 @@ public class OpenVpnServerService(
                 {
                     var newClient = m.Adapt<OpenVpnServerClient>();
                     newClient.VpnServerId = openVpnServer.Id;
+                    newClient.UserId = user?.Id;
                     newClient.SessionId = sessionId;
                     newClient.ExternalId = externalId;
                     newClient.IsConnected = true;
@@ -125,6 +131,7 @@ public class OpenVpnServerService(
                     var sample = new OpenVpnServerClientTraffic
                     {
                         VpnServerId = openVpnServer.Id,
+                        UserId = user?.Id,
                         ExternalId = externalId,
                         SessionId = sessionId,
                         BytesReceived = m.BytesReceived,

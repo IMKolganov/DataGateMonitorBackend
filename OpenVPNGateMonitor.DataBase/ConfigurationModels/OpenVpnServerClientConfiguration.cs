@@ -12,6 +12,7 @@ public class OpenVpnServerClientConfiguration : BaseEntityConfiguration<OpenVpnS
         entity.Property(e => e.VpnServerId)
             .IsRequired();
         entity.Property(e => e.ExternalId).HasMaxLength(255);
+        entity.Property(e => e.UserId);
         entity.Property(e => e.SessionId)
             .IsRequired();
         entity.Property(e => e.CommonName)
