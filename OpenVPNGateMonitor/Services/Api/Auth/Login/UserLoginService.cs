@@ -54,7 +54,7 @@ public sealed class UserLoginService(
         if (result == PasswordVerificationResult.Failed)
             throw new UnauthorizedAccessException("Invalid login or password.");
 
-        var (token, expires) = await CreateJwtAsync(user, ct);
+        var (token, expires) = await CreateJwtAsync(user, null, ct);
 
         return new LoginResponse
         {
@@ -116,7 +116,7 @@ public sealed class UserLoginService(
             await userIdentityLinkCommandService.Add(link, saveChanges: true, ct);
         }
 
-        var (token, expires) = await CreateJwtAsync(user, ct);
+        var (token, expires) = await CreateJwtAsync(user, externalId, ct);
 
         return new GoogleLoginResponse
         {
@@ -130,7 +130,8 @@ public sealed class UserLoginService(
     }
 
 
-    private async Task<(string Token, DateTimeOffset Expires)> CreateJwtAsync(User user, CancellationToken ct)
+    private async Task<(string Token, DateTimeOffset Expires)> CreateJwtAsync(User user, string? externalId,
+        CancellationToken ct)
     {
         var secret = configuration["Jwt:Secret"]
                      ?? throw new InvalidOperationException("Jwt:Secret is not configured.");
@@ -148,6 +149,8 @@ public sealed class UserLoginService(
             new(ClaimTypes.NameIdentifier, user.Id.ToString()),
             new(ClaimTypes.Name, user.DisplayName ?? string.Empty),
             new(ClaimTypes.Role, role),
+            new("externalId", externalId ?? string.Empty),
+            new(JwtRegisteredClaimNames.Sub, externalId ?? string.Empty),
 
             new("displayName", user.DisplayName ?? string.Empty),
             new("email", user.Email ?? string.Empty),
