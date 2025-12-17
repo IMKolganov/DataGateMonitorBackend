@@ -2,6 +2,7 @@
 using OpenVPNGateMonitor.DataBase.Services.Command.Interfaces;
 using OpenVPNGateMonitor.DataBase.Services.Query;
 using OpenVPNGateMonitor.DataBase.Services.Query.ClientApplicationTable;
+using OpenVPNGateMonitor.DataBase.Services.Query.DeviceTable;
 using OpenVPNGateMonitor.DataBase.Services.Query.IncomingMessageLogTable;
 using OpenVPNGateMonitor.DataBase.Services.Query.IssuedOvpnFileTable;
 using OpenVPNGateMonitor.DataBase.Services.Query.IssuedOvpnFileTokenTable;
@@ -60,6 +61,9 @@ public static class QueryCommandConfiguration
         services.AddScoped<IRoleQueryService, RoleQueryService>();
         services.AddScoped<IUserQuotaPlanQueryService, UserQuotaPlanQueryService>();
         services.AddScoped<IQuotaPlanAllowedServerQueryService, QuotaPlanAllowedServerQueryService>();
+        
+        services.AddScoped<IDeviceQueryService, DeviceQueryService>();
+
 
         // Feature: overview queries
         services.AddScoped<IOpenVpnServerOverviewQuery, OpenVpnServerOverviewQuery>();
