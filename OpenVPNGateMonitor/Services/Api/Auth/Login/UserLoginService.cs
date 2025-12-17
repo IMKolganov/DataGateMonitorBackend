@@ -140,7 +140,7 @@ public sealed class UserLoginService(
         var creds = new SigningCredentials(key, SecurityAlgorithms.HmacSha256);
 
         var now = DateTimeOffset.UtcNow;
-        var expires = now.AddHours(1);
+        var expires = now.AddMinutes(1);
 
         var role = await userRoleService.GetUserRoleNameAsync(user.Id, ct);
 
