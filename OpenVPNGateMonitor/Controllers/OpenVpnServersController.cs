@@ -61,7 +61,7 @@ public class OpenVpnServersController(ILogger<OpenVpnServersController> logger, 
         return Ok(ApiResponse<OpenVpnServerResponse>.SuccessResponse(server.Adapt<OpenVpnServerResponse>()));
     }
 
-    [Authorize(Roles = "Admin")]
+    [Authorize(Roles = "Admin,App")]
     [HttpPost("add")]
     public async Task<ActionResult<ApiResponse<OpenVpnServerResponse>>> AddServer(
         [FromBody] AddServerRequest request, CancellationToken ct)
@@ -71,7 +71,7 @@ public class OpenVpnServersController(ILogger<OpenVpnServersController> logger, 
         return Ok(ApiResponse<OpenVpnServerResponse>.SuccessResponse(newServer.Adapt<OpenVpnServerResponse>()));
     }
 
-    [Authorize(Roles = "Admin")]
+    [Authorize(Roles = "Admin,App")]
     [HttpPut("update")]
     public async Task<ActionResult<ApiResponse<OpenVpnServerResponse>>> UpdateServer(
         [FromBody] UpdateServerRequest request, CancellationToken ct)
@@ -83,7 +83,7 @@ public class OpenVpnServersController(ILogger<OpenVpnServersController> logger, 
             updatedServer.Adapt<OpenVpnServerResponse>()));
     }
 
-    [Authorize(Roles = "Admin")]
+    [Authorize(Roles = "Admin,App")]
     [HttpDelete("delete/{VpnServerId:int}")]
     //todo: fixed response
     public async Task<IActionResult> DeleteServer(

@@ -10,7 +10,7 @@ namespace OpenVPNGateMonitor.Controllers;
 [ApiController]
 [Route("api/settings")]
 [Authorize]
-[Authorize(Roles = "Admin")]
+[Authorize(Roles = "Admin,App")]
 public class SettingsController(ISettingsService settingsService) : BaseController
 {
     [HttpGet("get")]

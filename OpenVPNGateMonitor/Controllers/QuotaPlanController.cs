@@ -13,7 +13,7 @@ namespace OpenVPNGateMonitor.Controllers;
 [ApiController]
 [Route("api/quota-plans")]
 [Authorize]
-[Authorize(Roles = "Admin")]
+[Authorize(Roles = "Admin,App")]
 public class QuotaPlanController(IQuotaPlanService quotaPlanService) : BaseController
 {
     /// <summary>Get all quota plans.</summary>

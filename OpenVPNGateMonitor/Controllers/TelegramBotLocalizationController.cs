@@ -14,7 +14,7 @@ namespace OpenVPNGateMonitor.Controllers;
 [Authorize]
 public class TelegramBotLocalizationController(ILocalizationService localization) : BaseController
 {
-    [Authorize(Roles = "Admin")]
+    [Authorize(Roles = "Admin,App")]
     [HttpPost("set-tg-user-language")]
     public async Task<ActionResult<ApiResponse<SetTelegramUserLanguageResponse>>> SetTelegramUserLanguageAsync(
         [FromBody] SetTelegramUserLanguageRequest request, 
@@ -27,7 +27,7 @@ public class TelegramBotLocalizationController(ILocalizationService localization
             telegramUserLanguagePreference.Adapt<SetTelegramUserLanguageResponse>()));
     }
 
-    [Authorize(Roles = "Admin")]
+    [Authorize(Roles = "Admin,App")]
     [HttpGet("get-tg-user-language/{telegramId}")]
     public async Task<ActionResult<ApiResponse<GetTelegramUserLanguageResponse>>> GetTelegramUserLanguageAsync(
         [FromRoute] GetTelegramUserLanguageRequest request,
@@ -43,7 +43,7 @@ public class TelegramBotLocalizationController(ILocalizationService localization
         return Ok(ApiResponse<GetTelegramUserLanguageResponse>.SuccessResponse(response));
     }
     
-    [Authorize(Roles = "Admin")]
+    [Authorize(Roles = "Admin,App")]
     [HttpGet("is-exist-tg-user-language-preference/{telegramId}")]
     public async Task<ActionResult<ApiResponse<IsExistTelegramUserLanguagePreferenceResponse>>> 
         IsExistTelegramUserLanguagePreferenceAsync(
@@ -59,7 +59,7 @@ public class TelegramBotLocalizationController(ILocalizationService localization
         return Ok(ApiResponse<IsExistTelegramUserLanguagePreferenceResponse>.SuccessResponse(response));
     }
     
-    [Authorize(Roles = "Admin")]
+    [Authorize(Roles = "Admin,App")]
     [HttpGet("get-text-for-tg-user/{telegramId}/{key}")]
     public async Task<ActionResult<ApiResponse<GetTextForTelegramUserResponse>>> 
         GetTextAsync([FromRoute] GetTextForTelegramUserRequest request,

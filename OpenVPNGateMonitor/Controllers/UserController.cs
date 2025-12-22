@@ -11,7 +11,7 @@ namespace OpenVPNGateMonitor.Controllers;
 [ApiController]
 [Route("api/users")]
 [Authorize]
-[Authorize(Roles = "Admin")]
+[Authorize(Roles = "Admin,App")]
 public class UserController(IUserService userService) : BaseController
 {
     [HttpPost("register-from-tgbot")]

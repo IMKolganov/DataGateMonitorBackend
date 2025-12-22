@@ -12,7 +12,7 @@ namespace OpenVPNGateMonitor.Controllers;
 [ApiController]
 [Route("api/open-vpn-configs")]
 [Authorize]
-[Authorize(Roles = "Admin")]
+[Authorize(Roles = "Admin,App")]
 public class OpenVpnServerOvpnFileConfigController(
     IOpenVpnServerOvpnFileConfigService openVpnServerOvpnFileConfigService) : BaseController
 {
