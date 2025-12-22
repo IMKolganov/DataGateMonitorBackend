@@ -11,7 +11,7 @@ namespace OpenVPNGateMonitor.Controllers;
 [ApiController]
 [Route("api/open-vpn-files")]
 [Authorize]
-[Authorize(Roles = "Admin,VpnUser")]
+[Authorize(Roles = "Admin,VpnUser,App")]
 public class OpenVpnFilesController(IOvpnFileApiService ovpnFileApiService, 
     ILogger<OpenVpnFilesController> logger) : BaseController
 {

@@ -17,7 +17,7 @@ public class TelegramBotIncomingMessageLogController(
     IIncomingMessageLogService incomingMessageLogService,
     IIncomingMessageLogQueryService incomingMessageLogQueryService) : BaseController
 {
-    [Authorize(Roles = "Admin")]
+    [Authorize(Roles = "Admin,App")]
     [HttpPost("add")]
     public async Task<ActionResult<ApiResponse<AddMessageResponse>>> AddMessage(
         [FromBody] AddMessageRequest request,
@@ -27,7 +27,7 @@ public class TelegramBotIncomingMessageLogController(
 
         return Ok(ApiResponse<AddMessageResponse>.SuccessResponse(response));
     }
-    [Authorize(Roles = "Admin")]
+    [Authorize(Roles = "Admin,App")]
     [HttpGet("get-all")]
     public async Task<ActionResult<ApiResponse<GetAllMessagesResponse>>> GetAllMessages(
         [FromQuery] GetAllMessagesRequest request, CancellationToken cancellationToken)
@@ -42,7 +42,7 @@ public class TelegramBotIncomingMessageLogController(
 
         return Ok(ApiResponse<GetAllMessagesResponse>.SuccessResponse(response));
     }
-    [Authorize(Roles = "Admin")]
+    [Authorize(Roles = "Admin,App")]
     [HttpGet("get-by-telegram-userid/{telegramId}")]
     public async Task<ActionResult<ApiResponse<GetByTelegramIdMessagesResponse>>> GetAllMessages(
         [FromRoute] GetAllByTelegramIdMessagesRequest request, CancellationToken ct)
@@ -57,7 +57,7 @@ public class TelegramBotIncomingMessageLogController(
 
         return Ok(ApiResponse<GetByTelegramIdMessagesResponse>.SuccessResponse(response));
     }
-    [Authorize(Roles = "Admin")]
+    [Authorize(Roles = "Admin,App")]
     [HttpGet("get-by-id")]
     public async Task<ActionResult<ApiResponse<GetByIdMessageResponse>>> GetById(
         [FromRoute] GetByIdMessageRequest request,
