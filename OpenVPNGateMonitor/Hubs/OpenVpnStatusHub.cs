@@ -10,8 +10,16 @@ public sealed class OpenVpnStatusHub : Hub
 
     public override async Task OnConnectedAsync()
     {
+        var token = Context.GetHttpContext()?.Request.Query["access_token"].ToString();
         await Groups.AddToGroupAsync(Context.ConnectionId, GroupName);
+        Console.WriteLine($"Hub connected: {Context.ConnectionId}, hasToken={(string.IsNullOrEmpty(token) ? "no" : "yes")}");
         await base.OnConnectedAsync();
+    }
+
+    public override Task OnDisconnectedAsync(Exception? exception)
+    {
+        Console.WriteLine($"Hub disconnected: {Context.ConnectionId}, err={exception?.Message}");
+        return base.OnDisconnectedAsync(exception);
     }
 
     public async Task SubscribeStatuses()

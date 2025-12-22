@@ -11,6 +11,8 @@ using OpenVPNGateMonitor.Services.Api.Auth.Login;
 using OpenVPNGateMonitor.Services.Api.Auth.Registers;
 using OpenVPNGateMonitor.Services.Api.Auth.Registers.Interfaces;
 using OpenVPNGateMonitor.Services.Api.Auth.Users;
+using OpenVPNGateMonitor.Services.Api.CurrentUser;
+using OpenVPNGateMonitor.Services.Api.CurrentUser.Interfaces;
 
 namespace OpenVPNGateMonitor.Configurations;
 
@@ -18,6 +20,9 @@ public static class AuthServiceConfiguration
 {
     public static void ConfigureAuthServices(this IServiceCollection services, IConfiguration configuration)
     {
+        services.AddHttpContextAccessor();
+        services.AddScoped<ICurrentUserService, CurrentUserService>();
+        
         services.AddScoped<IUserLoginService, UserLoginService>();
         services.AddScoped<IUserAccountService, UserAccountService>();
         services.AddScoped<IUserRoleService, UserRoleService>();
@@ -43,6 +48,7 @@ public static class AuthServiceConfiguration
         services.AddScoped<IVpnServerAccessQueryService, VpnServerAccessQueryService>();
         services.AddScoped<IAuthorizationHandler, AdminOrOwnServerHandler>();
 
+        services.AddScoped<IDeviceService, DeviceService>();
 
         services.AddControllers(options =>
             {

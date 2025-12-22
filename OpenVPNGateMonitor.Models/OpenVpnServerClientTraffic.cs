@@ -3,6 +3,7 @@
 public class OpenVpnServerClientTraffic : BaseEntity<int>
 {
     public int VpnServerId { get; set; }
+    public int? UserId { get; set; }
     public string ExternalId { get; set; } = string.Empty;
     public Guid SessionId { get; set; }
     public long BytesReceived { get; set; }
