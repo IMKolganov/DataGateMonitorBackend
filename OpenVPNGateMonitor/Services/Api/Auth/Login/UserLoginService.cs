@@ -139,8 +139,12 @@ public sealed class UserLoginService(
         var key = new SymmetricSecurityKey(Encoding.ASCII.GetBytes(secret));
         var creds = new SigningCredentials(key, SecurityAlgorithms.HmacSha256);
 
+        var lifetimeMinutes = configuration.GetValue<int?>("Jwt:LifetimeMinutes") ?? 60;
+        if (lifetimeMinutes <= 0)
+            lifetimeMinutes = 60;
+        
         var now = DateTimeOffset.UtcNow;
-        var expires = now.AddHours(12);
+        var expires = now.AddMinutes(lifetimeMinutes);
 
         var role = await userRoleService.GetUserRoleNameAsync(user.Id, ct);
 
