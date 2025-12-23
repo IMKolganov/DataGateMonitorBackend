@@ -15,5 +15,6 @@ public class UpdateServerRequest
     public string ApiUrl { get; set; } = string.Empty;
     public double? Latitude { get; set; }
     public double? Longitude { get; set; }
+    public bool IsEnableWss { get; set; } = false;
     public List<int> QuotaPlanIds { get; set; } = [];
 }

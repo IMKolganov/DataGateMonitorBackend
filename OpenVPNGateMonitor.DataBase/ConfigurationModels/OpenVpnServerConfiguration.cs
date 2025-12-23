@@ -25,6 +25,8 @@ public class OpenVpnServerConfiguration : BaseEntityConfiguration<OpenVpnServer,
 
         entity.Property(e => e.Longitude)
             .HasPrecision(9, 6);
+        
+        entity.Property(e => e.IsEnableWss);
 
         // Indexes
         entity.HasIndex(e => e.ServerName)
@@ -35,6 +37,8 @@ public class OpenVpnServerConfiguration : BaseEntityConfiguration<OpenVpnServer,
         entity.HasIndex(e => e.IsDefault);
 
         entity.HasIndex(e => e.IsDisable);
+        
+        entity.HasIndex(e => e.IsEnableWss);
 
         entity.HasIndex(e => new { e.Latitude, e.Longitude });
 
