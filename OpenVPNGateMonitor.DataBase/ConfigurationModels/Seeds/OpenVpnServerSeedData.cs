@@ -15,7 +15,8 @@ public static class OpenVpnServerSeedData
             IsDisable = false,
             ApiUrl = "http://openvpn_udp:5010/",
             Latitude = 35.1856,   // Nicosia, Cyprus
-            Longitude = 33.3823
+            Longitude = 33.3823,
+            IsEnableWss = false,
         },
         new OpenVpnServer
         {
@@ -26,7 +27,8 @@ public static class OpenVpnServerSeedData
             IsDisable = false,
             ApiUrl = "http://openvpn_tcp:5011/",
             Latitude = 55.7558,   // Moscow, Russia
-            Longitude = 37.6173
+            Longitude = 37.6173,
+            IsEnableWss = false,
         },
     };
 }
