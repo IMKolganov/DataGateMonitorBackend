@@ -20,6 +20,7 @@ using OpenVPNGateMonitor.DataBase.Services.Query.TelegramUserLanguagePreferenceT
 using OpenVPNGateMonitor.DataBase.Services.Query.UserCredentialTable;
 using OpenVPNGateMonitor.DataBase.Services.Query.UserIdentityLinkTable;
 using OpenVPNGateMonitor.DataBase.Services.Query.UserQuotaPlanTable;
+using OpenVPNGateMonitor.DataBase.Services.Query.UserRefreshTokenTable;
 using OpenVPNGateMonitor.DataBase.Services.Query.UserRoleTable;
 using OpenVPNGateMonitor.DataBase.Services.Query.UserTable;
 
@@ -61,6 +62,8 @@ public static class QueryCommandConfiguration
         services.AddScoped<IRoleQueryService, RoleQueryService>();
         services.AddScoped<IUserQuotaPlanQueryService, UserQuotaPlanQueryService>();
         services.AddScoped<IQuotaPlanAllowedServerQueryService, QuotaPlanAllowedServerQueryService>();
+        
+        services.AddScoped<IUserRefreshTokenQueryService, UserRefreshTokenQueryService>();
         
         services.AddScoped<IDeviceQueryService, DeviceQueryService>();
 
