@@ -24,6 +24,7 @@ public static class AuthServiceConfiguration
         services.AddScoped<ICurrentUserService, CurrentUserService>();
         
         services.AddScoped<IUserLoginService, UserLoginService>();
+        services.AddScoped<ITokenService, TokenService>();
         services.AddScoped<IUserAccountService, UserAccountService>();
         services.AddScoped<IUserRoleService, UserRoleService>();
         services.AddScoped<IPasswordHasher<User>, PasswordHasher<User>>();
