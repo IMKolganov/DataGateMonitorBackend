@@ -1,8 +1,5 @@
-using System.IdentityModel.Tokens.Jwt;
-using System.Security.Claims;
-using System.Text;
+using Microsoft.AspNetCore.Http;
 using Microsoft.AspNetCore.Identity;
-using Microsoft.IdentityModel.Tokens;
 using OpenVPNGateMonitor.DataBase.Services.Command.Interfaces;
 using OpenVPNGateMonitor.DataBase.Services.Query.UserCredentialTable;
 using OpenVPNGateMonitor.DataBase.Services.Query.UserIdentityLinkTable;
@@ -19,12 +16,12 @@ public sealed class UserLoginService(
     IUserCredentialQueryService credentialQueryService,
     IUserQueryService userQueryService,
     IPasswordHasher<User> passwordHasher,
-    IUserRoleService userRoleService,
-    IConfiguration configuration,
     IGoogleTokenValidator tokenValidator,
     ICommandService<UserIdentityLink, int> userIdentityLinkCommandService,
     IUserIdentityLinkQueryService userIdentityLinkQueryService,
-    IUserAccountService userAccountService
+    IUserAccountService userAccountService,
+    ITokenService tokenService,
+    IHttpContextAccessor httpContextAccessor
 ) : IUserLoginService
 {
     public async Task<LoginResponse> LoginAsync(LoginRequest request, CancellationToken ct)
@@ -54,18 +51,27 @@ public sealed class UserLoginService(
         if (result == PasswordVerificationResult.Failed)
             throw new UnauthorizedAccessException("Invalid login or password.");
 
-        var (token, expires) = await CreateJwtAsync(user, null, ct);
+        var (deviceId, userAgent) = GetClientInfo();
+
+        var tokenPair = await tokenService.IssueAsync(
+            userId: user.Id,
+            externalId: null,
+            deviceId: deviceId,
+            userAgent: userAgent,
+            ct: ct);
 
         return new LoginResponse
         {
+            Token = tokenPair.AccessToken,
+            Expiration = tokenPair.AccessExpiresAt,
+            RefreshToken = tokenPair.RefreshToken,
+            RefreshExpiration = tokenPair.RefreshExpiresAt,
             UserId = user.Id,
             DisplayName = user.DisplayName,
             Email = user.Email,
-            Token = token,
-            Expiration = expires
         };
     }
-    
+
     public async Task<GoogleLoginResponse> LoginWithGoogleAsync(string idToken, CancellationToken ct)
     {
         if (string.IsNullOrWhiteSpace(idToken))
@@ -76,7 +82,7 @@ public sealed class UserLoginService(
         if (string.IsNullOrWhiteSpace(googleUser.Subject))
             throw new InvalidOperationException("Invalid Google token: subject is missing.");
 
-        var provider = "google";
+        const string provider = "google";
         var externalId = googleUser.Subject;
 
         var existingLink = await userIdentityLinkQueryService
@@ -98,11 +104,8 @@ public sealed class UserLoginService(
             if (user is null)
             {
                 var displayName = googleUser.Name ?? googleUser.Email ?? "Google User";
-
                 var newUser = UserFactory.CreateNew(displayName, googleUser.Email);
-
                 user = await userAccountService.CreateUserWithDefaultRoleAsync(newUser, ct);
-
                 isNew = true;
             }
 
@@ -116,12 +119,24 @@ public sealed class UserLoginService(
             await userIdentityLinkCommandService.Add(link, saveChanges: true, ct);
         }
 
-        var (token, expires) = await CreateJwtAsync(user, externalId, ct);
+        if (user.IsBlocked)
+            throw new UnauthorizedAccessException("User account is blocked.");
+
+        var (deviceId, userAgent) = GetClientInfo();
+
+        var tokenPair = await tokenService.IssueAsync(
+            userId: user.Id,
+            externalId: externalId,
+            deviceId: deviceId,
+            userAgent: userAgent,
+            ct: ct);
 
         return new GoogleLoginResponse
         {
-            Token = token,
-            Expiration = expires,
+            Token = tokenPair.AccessToken,
+            Expiration = tokenPair.AccessExpiresAt,
+            RefreshToken = tokenPair.RefreshToken,
+            RefreshExpiration = tokenPair.RefreshExpiresAt,
             UserId = user.Id,
             DisplayName = user.DisplayName,
             Email = user.Email,
@@ -129,49 +144,20 @@ public sealed class UserLoginService(
         };
     }
 
-
-    private async Task<(string Token, DateTimeOffset Expires)> CreateJwtAsync(User user, string? externalId,
-        CancellationToken ct)
+    private (string? DeviceId, string? UserAgent) GetClientInfo()
     {
-        var secret = configuration["Jwt:Secret"]
-                     ?? throw new InvalidOperationException("Jwt:Secret is not configured.");
+        var ctx = httpContextAccessor.HttpContext;
+        if (ctx is null)
+            return (null, null);
 
-        var key = new SymmetricSecurityKey(Encoding.ASCII.GetBytes(secret));
-        var creds = new SigningCredentials(key, SecurityAlgorithms.HmacSha256);
+        var userAgent = ctx.Request.Headers.UserAgent.ToString();
+        if (string.IsNullOrWhiteSpace(userAgent))
+            userAgent = null;
 
-        var lifetimeMinutes = configuration.GetValue<int?>("Jwt:LifetimeMinutes") ?? 60;
-        if (lifetimeMinutes <= 0)
-            lifetimeMinutes = 60;
-        
-        var now = DateTimeOffset.UtcNow;
-        var expires = now.AddMinutes(lifetimeMinutes);
+        var deviceId = ctx.Request.Headers["X-Device-Id"].ToString();
+        if (string.IsNullOrWhiteSpace(deviceId))
+            deviceId = null;
 
-        var role = await userRoleService.GetUserRoleNameAsync(user.Id, ct);
-
-        var claims = new List<Claim>
-        {
-            new(ClaimTypes.NameIdentifier, user.Id.ToString()),
-            new(ClaimTypes.Name, user.DisplayName ?? string.Empty),
-            new(ClaimTypes.Role, role),
-            new("externalId", externalId ?? string.Empty),
-            new(JwtRegisteredClaimNames.Sub, externalId ?? string.Empty),
-
-            new("displayName", user.DisplayName ?? string.Empty),
-            new("email", user.Email ?? string.Empty),
-        };
-        
-        var tokenDescriptor = new JwtSecurityToken(
-            issuer: "OpenVPNGateBackend",
-            audience: "OpenVPNGateFrontend",
-            claims: claims,
-            notBefore: now.UtcDateTime,
-            expires: expires.UtcDateTime,
-            signingCredentials: creds
-        );
-
-        var handler = new JwtSecurityTokenHandler();
-        var token = handler.WriteToken(tokenDescriptor);
-
-        return (token, expires);
+        return (deviceId, userAgent);
     }
 }
