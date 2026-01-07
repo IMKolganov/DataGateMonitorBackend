@@ -54,6 +54,7 @@ public class OpenVpnMicroserviceClient(
     {
         try
         {
+            var requestId = Guid.NewGuid().ToString("N");
             var connection = await EnsureConnectionAsync(cancellationToken);
 
             if (connection.State != HubConnectionState.Connected)
@@ -62,7 +63,7 @@ public class OpenVpnMicroserviceClient(
                 await ReconnectAsync(connection);
             }
 
-            await connection.InvokeAsync("SendCommand", cancellationToken, command);
+            await connection.InvokeAsync("SendCommand", requestId, command, cancellationToken);
         }
         catch (Exception ex)
         {
@@ -77,6 +78,7 @@ public class OpenVpnMicroserviceClient(
     {
         try
         {
+            var requestId = Guid.NewGuid().ToString("N");
             var connection = await EnsureConnectionAsync(cancellationToken);
 
             if (connection.State != HubConnectionState.Connected)
@@ -85,7 +87,7 @@ public class OpenVpnMicroserviceClient(
                 await ReconnectAsync(connection);
             }
 
-            await connection.InvokeAsync("SendCommand", cancellationToken, command);
+            await connection.InvokeAsync("SendCommand", requestId, command, cancellationToken);
         }
         catch (Exception ex)
         {
