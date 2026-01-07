@@ -19,9 +19,9 @@
         <PackageTags>#OpenVPNGateMonitor #OpenVpn #GateMonitor #Dashboard</PackageTags>
         <PackageLicenseExpression>MIT</PackageLicenseExpression>
         <PackageReadmeFile>README.md</PackageReadmeFile>
-        <Version>1.0.78</Version>
-        <AssemblyVersion>1.0.78.0</AssemblyVersion>
-        <FileVersion>1.0.78.0</FileVersion>
+        <Version>1.0.79</Version>
+        <AssemblyVersion>1.0.79.0</AssemblyVersion>
+        <FileVersion>1.0.79.0</FileVersion>
 
         <Deterministic>true</Deterministic>
         <ContinuousIntegrationBuild>true</ContinuousIntegrationBuild>
@@ -42,7 +42,7 @@
     </ItemGroup>
 
     <ItemGroup>
-      <PackageReference Include="Microsoft.AspNetCore.Mvc.Core" Version="2.3.0" />
+      <PackageReference Include="Microsoft.AspNetCore.Mvc.Core" Version="2.3.8" />
       <PackageReference Include="Microsoft.Extensions.Configuration.Abstractions" Version="10.0.1" />
       <PackageReference Include="Newtonsoft.Json" Version="13.0.4" />
     </ItemGroup>
