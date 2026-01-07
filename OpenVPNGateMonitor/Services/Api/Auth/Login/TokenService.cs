@@ -4,6 +4,7 @@ using System.Security.Cryptography;
 using System.Text;
 using Microsoft.IdentityModel.Tokens;
 using OpenVPNGateMonitor.DataBase.Services.Command.Interfaces;
+using OpenVPNGateMonitor.DataBase.Services.Query.UserRefreshTokenTable;
 using OpenVPNGateMonitor.DataBase.Services.Query.UserTable;
 using OpenVPNGateMonitor.Models;
 using OpenVPNGateMonitor.Services.Api.Auth.Registers.Interfaces;
@@ -14,6 +15,7 @@ public sealed class TokenService(
     IConfiguration configuration,
     IUserQueryService userQueryService,
     IUserRoleService userRoleService,
+    IUserRefreshTokenQueryService refreshTokenQueryService,
     ICommandService<UserRefreshToken, int> refreshTokenCommandService
 ) : ITokenService
 {
@@ -57,6 +59,63 @@ public sealed class TokenService(
         await refreshTokenCommandService.Add(userRefreshToken, saveChanges: true, ct);
 
         return new TokenPair(accessToken, accessExpiresAt, refreshToken, refreshExpiresAt);
+    }
+    
+    public async Task<TokenPair> RefreshAsync(
+        string refreshToken,
+        string? deviceId,
+        string? userAgent,
+        CancellationToken ct)
+    {
+        if (string.IsNullOrWhiteSpace(refreshToken))
+            throw new ArgumentException("RefreshToken is required.", nameof(refreshToken));
+
+        var now = DateTimeOffset.UtcNow;
+
+        var tokenHash = HashRefreshToken(refreshToken);
+        var existing = await refreshTokenQueryService.GetByTokenHash(tokenHash, ct);
+
+        if (existing is null)
+            throw new UnauthorizedAccessException("Invalid refresh token.");
+
+        if (existing.RevokedAt != null)
+            throw new UnauthorizedAccessException("Refresh token is revoked.");
+
+        if (existing.ExpiresAt <= now)
+            throw new UnauthorizedAccessException("Refresh token is expired.");
+
+        if (!string.IsNullOrWhiteSpace(deviceId) && existing.DeviceId != null && existing.DeviceId != deviceId)
+            throw new UnauthorizedAccessException("Invalid device.");
+
+        var refreshLifetimeDays = configuration.GetValue<int?>("Jwt:RefreshLifetimeDays") ?? 30;
+        if (refreshLifetimeDays <= 0)
+            refreshLifetimeDays = 30;
+
+        var newRefreshToken = GenerateRefreshToken();
+        var newRefreshHash = HashRefreshToken(newRefreshToken);
+        var newRefreshExpiresAt = now.AddDays(refreshLifetimeDays);
+
+        var newEntity = new UserRefreshToken
+        {
+            UserId = existing.UserId,
+            TokenHash = newRefreshHash,
+            CreatedAt = now,
+            ExpiresAt = newRefreshExpiresAt,
+            RevokedAt = null,
+            ReplacedByTokenId = null,
+            DeviceId = existing.DeviceId ?? deviceId,
+            UserAgent = existing.UserAgent ?? userAgent
+        };
+
+        await refreshTokenCommandService.Add(newEntity, saveChanges: true, ct);
+
+        existing.RevokedAt = now;
+        existing.ReplacedByTokenId = newEntity.Id;
+
+        await refreshTokenCommandService.Update(existing, saveChanges: true, ct);
+
+        var issued = await IssueAsync(existing.UserId, externalId: null, deviceId: newEntity.DeviceId, userAgent: newEntity.UserAgent, ct);
+        return issued with { RefreshToken = newRefreshToken, RefreshExpiresAt = newRefreshExpiresAt };
     }
 
     private async Task<(string Token, DateTimeOffset ExpiresAt)> CreateAccessTokenAsync(User user, string? externalId, CancellationToken ct)
