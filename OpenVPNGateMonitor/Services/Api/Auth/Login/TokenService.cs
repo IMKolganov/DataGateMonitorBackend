@@ -4,6 +4,7 @@ using System.Security.Cryptography;
 using System.Text;
 using Microsoft.IdentityModel.Tokens;
 using OpenVPNGateMonitor.DataBase.Services.Command.Interfaces;
+using OpenVPNGateMonitor.DataBase.Services.Query.UserIdentityLinkTable;
 using OpenVPNGateMonitor.DataBase.Services.Query.UserRefreshTokenTable;
 using OpenVPNGateMonitor.DataBase.Services.Query.UserTable;
 using OpenVPNGateMonitor.Models;
@@ -16,7 +17,8 @@ public sealed class TokenService(
     IUserQueryService userQueryService,
     IUserRoleService userRoleService,
     IUserRefreshTokenQueryService refreshTokenQueryService,
-    ICommandService<UserRefreshToken, int> refreshTokenCommandService
+    ICommandService<UserRefreshToken, int> refreshTokenCommandService,
+    IUserIdentityLinkQueryService userIdentityLinkQueryService
 ) : ITokenService
 {
     public async Task<TokenPair> IssueAsync(
@@ -32,7 +34,8 @@ public sealed class TokenService(
         if (user.IsBlocked)
             throw new UnauthorizedAccessException("User account is blocked.");
 
-        var (accessToken, accessExpiresAt) = await CreateAccessTokenAsync(user, externalId, ct);
+        var resolvedExternalId = await ResolveExternalIdAsync(user, externalId, ct);
+        var (accessToken, accessExpiresAt) = await CreateAccessTokenAsync(user, resolvedExternalId, ct);
 
         var refreshLifetimeDays = configuration.GetValue<int?>("Jwt:RefreshLifetimeDays") ?? 30;
         if (refreshLifetimeDays <= 0)
@@ -60,7 +63,7 @@ public sealed class TokenService(
 
         return new TokenPair(accessToken, accessExpiresAt, refreshToken, refreshExpiresAt);
     }
-    
+
     public async Task<TokenPair> RefreshAsync(
         string refreshToken,
         string? deviceId,
@@ -111,11 +114,28 @@ public sealed class TokenService(
 
         existing.RevokedAt = now;
         existing.ReplacedByTokenId = newEntity.Id;
-
         await refreshTokenCommandService.Update(existing, saveChanges: true, ct);
 
-        var issued = await IssueAsync(existing.UserId, externalId: null, deviceId: newEntity.DeviceId, userAgent: newEntity.UserAgent, ct);
-        return issued with { RefreshToken = newRefreshToken, RefreshExpiresAt = newRefreshExpiresAt };
+        var user = await userQueryService.GetById(existing.UserId, ct)
+                   ?? throw new InvalidOperationException("User not found.");
+
+        if (user.IsBlocked)
+            throw new UnauthorizedAccessException("User account is blocked.");
+
+        var resolvedExternalId = await ResolveExternalIdAsync(user, externalId: null, ct);
+
+        var (accessToken, accessExpiresAt) = await CreateAccessTokenAsync(user, resolvedExternalId, ct);
+
+        return new TokenPair(accessToken, accessExpiresAt, newRefreshToken, newRefreshExpiresAt);
+    }
+    
+    private async Task<string?> ResolveExternalIdAsync(User user, string? externalId, CancellationToken ct)
+    {
+        if (!string.IsNullOrWhiteSpace(externalId))
+            return externalId;
+
+        var link = await userIdentityLinkQueryService.GetByUserId(user.Id, ct);
+        return string.IsNullOrWhiteSpace(link?.ExternalId) ? null : link.ExternalId;
     }
 
     private async Task<(string Token, DateTimeOffset ExpiresAt)> CreateAccessTokenAsync(User user, string? externalId, CancellationToken ct)
