@@ -19,7 +19,7 @@ namespace OpenVPNGateMonitor.Controllers;
 [ApiController]
 [Route("api/open-vpn-servers")]
 [Authorize]
-public class OpenVpnServersController(ILogger<OpenVpnServersController> logger, IVpnDataService vpnDataService,
+public class OpenVpnServersController(IVpnDataService vpnDataService,
     IOpenVpnServerOverviewQuery openVpnServerOverviewQuery, IOpenVpnServerQueryService openVpnServerQueryService,
     IOpenVpnBackgroundService openVpnBackgroundService) : BaseController
 {
@@ -122,72 +122,4 @@ public class OpenVpnServersController(ILogger<OpenVpnServersController> logger, 
 
         return Ok(ApiResponse<string>.SuccessResponse("OpenVPN background task executed immediately."));
     }
-
-    // [HttpGet("status-stream")]
-    // public async Task StatusStream(CancellationToken ct)
-    // {
-    //     if (HttpContext.WebSockets.IsWebSocketRequest)
-    //     {
-    //         using WebSocket webSocket = await HttpContext.WebSockets.AcceptWebSocketAsync();
-    //         await SendStatusUpdates(webSocket, ct);
-    //     }
-    //     else
-    //     {
-    //         HttpContext.Response.StatusCode = 400;
-    //     }
-    // }
-    //
-    // private async Task SendStatusUpdates(WebSocket webSocket, CancellationToken ct)
-    // {
-    //     try
-    //     {
-    //         while (webSocket.State == WebSocketState.Open)
-    //         {
-    //             var rawStatuses = openVpnBackgroundService.GetStatus();
-    //
-    //             var statuses = rawStatuses.Values
-    //                 .Select(x => x.Adapt<ServiceStatusResponse>())
-    //                 .ToList();
-    //
-    //             foreach (var status in statuses)
-    //             {
-    //                 var (connectedClients, sessions) =
-    //                     await openVpnServerOverviewQuery.GetClientCountersAsync(status.ServiceStatus.VpnServerId, ct);
-    //
-    //                 status.ServiceStatus.CountConnectedClients = connectedClients;
-    //                 status.ServiceStatus.CountSessions = sessions;
-    //             }
-    //
-    //             var json = JsonConvert.SerializeObject(statuses);
-    //
-    //             await webSocket.SendAsync(
-    //                 Encoding.UTF8.GetBytes(json),
-    //                 WebSocketMessageType.Text,
-    //                 true,
-    //                 ct);
-    //
-    //             await Task.Delay(1000, ct);
-    //         }
-    //     }
-    //     catch (Exception ex)
-    //     {
-    //         logger.LogError($"WebSocket error: {ex.Message}");
-    //     }
-    //     finally
-    //     {
-    //         try
-    //         {
-    //             await webSocket.CloseAsync(
-    //                 WebSocketCloseStatus.NormalClosure,
-    //                 "Closing",
-    //                 ct);
-    //         }
-    //         catch (Exception ex)
-    //         {
-    //             logger.LogError($"Error closing WebSocket: {ex.Message}");
-    //         }
-    //
-    //         logger.LogInformation("WebSocket closed.");
-    //     }
-    // }
 }
