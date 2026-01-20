@@ -7,8 +7,10 @@ namespace OpenVPNGateMonitor.Services.Api.Auth.Registers;
 
 public sealed class GoogleTokenValidator(IConfiguration configuration) : IGoogleTokenValidator
 {
-    private readonly string clientId = configuration["GoogleAuth:ClientId"]
-                                       ?? throw new InvalidOperationException("GoogleAuth:ClientId is not configured.");
+    private readonly string _webClientId = configuration["GoogleAuth:ClientId"]
+                                           ?? throw new InvalidOperationException("GoogleAuth:ClientId is not configured.");
+    private readonly string _desktopClientId = configuration["GoogleAuth:DesktopClientId"]
+                                               ?? throw new InvalidOperationException("GoogleAuth:DesktopClientId is not configured.");
 
     public async Task<GoogleUserInfo> ValidateAsync(string idToken, CancellationToken ct)
     {
@@ -17,7 +19,7 @@ public sealed class GoogleTokenValidator(IConfiguration configuration) : IGoogle
 
         var settings = new GoogleJsonWebSignature.ValidationSettings
         {
-            Audience = [clientId]
+            Audience = [_webClientId, _desktopClientId]
         };
 
         GoogleJsonWebSignature.Payload payload;

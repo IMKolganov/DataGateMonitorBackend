@@ -29,6 +29,7 @@ public static class AuthServiceConfiguration
         services.AddScoped<IUserRoleService, UserRoleService>();
         services.AddScoped<IPasswordHasher<User>, PasswordHasher<User>>();
         services.AddScoped<IUserRegistrationService, UserRegistrationService>();
+        services.AddScoped<IGoogleAuthCodeExchangeService, GoogleAuthCodeExchangeService>();
         #region example google env
         // GoogleAuth:ClientId → ENV: GOOGLEAUTH__CLIENTID
         // GoogleAuth:ClientSecret → ENV: GOOGLEAUTH__CLIENTSECRET
