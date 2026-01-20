@@ -22,6 +22,7 @@ public class AuthController(
     IMicroserviceTokenService microserviceTokenService,
     IUserRegistrationService userRegistrationService,
     IUserLoginService userLoginService,
+    IGoogleAuthCodeExchangeService exchange,
     ITokenService tokenService) : BaseController
 {
     [HttpPost("token")]
@@ -105,6 +106,27 @@ public class AuthController(
         CancellationToken ct)
     {
         var result = await userLoginService.LoginWithGoogleAsync(request.IdToken, ct);
+        return Ok(ApiResponse<GoogleLoginResponse>.SuccessResponse(result));
+    }
+    
+    [AllowAnonymous]
+    [HttpPost("google-code-login")]
+    [ProducesResponseType(typeof(ApiResponse<GoogleLoginResponse>), StatusCodes.Status200OK)]
+    public async Task<ActionResult<ApiResponse<GoogleLoginResponse>>> GoogleCodeLogin(
+        [FromBody] GoogleCodeLoginRequest request,
+        CancellationToken ct)
+    {
+        if (request == null)
+            return BadRequest();
+
+        var idToken = await exchange.ExchangeCodeForIdTokenAsync(
+            request.Code,
+            request.CodeVerifier,
+            request.RedirectUri,
+            ct);
+
+        var result = await userLoginService.LoginWithGoogleAsync(idToken, ct);
+
         return Ok(ApiResponse<GoogleLoginResponse>.SuccessResponse(result));
     }
 
