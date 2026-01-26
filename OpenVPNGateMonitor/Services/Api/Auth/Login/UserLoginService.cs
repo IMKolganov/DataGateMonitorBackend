@@ -1,4 +1,3 @@
-using Microsoft.AspNetCore.Http;
 using Microsoft.AspNetCore.Identity;
 using OpenVPNGateMonitor.DataBase.Services.Command.Interfaces;
 using OpenVPNGateMonitor.DataBase.Services.Query.UserCredentialTable;
@@ -137,7 +136,8 @@ public sealed class UserLoginService(
             Expiration = tokenPair.AccessExpiresAt,
             RefreshToken = tokenPair.RefreshToken,
             RefreshExpiration = tokenPair.RefreshExpiresAt,
-            UserId = user.Id
+            UserId = user.Id,
+            ExternalId = externalId,
             DisplayName = user.DisplayName,
             Email = user.Email,
             IsNewUser = isNew
