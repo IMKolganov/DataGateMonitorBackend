@@ -137,7 +137,7 @@ public sealed class UserLoginService(
             Expiration = tokenPair.AccessExpiresAt,
             RefreshToken = tokenPair.RefreshToken,
             RefreshExpiration = tokenPair.RefreshExpiresAt,
-            UserId = user.Id,
+            UserId = user.Id
             DisplayName = user.DisplayName,
             Email = user.Email,
             IsNewUser = isNew
