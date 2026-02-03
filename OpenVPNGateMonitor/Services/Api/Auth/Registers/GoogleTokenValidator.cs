@@ -9,8 +9,12 @@ public sealed class GoogleTokenValidator(IConfiguration configuration) : IGoogle
 {
     private readonly string _webClientId = configuration["GoogleAuth:ClientId"]
                                            ?? throw new InvalidOperationException("GoogleAuth:ClientId is not configured.");
+
     private readonly string _desktopClientId = configuration["GoogleAuth:DesktopClientId"]
                                                ?? throw new InvalidOperationException("GoogleAuth:DesktopClientId is not configured.");
+
+    private readonly string _iosClientId = configuration["GoogleAuth:IosClientId"]
+                                           ?? throw new InvalidOperationException("GoogleAuth:IosClientId is not configured.");
 
     public async Task<GoogleUserInfo> ValidateAsync(string idToken, CancellationToken ct)
     {
@@ -19,7 +23,7 @@ public sealed class GoogleTokenValidator(IConfiguration configuration) : IGoogle
 
         var settings = new GoogleJsonWebSignature.ValidationSettings
         {
-            Audience = [_webClientId, _desktopClientId]
+            Audience = [_webClientId, _desktopClientId, _iosClientId]
         };
 
         GoogleJsonWebSignature.Payload payload;
