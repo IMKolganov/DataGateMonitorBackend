@@ -1,6 +1,7 @@
 using System.Collections.Concurrent;
 using Microsoft.AspNetCore.SignalR;
 using Microsoft.AspNetCore.SignalR.Client;
+using Microsoft.Extensions.DependencyInjection;
 using OpenVPNGateMonitor.Hubs;
 using OpenVPNGateMonitor.Models;
 using OpenVPNGateMonitor.Services.Api.Auth.Registers.Interfaces;
@@ -15,7 +16,7 @@ public class OpenVpnMicroserviceClient(
     ILogger<OpenVpnMicroserviceClient> logger,
     IHubContext<OpenVpnFrontendHub> frontendHub,
     IMicroserviceTokenService tokenService,
-    IOpenVpnMicroserviceNotificationService microserviceNotificationService,
+    IServiceScopeFactory scopeFactory,
     IHubConnectionFactory? hubConnectionFactory = null) : IOpenVpnMicroserviceClient
 {
     private readonly ConcurrentDictionary<string, TaskCompletionSource<string>> _pendingCommands = new();
@@ -26,6 +27,34 @@ public class OpenVpnMicroserviceClient(
     private bool _disposed;
     public string CurrentApiUrl => server.ApiUrl;
     private readonly IHubConnectionFactory _hubFactory = hubConnectionFactory ?? new DefaultHubConnectionFactory();
+
+    private async Task NotifySendCommandFailedAsync(string? errorMessage, CancellationToken ct)
+    {
+        try
+        {
+            using var scope = scopeFactory.CreateScope();
+            var notify = scope.ServiceProvider.GetRequiredService<IOpenVpnMicroserviceNotificationService>();
+            await notify.NotifySendCommandFailed(server.Id, server.ServerName, errorMessage, ct);
+        }
+        catch (Exception ex)
+        {
+            logger.LogWarning(ex, "Failed to send NotifySendCommandFailed for server {ServerId}", server.Id);
+        }
+    }
+
+    private async Task NotifyReconnectFailedAsync(string? errorMessage, CancellationToken ct)
+    {
+        try
+        {
+            using var scope = scopeFactory.CreateScope();
+            var notify = scope.ServiceProvider.GetRequiredService<IOpenVpnMicroserviceNotificationService>();
+            await notify.NotifyReconnectFailed(server.Id, server.ServerName, errorMessage, ct);
+        }
+        catch (Exception ex)
+        {
+            logger.LogWarning(ex, "Failed to send NotifyReconnectFailed for server {ServerId}", server.Id);
+        }
+    }
 
     public async Task<string> SendCommandWithResponseAsync(string command, CancellationToken cancellationToken)
     {
@@ -54,9 +83,9 @@ public class OpenVpnMicroserviceClient(
 
     public async Task SendCommandAsync(string command, CancellationToken cancellationToken)
     {
+        var targetUrl = $"{server.ApiUrl.TrimEnd('/')}/hubs/openvpn";
         try
         {
-            var requestId = Guid.NewGuid().ToString("N");
             var connection = await EnsureConnectionAsync(cancellationToken);
 
             if (connection.State != HubConnectionState.Connected)
@@ -65,23 +94,30 @@ public class OpenVpnMicroserviceClient(
                 await ReconnectAsync(connection);
             }
 
-            await connection.InvokeAsync("SendCommand", requestId, command, cancellationToken);
+            logger.LogInformation(
+                "Sending command to microservice: ServerId={ServerId}, Command={Command}, TargetUrl={TargetUrl}",
+                server.Id, command.Length > 100 ? command[..100] + "..." : command, targetUrl);
+            // Microservice hub has SendCommand(string command) — one argument; result is broadcast via ReceiveCommandResult
+            await connection.InvokeAsync("SendCommand", command, cancellationToken);
+            logger.LogInformation("Command sent successfully to microservice ServerId={ServerId}", server.Id);
         }
         catch (Exception ex)
         {
-            logger.LogError(ex, "Failed to send command to microservice for server {ServerId}", server.Id);
+            logger.LogError(ex,
+                "Failed to send command to microservice: ServerId={ServerId}, TargetUrl={TargetUrl}, InnerMessage={Inner}",
+                server.Id, targetUrl, ex.InnerException?.Message ?? ex.Message);
             var errorMessage = $"[Error] Failed to send command to server {server.Id}: {ex.Message}";
             await frontendHub.Clients.Group(server.Id.ToString())
                 .SendAsync("ReceiveCommandResult", errorMessage, cancellationToken);
-            await microserviceNotificationService.NotifySendCommandFailed(server.Id, server.ServerName, ex.Message, CancellationToken.None);
+            await NotifySendCommandFailedAsync(ex.Message, CancellationToken.None);
         }
     }
 
     public async Task SendCommandToMicroserviceAsync(string command, CancellationToken cancellationToken)
     {
+        var targetUrl = $"{server.ApiUrl.TrimEnd('/')}/hubs/openvpn";
         try
         {
-            var requestId = Guid.NewGuid().ToString("N");
             var connection = await EnsureConnectionAsync(cancellationToken);
 
             if (connection.State != HubConnectionState.Connected)
@@ -90,15 +126,22 @@ public class OpenVpnMicroserviceClient(
                 await ReconnectAsync(connection);
             }
 
-            await connection.InvokeAsync("SendCommand", requestId, command, cancellationToken);
+            logger.LogInformation(
+                "Sending command to microservice: ServerId={ServerId}, Command={Command}, TargetUrl={TargetUrl}",
+                server.Id, command.Length > 100 ? command[..100] + "..." : command, targetUrl);
+            // Microservice hub has SendCommand(string command) — one argument; result is broadcast via ReceiveCommandResult
+            await connection.InvokeAsync("SendCommand", command, cancellationToken);
+            logger.LogInformation("Command sent successfully to microservice ServerId={ServerId}", server.Id);
         }
         catch (Exception ex)
         {
-            logger.LogError(ex, "Failed to send command to microservice for server {ServerId}", server.Id);
+            logger.LogError(ex,
+                "Failed to send command to microservice: ServerId={ServerId}, TargetUrl={TargetUrl}, InnerMessage={Inner}",
+                server.Id, targetUrl, ex.InnerException?.Message ?? ex.Message);
             var errorMessage = $"[Error] Failed to send command to server {server.Id}: {ex.Message}";
             await frontendHub.Clients.Group(server.Id.ToString())
                 .SendAsync("ReceiveCommandResult", errorMessage, cancellationToken);
-            await microserviceNotificationService.NotifySendCommandFailed(server.Id, server.ServerName, ex.Message, CancellationToken.None);
+            await NotifySendCommandFailedAsync(ex.Message, CancellationToken.None);
         }
     }
 
@@ -117,9 +160,10 @@ public class OpenVpnMicroserviceClient(
 
             if (_connection is null)
             {
-                logger.LogInformation("Creating SignalR connection for server {ServerId}", server.Id);
-
                 var fullUrl = $"{server.ApiUrl.TrimEnd('/')}/hubs/openvpn";
+                logger.LogInformation(
+                    "Creating SignalR connection for server {ServerId}, Url={Url}",
+                    server.Id, fullUrl);
                 _lastApiUrl = server.ApiUrl;
 
                 _connection = _hubFactory.Create(fullUrl, () =>
@@ -174,7 +218,7 @@ public class OpenVpnMicroserviceClient(
         catch (Exception ex)
         {
             logger.LogError(ex, "Failed to reconnect to SignalR for server {ServerId}", server.Id);
-            await microserviceNotificationService.NotifyReconnectFailed(server.Id, server.ServerName, ex.Message, CancellationToken.None);
+            await NotifyReconnectFailedAsync(ex.Message, CancellationToken.None);
             throw;
         }
     }
