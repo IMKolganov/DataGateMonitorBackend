@@ -6,6 +6,7 @@ using OpenVPNGateMonitor.Services.Others.Models;
 using OpenVPNGateMonitor.SharedModels.Auth;
 using OpenVPNGateMonitor.SharedModels.Enums;
 using OpenVPNGateMonitor.SharedModels.Notifications.Responses;
+using OpenVPNGateMonitor.SharedModels.Responses;
 
 namespace OpenVPNGateMonitor.Services.Others;
 
@@ -154,8 +155,46 @@ public class NotificationService(
         return new GetAllNotificationsResponse { Notifications = items };
     }
 
+    public async Task<GetNotificationsResponse> GetPageForUserAsync(int adminUserId, int page, int pageSize, CancellationToken ct = default)
+    {
+        var paged = await notificationRecipientQueryService.GetNotificationListPageByAdminUserIdAsync(adminUserId, page, pageSize, ct);
+        var items = paged.Items.Select(r => new NotificationItemDto
+        {
+            Id = r.Id,
+            Type = r.Type,
+            Severity = (NotificationSeverity)r.Severity,
+            Title = r.Title,
+            Message = r.Message,
+            IsRead = r.IsRead,
+            CreatedAt = r.CreatedAt,
+            ReadAt = r.ReadAt
+        }).ToList();
+        return new GetNotificationsResponse
+        {
+            Notifications = new PagedResponse<NotificationItemDto>
+            {
+                Page = paged.Page,
+                PageSize = paged.PageSize,
+                TotalCount = paged.TotalCount,
+                Items = items
+            }
+        };
+    }
+
     public Task<int> GetUnreadCountAsync(int adminUserId, CancellationToken ct = default)
         => notificationRecipientQueryService.GetUnreadCountByAdminUserIdAsync(adminUserId, ct);
+
+    public Task MarkReadAllAsync(int adminUserId, CancellationToken ct = default)
+    {
+        return notificationRecipientCommandServices.UpdateWhere(
+            predicate: r => r.AdminUserId == adminUserId && r.ReadAt == null,
+            set: calls => calls
+                .SetProperty(r => r.DeliveryStatus, DeliveryStatus.Read)
+                .SetProperty(r => r.ReadAt, DateTimeOffset.UtcNow)
+                .SetProperty(r => r.LastUpdate, DateTimeOffset.UtcNow),
+            ct: ct
+        );
+    }
 
     // ----------------------
     // Helpers
