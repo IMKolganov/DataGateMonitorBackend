@@ -1,8 +1,9 @@
 using OpenVPNGateMonitor.DataBase.Services.Command.Interfaces;
 using OpenVPNGateMonitor.DataBase.Services.Query.NotificationRecipientTable;
-using OpenVPNGateMonitor.DataBase.Services.Query.TelegramBotUserTable;
+using OpenVPNGateMonitor.DataBase.Services.Query.UserRoleTable;
 using OpenVPNGateMonitor.Models;
 using OpenVPNGateMonitor.Services.Others.Models;
+using OpenVPNGateMonitor.SharedModels.Auth;
 using OpenVPNGateMonitor.SharedModels.Enums;
 using OpenVPNGateMonitor.SharedModels.Notifications.Responses;
 
@@ -10,7 +11,7 @@ namespace OpenVPNGateMonitor.Services.Others;
 
 public class NotificationService(
     ICommandService<Notification, int> notificationCommandServices,
-    ITelegramBotUserQueryService telegramBotUserQueryService,
+    IUserRoleQueryService userRoleQueryService,
     ICommandService<NotificationRecipient, int> notificationRecipientCommandServices,
     INotificationRecipientQueryService notificationRecipientQueryService,
     Dictionary<string, INotifier> notifiersByChannel,
@@ -22,11 +23,11 @@ public class NotificationService(
         IEnumerable<string>? channels = null,
         CancellationToken ct = default)
     {
-        // 1) Resolve recipients (all admins from Telegram users for now)
-        var admins = await telegramBotUserQueryService.GetAllAdmins(ct) ?? new List<TelegramBotUser>();
-        if (admins.Count == 0)
+        // 1) Resolve recipients: users with Admin role (User.Id), same identity as dashboard and JWT
+        var adminUserIds = await userRoleQueryService.GetUserIdsByRoleIdAsync(SystemRoles.AdminId, ct);
+        if (adminUserIds.Count == 0)
         {
-            logger.LogError("No admins found. Skipping notification: {Type} - {Title}", request.Type, request.Title);
+            logger.LogError("No admins found (role Admin). Skipping notification: {Type} - {Title}", request.Type, request.Title);
             return 0;
         }
 
@@ -66,13 +67,13 @@ public class NotificationService(
         var created = await notificationCommandServices.Add(notification, saveChanges: true, ct);
         var notificationId = created.Id;
 
-        // 4) Persist recipients (admin × channel)
-        var recipients = (from admin in admins
+        // 4) Persist recipients (admin user id × channel)
+        var recipients = (from adminUserId in adminUserIds
                           from notifier in activeNotifiers
                           select new NotificationRecipient
                           {
                               NotificationId = notificationId,
-                              AdminUserId = admin.Id,
+                              AdminUserId = adminUserId,
                               DeliveryChannel = notifier.Channel,
                               DeliveryStatus = DeliveryStatus.Pending,
                               CreateDate = now,
@@ -85,12 +86,12 @@ public class NotificationService(
         // 5) Fan-out sending (best-effort)
         if (activeNotifiers.Count > 0)
         {
-            var tasks = new List<Task>(admins.Count * activeNotifiers.Count);
-            foreach (var admin in admins)
+            var tasks = new List<Task>(adminUserIds.Count * activeNotifiers.Count);
+            foreach (var adminUserId in adminUserIds)
             {
                 foreach (var notifier in activeNotifiers)
                 {
-                    tasks.Add(SendSafe(notifier, created, admin.Id, ct));
+                    tasks.Add(SendSafe(notifier, created, adminUserId, ct));
                 }
             }
 
