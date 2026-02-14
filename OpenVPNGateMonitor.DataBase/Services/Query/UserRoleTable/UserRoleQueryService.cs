@@ -1,4 +1,4 @@
-﻿using System.Linq.Expressions;
+using System.Linq.Expressions;
 using OpenVPNGateMonitor.Models;
 using OpenVPNGateMonitor.SharedModels.Responses;
 
@@ -26,4 +26,10 @@ public class UserRoleQueryService(
         Expression<Func<UserRole, bool>> predicate,
         CancellationToken ct)
         => q.Where(predicate, ct: ct);
+
+    public async Task<List<int>> GetUserIdsByRoleIdAsync(int roleId, CancellationToken ct = default)
+    {
+        var userRoles = await q.Where(ur => ur.RoleId == roleId, ct: ct);
+        return userRoles.Select(ur => ur.UserId).Distinct().ToList();
+    }
 }

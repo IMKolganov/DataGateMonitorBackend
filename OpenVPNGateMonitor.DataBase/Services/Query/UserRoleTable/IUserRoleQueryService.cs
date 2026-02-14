@@ -1,4 +1,4 @@
-﻿using System.Linq.Expressions;
+using System.Linq.Expressions;
 using OpenVPNGateMonitor.Models;
 using OpenVPNGateMonitor.SharedModels.Responses;
 
@@ -14,4 +14,9 @@ public interface IUserRoleQueryService
     public Task<List<UserRole>> Search(
         Expression<Func<UserRole, bool>> predicate,
         CancellationToken ct);
+
+    /// <summary>
+    /// Returns list of UserIds that have the given role (e.g. dashboard admins).
+    /// </summary>
+    Task<List<int>> GetUserIdsByRoleIdAsync(int roleId, CancellationToken ct = default);
 }
