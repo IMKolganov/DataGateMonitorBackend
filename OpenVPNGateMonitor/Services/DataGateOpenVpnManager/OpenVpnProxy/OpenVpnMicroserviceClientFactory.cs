@@ -1,9 +1,10 @@
-﻿using System.Collections.Concurrent;
+using System.Collections.Concurrent;
 using Microsoft.AspNetCore.SignalR;
 using OpenVPNGateMonitor.DataBase.Services.Query.OpenVpnServerTable;
 using OpenVPNGateMonitor.Hubs;
 using OpenVPNGateMonitor.Models;
 using OpenVPNGateMonitor.Services.Api.Auth.Registers.Interfaces;
+using OpenVPNGateMonitor.Services.Others.Notifications.OpenVpnMicroserviceClient;
 
 namespace OpenVPNGateMonitor.Services.DataGateOpenVpnManager.OpenVpnProxy;
 
@@ -48,7 +49,8 @@ public class OpenVpnMicroserviceClientFactory(IServiceProvider serviceProvider) 
         var logger = scope.ServiceProvider.GetRequiredService<ILogger<OpenVpnMicroserviceClient>>();
         var frontendHub = scope.ServiceProvider.GetRequiredService<IHubContext<OpenVpnFrontendHub>>();
         var tokenService = scope.ServiceProvider.GetRequiredService<IMicroserviceTokenService>();
-        return new OpenVpnMicroserviceClient(server, logger, frontendHub, tokenService);
+        var microserviceNotificationService = scope.ServiceProvider.GetRequiredService<IOpenVpnMicroserviceNotificationService>();
+        return new OpenVpnMicroserviceClient(server, logger, frontendHub, tokenService, microserviceNotificationService);
     }
 
     private static void DisposeClient(IOpenVpnMicroserviceClient client)

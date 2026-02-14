@@ -6,6 +6,7 @@ using OpenVPNGateMonitor.Hubs;
 using OpenVPNGateMonitor.Models;
 using OpenVPNGateMonitor.Services.Api.Auth.Registers.Interfaces;
 using OpenVPNGateMonitor.Services.DataGateOpenVpnManager.OpenVpnProxy;
+using OpenVPNGateMonitor.Services.Others.Notifications.OpenVpnMicroserviceClient;
 
 namespace OpenVPNGateMonitor.Tests.Services.DataGateOpenVpnManager.OpenVpnProxy;
 
@@ -35,6 +36,12 @@ public class OpenVpnMicroserviceClientFactoryTests
             .Setup(t => t.GenerateToken(It.IsAny<string>(), It.IsAny<string>(), It.IsAny<string>(), It.IsAny<string>()))
             .Returns("dummy-token");
         services.AddSingleton(tokenServiceMock.Object);
+
+        // Microservice notification (required by OpenVpnMicroserviceClient)
+        var microserviceNotificationMock = new Mock<IOpenVpnMicroserviceNotificationService>();
+        microserviceNotificationMock.Setup(n => n.NotifySendCommandFailed(It.IsAny<int>(), It.IsAny<string?>(), It.IsAny<string?>(), It.IsAny<CancellationToken>())).Returns(Task.CompletedTask);
+        microserviceNotificationMock.Setup(n => n.NotifyReconnectFailed(It.IsAny<int>(), It.IsAny<string?>(), It.IsAny<string?>(), It.IsAny<CancellationToken>())).Returns(Task.CompletedTask);
+        services.AddSingleton(microserviceNotificationMock.Object);
 
         var provider = services.BuildServiceProvider();
         var factory = new OpenVpnMicroserviceClientFactory(provider);

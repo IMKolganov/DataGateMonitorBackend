@@ -14,7 +14,7 @@ var isDocker = Environment.GetEnvironmentVariable("DOTNET_RUNNING_IN_CONTAINER")
 logger.Information("DOTNET_RUNNING_IN_CONTAINER = {IsDocker}", isDocker);
 logger.Information($"Application version: {version};");
 
-var jwtSecret = JwtSecretLoaderConfiguration.LoadOrGenerateSecret(logger);
+var jwtSecret = JwtSecretLoaderConfiguration.LoadOrGenerateSecret(builder.Configuration, logger);
 builder.Configuration["Jwt:Secret"] = jwtSecret;
 
 #region google secret
