@@ -1,4 +1,4 @@
-﻿using OpenVPNGateMonitor.DataBase.Services.Command;
+using OpenVPNGateMonitor.DataBase.Services.Command;
 using OpenVPNGateMonitor.DataBase.Services.Command.Interfaces;
 using OpenVPNGateMonitor.DataBase.Services.Query;
 using OpenVPNGateMonitor.DataBase.Services.Query.ClientApplicationTable;
@@ -7,6 +7,7 @@ using OpenVPNGateMonitor.DataBase.Services.Query.IncomingMessageLogTable;
 using OpenVPNGateMonitor.DataBase.Services.Query.IssuedOvpnFileTable;
 using OpenVPNGateMonitor.DataBase.Services.Query.IssuedOvpnFileTokenTable;
 using OpenVPNGateMonitor.DataBase.Services.Query.LocalizationTextTable;
+using OpenVPNGateMonitor.DataBase.Services.Query.NotificationRecipientTable;
 using OpenVPNGateMonitor.DataBase.Services.Query.OpenVpnServerClientTable;
 using OpenVPNGateMonitor.DataBase.Services.Query.OpenVpnServerEventLogTable;
 using OpenVPNGateMonitor.DataBase.Services.Query.OpenVpnServerOvpnFileConfigTable;
@@ -40,7 +41,8 @@ public static class QueryCommandConfiguration
         services.AddScoped<IIssuedOvpnFileQueryService, IssuedOvpnFileQueryService>();
         services.AddScoped<IIssuedOvpnFileTokenQueryService, IssuedOvpnFileTokenQueryService>();
         services.AddScoped<ILocalizationTextQueryService, LocalizationTextQueryService>();
-        
+        services.AddScoped<INotificationRecipientQueryService, NotificationRecipientQueryService>();
+
         services.AddScoped<IOpenVpnGeoQueryService, OpenVpnGeoQueryService>();
         services.AddScoped<IOpenVpnOverviewSeriesQuery, OpenVpnOverviewSeriesQuery>();
         services.AddScoped<IOpenVpnOverviewTotalsQuery, OpenVpnOverviewTotalsQuery>();
