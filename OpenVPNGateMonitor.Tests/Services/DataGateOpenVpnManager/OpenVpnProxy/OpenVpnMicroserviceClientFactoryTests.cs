@@ -41,6 +41,7 @@ public class OpenVpnMicroserviceClientFactoryTests
         var microserviceNotificationMock = new Mock<IOpenVpnMicroserviceNotificationService>();
         microserviceNotificationMock.Setup(n => n.NotifySendCommandFailed(It.IsAny<int>(), It.IsAny<string?>(), It.IsAny<string?>(), It.IsAny<CancellationToken>())).Returns(Task.CompletedTask);
         microserviceNotificationMock.Setup(n => n.NotifyReconnectFailed(It.IsAny<int>(), It.IsAny<string?>(), It.IsAny<string?>(), It.IsAny<CancellationToken>())).Returns(Task.CompletedTask);
+        microserviceNotificationMock.Setup(n => n.NotifyEventHubConnectionFailed(It.IsAny<int>(), It.IsAny<string?>(), It.IsAny<string?>(), It.IsAny<CancellationToken>())).Returns(Task.CompletedTask);
         services.AddSingleton(microserviceNotificationMock.Object);
 
         var provider = services.BuildServiceProvider();

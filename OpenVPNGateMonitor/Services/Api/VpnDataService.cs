@@ -3,6 +3,8 @@ using OpenVPNGateMonitor.DataBase.Services.Query.OpenVpnServerOvpnFileConfigTabl
 using OpenVPNGateMonitor.DataBase.Services.Query.OpenVpnServerTable;
 using OpenVPNGateMonitor.Models;
 using OpenVPNGateMonitor.Services.Api.Interfaces;
+using OpenVPNGateMonitor.Services.DataGateOpenVpnManager.Events;
+using OpenVPNGateMonitor.Services.DataGateOpenVpnManager.OpenVpnProxy;
 using OpenVPNGateMonitor.Services.Helpers.Interfaces;
 using OpenVPNGateMonitor.Services.Others.Notifications.ServerOpenVpnApiClient;
 
@@ -17,7 +19,9 @@ public class VpnDataService(
     ICommandService<OpenVpnServer, int> openVpnServerCommandService,
     ICommandService<OpenVpnServerOvpnFileConfig, int> openVpnServerOvpnFileConfigCommandService,
     ICommandService<QuotaPlanAllowedServer, int> quotaPlanAllowedServerCommandService,
-    IServerOpenVpnNotificationService serverOpenVpnNotificationService) : IVpnDataService
+    IServerOpenVpnNotificationService serverOpenVpnNotificationService,
+    IOpenVpnMicroserviceClientFactory microserviceClientFactory,
+    IOpenVpnEventClientFactory eventClientFactory) : IVpnDataService
 {
     public async Task<OpenVpnServer> AddOpenVpnServer(OpenVpnServer server, List<int> quotaPlanIds, CancellationToken ct)
     {
@@ -88,6 +92,8 @@ public class VpnDataService(
         }, ct);
 
         await serverOpenVpnNotificationService.NotifyUpdated(result.Id, result.ServerName, ct);
+        microserviceClientFactory.Invalidate(result.Id);
+        eventClientFactory.Remove(result.Id);
         return result;
     }
 
@@ -98,6 +104,8 @@ public class VpnDataService(
                             ?? throw new InvalidOperationException("OpenVpnServer not found");
         await openVpnServerCommandService.Delete(openVpnServer, true, ct);
         await serverOpenVpnNotificationService.NotifyDeleted(openVpnServer.Id, openVpnServer.ServerName, ct);
+        microserviceClientFactory.Invalidate(openVpnServer.Id);
+        eventClientFactory.Remove(openVpnServer.Id);
         return true;
     }
 

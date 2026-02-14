@@ -1,4 +1,4 @@
-﻿using Microsoft.AspNetCore.SignalR;
+using Microsoft.AspNetCore.SignalR;
 using OpenVPNGateMonitor.Services.DataGateOpenVpnManager.OpenVpnProxy;
 
 namespace OpenVPNGateMonitor.Hubs;
@@ -42,8 +42,13 @@ public class OpenVpnFrontendHub(
         var ct = Context.ConnectionAborted;
         var serverIdStr = Context.GetHttpContext()?.Request.Query["serverId"].ToString();
 
+        logger.LogInformation(
+            "SendCommand received from frontend: serverIdQuery={ServerIdQuery}, command={Command}",
+            serverIdStr, command.Length > 80 ? command[..80] + "..." : command);
+
         if (!int.TryParse(serverIdStr, out var serverId))
         {
+            logger.LogWarning("SendCommand rejected: invalid server ID");
             await Clients.Caller.SendAsync("ReceiveMessage", "❌ Invalid server ID", ct);
             return;
         }
@@ -51,10 +56,13 @@ public class OpenVpnFrontendHub(
         var client = await clientFactory.TryCreateByServerIdAsync(serverId, ct);
         if (client is null)
         {
+            logger.LogWarning("SendCommand rejected: server {ServerId} not found", serverId);
             await Clients.Caller.SendAsync("ReceiveMessage", "❌ Server not found", ct);
             return;
         }
 
+        logger.LogInformation("SendCommand forwarding to microservice: ServerId={ServerId}, TargetUrl={TargetUrl}",
+            serverId, client.CurrentApiUrl);
         await client.SendCommandAsync(command, ct);
     }
 }

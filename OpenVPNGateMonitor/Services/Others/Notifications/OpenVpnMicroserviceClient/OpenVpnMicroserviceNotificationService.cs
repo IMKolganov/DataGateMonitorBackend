@@ -19,6 +19,11 @@ public class OpenVpnMicroserviceNotificationService(INotificationService notific
             Detail(serverId, serverName) + (string.IsNullOrEmpty(errorMessage) ? "" : $"; Error={errorMessage}"),
             serverId, NotificationSeverity.Error, ErrorChannels, ct);
 
+    public Task NotifyEventHubConnectionFailed(int serverId, string? serverName, string? errorMessage, CancellationToken ct)
+        => Notify("microservice.event-hub-connection-failed", "Failed to connect to OpenVPN microservice event hub",
+            Detail(serverId, serverName) + (string.IsNullOrEmpty(errorMessage) ? "" : $"; Error={errorMessage}"),
+            serverId, NotificationSeverity.Error, ErrorChannels, ct);
+
     private static string Detail(int serverId, string? serverName)
         => $"ServerId={serverId}" + (string.IsNullOrEmpty(serverName) ? "" : $"; Name={serverName}");
 
