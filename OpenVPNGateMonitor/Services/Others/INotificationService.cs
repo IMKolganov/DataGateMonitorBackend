@@ -41,7 +41,17 @@ public interface INotificationService
     Task<GetAllNotificationsResponse> GetAllForUserAsync(int adminUserId, CancellationToken ct = default);
 
     /// <summary>
+    /// Returns a paged list of notifications for the given admin user.
+    /// </summary>
+    Task<GetNotificationsResponse> GetPageForUserAsync(int adminUserId, int page, int pageSize, CancellationToken ct = default);
+
+    /// <summary>
     /// Returns the count of notifications not yet read by the given admin user.
     /// </summary>
     Task<int> GetUnreadCountAsync(int adminUserId, CancellationToken ct = default);
+
+    /// <summary>
+    /// Marks all notifications as read for the specified admin user.
+    /// </summary>
+    Task MarkReadAllAsync(int adminUserId, CancellationToken ct = default);
 }
