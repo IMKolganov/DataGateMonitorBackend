@@ -1,4 +1,4 @@
-﻿using System.Security.Cryptography;
+using System.Security.Cryptography;
 using System.Text;
 using Mapster;
 using OpenVPNGateMonitor.DataBase.Services.Command;
@@ -17,7 +17,6 @@ namespace OpenVPNGateMonitor.Services.BackgroundServices;
 public class OpenVpnServerService(
     ILogger<IOpenVpnServerService> logger,
     IOpenVpnClientService openVpnClientService,
-    IOpenVpnSummaryStatService openVpnSummaryStatService,
     IOpenVpnVersionService openVpnVersionService,
     IOpenVpnStateService openVpnStateService,
     IIssuedOvpnFileQueryService openVpnFileQueryService,
@@ -167,18 +166,29 @@ public class OpenVpnServerService(
                                     $"Check your configuration or server.");
             }
 
-            serverInfo.OpenVpnSummaryStats = await openVpnSummaryStatService.GetSummaryStatsAsync(openVpnServer,
-                ct);
             serverInfo.OpenVpnState.ServerRemoteIp = await externalIpAddressService.GetRemoteIpAddress(ct);
 
             if (serverInfo.OpenVpnState != null)
             {
                 serverInfo.Version = await openVpnVersionService.GetVersionAsync(openVpnServer, ct);
             }
+
+            // Use sum from CLIENT_LIST (status 3) instead of load-stats - load-stats often returns
+            // incorrect values (much smaller than actual per-client totals, e.g. in DataGate/proxy setups).
+            // CLIENT_LIST Bytes Sent = server received from client; Bytes Received = server sent to client.
+            var clients = await openVpnClientService.GetClientsFromManagementAsync(openVpnServer, ct);
+            var bytesIn = clients.Sum(c => c.BytesSent);   // server received from clients
+            var bytesOut = clients.Sum(c => c.BytesReceived); // server sent to clients
+            serverInfo.OpenVpnSummaryStats = new Models.Helpers.OpenVpnManagementInterfaces.OpenVpnSummaryStats
+            {
+                ClientsCount = clients.Count,
+                BytesIn = bytesIn,
+                BytesOut = bytesOut
+            };
         }
         catch (Exception ex)
         {
-            logger.LogError(ex, $"VpnServerId: {openVpnServer.Id}. Failed to get OpenVPN Summary Stats. " +
+            logger.LogError(ex, $"VpnServerId: {openVpnServer.Id}. Failed to get OpenVPN status. " +
                                 $"Error: {ex.Message}");
             throw;
         }
