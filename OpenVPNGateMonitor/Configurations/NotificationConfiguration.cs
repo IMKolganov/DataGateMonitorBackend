@@ -1,7 +1,9 @@
-﻿using OpenVPNGateMonitor.Services.Others;
+using OpenVPNGateMonitor.Services.Others;
 using OpenVPNGateMonitor.Services.Others.Notifications;
 using OpenVPNGateMonitor.Services.Others.Notifications.CertApiClient;
 using OpenVPNGateMonitor.Services.Others.Notifications.OvpnFileApi;
+using OpenVPNGateMonitor.Services.Others.Notifications.ServerOpenVpnApiClient;
+using OpenVPNGateMonitor.Services.Others.Notifications.OpenVpnMicroserviceClient;
 using OpenVPNGateMonitor.Hubs;
 
 namespace OpenVPNGateMonitor.Configurations;
@@ -20,6 +22,8 @@ public static class NotificationConfiguration
         // Area-specific adapters
         services.AddScoped<IOvpnFileNotificationService, OvpnFileNotificationService>();
         services.AddScoped<ICertificateNotificationService, CertificateNotificationService>();
+        services.AddScoped<IServerOpenVpnNotificationService, ServerOpenVpnNotificationService>();
+        services.AddScoped<IOpenVpnMicroserviceNotificationService, OpenVpnMicroserviceNotificationService>();
 
         // Admin hub adapter for WebNotifier
         services.AddSingleton<IAdminNotificationHub, AdminNotificationHubService>(); // <— ADD THIS

@@ -1,4 +1,4 @@
-﻿using System.Collections.Concurrent;
+using System.Collections.Concurrent;
 using Microsoft.AspNetCore.SignalR;
 using OpenVPNGateMonitor.DataBase.Services.Query.OpenVpnServerTable;
 using OpenVPNGateMonitor.Hubs;
@@ -38,7 +38,22 @@ public class OpenVpnEventClientFactory(IServiceProvider rootProvider) : IOpenVpn
         return Create(server);
     }
 
-    public bool Remove(int serverId) => _clientCache.TryRemove(serverId, out _);
+    public bool Remove(int serverId)
+    {
+        if (!_clientCache.TryRemove(serverId, out var client))
+            return false;
+        try
+        {
+            client.StopAsync().GetAwaiter().GetResult();
+        }
+        catch (Exception ex)
+        {
+            // Log but do not rethrow; client is already removed from cache
+            var logger = rootProvider.GetRequiredService<ILogger<OpenVpnEventClientFactory>>();
+            logger.LogWarning(ex, "Error stopping event client for server {ServerId}", serverId);
+        }
+        return true;
+    }
     
     public IReadOnlyCollection<OpenVpnEventClient> GetAllClients()
         => _clientCache.Values.ToArray();

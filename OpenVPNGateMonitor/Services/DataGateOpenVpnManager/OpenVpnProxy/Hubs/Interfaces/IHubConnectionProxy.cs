@@ -11,6 +11,11 @@ public interface IHubConnectionProxy : IAsyncDisposable
     Task InvokeAsync(
         string methodName,
         object? arg1,
+        CancellationToken cancellationToken = default);
+
+    Task InvokeAsync(
+        string methodName,
+        object? arg1,
         object? arg2,
         CancellationToken cancellationToken = default);
 

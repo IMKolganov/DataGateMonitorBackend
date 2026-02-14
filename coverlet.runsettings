@@ -1,0 +1,15 @@
+<?xml version="1.0" encoding="utf-8"?>
+<RunSettings>
+  <DataCollectionRunSettings>
+    <DataCollectors>
+      <DataCollector friendlyName="XPlat Code Coverage">
+        <Configuration>
+          <!-- Exclude EF Core migrations (auto-generated code) -->
+          <ExcludeByFile>**/Migrations/**/*.cs,**/*.Designer.cs</ExcludeByFile>
+          <!-- Optional: exclude SharedModels (DTOs, contracts — typically no logic) -->
+          <Exclude>[*]OpenVPNGateMonitor.SharedModels*</Exclude>
+        </Configuration>
+      </DataCollector>
+    </DataCollectors>
+  </DataCollectionRunSettings>
+</RunSettings>

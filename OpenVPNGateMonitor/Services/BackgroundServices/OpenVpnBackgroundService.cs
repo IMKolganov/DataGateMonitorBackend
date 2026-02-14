@@ -1,6 +1,8 @@
-﻿using OpenVPNGateMonitor.DataBase.Services.Query.OpenVpnServerTable;
+using System.Collections.Concurrent;
+using OpenVPNGateMonitor.DataBase.Services.Query.OpenVpnServerTable;
 using OpenVPNGateMonitor.Services.BackgroundServices.Interfaces;
 using OpenVPNGateMonitor.Services.Others;
+using OpenVPNGateMonitor.Services.Others.Notifications.ServerOpenVpnApiClient;
 using OpenVPNGateMonitor.SharedModels.DataGateMonitorBackend.OpenVpnServers.Dto;
 using OpenVPNGateMonitor.SharedModels.Enums;
 
@@ -14,6 +16,7 @@ public class OpenVpnBackgroundService : BackgroundService, IOpenVpnBackgroundSer
     private readonly OpenVpnServerStatusManager _statusManager;
     private readonly IServiceProvider _serviceProvider;
     private CancellationTokenSource _delayTokenSource = new();
+    private readonly ConcurrentDictionary<int, ServiceStatus> _previousStatusByServer = new();
 
     public OpenVpnBackgroundService(
         ILogger<OpenVpnBackgroundService> logger,
@@ -79,6 +82,12 @@ public class OpenVpnBackgroundService : BackgroundService, IOpenVpnBackgroundSer
                     await processor.ProcessServerAsync(server, ct);
 
                     _statusManager.UpdateStatus(server.Id, ServiceStatus.Idle, nextRunSeconds);
+                    if (_previousStatusByServer.TryGetValue(server.Id, out var prevStatus) && prevStatus == ServiceStatus.Error)
+                    {
+                        using var notifyScope = _serviceProvider.CreateScope();
+                        var notifySvc = notifyScope.ServiceProvider.GetRequiredService<IServerOpenVpnNotificationService>();
+                        await notifySvc.NotifyBecameAvailable(server.Id, server.ServerName, ct);
+                    }
                     _logger.LogInformation($"VpnServerId: {server.Id}. VpnServerName: {server.ServerName} " +
                                            $"Completed processing for server Id: {server.Id} Name: {server.ServerName}");
                 }
@@ -87,14 +96,26 @@ public class OpenVpnBackgroundService : BackgroundService, IOpenVpnBackgroundSer
                     _statusManager.UpdateStatus(server.Id, ServiceStatus.Error, nextRunSeconds, "Timeout");
                     _logger.LogError(ex, $"VpnServerId: {server.Id}. VpnServerName: {server.ServerName} " +
                                          $"Timeout while processing OpenVPN server {server.ApiUrl}");
+                    using (var notifyScope = _serviceProvider.CreateScope())
+                    {
+                        var notifySvc = notifyScope.ServiceProvider.GetRequiredService<IServerOpenVpnNotificationService>();
+                        await notifySvc.NotifyNoResponseFromServer(server.Id, server.ServerName, ct);
+                    }
                 }
                 catch (Exception ex)
                 {
                     _statusManager.UpdateStatus(server.Id, ServiceStatus.Error, nextRunSeconds, ex.Message);
                     _logger.LogError(ex, $"VpnServerId: {server.Id}. VpnServerName: {server.ServerName} " +
                                          $"Error processing OpenVPN server {server.ApiUrl}");
+                    using (var notifyScope = _serviceProvider.CreateScope())
+                    {
+                        var notifySvc = notifyScope.ServiceProvider.GetRequiredService<IServerOpenVpnNotificationService>();
+                        await notifySvc.NotifyBecameUnavailableDueToError(server.Id, server.ServerName, ex.Message, ct);
+                    }
                 }
             });
+            foreach (var (serverId, dto) in _statusManager.GetAllStatuses())
+                _previousStatusByServer.AddOrUpdate(serverId, dto.Status, (_, _) => dto.Status);
             _logger.LogInformation("OpenVPN task execution completed.");
         }
         catch (Exception ex)

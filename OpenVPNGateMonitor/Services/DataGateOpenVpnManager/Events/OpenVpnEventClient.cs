@@ -1,4 +1,4 @@
-﻿using System.Diagnostics;
+using System.Diagnostics;
 using System.Security.Cryptography;
 using System.Text;
 using Mapster;
@@ -10,6 +10,7 @@ using OpenVPNGateMonitor.Hubs;
 using OpenVPNGateMonitor.Models;
 using OpenVPNGateMonitor.Services.Api.Auth.Registers.Interfaces;
 using OpenVPNGateMonitor.Services.GeoLite.Interfaces;
+using OpenVPNGateMonitor.Services.Others.Notifications.OpenVpnMicroserviceClient;
 using OpenVPNGateMonitor.SharedModels.DataGateOpenVpnManager.VpnEvent.Requests;
 using OpenVPNGateMonitor.SharedModels.DataGateMonitorBackend.OpenVpnServerEvent.Dto;
 using OpenVPNGateMonitor.SharedModels.DataGateMonitorBackend.OpenVpnServerEvent.Responses;
@@ -39,6 +40,7 @@ public class OpenVpnEventClient(
     private DateTimeOffset? _lastReconnectedUtc;
     private DateTimeOffset? _lastClosedUtc;
     private string? _lastError;
+    private bool _notifiedEventHubConnectionFailed;
 
     public async Task StartListeningAsync(CancellationToken cancellationToken)
     {
@@ -47,6 +49,27 @@ public class OpenVpnEventClient(
         // logger.LogInformation(
         //     "OpenVpnEventClient started. Status={State}, ConnId={ConnId}, Url={Url}, Host={Host}, Port={Port}",
         //     s.State, s.ConnectionId, s.Url, s.Host, s.Port);
+    }
+
+    /// <summary>Stops and disposes the SignalR connection (e.g. when server is updated and client is removed from cache).</summary>
+    public async Task StopAsync()
+    {
+        await _connectionLock.WaitAsync(CancellationToken.None);
+        try
+        {
+            if (_connection is not null)
+            {
+                try { await _connection.StopAsync(CancellationToken.None); } catch { /* ignore */ }
+                try { await _connection.DisposeAsync(); } catch { /* ignore */ }
+                _connection = null;
+                _handlersRegistered = false;
+                logger.LogInformation("Stopped OpenVpnEventClient for server {ServerId}", _serverId);
+            }
+        }
+        finally
+        {
+            _connectionLock.Release();
+        }
     }
 
     public ConnectionStatusResponse GetStatus()
@@ -187,7 +210,11 @@ public class OpenVpnEventClient(
 
                     try
                     {
+                        logger.LogInformation(
+                            "Attempting SignalR connect: ServerId={ServerId}, Attempt={Attempt}, Url={Url}, Host={Host}, Port={Port}",
+                            _serverId, attempt, _fullUrl, _host, _port);
                         await _connection.StartAsync(cancellationToken);
+                        _notifiedEventHubConnectionFailed = false;
                         Stamp(HubConnectionState.Connected);
                         logger.LogInformation(
                             "Started OpenVpnEventClient SignalR connection for server {ServerId}. ConnId={ConnId}, Host={Host}, Port={Port}",
@@ -196,9 +223,25 @@ public class OpenVpnEventClient(
                     }
                     catch (Exception ex)
                     {
+                        var innerMsg = ex.InnerException?.Message ?? ex.Message;
                         logger.LogWarning(ex,
-                            "SignalR start failed (attempt {Attempt}) for server {ServerId}. Retrying in 5s...",
-                            attempt, _serverId);
+                            "SignalR start failed (attempt {Attempt}) for server {ServerId}, Url={Url}. Inner={Inner}. Retrying in 5s...",
+                            attempt, _serverId, _fullUrl, innerMsg);
+
+                        if (!_notifiedEventHubConnectionFailed)
+                        {
+                            _notifiedEventHubConnectionFailed = true;
+                            try
+                            {
+                                using var notifyScope = scopeFactory.CreateScope();
+                                var notifySvc = notifyScope.ServiceProvider.GetRequiredService<IOpenVpnMicroserviceNotificationService>();
+                                await notifySvc.NotifyEventHubConnectionFailed(_serverId, openVpnServer.ServerName, innerMsg, CancellationToken.None);
+                            }
+                            catch (Exception notifyEx)
+                            {
+                                logger.LogWarning(notifyEx, "Failed to send event-hub connection-failed notification for server {ServerId}", _serverId);
+                            }
+                        }
 
                         await Task.Delay(TimeSpan.FromSeconds(5), cancellationToken);
                     }
