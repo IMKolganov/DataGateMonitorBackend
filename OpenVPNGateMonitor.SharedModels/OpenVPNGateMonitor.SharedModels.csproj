@@ -40,6 +40,8 @@
         <None Include="README.md" Pack="true" PackagePath="">
             <CopyToOutputDirectory>Always</CopyToOutputDirectory>
         </None>
+
+        <None Include="favicon.png" Pack="true" PackagePath="\" />
     </ItemGroup>
 
     <ItemGroup>
