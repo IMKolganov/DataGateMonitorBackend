@@ -28,7 +28,7 @@ public class EfCommandServiceTests
         }
     }
 
-    // -------- базовые методы через IRepository --------
+    // -------- core IRepository methods --------
 
     [Fact]
     public async Task AddAsync_Adds_Entity_And_Saves_When_SaveChanges_True()
