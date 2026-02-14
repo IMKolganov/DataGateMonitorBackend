@@ -1,9 +1,11 @@
-﻿using OpenVPNGateMonitor.DataBase.Services.Command;
+using OpenVPNGateMonitor.DataBase.Services.Command;
 using OpenVPNGateMonitor.DataBase.Services.Command.Interfaces;
+using OpenVPNGateMonitor.DataBase.Services.Query.NotificationRecipientTable;
 using OpenVPNGateMonitor.DataBase.Services.Query.TelegramBotUserTable;
 using OpenVPNGateMonitor.Models;
 using OpenVPNGateMonitor.Services.Others.Models;
 using OpenVPNGateMonitor.SharedModels.Enums;
+using OpenVPNGateMonitor.SharedModels.Notifications.Responses;
 
 namespace OpenVPNGateMonitor.Services.Others;
 
@@ -11,6 +13,7 @@ public class NotificationService(
     ICommandService<Notification, int> notificationCommandServices,
     ITelegramBotUserQueryService telegramBotUserQueryService,
     ICommandService<NotificationRecipient, int> notificationRecipientCommandServices,
+    INotificationRecipientQueryService notificationRecipientQueryService,
     Dictionary<string, INotifier> notifiersByChannel,
     ILogger<NotificationService> logger
 ) : INotificationService
@@ -133,6 +136,26 @@ public class NotificationService(
             ct: ct
         );
     }
+
+    public async Task<GetAllNotificationsResponse> GetAllForUserAsync(int adminUserId, CancellationToken ct = default)
+    {
+        var rows = await notificationRecipientQueryService.GetNotificationListByAdminUserIdAsync(adminUserId, ct);
+        var items = rows.Select(r => new NotificationItemDto
+        {
+            Id = r.Id,
+            Type = r.Type,
+            Severity = (NotificationSeverity)r.Severity,
+            Title = r.Title,
+            Message = r.Message,
+            IsRead = r.IsRead,
+            CreatedAt = r.CreatedAt,
+            ReadAt = r.ReadAt
+        }).ToList();
+        return new GetAllNotificationsResponse { Notifications = items };
+    }
+
+    public Task<int> GetUnreadCountAsync(int adminUserId, CancellationToken ct = default)
+        => notificationRecipientQueryService.GetUnreadCountByAdminUserIdAsync(adminUserId, ct);
 
     // ----------------------
     // Helpers
