@@ -1,4 +1,4 @@
-﻿using System.Collections.Concurrent;
+using System.Collections.Concurrent;
 using Microsoft.AspNetCore.SignalR;
 using Microsoft.AspNetCore.SignalR.Client;
 using OpenVPNGateMonitor.Hubs;
@@ -6,6 +6,7 @@ using OpenVPNGateMonitor.Models;
 using OpenVPNGateMonitor.Services.Api.Auth.Registers.Interfaces;
 using OpenVPNGateMonitor.Services.DataGateOpenVpnManager.OpenVpnProxy.Hubs;
 using OpenVPNGateMonitor.Services.DataGateOpenVpnManager.OpenVpnProxy.Hubs.Interfaces;
+using OpenVPNGateMonitor.Services.Others.Notifications.OpenVpnMicroserviceClient;
 
 namespace OpenVPNGateMonitor.Services.DataGateOpenVpnManager.OpenVpnProxy;
 
@@ -14,6 +15,7 @@ public class OpenVpnMicroserviceClient(
     ILogger<OpenVpnMicroserviceClient> logger,
     IHubContext<OpenVpnFrontendHub> frontendHub,
     IMicroserviceTokenService tokenService,
+    IOpenVpnMicroserviceNotificationService microserviceNotificationService,
     IHubConnectionFactory? hubConnectionFactory = null) : IOpenVpnMicroserviceClient
 {
     private readonly ConcurrentDictionary<string, TaskCompletionSource<string>> _pendingCommands = new();
@@ -71,6 +73,7 @@ public class OpenVpnMicroserviceClient(
             var errorMessage = $"[Error] Failed to send command to server {server.Id}: {ex.Message}";
             await frontendHub.Clients.Group(server.Id.ToString())
                 .SendAsync("ReceiveCommandResult", errorMessage, cancellationToken);
+            await microserviceNotificationService.NotifySendCommandFailed(server.Id, server.ServerName, ex.Message, CancellationToken.None);
         }
     }
 
@@ -95,6 +98,7 @@ public class OpenVpnMicroserviceClient(
             var errorMessage = $"[Error] Failed to send command to server {server.Id}: {ex.Message}";
             await frontendHub.Clients.Group(server.Id.ToString())
                 .SendAsync("ReceiveCommandResult", errorMessage, cancellationToken);
+            await microserviceNotificationService.NotifySendCommandFailed(server.Id, server.ServerName, ex.Message, CancellationToken.None);
         }
     }
 
@@ -170,6 +174,7 @@ public class OpenVpnMicroserviceClient(
         catch (Exception ex)
         {
             logger.LogError(ex, "Failed to reconnect to SignalR for server {ServerId}", server.Id);
+            await microserviceNotificationService.NotifyReconnectFailed(server.Id, server.ServerName, ex.Message, CancellationToken.None);
             throw;
         }
     }

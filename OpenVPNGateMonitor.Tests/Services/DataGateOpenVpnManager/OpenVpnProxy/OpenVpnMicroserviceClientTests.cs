@@ -7,6 +7,7 @@ using OpenVPNGateMonitor.Models;
 using OpenVPNGateMonitor.Services.Api.Auth.Registers.Interfaces;
 using OpenVPNGateMonitor.Services.DataGateOpenVpnManager.OpenVpnProxy;
 using OpenVPNGateMonitor.Services.DataGateOpenVpnManager.OpenVpnProxy.Hubs.Interfaces;
+using OpenVPNGateMonitor.Services.Others.Notifications.OpenVpnMicroserviceClient;
 
 namespace OpenVPNGateMonitor.Tests.Services.DataGateOpenVpnManager.OpenVpnProxy;
 
@@ -18,6 +19,7 @@ public class OpenVpnMicroserviceClientTests
         Mock<IHubClients> hubClients,
         Mock<IClientProxy> groupProxy,
         Mock<IMicroserviceTokenService> token,
+        Mock<IOpenVpnMicroserviceNotificationService> microserviceNotification,
         Mock<IHubConnectionFactory> factory,
         Mock<IHubConnectionProxy> connection) CreateCommon(string apiUrl = "https://ms.example")
     {
@@ -60,13 +62,19 @@ public class OpenVpnMicroserviceClientTests
                                     It.IsAny<Func<Task<string?>>>()))
                .Returns(connection.Object);
 
-        return (server, log, hub, hubClients, groupProxy, token, factory, connection);
+        var microserviceNotification = new Mock<IOpenVpnMicroserviceNotificationService>();
+        microserviceNotification.Setup(n => n.NotifySendCommandFailed(It.IsAny<int>(), It.IsAny<string?>(), It.IsAny<string?>(), It.IsAny<CancellationToken>()))
+                                .Returns(Task.CompletedTask);
+        microserviceNotification.Setup(n => n.NotifyReconnectFailed(It.IsAny<int>(), It.IsAny<string?>(), It.IsAny<string?>(), It.IsAny<CancellationToken>()))
+                                .Returns(Task.CompletedTask);
+
+        return (server, log, hub, hubClients, groupProxy, token, microserviceNotification, factory, connection);
     }
 
     [Fact]
     public async Task SendCommandWithResponseAsync_Completes_When_Callback_Receives_Result()
     {
-        var (server, log, hub, _, _, token, factory, connection) = CreateCommon();
+        var (server, log, hub, _, _, token, microserviceNotification, factory, connection) = CreateCommon();
 
         Action<string, string>? resultHandler = null;
         connection.Setup(c => c.On<string, string>("ReceiveCommandResultWithRequestId", It.IsAny<Action<string, string>>()))
@@ -88,7 +96,7 @@ public class OpenVpnMicroserviceClientTests
                   })
                   .Returns(Task.CompletedTask);
 
-        var sut = new OpenVpnMicroserviceClient(server, log.Object, hub.Object, token.Object, factory.Object);
+        var sut = new OpenVpnMicroserviceClient(server, log.Object, hub.Object, token.Object, microserviceNotification.Object, factory.Object);
 
         var task = sut.SendCommandWithResponseAsync("status 3", CancellationToken.None);
 
@@ -107,7 +115,7 @@ public class OpenVpnMicroserviceClientTests
     [Fact]
     public async Task SendCommandWithResponseAsync_Cancelled_Token_Cancels_Task_And_Cleans_Pending()
     {
-        var (server, log, hub, _, _, token, factory, connection) = CreateCommon();
+        var (server, log, hub, _, _, token, microserviceNotification, factory, connection) = CreateCommon();
 
         connection.Setup(c => c.On<string, string>("ReceiveCommandResultWithRequestId", It.IsAny<Action<string, string>>()))
                   .Verifiable();
@@ -119,7 +127,7 @@ public class OpenVpnMicroserviceClientTests
                             It.IsAny<CancellationToken>()))
                   .Returns(Task.CompletedTask);
 
-        var sut = new OpenVpnMicroserviceClient(server, log.Object, hub.Object, token.Object, factory.Object);
+        var sut = new OpenVpnMicroserviceClient(server, log.Object, hub.Object, token.Object, microserviceNotification.Object, factory.Object);
 
         using var cts = new CancellationTokenSource();
         var task = sut.SendCommandWithResponseAsync("status 3", cts.Token);
@@ -131,7 +139,7 @@ public class OpenVpnMicroserviceClientTests
     [Fact]
     public async Task SendCommandAsync_Reconnects_When_NotConnected_Then_Sends()
     {
-        var (server, log, hub, _, _, token, factory, connection) = CreateCommon();
+        var (server, log, hub, _, _, token, microserviceNotification, factory, connection) = CreateCommon();
 
         connection.Setup(c => c.InvokeAsync(
                             "SendCommand",
@@ -141,7 +149,7 @@ public class OpenVpnMicroserviceClientTests
                   .Returns(Task.CompletedTask)
                   .Verifiable();
 
-        var sut = new OpenVpnMicroserviceClient(server, log.Object, hub.Object, token.Object, factory.Object);
+        var sut = new OpenVpnMicroserviceClient(server, log.Object, hub.Object, token.Object, microserviceNotification.Object, factory.Object);
         await sut.SendCommandAsync("ping", CancellationToken.None);
 
         connection.Verify(c => c.StartAsync(It.IsAny<CancellationToken>()), Times.AtLeastOnce);
@@ -156,7 +164,7 @@ public class OpenVpnMicroserviceClientTests
     [Fact]
     public async Task SendCommandAsync_OnError_Logs_And_Forwards_Error_To_Group()
     {
-        var (server, log, hub, hubClients, groupProxy, token, factory, connection) = CreateCommon();
+        var (server, log, hub, hubClients, groupProxy, token, microserviceNotification, factory, connection) = CreateCommon();
 
         connection.Setup(c => c.InvokeAsync(
                             "SendCommand",
@@ -165,7 +173,7 @@ public class OpenVpnMicroserviceClientTests
                             It.IsAny<CancellationToken>()))
                   .ThrowsAsync(new InvalidOperationException("boom"));
 
-        var sut = new OpenVpnMicroserviceClient(server, log.Object, hub.Object, token.Object, factory.Object);
+        var sut = new OpenVpnMicroserviceClient(server, log.Object, hub.Object, token.Object, microserviceNotification.Object, factory.Object);
         await sut.SendCommandAsync("cmd", CancellationToken.None);
 
         groupProxy.Verify(p => p.SendCoreAsync(
@@ -192,7 +200,7 @@ public class OpenVpnMicroserviceClientTests
     [Fact]
     public async Task UrlChange_DisposesOld_And_CreatesNew_Connection()
     {
-        var (server, log, hub, _, _, token, factory, connection1) = CreateCommon("https://a.example");
+        var (server, log, hub, _, _, token, microserviceNotification, factory, connection1) = CreateCommon("https://a.example");
 
         var connection2 = new Mock<IHubConnectionProxy>(MockBehavior.Strict);
 
@@ -238,7 +246,7 @@ public class OpenVpnMicroserviceClientTests
                                It.IsAny<CancellationToken>()))
                    .Returns(Task.CompletedTask);
 
-        var sut = new OpenVpnMicroserviceClient(server, log.Object, hub.Object, token.Object, factory.Object);
+        var sut = new OpenVpnMicroserviceClient(server, log.Object, hub.Object, token.Object, microserviceNotification.Object, factory.Object);
 
         await sut.SendCommandAsync("a", CancellationToken.None);
 
@@ -254,7 +262,7 @@ public class OpenVpnMicroserviceClientTests
     [Fact]
     public async Task DisposeAsync_Cancels_Pending_And_Disposes_Connection()
     {
-        var (server, log, hub, _, _, token, factory, connection) = CreateCommon();
+        var (server, log, hub, _, _, token, microserviceNotification, factory, connection) = CreateCommon();
 
         Action<string, string>? resultHandler = null;
         connection.Setup(c => c.On<string, string>("ReceiveCommandResultWithRequestId", It.IsAny<Action<string, string>>()))
@@ -275,7 +283,7 @@ public class OpenVpnMicroserviceClientTests
                   })
                   .Returns(Task.CompletedTask);
 
-        var sut = new OpenVpnMicroserviceClient(server, log.Object, hub.Object, token.Object, factory.Object);
+        var sut = new OpenVpnMicroserviceClient(server, log.Object, hub.Object, token.Object, microserviceNotification.Object, factory.Object);
 
         var cts = new CancellationTokenSource();
         var task = sut.SendCommandWithResponseAsync("status 3", cts.Token);
@@ -290,7 +298,7 @@ public class OpenVpnMicroserviceClientTests
         [Fact]
     public async Task SendCommandToMicroserviceAsync_Reconnects_When_NotConnected_Then_Sends()
     {
-        var (server, log, hub, _, _, token, factory, connection) = CreateCommon();
+        var (server, log, hub, _, _, token, microserviceNotification, factory, connection) = CreateCommon();
 
         connection.Setup(c => c.InvokeAsync(
                             "SendCommand",
@@ -300,7 +308,7 @@ public class OpenVpnMicroserviceClientTests
                   .Returns(Task.CompletedTask)
                   .Verifiable();
 
-        var sut = new OpenVpnMicroserviceClient(server, log.Object, hub.Object, token.Object, factory.Object);
+        var sut = new OpenVpnMicroserviceClient(server, log.Object, hub.Object, token.Object, microserviceNotification.Object, factory.Object);
 
         await sut.SendCommandToMicroserviceAsync("ping", CancellationToken.None);
 
@@ -316,7 +324,7 @@ public class OpenVpnMicroserviceClientTests
     [Fact]
     public async Task SendCommandToMicroserviceAsync_OnError_Logs_And_Forwards_Error_To_Group()
     {
-        var (server, log, hub, _, groupProxy, token, factory, connection) = CreateCommon();
+        var (server, log, hub, _, groupProxy, token, microserviceNotification, factory, connection) = CreateCommon();
 
         connection.Setup(c => c.InvokeAsync(
                             "SendCommand",
@@ -325,7 +333,7 @@ public class OpenVpnMicroserviceClientTests
                             It.IsAny<CancellationToken>()))
                   .ThrowsAsync(new InvalidOperationException("boom"));
 
-        var sut = new OpenVpnMicroserviceClient(server, log.Object, hub.Object, token.Object, factory.Object);
+        var sut = new OpenVpnMicroserviceClient(server, log.Object, hub.Object, token.Object, microserviceNotification.Object, factory.Object);
 
         await sut.SendCommandToMicroserviceAsync("cmd", CancellationToken.None);
 
