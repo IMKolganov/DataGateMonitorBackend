@@ -3,6 +3,7 @@ using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Mvc;
 using OpenVPNGateMonitor.Services.Others;
 using OpenVPNGateMonitor.Services.Others.Models;
+using OpenVPNGateMonitor.SharedModels.Notifications.Requests;
 using OpenVPNGateMonitor.SharedModels.Notifications.Responses;
 using OpenVPNGateMonitor.SharedModels.Responses;
 
@@ -41,29 +42,46 @@ public class NotificationController(INotificationService notificationService) : 
     }
 
     /// <summary>
-    /// Marks a specific notification as read by an admin.
+    /// Marks a specific notification as read by an admin. Uses adminUserId from query or from JWT if omitted.
     /// </summary>
     [HttpPost("{notificationId:int}/read")]
     public async Task<ActionResult<ApiResponse<bool>>> MarkReadAsync(
         int notificationId,
-        [FromQuery] int adminUserId,
+        [FromQuery] int? adminUserId,
         CancellationToken cancellationToken)
     {
-        await notificationService.MarkRead(notificationId, adminUserId, cancellationToken);
+        var userId = adminUserId ?? (TryGetAdminUserId(out var id) ? id : 0);
+        if (userId == 0)
+            return Unauthorized(ApiResponse<bool>.ErrorResponse("User not identified."));
+        await notificationService.MarkRead(notificationId, userId, cancellationToken);
         return Ok(ApiResponse<bool>.SuccessResponse(true));
     }
 
     /// <summary>
-    /// Returns all notifications for the current user (from JWT).
+    /// Returns a paged list of notifications for the current user (from JWT).
     /// </summary>
     [HttpGet("get-all")]
-    public async Task<ActionResult<ApiResponse<GetAllNotificationsResponse>>> GetAll(CancellationToken cancellationToken)
+    public async Task<ActionResult<ApiResponse<GetNotificationsResponse>>> GetAll(
+        [FromQuery] GetNotificationsRequest request,
+        CancellationToken cancellationToken)
     {
         if (!TryGetAdminUserId(out var adminUserId))
-            return Unauthorized(ApiResponse<GetAllNotificationsResponse>.ErrorResponse("User not identified."));
+            return Unauthorized(ApiResponse<GetNotificationsResponse>.ErrorResponse("User not identified."));
 
-        var result = await notificationService.GetAllForUserAsync(adminUserId, cancellationToken);
-        return Ok(ApiResponse<GetAllNotificationsResponse>.SuccessResponse(result));
+        var result = await notificationService.GetPageForUserAsync(adminUserId, request.Page, request.PageSize, cancellationToken);
+        return Ok(ApiResponse<GetNotificationsResponse>.SuccessResponse(result));
+    }
+
+    /// <summary>
+    /// Marks all notifications as read for the current user (from JWT).
+    /// </summary>
+    [HttpPost("mark-read-all")]
+    public async Task<ActionResult<ApiResponse<bool>>> MarkReadAllAsync(CancellationToken cancellationToken)
+    {
+        if (!TryGetAdminUserId(out var adminUserId))
+            return Unauthorized(ApiResponse<bool>.ErrorResponse("User not identified."));
+        await notificationService.MarkReadAllAsync(adminUserId, cancellationToken);
+        return Ok(ApiResponse<bool>.SuccessResponse(true));
     }
 
     /// <summary>
