@@ -1,9 +1,12 @@
-﻿using OpenVPNGateMonitor.DataBase.Services.Command.Interfaces;
+using OpenVPNGateMonitor.DataBase.Services.Command.Interfaces;
 using OpenVPNGateMonitor.DataBase.Services.Query.OpenVpnServerOvpnFileConfigTable;
 using OpenVPNGateMonitor.DataBase.Services.Query.OpenVpnServerTable;
 using OpenVPNGateMonitor.Models;
 using OpenVPNGateMonitor.Services.Api.Interfaces;
+using OpenVPNGateMonitor.Services.DataGateOpenVpnManager.Events;
+using OpenVPNGateMonitor.Services.DataGateOpenVpnManager.OpenVpnProxy;
 using OpenVPNGateMonitor.Services.Helpers.Interfaces;
+using OpenVPNGateMonitor.Services.Others.Notifications.ServerOpenVpnApiClient;
 
 namespace OpenVPNGateMonitor.Services.Api;
 
@@ -15,10 +18,14 @@ public class VpnDataService(
     ITransactionRunner transactionRunner,
     ICommandService<OpenVpnServer, int> openVpnServerCommandService,
     ICommandService<OpenVpnServerOvpnFileConfig, int> openVpnServerOvpnFileConfigCommandService,
-    ICommandService<QuotaPlanAllowedServer, int> quotaPlanAllowedServerCommandService) : IVpnDataService
+    ICommandService<QuotaPlanAllowedServer, int> quotaPlanAllowedServerCommandService,
+    IServerOpenVpnNotificationService serverOpenVpnNotificationService,
+    IOpenVpnMicroserviceClientFactory microserviceClientFactory,
+    IOpenVpnEventClientFactory eventClientFactory) : IVpnDataService
 {
-    public Task<OpenVpnServer> AddOpenVpnServer(OpenVpnServer server, List<int> quotaPlanIds, CancellationToken ct)
-        => transactionRunner.RunAsync(async _ =>
+    public async Task<OpenVpnServer> AddOpenVpnServer(OpenVpnServer server, List<int> quotaPlanIds, CancellationToken ct)
+    {
+        var result = await transactionRunner.RunAsync(async _ =>
         {
             var now = DateTimeOffset.UtcNow;
 
@@ -36,7 +43,7 @@ public class VpnDataService(
             server.CreateDate = now;
             server.LastUpdate = now;
             await openVpnServerCommandService.Add(server, saveChanges: true, ct);
-            
+
             await SyncQuotaPlanLinksAsync(server.Id, quotaPlanIds, ct);
 
             // Additional writes that must be part of the same transaction
@@ -48,9 +55,14 @@ public class VpnDataService(
                    ?? throw new InvalidOperationException("OpenVPN server not found");
         }, ct);
 
+        await serverOpenVpnNotificationService.NotifyAdded(result.Id, result.ServerName, ct);
+        return result;
+    }
 
-    public Task<OpenVpnServer> UpdateOpenVpnServer(OpenVpnServer server, List<int> quotaPlanIds, CancellationToken ct)
-        => transactionRunner.RunAsync(async _ =>
+
+    public async Task<OpenVpnServer> UpdateOpenVpnServer(OpenVpnServer server, List<int> quotaPlanIds, CancellationToken ct)
+    {
+        var result = await transactionRunner.RunAsync(async _ =>
         {
             var now = DateTimeOffset.UtcNow;
 
@@ -67,7 +79,7 @@ public class VpnDataService(
             // Update this server
             server.LastUpdate = now;
             await openVpnServerCommandService.Update(server, saveChanges: true, ct);
-            
+
             await SyncQuotaPlanLinksAsync(server.Id, quotaPlanIds, ct);
 
             // Additional writes in the same transaction
@@ -79,12 +91,21 @@ public class VpnDataService(
                    ?? throw new InvalidOperationException("OpenVPN server not found");
         }, ct);
 
+        await serverOpenVpnNotificationService.NotifyUpdated(result.Id, result.ServerName, ct);
+        microserviceClientFactory.Invalidate(result.Id);
+        eventClientFactory.Remove(result.Id);
+        return result;
+    }
+
 
     public async Task<bool> DeleteOpenVpnServer(int vpnServerId, CancellationToken ct)
     {
         var openVpnServer = await openVpnServerQueryService.GetById(vpnServerId, ct)
                             ?? throw new InvalidOperationException("OpenVpnServer not found");
         await openVpnServerCommandService.Delete(openVpnServer, true, ct);
+        await serverOpenVpnNotificationService.NotifyDeleted(openVpnServer.Id, openVpnServer.ServerName, ct);
+        microserviceClientFactory.Invalidate(openVpnServer.Id);
+        eventClientFactory.Remove(openVpnServer.Id);
         return true;
     }
 

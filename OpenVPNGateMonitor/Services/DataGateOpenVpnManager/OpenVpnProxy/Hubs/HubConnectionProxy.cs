@@ -18,6 +18,12 @@ internal sealed class HubConnectionProxy(HubConnection inner) : IHubConnectionPr
     public Task InvokeAsync(
         string methodName,
         object? arg1,
+        CancellationToken cancellationToken = default)
+        => inner.InvokeAsync(methodName, arg1, cancellationToken);
+
+    public Task InvokeAsync(
+        string methodName,
+        object? arg1,
         object? arg2,
         CancellationToken cancellationToken = default)
         => inner.InvokeAsync(methodName, arg1, arg2, cancellationToken);

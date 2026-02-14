@@ -1,4 +1,4 @@
-﻿using OpenVPNGateMonitor.DataBase.Services.Query.OpenVpnServerTable;
+using OpenVPNGateMonitor.DataBase.Services.Query.OpenVpnServerTable;
 using OpenVPNGateMonitor.Services.DataGateOpenVpnManager.Events;
 
 namespace OpenVPNGateMonitor.Services.BackgroundServices;
@@ -24,27 +24,30 @@ public sealed class OpenVpnEventBackgroundService(
 
         try
         {
-            using var scope = scopeFactory.CreateScope();
-            var openVpnOverviewQuery = scope.ServiceProvider.GetRequiredService<IOpenVpnServerQueryService>();
-            var servers = await openVpnOverviewQuery.GetAll(cancellationToken);
-            servers = servers.Where(x=> !x.IsDisable).ToList();
-
-            foreach (var server in servers)
+            while (!cancellationToken.IsCancellationRequested)
             {
-                try
-                {
-                    var client = eventClientFactory.Create(server);
-                    await client.StartListeningAsync(cancellationToken);
-                    logger.LogInformation("Started listening to events from OpenVPN server {ServerId}", server.Id);
-                }
-                catch (Exception ex)
-                {
-                    logger.LogError(ex, "Failed to start listening to server {ServerId}", server.Id);
-                }
-            }
+                using var scope = scopeFactory.CreateScope();
+                var openVpnOverviewQuery = scope.ServiceProvider.GetRequiredService<IOpenVpnServerQueryService>();
+                var servers = await openVpnOverviewQuery.GetAll(cancellationToken);
+                servers = servers.Where(x => !x.IsDisable).ToList();
 
-            // Keep service alive until host is stopping
-            await Task.Delay(Timeout.Infinite, cancellationToken);
+                foreach (var server in servers)
+                {
+                    try
+                    {
+                        var client = eventClientFactory.Create(server);
+                        await client.StartListeningAsync(cancellationToken);
+                        logger.LogDebug("Event listener active for server {ServerId} ({ApiUrl})", server.Id, server.ApiUrl);
+                    }
+                    catch (Exception ex)
+                    {
+                        logger.LogError(ex, "Failed to start listening to server {ServerId}", server.Id);
+                    }
+                }
+
+                // Re-sync periodically so updated server URLs (after Update) get a new client and reconnect
+                await Task.Delay(TimeSpan.FromSeconds(60), cancellationToken);
+            }
         }
         catch (OperationCanceledException)
         {
