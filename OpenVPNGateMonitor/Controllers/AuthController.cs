@@ -6,6 +6,7 @@ using System.Text;
 using Microsoft.AspNetCore.Authentication;
 using Microsoft.AspNetCore.Authorization;
 using OpenVPNGateMonitor.Models.Helpers.Auth;
+using OpenVPNGateMonitor.Services.Api.Auth.ForgotPassword;
 using OpenVPNGateMonitor.Services.Api.Auth.Login;
 using OpenVPNGateMonitor.Services.Api.Auth.Registers.Interfaces;
 using OpenVPNGateMonitor.SharedModels.DataGateMonitorBackend.Auth.Requests;
@@ -23,7 +24,8 @@ public class AuthController(
     IUserRegistrationService userRegistrationService,
     IUserLoginService userLoginService,
     IGoogleAuthCodeExchangeService exchange,
-    ITokenService tokenService) : BaseController
+    ITokenService tokenService,
+    IAdminForgotPasswordService adminForgotPasswordService) : BaseController
 {
     [HttpPost("token")]
     public async Task<ActionResult<ApiResponse<TokenResponse>>> GenerateToken([FromBody] TokenRequest request,
@@ -139,6 +141,29 @@ public class AuthController(
     {
         var result = await userLoginService.LoginAsync(request, ct);
         return Ok(ApiResponse<LoginResponse>.SuccessResponse(result));
+    }
+
+    [AllowAnonymous]
+    [HttpPost("forgot-password")]
+    [ProducesResponseType(typeof(ApiResponse<AdminForgotPasswordResponse>), StatusCodes.Status200OK)]
+    public async Task<ActionResult<ApiResponse<AdminForgotPasswordResponse>>> ForgotPassword(
+        [FromBody] AdminForgotPasswordRequest request,
+        CancellationToken ct)
+    {
+        var clientIp = HttpContext.Connection.RemoteIpAddress?.ToString();
+        var result = await adminForgotPasswordService.RequestResetCodeAsync(request, clientIp, ct);
+        return Ok(ApiResponse<AdminForgotPasswordResponse>.SuccessResponse(result));
+    }
+
+    [AllowAnonymous]
+    [HttpPost("reset-password")]
+    [ProducesResponseType(typeof(ApiResponse<AdminResetPasswordResponse>), StatusCodes.Status200OK)]
+    public async Task<ActionResult<ApiResponse<AdminResetPasswordResponse>>> ResetPassword(
+        [FromBody] AdminResetPasswordRequest request,
+        CancellationToken ct)
+    {
+        var result = await adminForgotPasswordService.ResetPasswordAsync(request, ct);
+        return Ok(ApiResponse<AdminResetPasswordResponse>.SuccessResponse(result));
     }
 
     [Authorize(Policy = "UserOnly")]

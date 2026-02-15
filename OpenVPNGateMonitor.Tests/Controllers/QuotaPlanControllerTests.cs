@@ -1,6 +1,8 @@
+using Mapster;
 using Microsoft.AspNetCore.Mvc;
 using Moq;
 using OpenVPNGateMonitor.Controllers;
+using OpenVPNGateMonitor.Mapping.QuotaPlans.Mappings;
 using OpenVPNGateMonitor.Models;
 using OpenVPNGateMonitor.Services.QuotaPlans;
 using OpenVPNGateMonitor.SharedModels.DataGateMonitorBackend.QuotaPlans.Requests;
@@ -16,6 +18,7 @@ namespace OpenVPNGateMonitor.Tests.Controllers
 
         public QuotaPlanControllerTests()
         {
+            TypeAdapterConfig.GlobalSettings.Scan(typeof(QuotaPlanMapping).Assembly);
             _controller = new QuotaPlanController(_service.Object);
         }
 
@@ -44,6 +47,10 @@ namespace OpenVPNGateMonitor.Tests.Controllers
 
             Assert.True(response.Success);
             Assert.NotNull(response.Data);
+            Assert.NotNull(response.Data!.QuotaPlans);
+            Assert.Single(response.Data.QuotaPlans); // only active
+            Assert.Equal(1, response.Data.QuotaPlans[0].Id);
+            Assert.Equal("Active", response.Data.QuotaPlans[0].Name);
 
             _service.Verify(s => s.GetAllAsync(It.IsAny<CancellationToken>()), Times.Once);
         }
@@ -73,6 +80,13 @@ namespace OpenVPNGateMonitor.Tests.Controllers
 
             Assert.True(response.Success);
             Assert.NotNull(response.Data);
+            Assert.NotNull(response.Data!.QuotaPlans);
+            Assert.Equal(2, response.Data.QuotaPlans.Count);
+            Assert.Equal(1, response.Data.QuotaPlans[0].Id);
+            Assert.Equal("Active", response.Data.QuotaPlans[0].Name);
+            Assert.Equal(2, response.Data.QuotaPlans[1].Id);
+            Assert.Equal("Inactive", response.Data.QuotaPlans[1].Name);
+
             _service.Verify(s => s.GetAllAsync(It.IsAny<CancellationToken>()), Times.Once);
         }
 
@@ -100,6 +114,10 @@ namespace OpenVPNGateMonitor.Tests.Controllers
 
             Assert.True(response.Success);
             Assert.NotNull(response.Data);
+            Assert.NotNull(response.Data!.QuotaPlan);
+            Assert.Equal(10, response.Data.QuotaPlan.Id);
+            Assert.Equal("Test plan", response.Data.QuotaPlan.Name);
+            Assert.True(response.Data.QuotaPlan.IsActive);
 
             _service.Verify(s => s.GetByIdAsync(10, It.IsAny<CancellationToken>()), Times.Once);
         }
@@ -233,6 +251,48 @@ namespace OpenVPNGateMonitor.Tests.Controllers
             Assert.Equal("Default plan updated", response.Data);
 
             _service.Verify(s => s.SetDefaultAsync(4, It.IsAny<CancellationToken>()), Times.Once);
+        }
+
+        /// <summary>Ensures List&lt;QuotaPlan&gt; is mapped into QuotaPlansResponse.QuotaPlans (catches missing Mapster config).</summary>
+        [Fact]
+        public void Map_ListQuotaPlan_To_QuotaPlansResponse_FillsQuotaPlans()
+        {
+            TypeAdapterConfig.GlobalSettings.Scan(typeof(QuotaPlanMapping).Assembly);
+
+            var plans = new List<QuotaPlan>
+            {
+                new() { Id = 1, Name = "Plan A", IsActive = true },
+                new() { Id = 2, Name = "Plan B", IsActive = false }
+            };
+
+            var response = plans.Adapt<QuotaPlansResponse>();
+
+            Assert.NotNull(response);
+            Assert.NotNull(response.QuotaPlans);
+            Assert.Equal(2, response.QuotaPlans.Count);
+            Assert.Equal(1, response.QuotaPlans[0].Id);
+            Assert.Equal("Plan A", response.QuotaPlans[0].Name);
+            Assert.Equal(2, response.QuotaPlans[1].Id);
+            Assert.Equal("Plan B", response.QuotaPlans[1].Name);
+        }
+
+        /// <summary>Ensures QuotaPlan is mapped into QuotaPlanResponse.QuotaPlan (catches missing Mapster config).</summary>
+        [Fact]
+        public void Map_QuotaPlan_To_QuotaPlanResponse_FillsQuotaPlan()
+        {
+            TypeAdapterConfig.GlobalSettings.Scan(typeof(QuotaPlanMapping).Assembly);
+
+            var plan = new QuotaPlan { Id = 42, Name = "Single", Description = "Desc", IsActive = true, IsDefault = true };
+
+            var response = plan.Adapt<QuotaPlanResponse>();
+
+            Assert.NotNull(response);
+            Assert.NotNull(response.QuotaPlan);
+            Assert.Equal(42, response.QuotaPlan.Id);
+            Assert.Equal("Single", response.QuotaPlan.Name);
+            Assert.Equal("Desc", response.QuotaPlan.Description);
+            Assert.True(response.QuotaPlan.IsActive);
+            Assert.True(response.QuotaPlan.IsDefault);
         }
     }
 }

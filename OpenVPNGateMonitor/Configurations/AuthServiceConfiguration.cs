@@ -1,4 +1,4 @@
-﻿using Microsoft.AspNetCore.Authorization;
+using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Identity;
 using Microsoft.OpenApi;
 using OpenVPNGateMonitor.Controllers;
@@ -7,6 +7,7 @@ using OpenVPNGateMonitor.Models.Helpers;
 using OpenVPNGateMonitor.Services.Api.Auth;
 using OpenVPNGateMonitor.Services.Api.Auth.Handlers;
 using OpenVPNGateMonitor.Services.Api.Auth.Handlers.Interfaces;
+using OpenVPNGateMonitor.Services.Api.Auth.ForgotPassword;
 using OpenVPNGateMonitor.Services.Api.Auth.Login;
 using OpenVPNGateMonitor.Services.Api.Auth.Registers;
 using OpenVPNGateMonitor.Services.Api.Auth.Registers.Interfaces;
@@ -40,6 +41,9 @@ public static class AuthServiceConfiguration
         services.AddScoped<IGoogleTokenValidator, GoogleTokenValidator>();
         
         services.AddScoped<IUserQuotaPlanService, UserQuotaPlanService>();
+
+        services.AddMemoryCache();
+        services.AddScoped<IAdminForgotPasswordService, AdminForgotPasswordService>();
 
         services.AddAuthorization(options =>
         {
