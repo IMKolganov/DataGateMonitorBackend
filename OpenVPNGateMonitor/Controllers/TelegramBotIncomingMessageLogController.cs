@@ -1,4 +1,4 @@
-﻿using Mapster;
+using Mapster;
 using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Mvc;
 using OpenVPNGateMonitor.DataBase.Services.Query.IncomingMessageLogTable;
@@ -44,12 +44,14 @@ public class TelegramBotIncomingMessageLogController(
     }
     [Authorize(Roles = "Admin,App")]
     [HttpGet("get-by-telegram-userid/{telegramId}")]
-    public async Task<ActionResult<ApiResponse<GetByTelegramIdMessagesResponse>>> GetAllMessages(
-        [FromRoute] GetAllByTelegramIdMessagesRequest request, CancellationToken ct)
+    public async Task<ActionResult<ApiResponse<GetByTelegramIdMessagesResponse>>> GetByTelegramUserId(
+        [FromRoute] long telegramId,
+        [FromQuery] int page = 1,
+        [FromQuery] int pageSize = 10,
+        CancellationToken ct = default)
     {
-        var messages= await incomingMessageLogQueryService.GetPageByTelegramId(
-            request.TelegramId, request.Page, request.PageSize, ct);
-        
+        var messages = await incomingMessageLogQueryService.GetPageByTelegramId(telegramId, page, pageSize, ct);
+
         var response = new GetByTelegramIdMessagesResponse
         {
             Messages = messages.Adapt<PagedResponse<MessageDto>>()
