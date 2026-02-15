@@ -67,11 +67,14 @@ public class UserControllerTests
     }
 
     [Fact]
-    public async Task GetAllUsers_ReturnsOk_WithUsersList()
+    public async Task GetAllUsers_ReturnsOk_WithPagedUsersList()
     {
         // Arrange
         var expected = new GetAllUsersResponse
         {
+            Page = 1,
+            PageSize = 20,
+            TotalCount = 2,
             Users =
             [
                 new UserDto { Id = 1, DisplayName = "u1" },
@@ -80,18 +83,21 @@ public class UserControllerTests
         };
 
         _userServiceMock
-            .Setup(s => s.GetAllUsers(It.IsAny<CancellationToken>()))
+            .Setup(s => s.GetUsersPage(It.IsAny<GetAllUsersRequest>(), It.IsAny<CancellationToken>()))
             .ReturnsAsync(expected);
 
         // Act
-        var result = await _controller.GetAllUsers(CancellationToken.None);
+        var result = await _controller.GetAllUsers(new GetAllUsersRequest(), CancellationToken.None);
 
         // Assert
         var ok = Assert.IsType<OkObjectResult>(result.Result);
         var response = Assert.IsType<ApiResponse<GetAllUsersResponse>>(ok.Value);
 
         Assert.True(response.Success);
-        Assert.Equal(2, response.Data!.Users.Count);
+        Assert.Equal(1, response.Data!.Page);
+        Assert.Equal(20, response.Data.PageSize);
+        Assert.Equal(2, response.Data.TotalCount);
+        Assert.Equal(2, response.Data.Users.Count);
         Assert.Equal("u1", response.Data.Users[0].DisplayName);
 
         _userServiceMock.VerifyAll();

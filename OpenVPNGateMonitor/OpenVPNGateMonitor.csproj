@@ -1,11 +1,11 @@
-﻿<Project Sdk="Microsoft.NET.Sdk.Web">
+<Project Sdk="Microsoft.NET.Sdk.Web">
 
     <PropertyGroup>
         <Nullable>enable</Nullable>
         <ImplicitUsings>enable</ImplicitUsings>
         <DockerDefaultTargetOS>Linux</DockerDefaultTargetOS>
-        <AssemblyVersion>1.0.2.96</AssemblyVersion>
-        <FileVersion>1.0.2.96</FileVersion>
+        <AssemblyVersion>1.0.2.97</AssemblyVersion>
+        <FileVersion>1.0.2.97</FileVersion>
         <TargetFramework>net10.0</TargetFramework>
     </PropertyGroup>
 
@@ -27,7 +27,7 @@
         <PackageReference Include="Microsoft.IdentityModel.Tokens" Version="8.16.0" />
         <PackageReference Include="Newtonsoft.Json" Version="13.0.4" />
         <PackageReference Include="Npgsql.EntityFrameworkCore.PostgreSQL" Version="10.0.0" />
-        <PackageReference Include="OpenVPNGateMonitor.SharedModels" Version="1.0.84" />
+        <PackageReference Include="OpenVPNGateMonitor.SharedModels" Version="1.0.88" />
         <PackageReference Include="Serilog" Version="4.3.1" />
         <PackageReference Include="Serilog.Extensions.Hosting" Version="10.0.0" />
         <PackageReference Include="Serilog.Extensions.Logging" Version="10.0.0" />

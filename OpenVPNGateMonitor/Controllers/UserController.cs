@@ -1,4 +1,4 @@
-﻿using Mapster;
+using Mapster;
 using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Mvc;
 using OpenVPNGateMonitor.Services.Users.Interfaces;
@@ -24,10 +24,12 @@ public class UserController(IUserService userService) : BaseController
         return Ok(ApiResponse<UsersResponse>.SuccessResponse(response.Adapt<UsersResponse>()));
     }
     [HttpGet("get-all")]
-    public async Task<ActionResult<ApiResponse<GetAllUsersResponse>>> GetAllUsers(CancellationToken cancellationToken)
+    public async Task<ActionResult<ApiResponse<GetAllUsersResponse>>> GetAllUsers(
+        [FromQuery] GetAllUsersRequest request,
+        CancellationToken cancellationToken)
     {
-        var response = await userService.GetAllUsers(cancellationToken);
-        return Ok(ApiResponse<GetAllUsersResponse>.SuccessResponse(response.Adapt<GetAllUsersResponse>()));
+        var response = await userService.GetUsersPage(request, cancellationToken);
+        return Ok(ApiResponse<GetAllUsersResponse>.SuccessResponse(response));
     }
     
     [HttpGet("get-by-id/{id:int}")]
