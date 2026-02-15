@@ -219,7 +219,7 @@ public class UnitOfWorkTests
             repoFactory.Object,
             queryFactory.Object);
 
-        sut.MarkPropertyModified(entity, e => e.Name);
+        sut.MarkPropertyModified(entity, e => e.Name!);
 
         var entry = ctx.Entry(entity);
         Assert.True(entry.Property(e => e.Name).IsModified);
@@ -244,7 +244,7 @@ public class UnitOfWorkTests
             repoFactory.Object,
             queryFactory.Object);
 
-        sut.MarkPropertyModified(entity, e => e.Name);
+        sut.MarkPropertyModified(entity, e => e.Name!);
 
         var entry = ctx.Entry(entity);
         Assert.Equal(EntityState.Modified, entry.State);

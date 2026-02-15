@@ -189,17 +189,17 @@ public class QuotaPlanAllowedServerServiceTests
     [Fact]
     public async Task DeleteAsync_WhenFound_Deletes()
     {
-        _command.Setup(c => c.DeleteById(1, true, It.IsAny<CancellationToken>())).ReturnsAsync(1);
+        _command.Setup(c => c.DeleteById(1, It.IsAny<CancellationToken>())).ReturnsAsync(1);
 
         await _sut.DeleteAsync(1, CancellationToken.None);
 
-        _command.Verify(c => c.DeleteById(1, true, It.IsAny<CancellationToken>()), Times.Once);
+        _command.Verify(c => c.DeleteById(1, It.IsAny<CancellationToken>()), Times.Once);
     }
 
     [Fact]
     public async Task DeleteAsync_WhenNotFound_Throws()
     {
-        _command.Setup(c => c.DeleteById(99, true, It.IsAny<CancellationToken>())).ReturnsAsync(0);
+        _command.Setup(c => c.DeleteById(99, It.IsAny<CancellationToken>())).ReturnsAsync(0);
 
         var act = () => _sut.DeleteAsync(99, CancellationToken.None);
 
