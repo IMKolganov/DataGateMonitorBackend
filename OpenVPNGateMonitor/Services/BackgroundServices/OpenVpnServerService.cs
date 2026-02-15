@@ -17,6 +17,7 @@ namespace OpenVPNGateMonitor.Services.BackgroundServices;
 public class OpenVpnServerService(
     ILogger<IOpenVpnServerService> logger,
     IOpenVpnClientService openVpnClientService,
+    IOpenVpnSummaryStatService openVpnSummaryStatService,
     IOpenVpnVersionService openVpnVersionService,
     IOpenVpnStateService openVpnStateService,
     IIssuedOvpnFileQueryService openVpnFileQueryService,
@@ -173,18 +174,9 @@ public class OpenVpnServerService(
                 serverInfo.Version = await openVpnVersionService.GetVersionAsync(openVpnServer, ct);
             }
 
-            // Use sum from CLIENT_LIST (status 3) instead of load-stats - load-stats often returns
-            // incorrect values (much smaller than actual per-client totals, e.g. in DataGate/proxy setups).
-            // CLIENT_LIST Bytes Sent = server received from client; Bytes Received = server sent to client.
-            var clients = await openVpnClientService.GetClientsFromManagementAsync(openVpnServer, ct);
-            var bytesIn = clients.Sum(c => c.BytesSent);   // server received from clients
-            var bytesOut = clients.Sum(c => c.BytesReceived); // server sent to clients
-            serverInfo.OpenVpnSummaryStats = new Models.Helpers.OpenVpnManagementInterfaces.OpenVpnSummaryStats
-            {
-                ClientsCount = clients.Count,
-                BytesIn = bytesIn,
-                BytesOut = bytesOut
-            };
+            // load-stats returns server-level cumulative bytesin/bytesout.
+            // Note: when DCO (Data Channel Offload) is enabled, load-stats may return incorrect values.
+            serverInfo.OpenVpnSummaryStats = await openVpnSummaryStatService.GetSummaryStatsAsync(openVpnServer, ct);
         }
         catch (Exception ex)
         {
