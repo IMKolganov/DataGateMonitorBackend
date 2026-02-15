@@ -1,4 +1,4 @@
-﻿using OpenVPNGateMonitor.DataBase.Services.Query.UserCredentialTable;
+using OpenVPNGateMonitor.DataBase.Services.Query.UserCredentialTable;
 using OpenVPNGateMonitor.Hubs.BackgroundService;
 using OpenVPNGateMonitor.Services.Api;
 using OpenVPNGateMonitor.Services.Api.Interfaces;
@@ -70,6 +70,7 @@ public static class ServiceConfiguration
         services.AddScoped<IUserService, UserService>();
         
         services.AddScoped<IQuotaPlanService, QuotaPlanService>();
+        services.AddScoped<IQuotaPlanAllowedServerService, QuotaPlanAllowedServerService>();
         
         services.AddScoped<IUserCredentialQueryService, UserCredentialQueryService>();
         

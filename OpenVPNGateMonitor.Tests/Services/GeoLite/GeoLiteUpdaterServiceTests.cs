@@ -20,7 +20,7 @@ public class GeoLiteUpdaterServiceTests
         var handler = new StubHandler(response);
         var httpClient = new HttpClient(handler);
 
-        var dbFactory = new Mock<GeoLiteDatabaseFactory>(MockBehavior.Loose, new object?[] { null!, null! }) { CallBase = true };
+        var dbFactory = new Mock<GeoLiteDatabaseFactory>(MockBehavior.Loose, [null!, null!]) { CallBase = true };
         var config = new Mock<IGeoLiteConfigProvider>();
         var auth = new Mock<IGeoLiteAuthProvider>();
         var progress = new Mock<IGeoLiteProgressNotifier>();

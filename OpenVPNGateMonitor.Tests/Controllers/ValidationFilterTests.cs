@@ -92,7 +92,7 @@ namespace OpenVPNGateMonitor.Tests.Controllers
                     new RouteData(),
                     new ActionDescriptor()),
                 new List<IFilterMetadata>(),
-                null
+                null!
             );
 
             filter.OnActionExecuted(context);

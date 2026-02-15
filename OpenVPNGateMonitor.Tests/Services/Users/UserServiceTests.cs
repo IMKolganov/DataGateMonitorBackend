@@ -11,6 +11,7 @@ using OpenVPNGateMonitor.Services.Users;
 using OpenVPNGateMonitor.SharedModels.DataGateMonitorBackend.User.Requests;
 using OpenVPNGateMonitor.SharedModels.DataGateMonitorBackend.User.Responses;
 using OpenVPNGateMonitor.SharedModels.DataGateMonitorBackend.User.Responses.Dto;
+using OpenVPNGateMonitor.SharedModels.Responses;
 using Xunit;
 
 namespace OpenVPNGateMonitor.Tests.Services.Users;
@@ -108,20 +109,30 @@ public class UserServiceTests
     }
 
     [Fact]
-    public async Task GetAllUsers_ReturnsAllUsersAsDtos()
+    public async Task GetUsersPage_ReturnsPagedUsersAsDtos()
     {
         var users = new List<User>
         {
             new() { Id = 1, DisplayName = "U1", CreateDate = DateTimeOffset.UtcNow, LastUpdate = DateTimeOffset.UtcNow },
             new() { Id = 2, DisplayName = "U2", CreateDate = DateTimeOffset.UtcNow, LastUpdate = DateTimeOffset.UtcNow }
         };
-        _userQuery.Setup(q => q.GetAll(It.IsAny<CancellationToken>())).ReturnsAsync(users);
+        var paged = new PagedResponse<User>
+        {
+            Page = 1,
+            PageSize = 20,
+            TotalCount = 2,
+            Items = users
+        };
+        _userQuery.Setup(q => q.GetPage(1, 20, It.IsAny<CancellationToken>())).ReturnsAsync(paged);
         _userIdentityLinkQuery.Setup(q => q.GetByUserId(1, It.IsAny<CancellationToken>())).ReturnsAsync((UserIdentityLink?)null);
         _userIdentityLinkQuery.Setup(q => q.GetByUserId(2, It.IsAny<CancellationToken>())).ReturnsAsync((UserIdentityLink?)null);
 
-        var result = await _sut.GetAllUsers(CancellationToken.None);
+        var result = await _sut.GetUsersPage(new GetAllUsersRequest { Page = 1, PageSize = 20 }, CancellationToken.None);
 
         result.Should().NotBeNull();
+        result.Page.Should().Be(1);
+        result.PageSize.Should().Be(20);
+        result.TotalCount.Should().Be(2);
         result.Users.Should().HaveCount(2);
         result.Users![0].Id.Should().Be(1);
         result.Users[0].DisplayName.Should().Be("U1");
