@@ -73,7 +73,7 @@ public class GeoLiteAuthProviderTests
         var sp = BuildProvider(m =>
         {
             m.Setup(s => s.GetValueAsync<string>("GeoIp_Account_ID_Type", It.IsAny<CancellationToken>())).ReturnsAsync("string");
-            m.Setup(s => s.GetValueAsync<string>("GeoIp_Account_ID", It.IsAny<CancellationToken>())).ReturnsAsync((string)null);
+            m.Setup(s => s.GetValueAsync<string>("GeoIp_Account_ID", It.IsAny<CancellationToken>())).ReturnsAsync((string?)null);
         });
 
         var sut = new GeoLiteAuthProvider(sp);

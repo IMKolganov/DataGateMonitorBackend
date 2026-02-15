@@ -14,7 +14,7 @@ public class OpenVpnEventHubTests
 {
     private sealed class TestHttpContextFeature : IHttpContextFeature
     {
-        public HttpContext HttpContext { get; set; } = default!;
+        public HttpContext? HttpContext { get; set; }
     }
 
     private sealed class TestHubCallerContext : HubCallerContext

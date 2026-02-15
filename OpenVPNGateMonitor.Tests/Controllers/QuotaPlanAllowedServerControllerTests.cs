@@ -40,11 +40,12 @@ public class QuotaPlanAllowedServerControllerTests
         var response = Assert.IsType<ApiResponse<GetAllQuotaPlanAllowedServersResponse>>(ok.Value);
         Assert.True(response.Success);
         Assert.NotNull(response.Data);
-        Assert.Equal(1, response.Data!.Page);
-        Assert.Equal(1, response.Data.TotalCount);
-        Assert.Single(response.Data.Items);
-        Assert.Equal(10, response.Data.Items[0].QuotaPlanId);
-        Assert.Equal(5, response.Data.Items[0].VpnServerId);
+        var data = response.Data;
+        Assert.Equal(1, data.Page);
+        Assert.Equal(1, data.TotalCount);
+        Assert.Single(data.Items);
+        Assert.Equal(10, data.Items[0].QuotaPlanId);
+        Assert.Equal(5, data.Items[0].VpnServerId);
         _service.VerifyAll();
     }
 
@@ -66,7 +67,7 @@ public class QuotaPlanAllowedServerControllerTests
         var response = Assert.IsType<ApiResponse<QuotaPlanAllowedServerResponse>>(ok.Value);
         Assert.True(response.Success);
         Assert.NotNull(response.Data);
-        Assert.Equal(1, response.Data!.QuotaPlanAllowedServer.Id);
+        Assert.Equal(1, response.Data.QuotaPlanAllowedServer.Id);
         _service.VerifyAll();
     }
 
@@ -103,7 +104,7 @@ public class QuotaPlanAllowedServerControllerTests
         var response = Assert.IsType<ApiResponse<GetQuotaPlanAllowedServersByQuotaPlanIdResponse>>(ok.Value);
         Assert.True(response.Success);
         Assert.NotNull(response.Data);
-        Assert.Single(response.Data!.Items);
+        Assert.Single(response.Data.Items);
         _service.VerifyAll();
     }
 
@@ -124,7 +125,8 @@ public class QuotaPlanAllowedServerControllerTests
         var ok = Assert.IsType<OkObjectResult>(result.Result);
         var response = Assert.IsType<ApiResponse<GetQuotaPlanAllowedServersByVpnServerIdResponse>>(ok.Value);
         Assert.True(response.Success);
-        Assert.Single(response.Data!.Items);
+        Assert.NotNull(response.Data);
+        Assert.Single(response.Data.Items);
         _service.VerifyAll();
     }
 
@@ -150,7 +152,8 @@ public class QuotaPlanAllowedServerControllerTests
         var ok = Assert.IsType<OkObjectResult>(result.Result);
         var response = Assert.IsType<ApiResponse<QuotaPlanAllowedServerResponse>>(ok.Value);
         Assert.True(response.Success);
-        Assert.Equal(1, response.Data!.QuotaPlanAllowedServer.Id);
+        Assert.NotNull(response.Data);
+        Assert.Equal(1, response.Data.QuotaPlanAllowedServer.Id);
         _service.VerifyAll();
     }
 

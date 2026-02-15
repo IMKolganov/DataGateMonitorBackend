@@ -102,7 +102,7 @@ public class QuotaPlanAllowedServerService(
 
     public async Task DeleteAsync(int id, CancellationToken ct)
     {
-        var deleted = await commandService.DeleteById(id, true, ct);
+        var deleted = await commandService.DeleteById(id, ct);
         if (deleted == 0)
             throw new KeyNotFoundException($"QuotaPlanAllowedServer {id} not found.");
     }

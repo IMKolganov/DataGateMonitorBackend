@@ -117,7 +117,7 @@ public class UserQuotaPlanService(
 
     public async Task DeleteAsync(int id, CancellationToken ct)
     {
-        var deleted = await userQuotaPlanCommandService.DeleteById(id, true, ct);
+        var deleted = await userQuotaPlanCommandService.DeleteById(id, ct);
         if (deleted == 0)
             throw new KeyNotFoundException($"UserQuotaPlan {id} not found.");
     }

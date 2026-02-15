@@ -47,10 +47,11 @@ namespace OpenVPNGateMonitor.Tests.Controllers
 
             Assert.True(response.Success);
             Assert.NotNull(response.Data);
-            Assert.NotNull(response.Data!.QuotaPlans);
-            Assert.Single(response.Data.QuotaPlans); // only active
-            Assert.Equal(1, response.Data.QuotaPlans[0].Id);
-            Assert.Equal("Active", response.Data.QuotaPlans[0].Name);
+            var data = response.Data;
+            Assert.NotNull(data.QuotaPlans);
+            Assert.Single(data.QuotaPlans); // only active
+            Assert.Equal(1, data.QuotaPlans[0].Id);
+            Assert.Equal("Active", data.QuotaPlans[0].Name);
 
             _service.Verify(s => s.GetAllAsync(It.IsAny<CancellationToken>()), Times.Once);
         }
@@ -80,12 +81,13 @@ namespace OpenVPNGateMonitor.Tests.Controllers
 
             Assert.True(response.Success);
             Assert.NotNull(response.Data);
-            Assert.NotNull(response.Data!.QuotaPlans);
-            Assert.Equal(2, response.Data.QuotaPlans.Count);
-            Assert.Equal(1, response.Data.QuotaPlans[0].Id);
-            Assert.Equal("Active", response.Data.QuotaPlans[0].Name);
-            Assert.Equal(2, response.Data.QuotaPlans[1].Id);
-            Assert.Equal("Inactive", response.Data.QuotaPlans[1].Name);
+            var data = response.Data;
+            Assert.NotNull(data.QuotaPlans);
+            Assert.Equal(2, data.QuotaPlans.Count);
+            Assert.Equal(1, data.QuotaPlans[0].Id);
+            Assert.Equal("Active", data.QuotaPlans[0].Name);
+            Assert.Equal(2, data.QuotaPlans[1].Id);
+            Assert.Equal("Inactive", data.QuotaPlans[1].Name);
 
             _service.Verify(s => s.GetAllAsync(It.IsAny<CancellationToken>()), Times.Once);
         }
@@ -114,10 +116,11 @@ namespace OpenVPNGateMonitor.Tests.Controllers
 
             Assert.True(response.Success);
             Assert.NotNull(response.Data);
-            Assert.NotNull(response.Data!.QuotaPlan);
-            Assert.Equal(10, response.Data.QuotaPlan.Id);
-            Assert.Equal("Test plan", response.Data.QuotaPlan.Name);
-            Assert.True(response.Data.QuotaPlan.IsActive);
+            var data = response.Data;
+            Assert.NotNull(data.QuotaPlan);
+            Assert.Equal(10, data.QuotaPlan.Id);
+            Assert.Equal("Test plan", data.QuotaPlan.Name);
+            Assert.True(data.QuotaPlan.IsActive);
 
             _service.Verify(s => s.GetByIdAsync(10, It.IsAny<CancellationToken>()), Times.Once);
         }
