@@ -72,15 +72,22 @@ public class UserQuotaPlanService(
 
     public async Task<UserQuotaPlanResponse> CreateAsync(CreateOrUpdateUserQuotaPlanRequest request, CancellationToken ct)
     {
+        var active = await userQuotaPlanQueryService.GetActiveByUserId(request.UserId, ct);
+        if (active is not null)
+            throw new InvalidOperationException("User already has an active quota plan. Close the current assignment (set EffectiveTo) or update it before creating a new one.");
+
         var now = DateTimeOffset.UtcNow;
-        var effectiveFrom = request.EffectiveFrom == default ? now : request.EffectiveFrom;
+        var effectiveFrom = request.EffectiveFrom == default ? now : ToUtc(request.EffectiveFrom);
+        var effectiveTo = request.EffectiveTo.HasValue ? ToUtc(request.EffectiveTo.Value) : (DateTimeOffset?)null;
+
+        ValidateEffectiveRange(effectiveFrom, effectiveTo);
 
         var entity = new UserQuotaPlan
         {
             UserId = request.UserId,
             QuotaPlanId = request.QuotaPlanId,
             EffectiveFrom = effectiveFrom,
-            EffectiveTo = request.EffectiveTo,
+            EffectiveTo = effectiveTo,
             AssignedBy = request.AssignedBy,
             Note = request.Note,
             CreateDate = now,
@@ -103,16 +110,29 @@ public class UserQuotaPlanService(
         var entity = await userQuotaPlanQueryService.GetById(request.Id, ct)
             ?? throw new KeyNotFoundException($"UserQuotaPlan {request.Id} not found.");
 
+        var effectiveFrom = ToUtc(request.EffectiveFrom);
+        var effectiveTo = request.EffectiveTo.HasValue ? ToUtc(request.EffectiveTo.Value) : (DateTimeOffset?)null;
+        ValidateEffectiveRange(effectiveFrom, effectiveTo);
+
         var now = DateTimeOffset.UtcNow;
         entity.UserId = request.UserId;
         entity.QuotaPlanId = request.QuotaPlanId;
-        entity.EffectiveFrom = request.EffectiveFrom;
-        entity.EffectiveTo = request.EffectiveTo;
+        entity.EffectiveFrom = effectiveFrom;
+        entity.EffectiveTo = effectiveTo;
         entity.AssignedBy = request.AssignedBy;
         entity.Note = request.Note;
         entity.LastUpdate = now;
 
         await userQuotaPlanCommandService.Update(entity, true, ct);
+    }
+
+    /// <summary>Npgsql accepts only UTC (offset 0) for timestamp with time zone.</summary>
+    private static DateTimeOffset ToUtc(DateTimeOffset value) => new(value.UtcDateTime, TimeSpan.Zero);
+
+    private static void ValidateEffectiveRange(DateTimeOffset effectiveFrom, DateTimeOffset? effectiveTo)
+    {
+        if (effectiveTo.HasValue && effectiveTo.Value < effectiveFrom)
+            throw new ArgumentException("EffectiveTo must be greater than or equal to EffectiveFrom.", "EffectiveTo");
     }
 
     public async Task DeleteAsync(int id, CancellationToken ct)
