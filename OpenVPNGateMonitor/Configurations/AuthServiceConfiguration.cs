@@ -9,6 +9,7 @@ using OpenVPNGateMonitor.Services.Api.Auth.Handlers;
 using OpenVPNGateMonitor.Services.Api.Auth.Handlers.Interfaces;
 using OpenVPNGateMonitor.Services.Api.Auth.ForgotPassword;
 using OpenVPNGateMonitor.Services.Api.Auth.Login;
+using OpenVPNGateMonitor.Services.Api.Auth.TelegramLogin;
 using OpenVPNGateMonitor.Services.Api.Auth.Registers;
 using OpenVPNGateMonitor.Services.Api.Auth.Registers.Interfaces;
 using OpenVPNGateMonitor.Services.Api.Auth.Users;
@@ -44,6 +45,7 @@ public static class AuthServiceConfiguration
 
         services.AddMemoryCache();
         services.AddScoped<IAdminForgotPasswordService, AdminForgotPasswordService>();
+        services.AddScoped<ITelegramLoginCodeService, TelegramLoginCodeService>();
 
         services.AddAuthorization(options =>
         {

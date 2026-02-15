@@ -8,6 +8,7 @@ using Microsoft.AspNetCore.Authorization;
 using OpenVPNGateMonitor.Models.Helpers.Auth;
 using OpenVPNGateMonitor.Services.Api.Auth.ForgotPassword;
 using OpenVPNGateMonitor.Services.Api.Auth.Login;
+using OpenVPNGateMonitor.Services.Api.Auth.TelegramLogin;
 using OpenVPNGateMonitor.Services.Api.Auth.Registers.Interfaces;
 using OpenVPNGateMonitor.SharedModels.DataGateMonitorBackend.Auth.Requests;
 using OpenVPNGateMonitor.SharedModels.DataGateMonitorBackend.Auth.Responses;
@@ -25,7 +26,8 @@ public class AuthController(
     IUserLoginService userLoginService,
     IGoogleAuthCodeExchangeService exchange,
     ITokenService tokenService,
-    IAdminForgotPasswordService adminForgotPasswordService) : BaseController
+    IAdminForgotPasswordService adminForgotPasswordService,
+    ITelegramLoginCodeService telegramLoginCodeService) : BaseController
 {
     [HttpPost("token")]
     public async Task<ActionResult<ApiResponse<TokenResponse>>> GenerateToken([FromBody] TokenRequest request,
@@ -130,6 +132,42 @@ public class AuthController(
         var result = await userLoginService.LoginWithGoogleAsync(idToken, ct);
 
         return Ok(ApiResponse<GoogleLoginResponse>.SuccessResponse(result));
+    }
+
+    /// <summary>
+    /// For the Telegram bot: request a one-time login code for a user. Bot shows this code to the user to enter on the dashboard.
+    /// Requires App or Admin token.
+    /// </summary>
+    [Authorize(Roles = "Admin,App")]
+    [HttpPost("telegram/request-login-code")]
+    [ProducesResponseType(typeof(ApiResponse<TelegramRequestLoginCodeResponse>), StatusCodes.Status200OK)]
+    [ProducesResponseType(StatusCodes.Status404NotFound)]
+    public async Task<ActionResult<ApiResponse<TelegramRequestLoginCodeResponse>>> TelegramRequestLoginCode(
+        [FromBody] TelegramRequestLoginCodeRequest request,
+        CancellationToken ct)
+    {
+        if (request == null)
+            return BadRequest();
+
+        var result = await telegramLoginCodeService.RequestLoginCodeAsync(request, ct);
+        if (result == null)
+            return NotFound(ApiResponse<TelegramRequestLoginCodeResponse>.ErrorResponse("User not found or blocked."));
+
+        return Ok(ApiResponse<TelegramRequestLoginCodeResponse>.SuccessResponse(result));
+    }
+
+    /// <summary>
+    /// Log in on the dashboard using the code received from the Telegram bot.
+    /// </summary>
+    [AllowAnonymous]
+    [HttpPost("telegram-code-login")]
+    [ProducesResponseType(typeof(ApiResponse<LoginResponse>), StatusCodes.Status200OK)]
+    public async Task<ActionResult<ApiResponse<LoginResponse>>> TelegramCodeLogin(
+        [FromBody] TelegramCodeLoginRequest request,
+        CancellationToken ct)
+    {
+        var result = await telegramLoginCodeService.LoginWithCodeAsync(request, ct);
+        return Ok(ApiResponse<LoginResponse>.SuccessResponse(result));
     }
 
     [AllowAnonymous]

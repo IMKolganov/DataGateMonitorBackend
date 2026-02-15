@@ -1,4 +1,4 @@
-﻿using Mapster;
+using Mapster;
 using OpenVPNGateMonitor.DataBase.Services.Command;
 using OpenVPNGateMonitor.DataBase.Services.Command.Interfaces;
 using OpenVPNGateMonitor.DataBase.Services.Query.QuotaPlanTable;
@@ -25,6 +25,75 @@ public class UserService(
     ILogger<UserService> logger
 ) : IUserService
 {
+    private const string TelegramProvider = "telegram";
+
+    public async Task<User?> GetOrCreateDashboardUserForTelegramAsync(long telegramId,
+        CancellationToken cancellationToken)
+    {
+        var telegramBotUser = await telegramBotUserQueryService.GetByTelegramId(telegramId, cancellationToken);
+        if (telegramBotUser == null)
+            return null;
+
+        var link = await userIdentityLinkQueryService.GetByProviderAndExternalId(
+            TelegramProvider, telegramId.ToString(), cancellationToken);
+
+        if (link != null)
+        {
+            var user = await userQueryService.GetById(link.UserId, cancellationToken);
+            return user;
+        }
+
+        var now = DateTimeOffset.UtcNow;
+        var displayName = !string.IsNullOrWhiteSpace(telegramBotUser.Username)
+            ? telegramBotUser.Username
+            : !string.IsNullOrWhiteSpace(telegramBotUser.FirstName)
+                ? $"{telegramBotUser.FirstName} {telegramBotUser.LastName}".Trim()
+                : $"tg_{telegramId}";
+
+        var userNew = new User
+        {
+            DisplayName = displayName ?? $"tg_{telegramId}",
+            Email = null,
+            IsAdmin = false,
+            IsBlocked = false,
+            HasDashboardAccess = false,
+            CreateDate = now,
+            LastUpdate = now
+        };
+
+        userNew = await userCommandService.Add(userNew, saveChanges: true, cancellationToken);
+        logger.LogInformation("Dashboard user created for Telegram {TelegramId} (login by code)", telegramId);
+
+        var identityLink = new UserIdentityLink
+        {
+            UserId = userNew.Id,
+            Provider = TelegramProvider,
+            ExternalId = telegramId.ToString(),
+            ProviderRowId = telegramBotUser.Id,
+            CreateDate = now,
+            LastUpdate = now
+        };
+
+        await userIdentityLinkCommandService.Add(identityLink, saveChanges: true, cancellationToken);
+
+        var defaultPlan = await quotaPlanQueryService.GetDefault(cancellationToken);
+        if (defaultPlan != null)
+        {
+            await userQuotaPlanCommandService.Add(new UserQuotaPlan
+            {
+                UserId = userNew.Id,
+                QuotaPlanId = defaultPlan.Id,
+                EffectiveFrom = now,
+                EffectiveTo = null,
+                Note = "Auto-assigned on Telegram login by code",
+                CreateDate = now,
+                LastUpdate = now
+            }, saveChanges: true, cancellationToken);
+        }
+
+        return userNew;
+    }
+
     public async Task<UsersResponse> RegisterUserFromTgBot(
         RegisterUserFromTgBotRequest request,
         CancellationToken cancellationToken)
