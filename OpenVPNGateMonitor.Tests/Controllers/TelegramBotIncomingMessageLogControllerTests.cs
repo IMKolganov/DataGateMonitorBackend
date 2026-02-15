@@ -126,14 +126,7 @@ public class TelegramBotIncomingMessageLogControllerTests
             .Setup(q => q.GetPageByTelegramId(777, 1, 10, It.IsAny<CancellationToken>()))
             .ReturnsAsync(paged);
 
-        var req = new GetAllByTelegramIdMessagesRequest
-        {
-            TelegramId = 777,
-            Page = 1,
-            PageSize = 10
-        };
-
-        var result = await _controller.GetAllMessages(req, CancellationToken.None);
+        var result = await _controller.GetByTelegramUserId(777, 1, 10, CancellationToken.None);
 
         var ok = Assert.IsType<OkObjectResult>(result.Result);
         var response = Assert.IsType<ApiResponse<GetByTelegramIdMessagesResponse>>(ok.Value);
@@ -145,6 +138,32 @@ public class TelegramBotIncomingMessageLogControllerTests
         Assert.Equal(777, response.Data!.Messages.Items[0].TelegramId);
 
         _query.Verify(q => q.GetPageByTelegramId(777, 1, 10, It.IsAny<CancellationToken>()), Times.Once);
+    }
+
+    [Fact]
+    public async Task GetByTelegramUserId_WithPageAndPageSize_PassesThemToQuery()
+    {
+        var paged = new PagedResponse<IncomingMessageLog>
+        {
+            Page = 2,
+            PageSize = 10,
+            TotalCount = 25,
+            Items = []
+        };
+        _query
+            .Setup(q => q.GetPageByTelegramId(189149160, 2, 10, It.IsAny<CancellationToken>()))
+            .ReturnsAsync(paged);
+
+        var result = await _controller.GetByTelegramUserId(189149160, 2, 10, CancellationToken.None);
+
+        var ok = Assert.IsType<OkObjectResult>(result.Result);
+        var response = Assert.IsType<ApiResponse<GetByTelegramIdMessagesResponse>>(ok.Value);
+        Assert.True(response.Success);
+        Assert.NotNull(response.Data);
+        Assert.Equal(2, response.Data!.Messages.Page);
+        Assert.Equal(10, response.Data!.Messages.PageSize);
+        Assert.Equal(25, response.Data!.Messages.TotalCount);
+        _query.Verify(q => q.GetPageByTelegramId(189149160, 2, 10, It.IsAny<CancellationToken>()), Times.Once);
     }
 
     [Fact]
