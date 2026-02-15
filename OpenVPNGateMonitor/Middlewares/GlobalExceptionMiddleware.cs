@@ -1,5 +1,7 @@
-﻿using System.Net;
+using System.Net;
+using Microsoft.EntityFrameworkCore;
 using Newtonsoft.Json;
+using Npgsql;
 using OpenVPNGateMonitor.Services.Others.Notifications;
 
 namespace OpenVPNGateMonitor.Middlewares;
@@ -39,28 +41,25 @@ public class GlobalExceptionMiddleware(
             logger.LogError(sendEx, "Failed to send system exception notification.");
         }
 
-        var statusCode = exception switch
+        var (statusCodeInt, responseMessage) = exception switch
         {
-            UnauthorizedAccessException => (int)HttpStatusCode.Unauthorized,   // 401
-            ArgumentException => (int)HttpStatusCode.BadRequest,               // 400
-            _ => (int)HttpStatusCode.InternalServerError                      // 500
+            UnauthorizedAccessException => ((int)HttpStatusCode.Unauthorized, exception.Message),
+            ArgumentException => ((int)HttpStatusCode.BadRequest, exception.Message),
+            InvalidOperationException when exception.Message.Contains("already has", StringComparison.OrdinalIgnoreCase)
+                => ((int)HttpStatusCode.Conflict, exception.Message),
+            DbUpdateException when exception.InnerException is PostgresException pg && pg.SqlState == "23505"
+                => ((int)HttpStatusCode.Conflict, "A resource already exists with the same key."),
+            _ => ((int)HttpStatusCode.InternalServerError, "An unexpected error occurred. Please try again later.")
         };
 
         context.Response.Clear();
         context.Response.ContentType = "application/json";
-        context.Response.StatusCode = statusCode;
-
-        var message = statusCode switch
-        {
-            (int)HttpStatusCode.Unauthorized => exception.Message, // "Invalid login or password." / "User account is blocked."
-            (int)HttpStatusCode.BadRequest => exception.Message,
-            _ => "An unexpected error occurred. Please try again later."
-        };
+        context.Response.StatusCode = statusCodeInt;
 
         var payload = new
         {
-            statusCode,
-            message,
+            statusCode = statusCodeInt,
+            message = responseMessage,
             detail = exception.Message
         };
 

@@ -17,6 +17,13 @@ public class UserQuotaPlanQueryService(IQueryService<UserQuotaPlan, int> q) : IU
             asNoTracking: true,
             ct: ct);
 
+    public Task<UserQuotaPlan?> GetActiveByUserId(int userId, CancellationToken ct)
+        => q.FirstOrDefault(
+            predicate: x => x.UserId == userId && x.EffectiveTo == null,
+            orderBy: s => s.OrderByDescending(x => x.EffectiveFrom),
+            asNoTracking: true,
+            ct: ct);
+
     public Task<UserQuotaPlan?> GetByUserId(int userId, CancellationToken ct)
         => q.FirstOrDefault(
             predicate: x => x.UserId == userId,
