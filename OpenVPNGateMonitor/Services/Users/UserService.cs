@@ -205,21 +205,29 @@ public class UserService(
         return new UsersResponse { User = dto };
     }
 
-    public async Task<GetAllUsersResponse> GetAllUsers(CancellationToken cancellationToken)
+    public async Task<GetAllUsersResponse> GetUsersPage(GetAllUsersRequest request, CancellationToken cancellationToken)
     {
-        // Get all dashboard users
-        var users = await userQueryService.GetAll(cancellationToken);
+        var page = request.Page < 1 ? 1 : request.Page;
+        var pageSize = request.PageSize < 1 ? 20 : request.PageSize;
+        if (pageSize > 500)
+            pageSize = 500;
 
-        // NOTE: Simple and clear implementation.
-        // If needed, this can be optimized later by adding a batch query for identity links.
-        var dtos = new List<UserDto>(users.Count);
-        foreach (var u in users)
+        var paged = await userQueryService.GetPage(page, pageSize, cancellationToken);
+
+        var dtos = new List<UserDto>(paged.Items.Count);
+        foreach (var u in paged.Items)
         {
             var dto = await BuildUserDtoAsync(u, cancellationToken);
             dtos.Add(dto);
         }
 
-        return new GetAllUsersResponse { Users = dtos };
+        return new GetAllUsersResponse
+        {
+            Page = paged.Page,
+            PageSize = paged.PageSize,
+            TotalCount = paged.TotalCount,
+            Users = dtos
+        };
     }
 
     public async Task<UsersResponse> GetUserById(GetUserByIdRequest request, CancellationToken cancellationToken)
