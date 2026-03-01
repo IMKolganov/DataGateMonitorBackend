@@ -57,7 +57,8 @@ public class OpenVpnServerOverviewQueryTests
             IsDefault = true,
             ApiUrl = "https://srv1",
             CreateDate = now.AddHours(-2),
-            LastUpdate = now
+            LastUpdate = now,
+            IsDeleted = false
         };
 
         var s2 = new OpenVpnServer
@@ -68,7 +69,8 @@ public class OpenVpnServerOverviewQueryTests
             IsDefault = false,
             ApiUrl = "https://srv2",
             CreateDate = now.AddHours(-5),
-            LastUpdate = now.AddMinutes(-10)
+            LastUpdate = now.AddMinutes(-10),
+            IsDeleted = false
         };
 
         await ctx.OpenVpnServers.AddRangeAsync(s1, s2);
@@ -126,7 +128,7 @@ public class OpenVpnServerOverviewQueryTests
         await ctx.SaveChangesAsync();
 
         // Act
-        var result = await sut.GetAllOpenVpnServersWithStatusAsync(CancellationToken.None);
+        var result = await sut.GetAllOpenVpnServersWithStatusAsync(ct: CancellationToken.None);
 
         // Assert
         Assert.Equal(2, result.Count);
@@ -265,6 +267,78 @@ public class OpenVpnServerOverviewQueryTests
         // Assert
         Assert.Equal(2, connected); // two connected for server 5
         Assert.Equal(3, sessions);  // three total for server 5
+    }
+
+    [Fact]
+    public async Task GetAllOpenVpnServersWithStatusAsync_WhenIncludeDeletedFalse_ExcludesDeletedServers()
+    {
+        var (sut, ctx) = CreateSutWithContext();
+        var now = DateTimeOffset.UtcNow;
+
+        var sActive = new OpenVpnServer
+        {
+            Id = 100,
+            ServerName = "active",
+            IsOnline = true,
+            IsDefault = false,
+            ApiUrl = "https://active",
+            CreateDate = now,
+            LastUpdate = now,
+            IsDeleted = false
+        };
+        var sDeleted = new OpenVpnServer
+        {
+            Id = 101,
+            ServerName = "deleted",
+            IsOnline = false,
+            IsDefault = false,
+            ApiUrl = "https://deleted",
+            CreateDate = now,
+            LastUpdate = now,
+            IsDeleted = true
+        };
+        await ctx.OpenVpnServers.AddRangeAsync(sActive, sDeleted);
+        await ctx.SaveChangesAsync();
+
+        var result = await sut.GetAllOpenVpnServersWithStatusAsync(includeDeleted: false, ct: CancellationToken.None);
+
+        Assert.Single(result);
+        Assert.Equal(100, result[0].OpenVpnServerResponses.OpenVpnServer.Id);
+        Assert.Equal("active", result[0].OpenVpnServerResponses.OpenVpnServer.ServerName);
+    }
+
+    [Fact]
+    public async Task GetAllOpenVpnServersWithStatusAsync_WhenIncludeDeletedTrue_IncludesDeletedServers()
+    {
+        var (sut, ctx) = CreateSutWithContext();
+        var now = DateTimeOffset.UtcNow;
+
+        var sActive = new OpenVpnServer
+        {
+            Id = 200,
+            ServerName = "active",
+            IsDeleted = false,
+            ApiUrl = "https://a",
+            CreateDate = now,
+            LastUpdate = now
+        };
+        var sDeleted = new OpenVpnServer
+        {
+            Id = 201,
+            ServerName = "deleted",
+            IsDeleted = true,
+            ApiUrl = "https://d",
+            CreateDate = now,
+            LastUpdate = now
+        };
+        await ctx.OpenVpnServers.AddRangeAsync(sActive, sDeleted);
+        await ctx.SaveChangesAsync();
+
+        var result = await sut.GetAllOpenVpnServersWithStatusAsync(includeDeleted: true, ct: CancellationToken.None);
+
+        Assert.Equal(2, result.Count);
+        var ids = result.Select(x => x.OpenVpnServerResponses.OpenVpnServer.Id).OrderBy(x => x).ToList();
+        Assert.Equal([200, 201], ids);
     }
 
     [Fact]
