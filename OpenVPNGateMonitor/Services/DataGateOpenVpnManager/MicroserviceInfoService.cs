@@ -1,4 +1,6 @@
+using System.Net.Http.Headers;
 using OpenVPNGateMonitor.DataBase.Services.Query.OpenVpnServerTable;
+using OpenVPNGateMonitor.Services.Api.Auth.Registers.Interfaces;
 using OpenVPNGateMonitor.Services.DataGateOpenVpnManager.Interfaces;
 using OpenVPNGateMonitor.SharedModels.DataGateOpenVpnManager.Info;
 
@@ -6,6 +8,7 @@ namespace OpenVPNGateMonitor.Services.DataGateOpenVpnManager;
 
 public class MicroserviceInfoService(
     IHttpClientFactory httpClientFactory,
+    IMicroserviceTokenService tokenService,
     IOpenVpnServerQueryService openVpnServerQueryService,
     ILogger<MicroserviceInfoService> logger) : IMicroserviceInfoService
 {
@@ -21,6 +24,8 @@ public class MicroserviceInfoService(
 
         using var client = httpClientFactory.CreateClient();
         client.BaseAddress = new Uri(server.ApiUrl.TrimEnd('/') + "/");
+        var jwt = tokenService.GenerateToken("vpn-cert-issuer", "cert-create", "backend", "DataGateOpenVpnManager");
+        client.DefaultRequestHeaders.Authorization = new AuthenticationHeaderValue("Bearer", jwt);
 
         var response = await client.GetAsync(EndpointInfo, cancellationToken);
         response.EnsureSuccessStatusCode();
@@ -48,6 +53,8 @@ public class MicroserviceInfoService(
 
         using var client = httpClientFactory.CreateClient();
         client.BaseAddress = uri;
+        var jwt = tokenService.GenerateToken("vpn-cert-issuer", "cert-create", "backend", "DataGateOpenVpnManager");
+        client.DefaultRequestHeaders.Authorization = new AuthenticationHeaderValue("Bearer", jwt);
 
         var response = await client.GetAsync(EndpointInfo, cancellationToken);
         response.EnsureSuccessStatusCode();
