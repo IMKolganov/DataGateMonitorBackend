@@ -1,4 +1,4 @@
-﻿using System.ComponentModel.DataAnnotations;
+using System.ComponentModel.DataAnnotations;
 
 namespace OpenVPNGateMonitor.SharedModels.DataGateMonitorBackend.OpenVpnServers.Requests;
 
@@ -13,4 +13,5 @@ public class AddServerRequest
     public double? Longitude { get; set; }
     public bool IsEnableWss { get; set; } = false;
     public List<int> QuotaPlanIds { get; set; } = [];
+    public List<int> TagIds { get; set; } = [];
 }

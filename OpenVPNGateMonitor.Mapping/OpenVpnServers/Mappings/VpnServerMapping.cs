@@ -1,4 +1,4 @@
-﻿using Mapster;
+using Mapster;
 using OpenVPNGateMonitor.Models;
 using OpenVPNGateMonitor.SharedModels.DataGateMonitorBackend.OpenVpnServers.Dto;
 using OpenVPNGateMonitor.SharedModels.DataGateMonitorBackend.OpenVpnServers.Responses;
@@ -18,7 +18,8 @@ public class VpnServerMapping : IRegister
             .Map(dest => dest.IsDefault, src => src.IsDefault)
             .Map(dest => dest.ApiUrl, src => src.ApiUrl)
             .Map(dest => dest.CreateDate, src => src.CreateDate)
-            .Map(dest => dest.LastUpdate, src => src.LastUpdate);
+            .Map(dest => dest.LastUpdate, src => src.LastUpdate)
+            .Map(dest => dest.IsDeleted, src => src.IsDeleted);
 
         // Mapping list → response wrapper
         config.NewConfig<List<OpenVpnServer>, OpenVpnServersResponse>()
