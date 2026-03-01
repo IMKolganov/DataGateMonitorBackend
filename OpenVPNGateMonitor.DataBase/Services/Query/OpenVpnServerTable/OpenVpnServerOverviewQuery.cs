@@ -1,4 +1,4 @@
-﻿using Mapster;
+using Mapster;
 using Microsoft.EntityFrameworkCore;
 using OpenVPNGateMonitor.DataBase.UnitOfWork;
 using OpenVPNGateMonitor.Models;
@@ -10,9 +10,10 @@ namespace OpenVPNGateMonitor.DataBase.Services.Query.OpenVpnServerTable;
 public class OpenVpnServerOverviewQuery(IUnitOfWork uow) : IOpenVpnServerOverviewQuery
 {
     // Single roundtrip with correlated subqueries
-    public async Task<List<OpenVpnServerWithStatusDto>> GetAllOpenVpnServersWithStatusAsync(CancellationToken ct)
+    public async Task<List<OpenVpnServerWithStatusDto>> GetAllOpenVpnServersWithStatusAsync(bool includeDeleted = false, CancellationToken ct = default)
     {
-        var servers = uow.GetQuery<OpenVpnServer>().AsQueryable();
+        var serversBase = uow.GetQuery<OpenVpnServer>().AsQueryable();
+        var servers = includeDeleted ? serversBase : serversBase.Where(s => !s.IsDeleted);
         var clients = uow.GetQuery<OpenVpnServerClient>().AsQueryable();
         var logs = uow.GetQuery<OpenVpnServerStatusLog>().AsQueryable();
 

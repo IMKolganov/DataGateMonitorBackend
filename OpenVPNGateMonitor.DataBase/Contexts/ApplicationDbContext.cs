@@ -1,4 +1,4 @@
-﻿using OpenVPNGateMonitor.DataBase.ConfigurationModels;
+using OpenVPNGateMonitor.DataBase.ConfigurationModels;
 using OpenVPNGateMonitor.Models;
 using Microsoft.EntityFrameworkCore;
 using Microsoft.Extensions.Configuration;
@@ -45,7 +45,10 @@ public class ApplicationDbContext(DbContextOptions<ApplicationDbContext> options
     public DbSet<QuotaPlan> QuotaPlans { get; set; } = null!;
     public DbSet<UserQuotaPlan> UserQuotaPlans { get; set; } = null!;
     public DbSet<QuotaPlanAllowedServer> QuotaPlanAllowedServers { get; set; } = null!;
-    
+    public DbSet<Tag> Tags { get; set; } = null!;
+    public DbSet<OpenVpnServerTag> OpenVpnServerTags { get; set; } = null!;
+    public DbSet<OpenVpnServerConflog> OpenVpnServerConflogs { get; set; } = null!;
+
     protected override void OnModelCreating(ModelBuilder modelBuilder)
     {
         modelBuilder.HasDefaultSchema(_defaultSchema);
@@ -72,6 +75,9 @@ public class ApplicationDbContext(DbContextOptions<ApplicationDbContext> options
         modelBuilder.ApplyConfiguration(new QuotaPlanConfiguration());
         modelBuilder.ApplyConfiguration(new UserQuotaPlanConfiguration());
         modelBuilder.ApplyConfiguration(new QuotaPlanAllowedServerConfiguration());
+        modelBuilder.ApplyConfiguration(new TagConfiguration());
+        modelBuilder.ApplyConfiguration(new OpenVpnServerTagConfiguration());
+        modelBuilder.ApplyConfiguration(new OpenVpnServerConflogConfiguration());
         modelBuilder.ApplyConfiguration(new RoleConfiguration());
         modelBuilder.ApplyConfiguration(new UserRoleConfiguration());
         modelBuilder.ApplyConfiguration(new DeviceConfiguration());

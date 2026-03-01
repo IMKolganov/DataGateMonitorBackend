@@ -4,6 +4,7 @@ using Mapster;
 using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Mvc;
 using OpenVPNGateMonitor.DataBase.Services.Query.OpenVpnServerTable;
+using OpenVPNGateMonitor.DataBase.Services.Query.OpenVpnServerTagTable;
 using OpenVPNGateMonitor.Models;
 using OpenVPNGateMonitor.Services.Api.Interfaces;
 using OpenVPNGateMonitor.Services.BackgroundServices.Interfaces;
@@ -22,16 +23,19 @@ namespace OpenVPNGateMonitor.Controllers;
 [Authorize]
 public class OpenVpnServersController(IVpnDataService vpnDataService,
     IOpenVpnServerOverviewQuery openVpnServerOverviewQuery, IOpenVpnServerQueryService openVpnServerQueryService,
+    IOpenVpnServerTagQueryService openVpnServerTagQueryService,
     IOpenVpnBackgroundService openVpnBackgroundService,
     IMicroserviceInfoService microserviceInfoService) : BaseController
 {
     [HttpGet("get-all-with-status")]
     public async Task<ActionResult<ApiResponse<OpenVpnServerWithStatusesResponse>>> GetAllServersWithStatus(
-        CancellationToken ct)
+        [FromQuery] bool includeDeleted = false,
+        CancellationToken ct = default)
     {
-        var result = await openVpnServerOverviewQuery.GetAllOpenVpnServersWithStatusAsync(ct);
-        return Ok(ApiResponse<OpenVpnServerWithStatusesResponse>.SuccessResponse(
-            result.Adapt<OpenVpnServerWithStatusesResponse>()));
+        var result = await openVpnServerOverviewQuery.GetAllOpenVpnServersWithStatusAsync(includeDeleted, ct);
+        var response = result.Adapt<OpenVpnServerWithStatusesResponse>();
+        await FillTagsForOverviewResponse(response, ct);
+        return Ok(ApiResponse<OpenVpnServerWithStatusesResponse>.SuccessResponse(response));
     }
 
     [HttpGet("get-server-with-status/{VpnServerId:int}")]
@@ -39,9 +43,10 @@ public class OpenVpnServersController(IVpnDataService vpnDataService,
         [FromRoute] GetServerWithStatsRequest request, CancellationToken ct)
     {
         var serverInfo = await openVpnServerOverviewQuery.GetOpenVpnServerWithStatusAsync(request.VpnServerId, ct);
-
-        return Ok(ApiResponse<OpenVpnServerWithStatusResponse>.SuccessResponse(
-            serverInfo.Adapt<OpenVpnServerWithStatusResponse>()));
+        var response = serverInfo.Adapt<OpenVpnServerWithStatusResponse>();
+        if (response.OpenVpnServerWithStatus?.OpenVpnServerResponses?.OpenVpnServer != null)
+            response.OpenVpnServerWithStatus.OpenVpnServerResponses.OpenVpnServer.Tags = await openVpnServerTagQueryService.GetTagNamesByVpnServerId(request.VpnServerId, ct);
+        return Ok(ApiResponse<OpenVpnServerWithStatusResponse>.SuccessResponse(response));
     }
 
     [HttpGet("get-microservice-info/{VpnServerId:int}")]
@@ -63,12 +68,18 @@ public class OpenVpnServersController(IVpnDataService vpnDataService,
 
     [HttpGet("get-all")]
     public async Task<ActionResult<ApiResponse<OpenVpnServersResponse>>> GetAllServers(
-        CancellationToken ct)
+        [FromQuery] bool includeDeleted = false,
+        CancellationToken ct = default)
     {
-        var serversList = await openVpnServerQueryService.GetAll(ct);
-
-        return Ok(ApiResponse<OpenVpnServersResponse>.SuccessResponse(
-            serversList.Adapt<OpenVpnServersResponse>()));
+        var serversList = await openVpnServerQueryService.GetAll(includeDeleted, ct);
+        var response = serversList.Adapt<OpenVpnServersResponse>();
+        if (serversList.Count > 0)
+        {
+            var tagNamesByServer = await openVpnServerTagQueryService.GetTagNamesByVpnServerIds(serversList.Select(s => s.Id).ToList(), ct);
+            for (var i = 0; i < response.OpenVpnServers.Count; i++)
+                response.OpenVpnServers[i].Tags = tagNamesByServer.GetValueOrDefault(serversList[i].Id, []);
+        }
+        return Ok(ApiResponse<OpenVpnServersResponse>.SuccessResponse(response));
     }
 
     [HttpGet("get/{VpnServerId:int}")]
@@ -76,8 +87,11 @@ public class OpenVpnServersController(IVpnDataService vpnDataService,
         [FromRoute] GetServerRequest request, CancellationToken ct)
     {
         var server = await openVpnServerQueryService.GetById(request.VpnServerId, ct);
-
-        return Ok(ApiResponse<OpenVpnServerResponse>.SuccessResponse(server.Adapt<OpenVpnServerResponse>()));
+        if (server == null)
+            return NotFound();
+        var response = server.Adapt<OpenVpnServerResponse>();
+        response.OpenVpnServer.Tags = await openVpnServerTagQueryService.GetTagNamesByVpnServerId(request.VpnServerId, ct);
+        return Ok(ApiResponse<OpenVpnServerResponse>.SuccessResponse(response));
     }
 
     [Authorize(Roles = "Admin,App")]
@@ -85,9 +99,10 @@ public class OpenVpnServersController(IVpnDataService vpnDataService,
     public async Task<ActionResult<ApiResponse<OpenVpnServerResponse>>> AddServer(
         [FromBody] AddServerRequest request, CancellationToken ct)
     {
-        var newServer = await vpnDataService.AddOpenVpnServer(request.Adapt<OpenVpnServer>(), request.QuotaPlanIds, ct);
-
-        return Ok(ApiResponse<OpenVpnServerResponse>.SuccessResponse(newServer.Adapt<OpenVpnServerResponse>()));
+        var newServer = await vpnDataService.AddOpenVpnServer(request.Adapt<OpenVpnServer>(), request.QuotaPlanIds, request.TagIds, ct);
+        var response = newServer.Adapt<OpenVpnServerResponse>();
+        response.OpenVpnServer.Tags = await openVpnServerTagQueryService.GetTagNamesByVpnServerId(newServer.Id, ct);
+        return Ok(ApiResponse<OpenVpnServerResponse>.SuccessResponse(response));
     }
 
     [Authorize(Roles = "Admin,App")]
@@ -95,11 +110,11 @@ public class OpenVpnServersController(IVpnDataService vpnDataService,
     public async Task<ActionResult<ApiResponse<OpenVpnServerResponse>>> UpdateServer(
         [FromBody] UpdateServerRequest request, CancellationToken ct)
     {
-        var updatedServer = await vpnDataService.UpdateOpenVpnServer(request.Adapt<OpenVpnServer>(), 
-            request.QuotaPlanIds, ct);
-
-        return Ok(ApiResponse<OpenVpnServerResponse>.SuccessResponse(
-            updatedServer.Adapt<OpenVpnServerResponse>()));
+        var updatedServer = await vpnDataService.UpdateOpenVpnServer(request.Adapt<OpenVpnServer>(),
+            request.QuotaPlanIds, request.TagIds, ct);
+        var response = updatedServer.Adapt<OpenVpnServerResponse>();
+        response.OpenVpnServer.Tags = await openVpnServerTagQueryService.GetTagNamesByVpnServerId(updatedServer.Id, ct);
+        return Ok(ApiResponse<OpenVpnServerResponse>.SuccessResponse(response));
     }
 
     [Authorize(Roles = "Admin,App")]
@@ -140,5 +155,19 @@ public class OpenVpnServersController(IVpnDataService vpnDataService,
         }
 
         return Ok(ApiResponse<string>.SuccessResponse("OpenVPN background task executed immediately."));
+    }
+
+    private async Task FillTagsForOverviewResponse(OpenVpnServerWithStatusesResponse response, CancellationToken ct)
+    {
+        if (response.OpenVpnServerWithStatuses.Count == 0) return;
+        var ids = response.OpenVpnServerWithStatuses
+            .Select(x => x.OpenVpnServerResponses.OpenVpnServer.Id)
+            .ToList();
+        var tagNamesByServer = await openVpnServerTagQueryService.GetTagNamesByVpnServerIds(ids, ct);
+        foreach (var item in response.OpenVpnServerWithStatuses)
+        {
+            var id = item.OpenVpnServerResponses.OpenVpnServer.Id;
+            item.OpenVpnServerResponses.OpenVpnServer.Tags = tagNamesByServer.GetValueOrDefault(id, []);
+        }
     }
 }

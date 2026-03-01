@@ -1,6 +1,7 @@
-﻿using OpenVPNGateMonitor.DataBase.Services.Command.Interfaces;
+using OpenVPNGateMonitor.DataBase.Services.Command.Interfaces;
 using OpenVPNGateMonitor.Models;
 using OpenVPNGateMonitor.Services.BackgroundServices.Interfaces;
+using OpenVPNGateMonitor.Services.DataGateOpenVpnManager.Interfaces;
 
 namespace OpenVPNGateMonitor.Services.BackgroundServices;
 
@@ -25,6 +26,9 @@ public class OpenVpnServerProcessor(
 
             logger.LogInformation("Saving connected clients for {Url}", openVpnServer.ApiUrl);
             await openVpnServerService.SaveConnectedClientsAsync(openVpnServer, ct);
+
+            logger.LogInformation("Fetching and saving conflog for {Url}", openVpnServer.ApiUrl);
+            await scope.ServiceProvider.GetRequiredService<IOpenVpnServerConflogService>().FetchAndSaveIfChangedByServerIdAsync(openVpnServer.Id, ct);
 
             // Set IsOnline = true (server-side update, no entity tracking)
             var now = DateTimeOffset.UtcNow;

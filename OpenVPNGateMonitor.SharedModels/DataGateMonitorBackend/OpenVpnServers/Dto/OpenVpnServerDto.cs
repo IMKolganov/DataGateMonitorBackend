@@ -1,4 +1,4 @@
-﻿namespace OpenVPNGateMonitor.SharedModels.DataGateMonitorBackend.OpenVpnServers.Dto;
+namespace OpenVPNGateMonitor.SharedModels.DataGateMonitorBackend.OpenVpnServers.Dto;
 
 public class OpenVpnServerDto
 {
@@ -12,4 +12,6 @@ public class OpenVpnServerDto
     public bool IsEnableWss { get; set; } = false;
     public DateTimeOffset CreateDate { get; set; }
     public DateTimeOffset LastUpdate { get; set; }
+    public bool IsDeleted { get; set; }
+    public List<string> Tags { get; set; } = [];
 }
