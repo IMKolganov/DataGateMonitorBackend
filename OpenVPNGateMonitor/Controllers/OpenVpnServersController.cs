@@ -1,16 +1,17 @@
-﻿using System.Net.WebSockets;
+using System.Net.WebSockets;
 using System.Text;
 using Mapster;
 using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Mvc;
-using Newtonsoft.Json;
 using OpenVPNGateMonitor.DataBase.Services.Query.OpenVpnServerTable;
 using OpenVPNGateMonitor.Models;
 using OpenVPNGateMonitor.Services.Api.Interfaces;
 using OpenVPNGateMonitor.Services.BackgroundServices.Interfaces;
+using OpenVPNGateMonitor.Services.DataGateOpenVpnManager.Interfaces;
 using OpenVPNGateMonitor.SharedModels.DataGateMonitorBackend.OpenVpnServers.Dto;
 using OpenVPNGateMonitor.SharedModels.DataGateMonitorBackend.OpenVpnServers.Requests;
 using OpenVPNGateMonitor.SharedModels.DataGateMonitorBackend.OpenVpnServers.Responses;
+using OpenVPNGateMonitor.SharedModels.DataGateOpenVpnManager.Info;
 using OpenVPNGateMonitor.SharedModels.Enums;
 using OpenVPNGateMonitor.SharedModels.Responses;
 
@@ -21,7 +22,8 @@ namespace OpenVPNGateMonitor.Controllers;
 [Authorize]
 public class OpenVpnServersController(IVpnDataService vpnDataService,
     IOpenVpnServerOverviewQuery openVpnServerOverviewQuery, IOpenVpnServerQueryService openVpnServerQueryService,
-    IOpenVpnBackgroundService openVpnBackgroundService) : BaseController
+    IOpenVpnBackgroundService openVpnBackgroundService,
+    IMicroserviceInfoService microserviceInfoService) : BaseController
 {
     [HttpGet("get-all-with-status")]
     public async Task<ActionResult<ApiResponse<OpenVpnServerWithStatusesResponse>>> GetAllServersWithStatus(
@@ -40,6 +42,23 @@ public class OpenVpnServersController(IVpnDataService vpnDataService,
 
         return Ok(ApiResponse<OpenVpnServerWithStatusResponse>.SuccessResponse(
             serverInfo.Adapt<OpenVpnServerWithStatusResponse>()));
+    }
+
+    [HttpGet("get-microservice-info/{VpnServerId:int}")]
+    public async Task<ActionResult<ApiResponse<RootInfoResponse>>> GetMicroserviceInfo(
+        [FromRoute] int vpnServerId, CancellationToken ct)
+    {
+        var info = await microserviceInfoService.GetInfoAsync(vpnServerId, ct);
+        return Ok(ApiResponse<RootInfoResponse>.SuccessResponse(info));
+    }
+
+    [Authorize(Roles = "Admin,App")]
+    [HttpGet("get-microservice-info-by-url")]
+    public async Task<ActionResult<ApiResponse<RootInfoResponse>>> GetMicroserviceInfoByUrl(
+        [FromQuery] string baseUrl, CancellationToken ct)
+    {
+        var info = await microserviceInfoService.GetInfoByUrlAsync(baseUrl, ct);
+        return Ok(ApiResponse<RootInfoResponse>.SuccessResponse(info));
     }
 
     [HttpGet("get-all")]
