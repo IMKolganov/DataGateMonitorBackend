@@ -80,7 +80,8 @@ public static class ServiceConfiguration
         services.AddScoped<ICertApiClient, CertApiClient>();
         services.AddScoped<IOvpnFileApiClient, OvpnFileApiClient>();
         services.AddScoped<IOvpnFileApiService, OvpnFileApiService>();
-        
+        services.AddScoped<IMicroserviceInfoService, MicroserviceInfoService>();
+
         services.AddSingleton<IOpenVpnMicroserviceClientFactory, OpenVpnMicroserviceClientFactory>();
 
         #endregion
