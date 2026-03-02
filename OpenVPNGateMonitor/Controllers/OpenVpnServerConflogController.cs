@@ -1,3 +1,4 @@
+using Mapster;
 using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Mvc;
 using OpenVPNGateMonitor.DataBase.Services.Query.OpenVpnServerConflogTable;
@@ -27,7 +28,7 @@ public class OpenVpnServerConflogController(
             request.BaseUrl, request.VpnServerId, ct);
         var response = entity == null
             ? null
-            : new OpenVpnServerConflogResponse { Item = ToDto(entity) };
+            : new OpenVpnServerConflogResponse { Item = entity.Adapt<OpenVpnServerConflogDto>() };
         return Ok(ApiResponse<OpenVpnServerConflogResponse?>.SuccessResponse(response));
     }
 
@@ -40,7 +41,7 @@ public class OpenVpnServerConflogController(
         var entity = await conflogService.FetchAndSaveIfChangedByServerIdAsync(vpnServerId, ct);
         var response = entity == null
             ? null
-            : new OpenVpnServerConflogResponse { Item = ToDto(entity) };
+            : new OpenVpnServerConflogResponse { Item = entity.Adapt<OpenVpnServerConflogDto>() };
         return Ok(ApiResponse<OpenVpnServerConflogResponse?>.SuccessResponse(response));
     }
 
@@ -52,7 +53,7 @@ public class OpenVpnServerConflogController(
         if (entity == null)
             return NotFound(ApiResponse<OpenVpnServerConflogResponse>.ErrorResponse("Conflog record not found"));
         return Ok(ApiResponse<OpenVpnServerConflogResponse>.SuccessResponse(
-            new OpenVpnServerConflogResponse { Item = ToDto(entity) }));
+            new OpenVpnServerConflogResponse { Item = entity.Adapt<OpenVpnServerConflogDto>() }));
     }
 
     /// <summary>Get conflog history by VPN server id (paged, newest first).</summary>
@@ -69,7 +70,7 @@ public class OpenVpnServerConflogController(
             Page = paged.Page,
             PageSize = paged.PageSize,
             TotalCount = paged.TotalCount,
-            Items = paged.Items.Select(ToDto).ToList()
+            Items = paged.Items.Adapt<List<OpenVpnServerConflogDto>>()
         };
         return Ok(ApiResponse<OpenVpnServerConflogPageResponse>.SuccessResponse(response));
     }
@@ -87,17 +88,8 @@ public class OpenVpnServerConflogController(
             Page = paged.Page,
             PageSize = paged.PageSize,
             TotalCount = paged.TotalCount,
-            Items = paged.Items.Select(ToDto).ToList()
+            Items = paged.Items.Adapt<List<OpenVpnServerConflogDto>>()
         };
         return Ok(ApiResponse<OpenVpnServerConflogPageResponse>.SuccessResponse(response));
     }
-
-    private static OpenVpnServerConflogDto ToDto(OpenVpnServerConflog e) => new()
-    {
-        Id = e.Id,
-        VpnServerId = e.VpnServerId,
-        RequestUrl = e.RequestUrl,
-        PayloadJson = e.PayloadJson,
-        CreateDate = e.CreateDate
-    };
 }
