@@ -14,6 +14,7 @@ using OpenVPNGateMonitor.Services.OpenVpnManagementInterfaces;
 using OpenVPNGateMonitor.Services.OpenVpnManagementInterfaces.Interfaces;
 using OpenVPNGateMonitor.Services.Others;
 using OpenVPNGateMonitor.Services.QuotaPlans;
+using OpenVPNGateMonitor.Services.Tags;
 using OpenVPNGateMonitor.Services.Users;
 using OpenVPNGateMonitor.Services.Users.Interfaces;
 
@@ -71,6 +72,7 @@ public static class ServiceConfiguration
         
         services.AddScoped<IQuotaPlanService, QuotaPlanService>();
         services.AddScoped<IQuotaPlanAllowedServerService, QuotaPlanAllowedServerService>();
+        services.AddScoped<ITagService, TagService>();
         
         services.AddScoped<IUserCredentialQueryService, UserCredentialQueryService>();
         
@@ -81,6 +83,7 @@ public static class ServiceConfiguration
         services.AddScoped<IOvpnFileApiClient, OvpnFileApiClient>();
         services.AddScoped<IOvpnFileApiService, OvpnFileApiService>();
         services.AddScoped<IMicroserviceInfoService, MicroserviceInfoService>();
+        services.AddScoped<IOpenVpnServerConflogService, OpenVpnServerConflogService>();
 
         services.AddSingleton<IOpenVpnMicroserviceClientFactory, OpenVpnMicroserviceClientFactory>();
 

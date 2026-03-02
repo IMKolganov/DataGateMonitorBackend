@@ -13,8 +13,11 @@ using OpenVPNGateMonitor.DataBase.Services.Query.OpenVpnServerEventLogTable;
 using OpenVPNGateMonitor.DataBase.Services.Query.OpenVpnServerOvpnFileConfigTable;
 using OpenVPNGateMonitor.DataBase.Services.Query.OpenVpnServerStatusLogTable;
 using OpenVPNGateMonitor.DataBase.Services.Query.OpenVpnServerTable;
+using OpenVPNGateMonitor.DataBase.Services.Query.OpenVpnServerConflogTable;
+using OpenVPNGateMonitor.DataBase.Services.Query.OpenVpnServerTagTable;
 using OpenVPNGateMonitor.DataBase.Services.Query.QuotaPlanAllowedServerTable;
 using OpenVPNGateMonitor.DataBase.Services.Query.QuotaPlanTable;
+using OpenVPNGateMonitor.DataBase.Services.Query.TagTable;
 using OpenVPNGateMonitor.DataBase.Services.Query.RoleTable;
 using OpenVPNGateMonitor.DataBase.Services.Query.TelegramBotUserTable;
 using OpenVPNGateMonitor.DataBase.Services.Query.TelegramUserLanguagePreferenceTable;
@@ -64,7 +67,10 @@ public static class QueryCommandConfiguration
         services.AddScoped<IRoleQueryService, RoleQueryService>();
         services.AddScoped<IUserQuotaPlanQueryService, UserQuotaPlanQueryService>();
         services.AddScoped<IQuotaPlanAllowedServerQueryService, QuotaPlanAllowedServerQueryService>();
-        
+        services.AddScoped<ITagQueryService, TagQueryService>();
+        services.AddScoped<IOpenVpnServerTagQueryService, OpenVpnServerTagQueryService>();
+        services.AddScoped<IOpenVpnServerConflogQueryService, OpenVpnServerConflogQueryService>();
+
         services.AddScoped<IUserRefreshTokenQueryService, UserRefreshTokenQueryService>();
         
         services.AddScoped<IDeviceQueryService, DeviceQueryService>();

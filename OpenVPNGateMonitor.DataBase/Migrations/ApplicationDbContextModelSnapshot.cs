@@ -18,7 +18,7 @@ namespace OpenVPNGateMonitor.DataBase.Migrations
 #pragma warning disable 612, 618
             modelBuilder
                 .HasDefaultSchema("xgb_dashopnvpn")
-                .HasAnnotation("ProductVersion", "10.0.1")
+                .HasAnnotation("ProductVersion", "10.0.3")
                 .HasAnnotation("Relational:MaxIdentifierLength", 63);
 
             NpgsqlModelBuilderExtensions.UseIdentityByDefaultColumns(modelBuilder);
@@ -1119,6 +1119,11 @@ namespace OpenVPNGateMonitor.DataBase.Migrations
                     b.Property<bool>("IsDefault")
                         .HasColumnType("boolean");
 
+                    b.Property<bool>("IsDeleted")
+                        .ValueGeneratedOnAdd()
+                        .HasColumnType("boolean")
+                        .HasDefaultValue(false);
+
                     b.Property<bool>("IsDisable")
                         .HasColumnType("boolean");
 
@@ -1149,6 +1154,8 @@ namespace OpenVPNGateMonitor.DataBase.Migrations
 
                     b.HasIndex("IsDefault");
 
+                    b.HasIndex("IsDeleted");
+
                     b.HasIndex("IsDisable");
 
                     b.HasIndex("IsEnableWss");
@@ -1169,6 +1176,7 @@ namespace OpenVPNGateMonitor.DataBase.Migrations
                             ApiUrl = "http://openvpn_udp:5010/",
                             CreateDate = new DateTimeOffset(new DateTime(1, 1, 1, 0, 0, 0, 0, DateTimeKind.Unspecified), new TimeSpan(0, 0, 0, 0, 0)),
                             IsDefault = true,
+                            IsDeleted = false,
                             IsDisable = false,
                             IsEnableWss = false,
                             IsOnline = false,
@@ -1183,6 +1191,7 @@ namespace OpenVPNGateMonitor.DataBase.Migrations
                             ApiUrl = "http://openvpn_tcp:5011/",
                             CreateDate = new DateTimeOffset(new DateTime(1, 1, 1, 0, 0, 0, 0, DateTimeKind.Unspecified), new TimeSpan(0, 0, 0, 0, 0)),
                             IsDefault = false,
+                            IsDeleted = false,
                             IsDisable = false,
                             IsEnableWss = false,
                             IsOnline = false,
@@ -1362,6 +1371,47 @@ namespace OpenVPNGateMonitor.DataBase.Migrations
                         .HasDatabaseName("UX_ClientTraffic_Server_Session_At");
 
                     b.ToTable("OpenVpnServerClientTraffics", "xgb_dashopnvpn");
+                });
+
+            modelBuilder.Entity("OpenVPNGateMonitor.Models.OpenVpnServerConflog", b =>
+                {
+                    b.Property<int>("Id")
+                        .ValueGeneratedOnAdd()
+                        .HasColumnType("integer");
+
+                    NpgsqlPropertyBuilderExtensions.UseIdentityByDefaultColumn(b.Property<int>("Id"));
+
+                    b.Property<DateTimeOffset>("CreateDate")
+                        .ValueGeneratedOnAdd()
+                        .HasColumnType("timestamp with time zone")
+                        .HasDefaultValueSql("CURRENT_TIMESTAMP");
+
+                    b.Property<DateTimeOffset>("LastUpdate")
+                        .ValueGeneratedOnAdd()
+                        .HasColumnType("timestamp with time zone")
+                        .HasDefaultValueSql("CURRENT_TIMESTAMP");
+
+                    b.Property<string>("PayloadJson")
+                        .IsRequired()
+                        .HasColumnType("text");
+
+                    b.Property<string>("RequestUrl")
+                        .IsRequired()
+                        .HasMaxLength(512)
+                        .HasColumnType("character varying(512)");
+
+                    b.Property<int?>("VpnServerId")
+                        .HasColumnType("integer");
+
+                    b.HasKey("Id");
+
+                    b.HasIndex("CreateDate");
+
+                    b.HasIndex("RequestUrl");
+
+                    b.HasIndex("VpnServerId");
+
+                    b.ToTable("OpenVpnServerConflogs", "xgb_dashopnvpn");
                 });
 
             modelBuilder.Entity("OpenVPNGateMonitor.Models.OpenVpnServerEventLog", b =>
@@ -1579,6 +1629,36 @@ namespace OpenVPNGateMonitor.DataBase.Migrations
                         .HasDatabaseName("IX_ServerStatusLogs_Server_Session");
 
                     b.ToTable("OpenVpnServerStatusLogs", "xgb_dashopnvpn");
+                });
+
+            modelBuilder.Entity("OpenVPNGateMonitor.Models.OpenVpnServerTag", b =>
+                {
+                    b.Property<int>("TagId")
+                        .HasColumnType("integer");
+
+                    b.Property<int>("VpnServerId")
+                        .HasColumnType("integer");
+
+                    b.Property<DateTimeOffset>("CreateDate")
+                        .ValueGeneratedOnAdd()
+                        .HasColumnType("timestamp with time zone")
+                        .HasDefaultValueSql("CURRENT_TIMESTAMP");
+
+                    b.Property<int>("Id")
+                        .HasColumnType("integer");
+
+                    b.Property<DateTimeOffset>("LastUpdate")
+                        .ValueGeneratedOnAdd()
+                        .HasColumnType("timestamp with time zone")
+                        .HasDefaultValueSql("CURRENT_TIMESTAMP");
+
+                    b.HasKey("TagId", "VpnServerId");
+
+                    b.HasIndex("TagId");
+
+                    b.HasIndex("VpnServerId");
+
+                    b.ToTable("OpenVpnServerTags", "xgb_dashopnvpn");
                 });
 
             modelBuilder.Entity("OpenVPNGateMonitor.Models.QuotaPlan", b =>
@@ -1980,6 +2060,37 @@ namespace OpenVPNGateMonitor.DataBase.Migrations
                             StringValue = "string",
                             ValueType = "string"
                         });
+                });
+
+            modelBuilder.Entity("OpenVPNGateMonitor.Models.Tag", b =>
+                {
+                    b.Property<int>("Id")
+                        .ValueGeneratedOnAdd()
+                        .HasColumnType("integer");
+
+                    NpgsqlPropertyBuilderExtensions.UseIdentityByDefaultColumn(b.Property<int>("Id"));
+
+                    b.Property<DateTimeOffset>("CreateDate")
+                        .ValueGeneratedOnAdd()
+                        .HasColumnType("timestamp with time zone")
+                        .HasDefaultValueSql("CURRENT_TIMESTAMP");
+
+                    b.Property<DateTimeOffset>("LastUpdate")
+                        .ValueGeneratedOnAdd()
+                        .HasColumnType("timestamp with time zone")
+                        .HasDefaultValueSql("CURRENT_TIMESTAMP");
+
+                    b.Property<string>("Name")
+                        .IsRequired()
+                        .HasMaxLength(64)
+                        .HasColumnType("character varying(64)");
+
+                    b.HasKey("Id");
+
+                    b.HasIndex("Name")
+                        .IsUnique();
+
+                    b.ToTable("Tags", "xgb_dashopnvpn");
                 });
 
             modelBuilder.Entity("OpenVPNGateMonitor.Models.TelegramBotUser", b =>
