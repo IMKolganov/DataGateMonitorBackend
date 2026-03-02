@@ -19,11 +19,12 @@ public class VpnDataService(
     ICommandService<OpenVpnServer, int> openVpnServerCommandService,
     ICommandService<OpenVpnServerOvpnFileConfig, int> openVpnServerOvpnFileConfigCommandService,
     ICommandService<QuotaPlanAllowedServer, int> quotaPlanAllowedServerCommandService,
+    ICommandService<OpenVpnServerTag, int> openVpnServerTagCommandService,
     IServerOpenVpnNotificationService serverOpenVpnNotificationService,
     IOpenVpnMicroserviceClientFactory microserviceClientFactory,
     IOpenVpnEventClientFactory eventClientFactory) : IVpnDataService
 {
-    public async Task<OpenVpnServer> AddOpenVpnServer(OpenVpnServer server, List<int> quotaPlanIds, CancellationToken ct)
+    public async Task<OpenVpnServer> AddOpenVpnServer(OpenVpnServer server, List<int> quotaPlanIds, List<int> tagIds, CancellationToken ct)
     {
         var result = await transactionRunner.RunAsync(async _ =>
         {
@@ -45,6 +46,7 @@ public class VpnDataService(
             await openVpnServerCommandService.Add(server, saveChanges: true, ct);
 
             await SyncQuotaPlanLinksAsync(server.Id, quotaPlanIds, ct);
+            await SyncTagLinksAsync(server.Id, tagIds, ct);
 
             // Additional writes that must be part of the same transaction
             if (!await CheckAndPutDefaultExpiredSettings(server, ct))
@@ -60,7 +62,7 @@ public class VpnDataService(
     }
 
 
-    public async Task<OpenVpnServer> UpdateOpenVpnServer(OpenVpnServer server, List<int> quotaPlanIds, CancellationToken ct)
+    public async Task<OpenVpnServer> UpdateOpenVpnServer(OpenVpnServer server, List<int> quotaPlanIds, List<int> tagIds, CancellationToken ct)
     {
         var result = await transactionRunner.RunAsync(async _ =>
         {
@@ -81,6 +83,7 @@ public class VpnDataService(
             await openVpnServerCommandService.Update(server, saveChanges: true, ct);
 
             await SyncQuotaPlanLinksAsync(server.Id, quotaPlanIds, ct);
+            await SyncTagLinksAsync(server.Id, tagIds, ct);
 
             // Additional writes in the same transaction
             if (!await CheckAndPutDefaultExpiredSettings(server, ct))
@@ -102,7 +105,11 @@ public class VpnDataService(
     {
         var openVpnServer = await openVpnServerQueryService.GetById(vpnServerId, ct)
                             ?? throw new InvalidOperationException("OpenVpnServer not found");
-        await openVpnServerCommandService.Delete(openVpnServer, true, ct);
+        var now = DateTimeOffset.UtcNow;
+        await openVpnServerCommandService.UpdateWhere(
+            x => x.Id == vpnServerId,
+            u => u.SetProperty(x => x.IsDeleted, true).SetProperty(x => x.LastUpdate, now),
+            ct);
         await serverOpenVpnNotificationService.NotifyDeleted(openVpnServer.Id, openVpnServer.ServerName, ct);
         microserviceClientFactory.Invalidate(openVpnServer.Id);
         eventClientFactory.Remove(openVpnServer.Id);
@@ -150,5 +157,29 @@ public class VpnDataService(
             .ToList();
 
         await quotaPlanAllowedServerCommandService.AddRange(links, saveChanges: true, ct);
+    }
+
+    private async Task SyncTagLinksAsync(
+        int vpnServerId,
+        IReadOnlyCollection<int> tagIds,
+        CancellationToken ct)
+    {
+        await openVpnServerTagCommandService.DeleteWhere(
+            x => x.VpnServerId == vpnServerId,
+            ct);
+
+        if (tagIds.Count == 0)
+            return;
+
+        var links = tagIds
+            .Distinct()
+            .Select(tagId => new OpenVpnServerTag
+            {
+                VpnServerId = vpnServerId,
+                TagId = tagId
+            })
+            .ToList();
+
+        await openVpnServerTagCommandService.AddRange(links, saveChanges: true, ct);
     }
 }

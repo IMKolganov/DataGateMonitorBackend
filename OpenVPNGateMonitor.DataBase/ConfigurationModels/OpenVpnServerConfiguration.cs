@@ -1,5 +1,6 @@
-﻿using OpenVPNGateMonitor.Models;
+using Microsoft.EntityFrameworkCore;
 using Microsoft.EntityFrameworkCore.Metadata.Builders;
+using OpenVPNGateMonitor.Models;
 using OpenVPNGateMonitor.DataBase.ConfigurationModels.Seeds;
 
 namespace OpenVPNGateMonitor.DataBase.ConfigurationModels;
@@ -27,6 +28,8 @@ public class OpenVpnServerConfiguration : BaseEntityConfiguration<OpenVpnServer,
             .HasPrecision(9, 6);
         
         entity.Property(e => e.IsEnableWss);
+        entity.Property(e => e.IsDeleted)
+            .HasDefaultValue(false);
 
         // Indexes
         entity.HasIndex(e => e.ServerName)
@@ -41,6 +44,7 @@ public class OpenVpnServerConfiguration : BaseEntityConfiguration<OpenVpnServer,
         entity.HasIndex(e => e.IsEnableWss);
 
         entity.HasIndex(e => new { e.Latitude, e.Longitude });
+        entity.HasIndex(e => e.IsDeleted);
 
         // Seed data
         entity.HasData(OpenVpnServerSeedData.Data);

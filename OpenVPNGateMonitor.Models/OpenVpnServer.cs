@@ -1,4 +1,4 @@
-﻿namespace OpenVPNGateMonitor.Models;
+namespace OpenVPNGateMonitor.Models;
 
 public class OpenVpnServer : BaseEntity<int>
 {
@@ -10,4 +10,5 @@ public class OpenVpnServer : BaseEntity<int>
     public double? Latitude { get; set; }
     public double? Longitude { get; set; }
     public bool IsEnableWss { get; set; } = false;
+    public bool IsDeleted { get; set; } = false;
 }

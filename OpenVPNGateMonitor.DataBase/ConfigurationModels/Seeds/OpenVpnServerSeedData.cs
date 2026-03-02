@@ -1,4 +1,4 @@
-﻿using OpenVPNGateMonitor.Models;
+using OpenVPNGateMonitor.Models;
 
 namespace OpenVPNGateMonitor.DataBase.ConfigurationModels.Seeds;
 
@@ -17,6 +17,7 @@ public static class OpenVpnServerSeedData
             Latitude = 35.1856,   // Nicosia, Cyprus
             Longitude = 33.3823,
             IsEnableWss = false,
+            IsDeleted = false,
         },
         new OpenVpnServer
         {
@@ -29,6 +30,7 @@ public static class OpenVpnServerSeedData
             Latitude = 55.7558,   // Moscow, Russia
             Longitude = 37.6173,
             IsEnableWss = false,
+            IsDeleted = false,
         },
     };
 }

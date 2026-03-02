@@ -1,6 +1,9 @@
-﻿using Mapster;
+using System.Text.Json;
+using Mapster;
 using OpenVPNGateMonitor.Models;
 using OpenVPNGateMonitor.SharedModels.DataGateMonitorBackend.OpenVpnFiles.Requests;
+using OpenVPNGateMonitor.SharedModels.DataGateMonitorBackend.OpenVpnServerConflog.Dto;
+using OpenVPNGateMonitor.SharedModels.DataGateOpenVpnManager.Info;
 using OpenVPNGateMonitor.SharedModels.DataGateOpenVpnManager.OvpnFile.Requests;
 using OpenVPNGateMonitor.SharedModels.DataGateOpenVpnManager.OvpnFile.Responses;
 
@@ -8,8 +11,17 @@ namespace OpenVPNGateMonitor.Mapping.DataGateOpenVpnManager.Mappings;
 
 public class DataGateOpenVpnManagerMapping : IRegister
 {
+    private static readonly JsonSerializerOptions ConflogJsonOptions = new()
+    {
+        PropertyNameCaseInsensitive = true,
+        PropertyNamingPolicy = JsonNamingPolicy.CamelCase
+    };
+
     public void Register(TypeAdapterConfig config)
     {
+        config.NewConfig<OpenVpnServerConflog, OpenVpnServerConflogDto>()
+            .Map(d => d.Payload, s => DeserializePayload(s.PayloadJson));
+
         // 1) AddFileRequest -> GenerateOvpnFileRequest
         config.NewConfig<AddFileRequest, GenerateOvpnFileRequest>()
             .Map(dest => dest.CommonName,    src => src.CommonName)
@@ -41,5 +53,19 @@ public class DataGateOpenVpnManagerMapping : IRegister
             .Map(d => d.Message, _ => string.Empty)
             // Common BaseEntity fields usually set by EF/DB triggers
             .Ignore(d => d.Id);
+    }
+
+    private static RootInfoResponse? DeserializePayload(string? payloadJson)
+    {
+        if (string.IsNullOrWhiteSpace(payloadJson))
+            return null;
+        try
+        {
+            return JsonSerializer.Deserialize<RootInfoResponse>(payloadJson, ConflogJsonOptions);
+        }
+        catch (JsonException)
+        {
+            return null;
+        }
     }
 }
