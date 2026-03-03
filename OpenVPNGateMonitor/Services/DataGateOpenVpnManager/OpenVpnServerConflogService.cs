@@ -23,6 +23,8 @@ public class OpenVpnServerConflogService(
     public async Task<OpenVpnServerConflog?> FetchAndSaveIfChangedAsync(string baseUrl, int? vpnServerId, CancellationToken ct = default)
     {
         var response = await microserviceInfoService.GetInfoByUrlAsync(baseUrl, ct);
+        if (response is null)
+            return null;
         var payloadJson = JsonSerializer.Serialize(response, JsonOptions);
         var requestUrl = baseUrl.TrimEnd('/').Trim();
 

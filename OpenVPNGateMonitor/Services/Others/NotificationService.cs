@@ -84,21 +84,18 @@ public class NotificationService(
         if (recipients.Count > 0)
             await notificationRecipientCommandServices.AddRange(recipients, saveChanges: true, ct);
 
-        // 5) Fan-out sending (best-effort)
+        // 5) Fan-out sending (best-effort). Sequential to avoid NpgsqlOperationInProgressException (single DbContext/connection).
         if (activeNotifiers.Count > 0)
         {
-            var tasks = new List<Task>(adminUserIds.Count * activeNotifiers.Count);
-            foreach (var adminUserId in adminUserIds)
-            {
-                foreach (var notifier in activeNotifiers)
-                {
-                    tasks.Add(SendSafe(notifier, created, adminUserId, ct));
-                }
-            }
-
             try
             {
-                await Task.WhenAll(tasks);
+                foreach (var adminUserId in adminUserIds)
+                {
+                    foreach (var notifier in activeNotifiers)
+                    {
+                        await SendSafe(notifier, created, adminUserId, ct);
+                    }
+                }
             }
             catch (Exception ex)
             {

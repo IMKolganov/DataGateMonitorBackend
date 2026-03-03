@@ -63,6 +63,8 @@ public class OpenVpnServersController(IVpnDataService vpnDataService,
         [FromQuery] string baseUrl, CancellationToken ct)
     {
         var info = await microserviceInfoService.GetInfoByUrlAsync(baseUrl, ct);
+        if (info is null)
+            return NotFound(ApiResponse<RootInfoResponse>.ErrorResponse("Microservice info endpoint not found (404)."));
         return Ok(ApiResponse<RootInfoResponse>.SuccessResponse(info));
     }
 

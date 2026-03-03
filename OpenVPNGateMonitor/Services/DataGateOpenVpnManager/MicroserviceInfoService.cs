@@ -39,7 +39,7 @@ public class MicroserviceInfoService(
         return result;
     }
 
-    public async Task<RootInfoResponse> GetInfoByUrlAsync(string baseUrl, CancellationToken cancellationToken)
+    public async Task<RootInfoResponse?> GetInfoByUrlAsync(string baseUrl, CancellationToken cancellationToken)
     {
         if (string.IsNullOrWhiteSpace(baseUrl))
             throw new ArgumentException("Base URL is required.", nameof(baseUrl));
@@ -57,7 +57,17 @@ public class MicroserviceInfoService(
         client.DefaultRequestHeaders.Authorization = new AuthenticationHeaderValue("Bearer", jwt);
 
         var response = await client.GetAsync(EndpointInfo, cancellationToken);
-        response.EnsureSuccessStatusCode();
+        if (!response.IsSuccessStatusCode)
+        {
+            if (response.StatusCode == System.Net.HttpStatusCode.NotFound)
+            {
+                logger.LogDebug(
+                    "Microservice info endpoint not found (404) for {Host}. Server may not be updated yet. Conflog skipped.",
+                    uri.Host);
+                return (RootInfoResponse?)null;
+            }
+            response.EnsureSuccessStatusCode();
+        }
 
         var result = await response.Content.ReadFromJsonAsync<RootInfoResponse>(cancellationToken)
                      ?? throw new InvalidOperationException("Microservice returned empty info response");
