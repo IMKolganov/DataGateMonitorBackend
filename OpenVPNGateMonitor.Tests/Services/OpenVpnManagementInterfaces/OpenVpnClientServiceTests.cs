@@ -23,11 +23,11 @@ public class OpenVpnClientServiceTests
         return new OpenVpnClientService(loggerMock.Object, factoryMock.Object, geoMock.Object);
     }
 
-    private static async Task<List<OpenVpnServerClient>> InvokeParseStatusAsync(OpenVpnClientService svc, string data)
+    private static async Task<OpenVpnManagementStatusResult> InvokeParseStatusAsync(OpenVpnClientService svc, string data)
     {
         var mi = typeof(OpenVpnClientService)
             .GetMethod("ParseStatus", BindingFlags.Instance | BindingFlags.NonPublic)!;
-        var task = (Task<List<OpenVpnServerClient>>)mi.Invoke(svc, new object[] { data, CancellationToken.None })!;
+        var task = (Task<OpenVpnManagementStatusResult>)mi.Invoke(svc, new object[] { data, CancellationToken.None })!;
         return await task.ConfigureAwait(false);
     }
 
@@ -70,10 +70,12 @@ public class OpenVpnClientServiceTests
                               "END\n";
 
         // Act
-        var clientsFirst = await InvokeParseStatusAsync(svc, sample);
+        var parseResult = await InvokeParseStatusAsync(svc, sample);
+        var clientsFirst = parseResult.Clients;
 
         // Assert base parsing
         Assert.Equal(2, clientsFirst.Count);
+        Assert.True(parseResult.DcoEnabled); // GLOBAL_STATS dco_enabled 1
 
         var c1 = clientsFirst[0];
         Assert.Equal("client-a", c1.CommonName);
@@ -107,14 +109,24 @@ public class OpenVpnClientServiceTests
         Assert.NotEqual(Guid.Empty, c2.SessionId);
 
         // Act again to verify SessionId stability
-        var clientsSecond = await InvokeParseStatusAsync(svc, sample);
-        Assert.Equal(2, clientsSecond.Count);
+        var resultSecond = await InvokeParseStatusAsync(svc, sample);
+        Assert.Equal(2, resultSecond.Clients.Count);
 
-        Assert.Equal(c1.SessionId, clientsSecond[0].SessionId);
-        Assert.Equal(c2.SessionId, clientsSecond[1].SessionId);
+        Assert.Equal(c1.SessionId, resultSecond.Clients[0].SessionId);
+        Assert.Equal(c2.SessionId, resultSecond.Clients[1].SessionId);
 
         // Verify geo lookup calls occurred (2 clients x 2 invocations = 4 calls)
         geoMock.Verify(x => x.GetGeoInfoAsync(It.IsAny<string>(), It.IsAny<CancellationToken>()), Times.Exactly(4));
+    }
+
+    [Fact]
+    public async Task ParseStatus_GLOBAL_STATS_DcoEnabledZero_SetsDcoEnabledFalse()
+    {
+        var svc = CreateService(out _, out _, out _);
+        const string sample = "GLOBAL_STATS\tdco_enabled\t0\nEND\n";
+        var result = await InvokeParseStatusAsync(svc, sample);
+        Assert.Empty(result.Clients);
+        Assert.False(result.DcoEnabled);
     }
 
     [Fact]
@@ -125,7 +137,8 @@ public class OpenVpnClientServiceTests
         const string sample = "TITLE\tOpenVPN\nHEADER\tROUTING_TABLE\t...\nEND\n";
         var result = await InvokeParseStatusAsync(svc, sample);
 
-        Assert.Empty(result);
+        Assert.Empty(result.Clients);
+        Assert.Null(result.DcoEnabled);
         geoMock.Verify(x => x.GetGeoInfoAsync(It.IsAny<string>(), It.IsAny<CancellationToken>()), Times.Never);
     }
 
@@ -141,8 +154,8 @@ public class OpenVpnClientServiceTests
             "CLIENT_LIST\tclient-x\t203.0.113.5:1111\t10.0.0.2\t\t100\t200\t2025-12-03 08:00:00\t1764751200\tUNDEF\t0\t0\tAES-256-GCM\n";
 
         var result = await InvokeParseStatusAsync(svc, sample);
-        Assert.Single(result);
-        var c = result[0];
+        Assert.Single(result.Clients);
+        var c = result.Clients[0];
         Assert.Equal("client-x", c.CommonName);
         Assert.Equal("203.0.113.5:1111", c.RemoteIp);
         Assert.Equal("10.0.0.2", c.LocalIp);
@@ -168,8 +181,8 @@ public class OpenVpnClientServiceTests
             "CLIENT_LIST\tclient-y\t198.51.100.10:2222\t10.0.0.3\t\t1\t2\t2025-12-03 09:10:11\t1764753011\tuser-y\t0\t0\tAES-256-GCM\n";
 
         var result = await InvokeParseStatusAsync(svc, sample);
-        Assert.Single(result);
-        Assert.Equal("user-y", result[0].Username);
+        Assert.Single(result.Clients);
+        Assert.Equal("user-y", result.Clients[0].Username);
     }
 
     [Fact]
@@ -178,7 +191,7 @@ public class OpenVpnClientServiceTests
         var svc = CreateService(out var geoMock, out _, out _);
         const string sample = "CLIENT_LIST\tclient-z\t203.0.113.9:3333\t10.0.0.4\n"; // < 8 columns
         var result = await InvokeParseStatusAsync(svc, sample);
-        Assert.Empty(result);
+        Assert.Empty(result.Clients);
         geoMock.Verify(x => x.GetGeoInfoAsync(It.IsAny<string>(), It.IsAny<CancellationToken>()), Times.Never);
     }
 
@@ -278,9 +291,9 @@ public class OpenVpnClientServiceTests
             "CLIENT_LIST\tok\t203.0.113.5:1234\t10.0.0.8\t\t10\t20\t2025-12-03 02:02:02\t1764750322\tUNDEF\t0\t0\tAES\n";
 
         var result = await InvokeParseStatusAsync(svc, sample);
-        Assert.Single(result);
-        Assert.Equal("ok", result[0].CommonName);
-        Assert.Equal("203.0.113.5:1234", result[0].RemoteIp);
+        Assert.Single(result.Clients);
+        Assert.Equal("ok", result.Clients[0].CommonName);
+        Assert.Equal("203.0.113.5:1234", result.Clients[0].RemoteIp);
         geoMock.Verify(x => x.GetGeoInfoAsync("203.0.113.5:1234", It.IsAny<CancellationToken>()), Times.Once);
     }
 
@@ -341,11 +354,11 @@ public class OpenVpnClientServiceTests
         var result = await svc.GetClientsFromManagementAsync(server, CancellationToken.None);
 
         // Assert
-        Assert.Equal(2, result.Count);
-        Assert.Equal("client-a", result[0].CommonName);
-        Assert.Equal("client-b", result[1].CommonName);
-        Assert.Equal("DE", result[0].Country);
-        Assert.Equal("RU", result[1].Country);
+        Assert.Equal(2, result.Clients.Count);
+        Assert.Equal("client-a", result.Clients[0].CommonName);
+        Assert.Equal("client-b", result.Clients[1].CommonName);
+        Assert.Equal("DE", result.Clients[0].Country);
+        Assert.Equal("RU", result.Clients[1].Country);
 
         factory.Verify(f => f.Create(server), Times.Once);
         client.Verify(c => c.SendCommandWithResponseAsync("status 3", It.IsAny<CancellationToken>()), Times.Once);
@@ -388,7 +401,7 @@ public class OpenVpnClientServiceTests
         var result = await svc.GetClientsFromManagementAsync(server, CancellationToken.None);
 
         // Assert
-        Assert.Empty(result);
+        Assert.Empty(result.Clients);
         geo.Verify(g => g.GetGeoInfoAsync(It.IsAny<string>(), It.IsAny<CancellationToken>()), Times.Never);
         factory.VerifyAll();
         client.VerifyAll();

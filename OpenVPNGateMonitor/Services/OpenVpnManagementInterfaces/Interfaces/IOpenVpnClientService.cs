@@ -1,9 +1,9 @@
-﻿using OpenVPNGateMonitor.Models;
+using OpenVPNGateMonitor.Models;
 
 namespace OpenVPNGateMonitor.Services.OpenVpnManagementInterfaces.Interfaces;
 
 public interface IOpenVpnClientService
 {
-    Task<List<OpenVpnServerClient>> GetClientsFromManagementAsync(OpenVpnServer openVpnServer, 
+    Task<OpenVpnManagementStatusResult> GetClientsFromManagementAsync(OpenVpnServer openVpnServer,
         CancellationToken cancellationToken);
 }
