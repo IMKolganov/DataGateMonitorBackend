@@ -170,11 +170,11 @@ public class UserRegistrationServiceTests
     {
         var request = new RegisterUserRequest
         {
-            DisplayName = displayName,
+            DisplayName = displayName!,
             Email = "test@example.com",
-            Login = login,
-            Password = password,
-            ConfirmPassword = password
+            Login = login!,
+            Password = password!,
+            ConfirmPassword = password!
         };
 
         var ex = await Assert.ThrowsAsync<ArgumentException>(

@@ -9,7 +9,7 @@
     <ItemGroup>
       <PackageReference Include="Microsoft.Extensions.Configuration.Abstractions" Version="10.0.3" />
       <PackageReference Include="Newtonsoft.Json" Version="13.0.4" />
-      <PackageReference Include="OpenVPNGateMonitor.SharedModels" Version="1.0.89" />
+      <PackageReference Include="OpenVPNGateMonitor.SharedModels" Version="1.0.91" />
     </ItemGroup>
 
 </Project>
