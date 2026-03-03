@@ -31,6 +31,8 @@ public class OpenVpnServerConfiguration : BaseEntityConfiguration<OpenVpnServer,
         entity.Property(e => e.IsDeleted)
             .HasDefaultValue(false);
 
+        entity.Property(e => e.DcoIsEnabled);
+
         // Indexes
         entity.HasIndex(e => e.ServerName)
             .IsUnique();
