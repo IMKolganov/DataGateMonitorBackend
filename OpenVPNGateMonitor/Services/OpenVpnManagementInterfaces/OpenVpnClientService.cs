@@ -1,4 +1,4 @@
-﻿using System.Globalization;
+using System.Globalization;
 using System.Security.Cryptography;
 using System.Text;
 using OpenVPNGateMonitor.Models;
@@ -14,7 +14,7 @@ public class OpenVpnClientService(
     IGeoLiteQueryService geoLiteQueryService)
     : IOpenVpnClientService
 {
-    public async Task<List<OpenVpnServerClient>> GetClientsFromManagementAsync(OpenVpnServer openVpnServer, 
+    public async Task<OpenVpnManagementStatusResult> GetClientsFromManagementAsync(OpenVpnServer openVpnServer,
         CancellationToken cancellationToken)
     {
         var client = openVpnMicroserviceClientFactory.Create(openVpnServer);
@@ -22,25 +22,31 @@ public class OpenVpnClientService(
 
         logger.LogDebug("Received status response:\n{Response}", response);
 
-        var clients = await ParseStatus(response, cancellationToken);
-        logger.LogInformation("Found {ClientCount} connected clients", clients.Count);
+        var result = await ParseStatus(response, cancellationToken);
+        logger.LogInformation("Found {ClientCount} connected clients", result.Clients.Count);
 
-        if (clients.Any())
+        if (result.Clients.Any())
         {
             logger.LogDebug("Connected clients: {Clients}",
-                string.Join(", ", clients.Select(c => c.CommonName)));
+                string.Join(", ", result.Clients.Select(c => c.CommonName)));
         }
 
-        return clients;
+        return result;
     }
 
-    private async Task<List<OpenVpnServerClient>> ParseStatus(string data, CancellationToken cancellationToken)
+    private async Task<OpenVpnManagementStatusResult> ParseStatus(string data, CancellationToken cancellationToken)
     {
-        var clients = new List<OpenVpnServerClient>();
+        var result = new OpenVpnManagementStatusResult();
         var lines = data.Split('\n', StringSplitOptions.RemoveEmptyEntries | StringSplitOptions.TrimEntries);
 
         foreach (var line in lines)
         {
+            if (line.StartsWith("GLOBAL_STATS", StringComparison.Ordinal))
+            {
+                TryParseDcoEnabled(line, result);
+                continue;
+            }
+
             if (!line.StartsWith("CLIENT_LIST", StringComparison.Ordinal)) continue;
 
             var parts = line.Split('\t');
@@ -60,10 +66,20 @@ public class OpenVpnClientService(
             }
 
             client.SessionId = GenerateSessionId(client.CommonName, client.RemoteIp, client.ConnectedSince);
-            clients.Add(client);
+            result.Clients.Add(client);
         }
 
-        return clients;
+        return result;
+    }
+
+    /// <summary>Parse GLOBAL_STATS line: "GLOBAL_STATS\tdco_enabled\t0" or "\t1".</summary>
+    private static void TryParseDcoEnabled(string line, OpenVpnManagementStatusResult result)
+    {
+        var parts = line.Split('\t');
+        if (parts.Length < 3) return;
+        if (!string.Equals(parts[1], "dco_enabled", StringComparison.OrdinalIgnoreCase)) return;
+        if (int.TryParse(parts[2], NumberStyles.Integer, CultureInfo.InvariantCulture, out var value))
+            result.DcoEnabled = value != 0;
     }
 
     private OpenVpnServerClient? TryParseClient(string[] parts)
