@@ -19,7 +19,8 @@ public class VpnServerMapping : IRegister
             .Map(dest => dest.ApiUrl, src => src.ApiUrl)
             .Map(dest => dest.CreateDate, src => src.CreateDate)
             .Map(dest => dest.LastUpdate, src => src.LastUpdate)
-            .Map(dest => dest.IsDeleted, src => src.IsDeleted);
+            .Map(dest => dest.IsDeleted, src => src.IsDeleted)
+            .Map(dest => dest.DcoIsEnabled, src => src.DcoIsEnabled);
 
         // Mapping list → response wrapper
         config.NewConfig<List<OpenVpnServer>, OpenVpnServersResponse>()

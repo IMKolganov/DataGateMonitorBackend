@@ -13,5 +13,7 @@ public class OpenVpnServerDto
     public DateTimeOffset CreateDate { get; set; }
     public DateTimeOffset LastUpdate { get; set; }
     public bool IsDeleted { get; set; }
+    /// <summary>DCO (Data Channel Offload) enabled; optional, not required in DB.</summary>
+    public bool? DcoIsEnabled { get; set; }
     public List<string> Tags { get; set; } = [];
 }

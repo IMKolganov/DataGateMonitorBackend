@@ -25,6 +25,7 @@ public class OpenVpnServerService(
     IExternalIpAddressService externalIpAddressService,
     ITransactionRunner transactionRunner,
     IUserQueryService userQueryService,
+    ICommandService<OpenVpnServer, int> openVpnServerCommandService,
     ICommandService<OpenVpnServerClient, int> openVpnServerClientCommandService,
     ICommandService<OpenVpnServerStatusLog, int> openVpnServerStatusLogCommandService,
     ICommandService<OpenVpnServerClientTraffic, int> openVpnClientTrafficCommandService) : IOpenVpnServerService
@@ -35,9 +36,19 @@ public class OpenVpnServerService(
 
         await transactionRunner.RunAsync(async _ =>
         {
-            var openVpnClientsFromMng = await openVpnClientService.GetClientsFromManagementAsync(openVpnServer, ct);
+            var statusResult = await openVpnClientService.GetClientsFromManagementAsync(openVpnServer, ct);
+            var openVpnClientsFromMng = statusResult.Clients;
             logger.LogInformation("VpnServerId: {Id}. Retrieved {Count} clients from OpenVPN.",
                 openVpnServer.Id, openVpnClientsFromMng.Count);
+
+            if (statusResult.DcoEnabled.HasValue)
+            {
+                await openVpnServerCommandService.UpdateWhere(
+                    s => s.Id == openVpnServer.Id,
+                    u => u.SetProperty(x => x.DcoIsEnabled, statusResult.DcoEnabled.Value)
+                        .SetProperty(x => x.LastUpdate, DateTimeOffset.UtcNow),
+                    ct);
+            }
 
             var nowUtc = DateTimeOffset.UtcNow;
             User? user;
