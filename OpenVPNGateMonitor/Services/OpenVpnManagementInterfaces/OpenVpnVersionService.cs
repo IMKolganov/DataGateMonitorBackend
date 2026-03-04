@@ -1,22 +1,20 @@
 ﻿using System.Text.RegularExpressions;
+using OpenVPNGateMonitor.Models;
+using OpenVPNGateMonitor.Services.DataGateOpenVpnManager.OpenVpnProxy;
 using OpenVPNGateMonitor.Services.OpenVpnManagementInterfaces.Interfaces;
-using OpenVPNGateMonitor.Services.OpenVpnManagementInterfaces.OpenVpnTelnet;
 
 namespace OpenVPNGateMonitor.Services.OpenVpnManagementInterfaces;
 
-public class OpenVpnVersionService : IOpenVpnVersionService
+public class OpenVpnVersionService(ILogger<IOpenVpnVersionService> logger, 
+    IOpenVpnMicroserviceClientFactory openVpnMicroserviceClientFactory) : IOpenVpnVersionService
 {
-    private readonly ILogger<IOpenVpnVersionService> _logger;
-    
-    public OpenVpnVersionService(ILogger<IOpenVpnVersionService> logger)
+    public async Task<string> GetVersionAsync(OpenVpnServer openVpnServer, 
+        CancellationToken cancellationToken)
     {
-        _logger = logger;
-    }
-    
-    public async Task<string> GetVersionAsync(ICommandQueue commandQueue, CancellationToken cancellationToken)
-    {
-        var response = await commandQueue.SendCommandAsync("version", cancellationToken);
-        
+        var client = openVpnMicroserviceClientFactory.Create(openVpnServer);
+        var response = await client.SendCommandWithResponseAsync("version", cancellationToken);
+
+        logger.LogDebug("Received version response:\n{Response}", response);
         var (openVpnVersion, managementVersion) = ParseVersion(response);
         return openVpnVersion;
     }

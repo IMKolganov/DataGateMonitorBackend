@@ -3,175 +3,173 @@ using System.Text;
 using Mapster;
 using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Mvc;
-using Newtonsoft.Json;
+using OpenVPNGateMonitor.DataBase.Services.Query.OpenVpnServerTable;
+using OpenVPNGateMonitor.DataBase.Services.Query.OpenVpnServerTagTable;
 using OpenVPNGateMonitor.Models;
-using OpenVPNGateMonitor.Models.Enums;
 using OpenVPNGateMonitor.Services.Api.Interfaces;
 using OpenVPNGateMonitor.Services.BackgroundServices.Interfaces;
-using OpenVPNGateMonitor.SharedModels.OpenVpnServers.Requests;
-using OpenVPNGateMonitor.SharedModels.OpenVpnServers.Responses;
+using OpenVPNGateMonitor.Services.DataGateOpenVpnManager.Interfaces;
+using OpenVPNGateMonitor.SharedModels.DataGateMonitorBackend.OpenVpnServers.Dto;
+using OpenVPNGateMonitor.SharedModels.DataGateMonitorBackend.OpenVpnServers.Requests;
+using OpenVPNGateMonitor.SharedModels.DataGateMonitorBackend.OpenVpnServers.Responses;
+using OpenVPNGateMonitor.SharedModels.DataGateOpenVpnManager.Info;
+using OpenVPNGateMonitor.SharedModels.Enums;
 using OpenVPNGateMonitor.SharedModels.Responses;
 
 namespace OpenVPNGateMonitor.Controllers;
 
 [ApiController]
-[Route("api/[controller]")]
+[Route("api/open-vpn-servers")]
 [Authorize]
-public class OpenVpnServersController(
-    ILogger<OpenVpnServersController> logger,
-    IVpnDataService vpnDataService,
-    IOpenVpnBackgroundService openVpnBackgroundService)
-    : ControllerBase
+public class OpenVpnServersController(IVpnDataService vpnDataService,
+    IOpenVpnServerOverviewQuery openVpnServerOverviewQuery, IOpenVpnServerQueryService openVpnServerQueryService,
+    IOpenVpnServerTagQueryService openVpnServerTagQueryService,
+    IOpenVpnBackgroundService openVpnBackgroundService,
+    IMicroserviceInfoService microserviceInfoService) : BaseController
 {
-    [HttpGet("GetAllConnectedClients")]
-    public async Task<IActionResult> GetAllConnectedClients(
-        [FromQuery] GetConnectedClientsRequest request, CancellationToken cancellationToken = default)
+    [HttpGet("get-all-with-status")]
+    public async Task<ActionResult<ApiResponse<OpenVpnServerWithStatusesResponse>>> GetAllServersWithStatus(
+        [FromQuery] bool includeDeleted = false,
+        CancellationToken ct = default)
     {
-        var result = await vpnDataService.GetAllConnectedOpenVpnServerClients(
-            request.VpnServerId, request.Page, request.PageSize, cancellationToken);
-
-        return Ok(ApiResponse<ConnectedClientsResponse>.SuccessResponse(result.Adapt<ConnectedClientsResponse>()));
+        var result = await openVpnServerOverviewQuery.GetAllOpenVpnServersWithStatusAsync(includeDeleted, ct);
+        var response = result.Adapt<OpenVpnServerWithStatusesResponse>();
+        await FillTagsForOverviewResponse(response, ct);
+        return Ok(ApiResponse<OpenVpnServerWithStatusesResponse>.SuccessResponse(response));
     }
 
-    [HttpGet("GetAllHistoryClients")]
-    public async Task<IActionResult> GetAllHistoryClients(
-        [FromQuery] GetHistoryClientsRequest request, CancellationToken cancellationToken = default)
+    [HttpGet("get-server-with-status/{VpnServerId:int}")]
+    public async Task<ActionResult<ApiResponse<OpenVpnServerWithStatusResponse>>> GetServerWithStatus(
+        [FromRoute] GetServerWithStatsRequest request, CancellationToken ct)
     {
-        var result = await vpnDataService.GetAllHistoryOpenVpnServerClients(
-            request.VpnServerId, request.Page, request.PageSize, cancellationToken);
-
-        return Ok(ApiResponse<ConnectedClientsResponse>.SuccessResponse(result.Adapt<ConnectedClientsResponse>()));
-    }
-    
-    [HttpGet("GetAllServersWithStatus")]
-    public async Task<IActionResult> GetAllServersWithStatus(CancellationToken cancellationToken = default)
-    {
-        var result = await vpnDataService.GetAllOpenVpnServersWithStatus(cancellationToken);
-        return Ok(ApiResponse<List<OpenVpnServerWithStatusResponse>>.SuccessResponse(result.Adapt<List<OpenVpnServerWithStatusResponse>>()));
-    }
-    
-    [HttpGet("GetServerWithStatus/{vpnServerId:int}")]
-    public async Task<IActionResult> GetServerWithStatus(
-        [FromRoute] GetServerWithStatsRequest request, CancellationToken cancellationToken)
-    {
-        var serverInfo = await vpnDataService.GetOpenVpnServerWithStatus(request.VpnServerId, cancellationToken);
-
-        return Ok(ApiResponse<OpenVpnServerWithStatusResponse>.SuccessResponse(serverInfo.Adapt<OpenVpnServerWithStatusResponse>()));
+        var serverInfo = await openVpnServerOverviewQuery.GetOpenVpnServerWithStatusAsync(request.VpnServerId, ct);
+        var response = serverInfo.Adapt<OpenVpnServerWithStatusResponse>();
+        if (response.OpenVpnServerWithStatus?.OpenVpnServerResponses?.OpenVpnServer != null)
+            response.OpenVpnServerWithStatus.OpenVpnServerResponses.OpenVpnServer.Tags = await openVpnServerTagQueryService.GetTagNamesByVpnServerId(request.VpnServerId, ct);
+        return Ok(ApiResponse<OpenVpnServerWithStatusResponse>.SuccessResponse(response));
     }
 
-    
-    [HttpGet("GetServer/{vpnServerId:int}")]
-    public async Task<IActionResult> GetServer(
-        [FromRoute] GetServerRequest request, CancellationToken cancellationToken)
+    [HttpGet("get-microservice-info/{VpnServerId:int}")]
+    public async Task<ActionResult<ApiResponse<RootInfoResponse>>> GetMicroserviceInfo(
+        [FromRoute] int vpnServerId, CancellationToken ct)
     {
-        var server = await vpnDataService.GetOpenVpnServer(request.VpnServerId, cancellationToken);
-
-        return Ok(ApiResponse<OpenVpnServerResponse>.SuccessResponse(server.Adapt<OpenVpnServerResponse>()));
+        var info = await microserviceInfoService.GetInfoAsync(vpnServerId, ct);
+        return Ok(ApiResponse<RootInfoResponse>.SuccessResponse(info));
     }
 
-    [HttpPost("AddServer")]
-    public async Task<IActionResult> AddServer(
-        [FromBody] AddServerRequest request, CancellationToken cancellationToken = default)
+    [Authorize(Roles = "Admin,App")]
+    [HttpGet("get-microservice-info-by-url")]
+    public async Task<ActionResult<ApiResponse<RootInfoResponse>>> GetMicroserviceInfoByUrl(
+        [FromQuery] string baseUrl, CancellationToken ct)
     {
-        var newServer = await vpnDataService.AddOpenVpnServer(request.Adapt<OpenVpnServer>(), cancellationToken);
-
-        return Ok(ApiResponse<OpenVpnServerResponse>.SuccessResponse(newServer.Adapt<OpenVpnServerResponse>()));
-    }
-    
-    [HttpPut("UpdateServer")]
-    public async Task<IActionResult> UpdateServer(
-        [FromBody] UpdateServerRequest request, CancellationToken cancellationToken = default)
-    {
-        var updatedServer = await vpnDataService.UpdateOpenVpnServer(request.Adapt<OpenVpnServer>(), cancellationToken);
-
-        return Ok(ApiResponse<OpenVpnServerResponse>.SuccessResponse(updatedServer.Adapt<OpenVpnServerResponse>()));
+        var info = await microserviceInfoService.GetInfoByUrlAsync(baseUrl, ct);
+        if (info is null)
+            return NotFound(ApiResponse<RootInfoResponse>.ErrorResponse("Microservice info endpoint not found (404)."));
+        return Ok(ApiResponse<RootInfoResponse>.SuccessResponse(info));
     }
 
-    [HttpDelete("DeleteServer/{vpnServerId:int}")]
+    [HttpGet("get-all")]
+    public async Task<ActionResult<ApiResponse<OpenVpnServersResponse>>> GetAllServers(
+        [FromQuery] bool includeDeleted = false,
+        CancellationToken ct = default)
+    {
+        var serversList = await openVpnServerQueryService.GetAll(includeDeleted, ct);
+        var response = serversList.Adapt<OpenVpnServersResponse>();
+        if (serversList.Count > 0)
+        {
+            var tagNamesByServer = await openVpnServerTagQueryService.GetTagNamesByVpnServerIds(serversList.Select(s => s.Id).ToList(), ct);
+            for (var i = 0; i < response.OpenVpnServers.Count; i++)
+                response.OpenVpnServers[i].Tags = tagNamesByServer.GetValueOrDefault(serversList[i].Id, []);
+        }
+        return Ok(ApiResponse<OpenVpnServersResponse>.SuccessResponse(response));
+    }
+
+    [HttpGet("get/{VpnServerId:int}")]
+    public async Task<ActionResult<ApiResponse<OpenVpnServerResponse>>> GetServer(
+        [FromRoute] GetServerRequest request, CancellationToken ct)
+    {
+        var server = await openVpnServerQueryService.GetById(request.VpnServerId, ct);
+        if (server == null)
+            return NotFound();
+        var response = server.Adapt<OpenVpnServerResponse>();
+        response.OpenVpnServer.Tags = await openVpnServerTagQueryService.GetTagNamesByVpnServerId(request.VpnServerId, ct);
+        return Ok(ApiResponse<OpenVpnServerResponse>.SuccessResponse(response));
+    }
+
+    [Authorize(Roles = "Admin,App")]
+    [HttpPost("add")]
+    public async Task<ActionResult<ApiResponse<OpenVpnServerResponse>>> AddServer(
+        [FromBody] AddServerRequest request, CancellationToken ct)
+    {
+        var newServer = await vpnDataService.AddOpenVpnServer(request.Adapt<OpenVpnServer>(), request.QuotaPlanIds, request.TagIds, ct);
+        var response = newServer.Adapt<OpenVpnServerResponse>();
+        response.OpenVpnServer.Tags = await openVpnServerTagQueryService.GetTagNamesByVpnServerId(newServer.Id, ct);
+        return Ok(ApiResponse<OpenVpnServerResponse>.SuccessResponse(response));
+    }
+
+    [Authorize(Roles = "Admin,App")]
+    [HttpPut("update")]
+    public async Task<ActionResult<ApiResponse<OpenVpnServerResponse>>> UpdateServer(
+        [FromBody] UpdateServerRequest request, CancellationToken ct)
+    {
+        var updatedServer = await vpnDataService.UpdateOpenVpnServer(request.Adapt<OpenVpnServer>(),
+            request.QuotaPlanIds, request.TagIds, ct);
+        var response = updatedServer.Adapt<OpenVpnServerResponse>();
+        response.OpenVpnServer.Tags = await openVpnServerTagQueryService.GetTagNamesByVpnServerId(updatedServer.Id, ct);
+        return Ok(ApiResponse<OpenVpnServerResponse>.SuccessResponse(response));
+    }
+
+    [Authorize(Roles = "Admin,App")]
+    [HttpDelete("delete/{VpnServerId:int}")]
+    //todo: fixed response
     public async Task<IActionResult> DeleteServer(
-        [FromRoute] DeleteServerRequest request, CancellationToken cancellationToken = default)
+        [FromRoute] DeleteServerRequest request, CancellationToken ct)
     {
-        var deletedServer = await vpnDataService.DeleteOpenVpnServer(request.VpnServerId, cancellationToken);
+        var deletedServer = await vpnDataService.DeleteOpenVpnServer(request.VpnServerId, ct);
 
         return Ok(ApiResponse<bool>.SuccessResponse(deletedServer));
     }
-    
+
     [HttpGet("status")]
-    public IActionResult GetStatus()
+    public ActionResult<ApiResponse<ServiceStatusesResponse>> GetStatus()
     {
-        var serverStatuses = openVpnBackgroundService.GetStatus()
-            .Select(x => x.Adapt<ServiceStatusResponse>())
+        var serverStatuses = openVpnBackgroundService
+            .GetStatus()
+            .Select(kv => kv.Value.Adapt<ServiceStatusDto>())
             .ToList();
 
-        return Ok(ApiResponse<List<ServiceStatusResponse>>.SuccessResponse(serverStatuses));
+        var response = new ServiceStatusesResponse
+        {
+            ServiceStatuses = serverStatuses
+        };
+
+        return Ok(ApiResponse<ServiceStatusesResponse>.SuccessResponse(response));
     }
 
     [HttpPost("run-now")]
-    public async Task<IActionResult> RunNow(CancellationToken cancellationToken = default)
+    public async Task<ActionResult<ApiResponse<string>>> RunNow(CancellationToken ct)
     {
         var serverStatuses = openVpnBackgroundService.GetStatus();
 
         if (serverStatuses.Values.All(x => x.Status != ServiceStatus.Running))
         {
-            await openVpnBackgroundService.RunNow(cancellationToken);
+            await openVpnBackgroundService.RunNow(ct);
         }
 
         return Ok(ApiResponse<string>.SuccessResponse("OpenVPN background task executed immediately."));
     }
 
-    [HttpGet("status-stream")]
-    public async Task StatusStream()
+    private async Task FillTagsForOverviewResponse(OpenVpnServerWithStatusesResponse response, CancellationToken ct)
     {
-        if (HttpContext.WebSockets.IsWebSocketRequest)
+        if (response.OpenVpnServerWithStatuses.Count == 0) return;
+        var ids = response.OpenVpnServerWithStatuses
+            .Select(x => x.OpenVpnServerResponses.OpenVpnServer.Id)
+            .ToList();
+        var tagNamesByServer = await openVpnServerTagQueryService.GetTagNamesByVpnServerIds(ids, ct);
+        foreach (var item in response.OpenVpnServerWithStatuses)
         {
-            using WebSocket webSocket = await HttpContext.WebSockets.AcceptWebSocketAsync();
-            await SendStatusUpdates(webSocket);
-        }
-        else
-        {
-            HttpContext.Response.StatusCode = 400;
-        }
-    }
-
-    private async Task SendStatusUpdates(WebSocket webSocket)
-    {
-        try
-        {
-            while (webSocket.State == WebSocketState.Open)
-            {
-                var statuses = openVpnBackgroundService.GetStatus().Values
-                    .Select(x => x.Adapt<ServiceStatusResponse>())
-                    .ToList();
-
-                var json = JsonConvert.SerializeObject(statuses);
-
-                await webSocket.SendAsync(
-                    Encoding.UTF8.GetBytes(json),
-                    WebSocketMessageType.Text,
-                    true,
-                    CancellationToken.None);
-
-                await Task.Delay(1000);
-            }
-        }
-        catch (Exception ex)
-        {
-            logger.LogError($"WebSocket error: {ex.Message}");
-        }
-        finally
-        {
-            try
-            {
-                await webSocket.CloseAsync(
-                    WebSocketCloseStatus.NormalClosure,
-                    "Closing",
-                    CancellationToken.None);
-            }
-            catch (Exception ex)
-            {
-                logger.LogError($"Error closing WebSocket: {ex.Message}");
-            }
-            logger.LogInformation("WebSocket closed.");
+            var id = item.OpenVpnServerResponses.OpenVpnServer.Id;
+            item.OpenVpnServerResponses.OpenVpnServer.Tags = tagNamesByServer.GetValueOrDefault(id, []);
         }
     }
 }

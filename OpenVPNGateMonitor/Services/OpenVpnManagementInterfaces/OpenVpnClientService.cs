@@ -1,165 +1,165 @@
-﻿using System.Globalization;
+using System.Globalization;
 using System.Security.Cryptography;
 using System.Text;
-using OpenVPNGateMonitor.Models.Helpers.OpenVpnManagementInterfaces;
+using OpenVPNGateMonitor.Models;
+using OpenVPNGateMonitor.Services.DataGateOpenVpnManager.OpenVpnProxy;
 using OpenVPNGateMonitor.Services.GeoLite.Interfaces;
 using OpenVPNGateMonitor.Services.OpenVpnManagementInterfaces.Interfaces;
-using OpenVPNGateMonitor.Services.OpenVpnManagementInterfaces.OpenVpnTelnet;
 
 namespace OpenVPNGateMonitor.Services.OpenVpnManagementInterfaces;
 
-public class OpenVpnClientService : IOpenVpnClientService
+public class OpenVpnClientService(
+    ILogger<IOpenVpnClientService> logger,
+    IOpenVpnMicroserviceClientFactory openVpnMicroserviceClientFactory,
+    IGeoLiteQueryService geoLiteQueryService)
+    : IOpenVpnClientService
 {
-    private readonly ILogger<IOpenVpnClientService> _logger;
-    private readonly IGeoLiteQueryService _geoLiteQueryService;
-    
-    public OpenVpnClientService(ILogger<IOpenVpnClientService> logger, IGeoLiteQueryService geoLiteQueryService, 
-        ICommandQueueManager commandQueueManager)
-    {
-        _logger = logger;
-        _geoLiteQueryService = geoLiteQueryService;
-    }
-    
-    public async Task<List<OpenVpnClient>> GetClientsAsync(ICommandQueue commandQueue, 
+    public async Task<OpenVpnManagementStatusResult> GetClientsFromManagementAsync(OpenVpnServer openVpnServer,
         CancellationToken cancellationToken)
     {
-        var response = await commandQueue.SendCommandAsync("status 3", cancellationToken);
-        return await ParseStatus(response, cancellationToken);
+        var client = openVpnMicroserviceClientFactory.Create(openVpnServer);
+        var response = await client.SendCommandWithResponseAsync("status 3", cancellationToken);
+
+        logger.LogDebug("Received status response:\n{Response}", response);
+
+        var result = await ParseStatus(response, cancellationToken);
+        logger.LogInformation("Found {ClientCount} connected clients", result.Clients.Count);
+
+        if (result.Clients.Any())
+        {
+            logger.LogDebug("Connected clients: {Clients}",
+                string.Join(", ", result.Clients.Select(c => c.CommonName)));
+        }
+
+        return result;
     }
 
-    private async Task<List<OpenVpnClient>> ParseStatus(string data, CancellationToken cancellationToken)
+    private async Task<OpenVpnManagementStatusResult> ParseStatus(string data, CancellationToken cancellationToken)
     {
-        var id = 0;
-        var clients = new List<OpenVpnClient>();
-        var lines = data.Split("\n", StringSplitOptions.RemoveEmptyEntries);
+        var result = new OpenVpnManagementStatusResult();
+        var lines = data.Split('\n', StringSplitOptions.RemoveEmptyEntries | StringSplitOptions.TrimEntries);
 
         foreach (var line in lines)
         {
-            if (line.StartsWith("CLIENT_LIST"))
+            if (line.StartsWith("GLOBAL_STATS", StringComparison.Ordinal))
             {
-                var parts = line.Split("\t");
-                if (parts.Length < 8) continue;
-
-                var client = TryParseClient(parts);
-                
-                if (client != null)
-                {
-                    client.Id = id;//todo: remove
-                    id++;
-                    var geoInfo = await _geoLiteQueryService.GetGeoInfoAsync(client.RemoteIp, cancellationToken);//todo: add mapper for project
-                    if (geoInfo != null)
-                    {
-                        client.Country = geoInfo.Country;
-                        client.Region = geoInfo.Region;
-                        client.City = geoInfo.City;
-                        client.Latitude = geoInfo.Latitude;
-                        client.Longitude = geoInfo.Longitude;
-                    }
-
-                    var sessionId = GenerateSessionId(client.CommonName, 
-                        client.RemoteIp, client.ConnectedSince);
-                    
-                    client.SessionId = sessionId;
-                    clients.Add(client);
-                }
+                TryParseDcoEnabled(line, result);
+                continue;
             }
+
+            if (!line.StartsWith("CLIENT_LIST", StringComparison.Ordinal)) continue;
+
+            var parts = line.Split('\t');
+            if (parts.Length < 8) continue; // defensive: ensure required columns exist
+
+            var client = TryParseClient(parts);
+            if (client is null) continue;
+
+            var geoInfo = await geoLiteQueryService.GetGeoInfoAsync(client.RemoteIp, cancellationToken);
+            if (geoInfo is not null)
+            {
+                client.Country = geoInfo.Country;
+                client.Region = geoInfo.Region;
+                client.City = geoInfo.City;
+                client.Latitude = geoInfo.Latitude;
+                client.Longitude = geoInfo.Longitude;
+            }
+
+            client.SessionId = GenerateSessionId(client.CommonName, client.RemoteIp, client.ConnectedSince);
+            result.Clients.Add(client);
         }
-        return clients;
+
+        return result;
     }
 
-    private OpenVpnClient? TryParseClient(string[] parts)
+    /// <summary>Parse GLOBAL_STATS line: "GLOBAL_STATS\tdco_enabled\t0" or "\t1".</summary>
+    private static void TryParseDcoEnabled(string line, OpenVpnManagementStatusResult result)
+    {
+        var parts = line.Split('\t');
+        if (parts.Length < 3) return;
+        if (!string.Equals(parts[1], "dco_enabled", StringComparison.OrdinalIgnoreCase)) return;
+        if (int.TryParse(parts[2], NumberStyles.Integer, CultureInfo.InvariantCulture, out var value))
+            result.DcoEnabled = value != 0;
+    }
+
+    private OpenVpnServerClient? TryParseClient(string[] parts)
     {
         try
         {
-            return new OpenVpnClient()
+            // Columns (status 3) can vary by version; the indexes below match the common format:
+            // 0: CLIENT_LIST, 1: CommonName, 2: RealAddress, 3: VirtualAddress, 4: Virtual6 (optional),
+            // 5: BytesReceived, 6: BytesSent, 7: ConnectedSince (unix), ... , 9: Username (may be UNDEF)
+            var realAddress = parts[2];
+            var remoteIp = realAddress;// ExtractIpHost(realAddress);
+
+            return new OpenVpnServerClient
             {
                 CommonName = parts[1],
-                RemoteIp = parts[2].Split(":")[0],
+                RemoteIp = remoteIp,
                 LocalIp = parts[3],
                 BytesReceived = TryParseLong(parts[5], "BytesReceived"),
                 BytesSent = TryParseLong(parts[6], "BytesSent"),
-                ConnectedSince = TryParseDateTime(parts[7], "ConnectedSince"),
-                Username = parts[9] == "UNDEF" ? parts[1] : parts[9]
+                ConnectedSince = TryParseInstantUtc(parts[7], "ConnectedSince"),
+                Username = parts.Length > 9 && parts[9] != "UNDEF" ? parts[9] : parts[1]
             };
         }
         catch (Exception ex)
         {
-            _logger.LogError(ex, "Error parsing OpenVPN client data. Raw parts: {Parts}", string.Join("|", parts));
+            logger.LogError(ex, "Error parsing OpenVPN client data. Raw parts: {Parts}", string.Join("|", parts));
             return null;
         }
     }
-    
+
     private long TryParseLong(string value, string fieldName)
     {
         if (string.IsNullOrWhiteSpace(value))
         {
-            _logger.LogWarning("{FieldName} is empty. Using default value 0.", fieldName);
+            logger.LogWarning("{FieldName} is empty. Using default value 0.", fieldName);
             return 0;
         }
 
-        if (long.TryParse(value, out var result))
+        if (long.TryParse(value, NumberStyles.Integer, CultureInfo.InvariantCulture, out var result))
             return result;
 
-        _logger.LogError("Failed to parse {FieldName}. Value: '{Value}'", fieldName, value);
+        logger.LogError("Failed to parse {FieldName}. Value: '{Value}'", fieldName, value);
         throw new FormatException($"Invalid long format in field {fieldName}: '{value}'");
     }
-    
-    private DateTimeOffset TryParseDateTimeOffset(string value, string fieldName)
+
+    // Parse instant as UTC. Supports Unix seconds and ISO-8601 with or without offset.
+    private DateTimeOffset TryParseInstantUtc(string value, string fieldName)
     {
         if (string.IsNullOrWhiteSpace(value))
         {
-            _logger.LogWarning("{FieldName} is empty. Using default DateTimeOffset.MinValue.", fieldName);
+            logger.LogWarning("{FieldName} is empty. Using DateTimeOffset.MinValue.", fieldName);
             return DateTimeOffset.MinValue;
         }
 
-        if (long.TryParse(value, out var unixTime))
+        // Unix seconds
+        if (long.TryParse(value, NumberStyles.Integer, CultureInfo.InvariantCulture, out var unix))
         {
             try
             {
-                var dateTimeOffset = DateTimeOffset.FromUnixTimeSeconds(unixTime);
-                _logger.LogInformation("Parsed {FieldName} as Unix Timestamp: {DateTime}", fieldName, dateTimeOffset);
-                return dateTimeOffset;
+                return DateTimeOffset.FromUnixTimeSeconds(unix); // already UTC
             }
             catch (Exception ex)
             {
-                _logger.LogError(ex, "Failed to parse {FieldName} as Unix Timestamp. Value: '{Value}'", fieldName, value);
+                logger.LogError(ex, "Failed to parse {FieldName} as Unix seconds. Value: '{Value}'", fieldName, value);
             }
         }
 
-        _logger.LogError("Failed to parse {FieldName}. Value: '{Value}'", fieldName, value);
-        throw new FormatException($"Invalid DateTimeOffset format in field {fieldName}: '{value}'");
+        // ISO-8601 / RFC3339
+        if (DateTimeOffset.TryParse(value, CultureInfo.InvariantCulture,
+                DateTimeStyles.AdjustToUniversal | DateTimeStyles.AssumeUniversal, out var dto))
+        {
+            return dto; // normalized to UTC
+        }
+
+        logger.LogError("Failed to parse {FieldName}. Value: '{Value}'", fieldName, value);
+        throw new FormatException($"Invalid instant format in field {fieldName}: '{value}'");
     }
 
 
-    private DateTime TryParseDateTime(string value, string fieldName)
-    {
-        if (string.IsNullOrWhiteSpace(value))
-        {
-            _logger.LogWarning("{FieldName} is empty. Using default DateTime.MinValue.", fieldName);
-            return DateTime.MinValue;
-        }
 
-        if (DateTime.TryParse(value, CultureInfo.InvariantCulture, DateTimeStyles.None, out var result))
-            return result;
-
-        if (long.TryParse(value, out var unixTime))
-        {
-            try
-            {
-                var dateTime = DateTimeOffset.FromUnixTimeSeconds(unixTime).UtcDateTime;
-                _logger.LogInformation("Parsed {FieldName} as Unix Timestamp: {DateTime}", fieldName, dateTime);
-                return dateTime;
-            }
-            catch (Exception ex)
-            {
-                _logger.LogError(ex, "Failed to parse {FieldName} as Unix Timestamp. Value: '{Value}'", fieldName, value);
-            }
-        }
-
-        _logger.LogError("Failed to parse {FieldName}. Value: '{Value}'", fieldName, value);
-        throw new FormatException($"Invalid DateTime format in field {fieldName}: '{value}'");
-    }
-    
     private Guid GenerateSessionId(string commonName, string realAddress, DateTimeOffset connectedSince)
     {
         var sessionString = $"{commonName}-{realAddress}-{connectedSince:o}";

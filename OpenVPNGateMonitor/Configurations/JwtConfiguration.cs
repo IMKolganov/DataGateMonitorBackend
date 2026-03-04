@@ -1,6 +1,8 @@
 ﻿using System.Text;
 using Microsoft.AspNetCore.Authentication.JwtBearer;
 using Microsoft.IdentityModel.Tokens;
+using OpenVPNGateMonitor.Services.Api.Auth.Registers;
+using OpenVPNGateMonitor.Services.Api.Auth.Registers.Interfaces;
 
 namespace OpenVPNGateMonitor.Configurations;
 
@@ -17,10 +19,18 @@ public static class JwtConfiguration
                 options.SaveToken = true;
                 options.TokenValidationParameters = new TokenValidationParameters
                 {
+                    //todo: add
+                    // ValidateIssuer = true,
+                    // ValidIssuer = "OpenVPNGateBackend",
+                    // ValidateAudience = true,
+                    // ValidAudience = "OpenVPNGateFrontend",
+                    
                     ValidateIssuerSigningKey = true,
                     IssuerSigningKey = new SymmetricSecurityKey(key),
                     ValidateIssuer = false,
-                    ValidateAudience = false
+                    ValidateAudience = false,
+                    ValidateLifetime = true,
+                    ClockSkew = TimeSpan.Zero,
                 };
 
                 options.Events = new JwtBearerEvents
@@ -43,5 +53,6 @@ public static class JwtConfiguration
                     }
                 };
             });
+        services.AddSingleton<IMicroserviceTokenService, MicroserviceTokenService>();
     }
 }

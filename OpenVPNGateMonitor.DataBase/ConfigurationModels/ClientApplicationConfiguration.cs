@@ -1,10 +1,9 @@
-using OpenVPNGateMonitor.Models;
-using Microsoft.EntityFrameworkCore;
+﻿using OpenVPNGateMonitor.Models;
 using Microsoft.EntityFrameworkCore.Metadata.Builders;
 
 namespace OpenVPNGateMonitor.DataBase.ConfigurationModels;
 
-public class ClientApplicationConfiguration : BaseEntityConfiguration<ClientApplication>
+public class ClientApplicationConfiguration : BaseEntityConfiguration<ClientApplication, int>
 {
     public override void Configure(EntityTypeBuilder<ClientApplication> entity)
     {

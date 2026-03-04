@@ -1,40 +1,51 @@
 ﻿using System.Collections.Concurrent;
-using OpenVPNGateMonitor.Models.Enums;
-using OpenVPNGateMonitor.Models.Helpers.Background;
+using OpenVPNGateMonitor.SharedModels.DataGateMonitorBackend.OpenVpnServers.Dto;
+using OpenVPNGateMonitor.SharedModels.Enums;
 
 namespace OpenVPNGateMonitor.Services.BackgroundServices;
 
 public class OpenVpnServerStatusManager
 {
-    private readonly ConcurrentDictionary<int, BackgroundServerStatus> _serverStatuses = new();
+    private readonly ConcurrentDictionary<int, ServiceStatusDto> _serverStatuses = new();
 
-    public void UpdateStatus(int serverId, ServiceStatus status, int nextRunSeconds, string? errorMessage = null)
+    public void UpdateStatus(int vpnServerId, ServiceStatus status, int nextRunSeconds, 
+        string? errorMessage = null, int countConnectedClients = 0, int countSessions = 0, 
+        int totalBytesIn = 0, int totalBytesOut = 0)
     {
-        _serverStatuses.AddOrUpdate(serverId,
-            new BackgroundServerStatus
+        _serverStatuses.AddOrUpdate(vpnServerId,
+            new ServiceStatusDto
             {
-                VpnServerId = serverId,
+                VpnServerId = vpnServerId,
                 Status = status, 
                 ErrorMessage = errorMessage, 
-                NextRunTime = DateTime.UtcNow.AddSeconds(nextRunSeconds)
+                NextRunTime = DateTimeOffset.UtcNow.AddSeconds(nextRunSeconds),
+                CountConnectedClients = countConnectedClients,
+                CountSessions = countSessions,
+                TotalBytesIn = totalBytesIn,
+                TotalBytesOut = totalBytesOut
             },
             (_, existing) =>
             {
-                existing.VpnServerId = serverId;
+                existing.VpnServerId = vpnServerId;
                 existing.Status = status;
                 existing.ErrorMessage = errorMessage;
-                existing.NextRunTime = DateTime.UtcNow.AddSeconds(nextRunSeconds);
+                existing.NextRunTime = DateTimeOffset.UtcNow.AddSeconds(nextRunSeconds);
                 return existing;
             });
     }
-
-    public BackgroundServerStatus GetStatus(int serverId)
+    
+    public void ClearAllStatuses()
     {
-        return _serverStatuses.GetValueOrDefault(serverId, new BackgroundServerStatus());
+        _serverStatuses.Clear();
     }
 
-    public Dictionary<int, BackgroundServerStatus> GetAllStatuses()
+    public ServiceStatusDto GetStatus(int serverId)
     {
-        return new Dictionary<int, BackgroundServerStatus>(_serverStatuses);
+        return _serverStatuses.GetValueOrDefault(serverId, new ServiceStatusDto());
+    }
+
+    public Dictionary<int, ServiceStatusDto> GetAllStatuses()
+    {
+        return new Dictionary<int, ServiceStatusDto>(_serverStatuses);
     }
 }

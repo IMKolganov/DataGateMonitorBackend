@@ -11,7 +11,7 @@ public class Setting : BaseEntity<int>
     public int? IntValue { get; set; }
     public bool? BoolValue { get; set; }
     public double? DoubleValue { get; set; }
-    public DateTime? DateTimeValue { get; set; }
+    public DateTimeOffset? DateTimeValue { get; set; }
     [Required]
     public string ValueType { get; set; } = null!; // "string", "int", "bool", "double", "datetime"
 }

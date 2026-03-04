@@ -2,7 +2,7 @@
 
 namespace OpenVPNGateMonitor.Models.Helpers.Services;
 
-public class ServerInfo
+public class ServerInfo//todo: move to nuget
 {
     public string Status { get; set; } = string.Empty;
     public OpenVpnState? OpenVpnState { get; set; }

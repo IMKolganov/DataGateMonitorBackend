@@ -1,0 +1,26 @@
+﻿{
+  "ConnectionStrings": {
+    "DefaultConnection": "Host=localhost;Port=5432;Database=datagate_local;Username=postgres;Password=YOUR_PASSWORD;Pooling=true;Trust Server Certificate=true"
+  },
+  "DataBaseSettings":{
+    "DefaultSchema": "xgb_dashopnvpn",
+    "MigrationTable": "__EFMigrationsHistoryDashboardVpn"
+  },
+  "GoogleAuth": {
+    "ClientId": "your-google-cliend-id",
+    "DesktopClientId": "your-desktop-google-cliend-id",
+    "DesktopClientSecret": "your-desktop-google-secret",
+    "IosClientId": "your-google-ios-cliend-id"
+  },
+  "Jwt": {
+    "Secret": "super-secret-key-should-be-at-least-16-characters",
+    "RefreshPepper": "your-refresh-pepper"
+  },
+  "Logging": {
+    "LogLevel": {
+      "Default": "Information",
+      "Microsoft.AspNetCore": "Warning"
+    }
+  },
+  "AllowedHosts": "*"
+}

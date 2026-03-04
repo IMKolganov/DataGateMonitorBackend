@@ -1,0 +1,13 @@
+﻿using OpenVPNGateMonitor.Models;
+using OpenVPNGateMonitor.SharedModels.Responses;
+
+namespace OpenVPNGateMonitor.DataBase.Services.Query.IncomingMessageLogTable;
+
+public interface IIncomingMessageLogQueryService
+{
+    Task<List<IncomingMessageLog>> GetAll(CancellationToken ct);
+    Task<IncomingMessageLog?> GetById(int id, CancellationToken ct);
+    Task<IPagedResult<IncomingMessageLog>> GetPageByTelegramId(long telegramId, int page, int pageSize,
+        CancellationToken ct);
+    Task<IPagedResult<IncomingMessageLog>> GetPage(int page, int pageSize, CancellationToken ct);
+}

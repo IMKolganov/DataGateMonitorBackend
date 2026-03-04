@@ -1,11 +1,11 @@
-using OpenVPNGateMonitor.Models;
+﻿using OpenVPNGateMonitor.Models;
 using Microsoft.EntityFrameworkCore;
 using Microsoft.EntityFrameworkCore.Metadata.Builders;
 using OpenVPNGateMonitor.DataBase.ConfigurationModels.Seeds;
 
 namespace OpenVPNGateMonitor.DataBase.ConfigurationModels;
 
-public class OpenVpnServerOvpnFileConfigConfiguration : BaseEntityConfiguration<OpenVpnServerOvpnFileConfig>
+public class OpenVpnServerOvpnFileConfigConfiguration : BaseEntityConfiguration<OpenVpnServerOvpnFileConfig, int>
 {
     public override void Configure(EntityTypeBuilder<OpenVpnServerOvpnFileConfig> entity)
     {

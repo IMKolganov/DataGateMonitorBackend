@@ -1,4 +1,5 @@
-﻿using OpenVPNGateMonitor.Models;
+﻿using OpenVPNGateMonitor.DataBase.ConfigurationModels.Utils;
+using OpenVPNGateMonitor.Models;
 
 namespace OpenVPNGateMonitor.DataBase.ConfigurationModels.Seeds;
 
@@ -12,7 +13,8 @@ public static class OpenVpnServerOvpnFileConfigSeedData
             VpnServerId = 1,
             VpnServerIp = "127.0.0.1",
             VpnServerPort = 1194,
-            ConfigTemplate = @"client
+            ConfigTemplate = @"setenv FRIENDLY_NAME ""{{friendly_name}}""
+client
 dev tun
 proto udp
 remote {{server_ip}} {{server_port}}
@@ -35,7 +37,7 @@ verb 3
 </key>
 <tls-crypt>
 {{tls_auth_key}}
-</tls-crypt>"
+</tls-crypt>".NormalizeUnixLineEndings()
         },
         new OpenVpnServerOvpnFileConfig
         {
@@ -43,7 +45,8 @@ verb 3
             VpnServerId = 2,
             VpnServerIp = "127.0.0.1",
             VpnServerPort = 1195,
-            ConfigTemplate = @"client
+            ConfigTemplate = @"setenv FRIENDLY_NAME ""{{friendly_name}}""
+client
 dev tun
 proto tcp
 remote {{server_ip}} {{server_port}}
@@ -66,7 +69,7 @@ verb 3
 </key>
 <tls-crypt>
 {{tls_auth_key}}
-</tls-crypt>"
+</tls-crypt>".NormalizeUnixLineEndings()
         },
     };
 }

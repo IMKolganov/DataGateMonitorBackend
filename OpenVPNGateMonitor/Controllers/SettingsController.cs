@@ -2,18 +2,20 @@
 using Microsoft.AspNetCore.Mvc;
 using OpenVPNGateMonitor.Services.Others;
 using OpenVPNGateMonitor.SharedModels.Responses;
-using OpenVPNGateMonitor.SharedModels.Settings.Requests;
-using OpenVPNGateMonitor.SharedModels.Settings.Responses;
+using OpenVPNGateMonitor.SharedModels.DataGateMonitorBackend.Settings.Requests;
+using OpenVPNGateMonitor.SharedModels.DataGateMonitorBackend.Settings.Responses;
 
 namespace OpenVPNGateMonitor.Controllers;
 
 [ApiController]
-[Route("api/[controller]")]
+[Route("api/settings")]
 [Authorize]
-public class SettingsController(ISettingsService settingsService) : ControllerBase
+[Authorize(Roles = "Admin,App")]
+public class SettingsController(ISettingsService settingsService) : BaseController
 {
-    [HttpGet("Get")]
-    public async Task<IActionResult> Get([FromQuery] GetSettingRequest request, CancellationToken cancellationToken = default)
+    [HttpGet("get")]
+    public async Task<ActionResult<ApiResponse<SettingResponse>>> Get([FromQuery] GetSettingRequest request, 
+        CancellationToken cancellationToken)
     {
         var settingType = await settingsService.GetValueAsync<string>($"{request.Key}_Type", cancellationToken);
         if (settingType == null)
@@ -26,7 +28,7 @@ public class SettingsController(ISettingsService settingsService) : ControllerBa
             "int" => await settingsService.GetValueAsync<int>(request.Key, cancellationToken),
             "bool" => await settingsService.GetValueAsync<bool>(request.Key, cancellationToken),
             "double" => await settingsService.GetValueAsync<double>(request.Key, cancellationToken),
-            "datetime" => await settingsService.GetValueAsync<DateTime>(request.Key, cancellationToken),
+            "datetime" => await settingsService.GetValueAsync<DateTimeOffset>(request.Key, cancellationToken),
             "string" => await settingsService.GetValueAsync<string>(request.Key, cancellationToken),
             _ => null
         };
@@ -36,20 +38,23 @@ public class SettingsController(ISettingsService settingsService) : ControllerBa
             return NotFound(ApiResponse<string>.ErrorResponse($"Setting '{request.Key}' not found."));
         }
 
-        return Ok(ApiResponse<SettingResponse>.SuccessResponse(new SettingResponse { Key = request.Key, Value = value }));
+        return Ok(ApiResponse<SettingResponse>.SuccessResponse(new SettingResponse
+        {
+            Key = request.Key, Value = value
+        }));
     }
 
-    [HttpPost("Set")]
-    public async Task<IActionResult> Set(
+    [HttpPost("set")]
+    public async Task<ActionResult<ApiResponse<SettingResponse>>> Set(
         [FromQuery] SetSettingRequest request,
-        CancellationToken cancellationToken = default)
+        CancellationToken cancellationToken)
     {
         object? convertedValue = request.Type.ToLower() switch
         {
             "int" => int.TryParse(request.Value, out var intValue) ? intValue : null,
             "bool" => bool.TryParse(request.Value, out var boolValue) ? boolValue : null,
             "double" => double.TryParse(request.Value, out var doubleValue) ? doubleValue : null,
-            "datetime" => DateTime.TryParse(request.Value, out var dateTimeValue) ? dateTimeValue : null,
+            "datetime" => DateTimeOffset.TryParse(request.Value, out var dateTimeValue) ? dateTimeValue : null,
             "string" => request.Value,
             _ => null
         };
@@ -62,6 +67,9 @@ public class SettingsController(ISettingsService settingsService) : ControllerBa
         await settingsService.SetValueAsync(request.Key, convertedValue, cancellationToken);
         await settingsService.SetValueAsync($"{request.Key}_Type", request.Type.ToLower(), cancellationToken);
 
-        return Ok(ApiResponse<SettingResponse>.SuccessResponse(new SettingResponse { Key = request.Key, Value = convertedValue }));
+        return Ok(ApiResponse<SettingResponse>.SuccessResponse(new SettingResponse
+        {
+            Key = request.Key, Value = convertedValue
+        }));
     }
 }

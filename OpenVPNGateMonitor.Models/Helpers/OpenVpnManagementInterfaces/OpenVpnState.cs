@@ -2,7 +2,7 @@
 
 public class OpenVpnState
 {
-    public DateTime UpSince { get; set; }
+    public DateTimeOffset UpSince { get; set; }
     public bool Connected { get; set; }
     public bool Success { get; set; }
     public string ServerLocalIp { get; set; } = string.Empty;

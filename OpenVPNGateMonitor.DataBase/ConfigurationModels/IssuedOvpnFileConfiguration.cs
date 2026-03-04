@@ -1,15 +1,15 @@
-using OpenVPNGateMonitor.Models;
+﻿using OpenVPNGateMonitor.Models;
 using Microsoft.EntityFrameworkCore;
 using Microsoft.EntityFrameworkCore.Metadata.Builders;
 
 namespace OpenVPNGateMonitor.DataBase.ConfigurationModels;
 
-public class IssuedOvpnFileConfiguration : BaseEntityConfiguration<IssuedOvpnFile>
+public class IssuedOvpnFileConfiguration : BaseEntityConfiguration<IssuedOvpnFile, int>
 {
     public override void Configure(EntityTypeBuilder<IssuedOvpnFile> entity)
     {
         base.Configure(entity);
-        entity.Property(e => e.ServerId)
+        entity.Property(e => e.VpnServerId)
             .IsRequired();
         entity.Property(e => e.ExternalId)
             .IsRequired()
