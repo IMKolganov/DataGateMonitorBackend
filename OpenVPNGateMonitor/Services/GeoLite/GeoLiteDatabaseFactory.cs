@@ -1,4 +1,5 @@
-﻿using MaxMind.GeoIP2;
+﻿using MaxMind.Db;
+using MaxMind.GeoIP2;
 using OpenVPNGateMonitor.Services.GeoLite.Helpers;
 
 namespace OpenVPNGateMonitor.Services.GeoLite;
@@ -30,7 +31,7 @@ public class GeoLiteDatabaseFactory
         await EnsureDatabaseLoadedAsync(cancellationToken);
         
         if (_currentDb == null)
-            throw new InvalidOperationException("Database is not loaded.");
+            throw new InvalidDatabaseException("Database is not loaded.");
 
         return _currentDb;
     }

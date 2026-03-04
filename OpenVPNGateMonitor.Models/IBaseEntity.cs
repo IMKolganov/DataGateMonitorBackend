@@ -2,6 +2,6 @@
 
 public interface IBaseEntity
 {
-    DateTime CreateDate { get; set; }
-    DateTime LastUpdate { get; set; }
+    DateTimeOffset CreateDate { get; set; }
+    DateTimeOffset LastUpdate { get; set; }
 }

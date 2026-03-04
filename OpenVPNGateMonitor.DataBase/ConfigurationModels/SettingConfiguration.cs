@@ -1,11 +1,10 @@
 ﻿using OpenVPNGateMonitor.Models;
-using Microsoft.EntityFrameworkCore;
 using Microsoft.EntityFrameworkCore.Metadata.Builders;
 using OpenVPNGateMonitor.DataBase.ConfigurationModels.Seeds;
 
 namespace OpenVPNGateMonitor.DataBase.ConfigurationModels;
 
-public class SettingConfiguration : BaseEntityConfiguration<Setting>
+public class SettingConfiguration : BaseEntityConfiguration<Setting, int>
 {
     public override void Configure(EntityTypeBuilder<Setting> entity)
     {

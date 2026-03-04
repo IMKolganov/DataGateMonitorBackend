@@ -1,42 +1,34 @@
 ﻿using System.Net;
 using MaxMind.GeoIP2.Exceptions;
-using OpenVPNGateMonitor.Models.Helpers.OpenVpnManagementInterfaces;
 using OpenVPNGateMonitor.Services.GeoLite.Interfaces;
+using OpenVPNGateMonitor.SharedModels.DataGateMonitorBackend.GeoLite.Dto;
 
 namespace OpenVPNGateMonitor.Services.GeoLite;
 
-public class GeoLiteQueryService : IGeoLiteQueryService
+public class GeoLiteQueryService(GeoLiteDatabaseFactory dbFactory, ILogger<GeoLiteQueryService> logger)
+    : IGeoLiteQueryService
 {
-    private readonly GeoLiteDatabaseFactory _dbFactory;
-    private readonly ILogger<GeoLiteQueryService> _logger;
-
-    public GeoLiteQueryService(GeoLiteDatabaseFactory dbFactory, ILogger<GeoLiteQueryService> logger)
-    {
-        _dbFactory = dbFactory;
-        _logger = logger;
-    }
-    
     public string GetDatabasePath()
     {
-        return _dbFactory.GetDatabasePath();
+        return dbFactory.GetDatabasePath();
     }
     
     public async Task<string> GetDatabaseVersionAsync(CancellationToken cancellationToken)
     {
         try
         {
-            var databaseReader = await _dbFactory.GetDatabaseAsync(cancellationToken);
+            var databaseReader = await dbFactory.GetDatabaseAsync(cancellationToken);
             var metadata = databaseReader.Metadata;
 
             var version = metadata.BuildDate.ToString("yyyy-MM-dd HH:mm:ss");
 
-            _logger.LogInformation("GeoLite2 database version (Build Date): {Version}", version);
+            logger.LogInformation("GeoLite2 database version (Build Date): {Version}", version);
             return version;
         }
         catch (Exception ex)
         {
-            _logger.LogError(ex, "Error retrieving database version.");
-            return "Error retrieving version.";
+            logger.LogError(ex, "Error retrieving database version. Error: {Error}", ex.Message);
+            return $"Error retrieving version. {ex.Message}";
         }
     }
     
@@ -44,6 +36,7 @@ public class GeoLiteQueryService : IGeoLiteQueryService
     {
         try
         {
+            ip = ExtractIpHost(ip);
             if (string.IsNullOrWhiteSpace(ip))
                 return null;
 
@@ -64,34 +57,55 @@ public class GeoLiteQueryService : IGeoLiteQueryService
             if (ipAddress.IsIPv6LinkLocal || ipAddress.IsIPv6Multicast)
                 return null;
 
-            var databaseReader = await _dbFactory.GetDatabaseAsync(cancellationToken);
+            var databaseReader = await dbFactory.GetDatabaseAsync(cancellationToken);
             var cityResponse = databaseReader.City(ip);
 
             return new OpenVpnGeoInfo
             {
-                Country = cityResponse.RegisteredCountry?.IsoCode ?? cityResponse.Country?.IsoCode,
-                Region = cityResponse.MostSpecificSubdivision?.IsoCode
+                Country = cityResponse.RegisteredCountry.IsoCode ?? cityResponse.Country.IsoCode,
+                Region = cityResponse.MostSpecificSubdivision.IsoCode
                          ?? cityResponse.Subdivisions.LastOrDefault()?.IsoCode
-                         ?? cityResponse.RegisteredCountry?.IsoCode,
-                City = cityResponse.City?.Name
-                       ?? cityResponse.Location?.TimeZone
-                       ?? cityResponse.RegisteredCountry?.Name,
-                Latitude = cityResponse.Location?.Latitude,
-                Longitude = cityResponse.Location?.Longitude
+                         ?? cityResponse.RegisteredCountry.IsoCode,
+                City = cityResponse.City.Name
+                       ?? cityResponse.Location.TimeZone
+                       ?? cityResponse.RegisteredCountry.Name,
+                Latitude = cityResponse.Location.Latitude,
+                Longitude = cityResponse.Location.Longitude
             };
         }
         catch (AddressNotFoundException ex)
         {
-            _logger.LogWarning($"GeoIP not found for {ip}: {ex.Message}");
+            logger.LogWarning($"GeoIP not found for {ip}: {ex.Message}");
             return null;
         }
         catch (Exception ex)
         {
-            _logger.LogError(ex, $"Error getting GeoIP for {ip} Error: {ex.Message}");
+            logger.LogError(ex, $"Error getting GeoIP for {ip} Error: {ex.Message}");
             return null;
         }
     }
+    // Extract host from "real address" handling IPv4, [IPv6]:port, and bare IPv6.
+    private static string ExtractIpHost(string realAddress)
+    {
+        if (string.IsNullOrWhiteSpace(realAddress)) return realAddress;
 
+        var s = realAddress.Trim();
+
+        // [IPv6]:port
+        if (s.Length > 2 && s[0] == '[')
+        {
+            var rb = s.IndexOf(']');
+            if (rb > 0) return s.Substring(1, rb - 1);
+        }
+
+        // IPv4:port or unbracketed host:port (take before last ':')
+        var idx = s.LastIndexOf(':');
+        if (idx > 0) return s[..idx];
+
+        // Bare IPv6 or host without port
+        return s;
+    }
+    
     private bool IsPrivateIp(IPAddress ip)
     {
         byte[] bytes = ip.GetAddressBytes();

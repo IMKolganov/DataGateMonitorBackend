@@ -1,13 +1,5 @@
-﻿# Define the TARGETARCH argument
-ARG TARGETARCH
-
 # Use the .NET SDK for building
-FROM mcr.microsoft.com/dotnet/sdk:9.0 AS build
-
-# Check if the argument is passed
-ARG TARGETARCH
-RUN if [ -z "$TARGETARCH" ]; then echo "ERROR: TARGETARCH is not set!"; exit 1; fi
-RUN echo "BUILD STAGE: TARGETARCH=${TARGETARCH}"
+FROM mcr.microsoft.com/dotnet/sdk:10.0 AS build
 
 # Set the working directory
 WORKDIR /src
@@ -21,30 +13,32 @@ RUN dotnet restore "OpenVPNGateMonitor.csproj"
 WORKDIR /src
 COPY . .
 
-# Build the application
-ARG BUILD_CONFIGURATION=Debug
-RUN dotnet build "OpenVPNGateMonitor/OpenVPNGateMonitor.csproj" -c $BUILD_CONFIGURATION -o /app/build --runtime linux-${TARGETARCH} --self-contained false
-
-# Publish the application
+# Publish the application (framework-dependent)
 FROM build AS publish
-ARG BUILD_CONFIGURATION=Debug
+ARG BUILD_CONFIGURATION=Release
 RUN echo "Using build configuration: $BUILD_CONFIGURATION" && \
-    dotnet publish "OpenVPNGateMonitor/OpenVPNGateMonitor.csproj" -c $BUILD_CONFIGURATION -o /app/publish --runtime linux-${TARGETARCH} --self-contained false
+    dotnet publish "OpenVPNGateMonitor/OpenVPNGateMonitor.csproj" \
+      -c $BUILD_CONFIGURATION \
+      -o /app/publish
 
-# Use the ASP.NET runtime for the final image
-FROM mcr.microsoft.com/dotnet/aspnet:9.0 AS final
+# Use the ASP.NET runtime for the final image (framework-dependent)
+FROM mcr.microsoft.com/dotnet/aspnet:10.0 AS final
 
-# Install curl (optional, if needed for debugging or HTTP requests)
-RUN apt-get update && apt-get install -y curl
+# Use root initially to allow setting permissions
+USER root
 
-# Switch to the 'app' user
-USER app
-
-# Set the working directory
 WORKDIR /app
 
-# Copy the published application from the build stage
+# Copy published app
 COPY --from=publish /app/publish .
 
-# Specify the entry point for the application
-ENTRYPOINT ["dotnet", "OpenVPNGateMonitor.dll"]
+# Copy entrypoint script
+COPY entrypoint.sh /entrypoint.sh
+
+# 🔧 Convert CRLF to LF just in case
+RUN sed -i 's/\r$//' /entrypoint.sh
+RUN sed -i '1s/^\xEF\xBB\xBF//' /entrypoint.sh
+RUN chmod +x /entrypoint.sh
+
+# Don't switch to app here — entrypoint.sh will drop privileges
+ENTRYPOINT ["/entrypoint.sh"]

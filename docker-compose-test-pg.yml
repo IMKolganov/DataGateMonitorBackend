@@ -1,0 +1,22 @@
+services:
+  postgres:
+    image: postgres:17
+    container_name: datagate_postgres
+    restart: always
+    environment:
+      POSTGRES_USER: postgres
+      POSTGRES_PASSWORD: "dgh@14f!"
+      POSTGRES_DB: datagate_local
+      PGDATA: /var/lib/postgresql/data/pgdata
+    ports:
+      - "5432:5432"
+    volumes:
+      - datagate_pgdata:/var/lib/postgresql/data
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U postgres -d datagate_local"]
+      interval: 10s
+      timeout: 5s
+      retries: 5
+
+volumes:
+  datagate_pgdata:

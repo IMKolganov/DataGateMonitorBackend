@@ -1,111 +1,99 @@
 ﻿using Microsoft.EntityFrameworkCore;
-using OpenVPNGateMonitor.DataBase.UnitOfWork;
+using OpenVPNGateMonitor.DataBase.Services.Command;
+using OpenVPNGateMonitor.DataBase.Services.Command.Interfaces;
+using OpenVPNGateMonitor.DataBase.Services.Query;
 using OpenVPNGateMonitor.Models;
 
 namespace OpenVPNGateMonitor.Services.Others;
 
-public class SettingsService : ISettingsService
+public class SettingsService(
+    IQueryService<Setting, int> q,
+    ICommandService<Setting, int> cmd)
+    : ISettingsService
 {
-    private readonly IUnitOfWork _unitOfWork;
-
-    public SettingsService(IUnitOfWork unitOfWork)
+    public async Task<T?> GetValueAsync<T>(string key, CancellationToken ct)
     {
-        _unitOfWork = unitOfWork;
-    }
+        var setting = await q.FirstOrDefault(
+            x => x.Key == key,
+            asNoTracking: true,
+            ct: ct);
 
-    public async Task<T?> GetValueAsync<T>(string key, CancellationToken cancellationToken)
-    {
-        var setting = await _unitOfWork.GetQuery<Setting>()
-            .AsQueryable()
-            .Where(x => x.Key == key)
-            .FirstOrDefaultAsync(cancellationToken);
-
-        if (setting == null)
-            return default;
-
-        if (setting.ValueType == "null")
+        if (setting == null || setting.ValueType == "null")
             return default;
 
         return setting.ValueType switch
         {
-            "int" => setting.IntValue is { } intValue ? (T)(object)intValue : default,
-            "bool" => setting.BoolValue is { } boolValue ? (T)(object)boolValue : default,
-            "double" => setting.DoubleValue is { } doubleValue ? (T)(object)doubleValue : default,
-            "datetime" => setting.DateTimeValue is { } dateTimeValue ? (T)(object)dateTimeValue : default,
-            "string" => setting.StringValue is { } stringValue ? (T)(object)stringValue : default,
+            "int"      => setting.IntValue      is { } i  ? (T)(object)i  : default,
+            "bool"     => setting.BoolValue     is { } b  ? (T)(object)b  : default,
+            "double"   => setting.DoubleValue   is { } d  ? (T)(object)d  : default,
+            "datetime" => setting.DateTimeValue is { } dt ? (T)(object)dt : default,
+            "string"   => setting.StringValue   is { } s  ? (T)(object)s  : default,
             _ => default
         };
     }
 
-    public async Task SetValueAsync<T>(string key, T value, CancellationToken cancellationToken)
+    public async Task SetValueAsync<T>(string key, T value, CancellationToken ct)
     {
-        var settingRepository = _unitOfWork.GetRepository<Setting>();
-        var setting = await settingRepository.Query
-            .Where(x => x.Key == key)
-            .FirstOrDefaultAsync(cancellationToken);
+        // tracked query so we can update the loaded entity
+        var setting = await q.FirstOrDefault(
+            x => x.Key == key,
+            asNoTracking: false,
+            ct: ct);
 
-        var isNewSetting = false;
+        var now = DateTimeOffset.UtcNow;
 
-        if (setting == null)
+        if (setting is null)
         {
-            setting = new Setting { Key = key };
-            isNewSetting = true;
+            // create new
+            setting = new Setting { Key = key, CreateDate = now };
         }
 
-        setting.ValueType = value switch
-        {
-            int => "int",
-            bool => "bool",
-            double => "double",
-            DateTime => "datetime",
-            string => "string",
-            null => "null",
-            _ => throw new ArgumentException($"Unsupported type {typeof(T).Name}")
-        };
-
-        setting.LastUpdate = DateTime.UtcNow;
-
+        // reset all typed columns
         setting.IntValue = null;
         setting.BoolValue = null;
         setting.DoubleValue = null;
         setting.DateTimeValue = null;
         setting.StringValue = null;
 
-        if (value is null)
+        // set type + value
+        switch (value)
         {
-            setting.ValueType = "null";
+            case null:
+                setting.ValueType = "null";
+                break;
+            case int i:
+                setting.ValueType = "int";
+                setting.IntValue = i;
+                break;
+            case bool b:
+                setting.ValueType = "bool";
+                setting.BoolValue = b;
+                break;
+            case double d:
+                setting.ValueType = "double";
+                setting.DoubleValue = d;
+                break;
+            case DateTimeOffset dt:
+                setting.ValueType = "datetime";
+                setting.DateTimeValue = dt;
+                break;
+            case string s:
+                setting.ValueType = "string";
+                setting.StringValue = s;
+                break;
+            default:
+                throw new ArgumentException($"Unsupported type {typeof(T).Name}");
+        }
+
+        setting.LastUpdate = now;
+
+        if (setting.Id.Equals(default(int)))
+        {
+            await cmd.Add(setting, saveChanges: true, ct);
         }
         else
         {
-            switch (value)
-            {
-                case int intValue:
-                    setting.IntValue = intValue;
-                    break;
-                case bool boolValue:
-                    setting.BoolValue = boolValue;
-                    break;
-                case double doubleValue:
-                    setting.DoubleValue = doubleValue;
-                    break;
-                case DateTime dateTimeValue:
-                    setting.DateTimeValue = dateTimeValue;
-                    break;
-                case string stringValue:
-                    setting.StringValue = stringValue;
-                    break;
-            }
+            await cmd.Update(setting, saveChanges: true, ct);
         }
-
-        if (isNewSetting)
-        {
-            await settingRepository.AddAsync(setting, cancellationToken);
-        }
-        else
-        {
-            settingRepository.Update(setting);
-        }
-
-        await _unitOfWork.SaveChangesAsync(cancellationToken);
     }
 }

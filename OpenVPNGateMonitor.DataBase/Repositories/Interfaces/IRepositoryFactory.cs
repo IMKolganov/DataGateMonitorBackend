@@ -1,4 +1,4 @@
-namespace OpenVPNGateMonitor.DataBase.Repositories.Interfaces;
+﻿namespace OpenVPNGateMonitor.DataBase.Repositories.Interfaces;
 
 public interface IRepositoryFactory
 {

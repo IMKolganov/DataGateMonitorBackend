@@ -1,77 +1,97 @@
 ﻿using Mapster;
 using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Mvc;
-using OpenVPNGateMonitor.Models.Helpers.Services;
-using OpenVPNGateMonitor.Services.Api.Interfaces;
-using OpenVPNGateMonitor.SharedModels.OpenVpnServerCerts.Requests;
-using OpenVPNGateMonitor.SharedModels.OpenVpnServerCerts.Responses;
+using OpenVPNGateMonitor.Services.DataGateOpenVpnManager.Interfaces;
+using OpenVPNGateMonitor.SharedModels.DataGateMonitorBackend.OpenVpnServerCerts.Requests;
+using OpenVPNGateMonitor.SharedModels.DataGateMonitorBackend.OpenVpnServerCerts.Responses;
+using OpenVPNGateMonitor.SharedModels.DataGateMonitorBackend.OpenVpnServerCerts.Responses.Dto;
 using OpenVPNGateMonitor.SharedModels.Responses;
 
 namespace OpenVPNGateMonitor.Controllers;
 
 [ApiController]
-[Route("api/[controller]")]
+[Route("api/open-vpn-certs")]
 [Authorize]
-public class OpenVpnServerCertsController(ILogger<OpenVpnServerCertsController> logger, ICertVpnService certVpnService)
-    : ControllerBase
+[Authorize(Roles = "Admin,App")]
+public class OpenVpnServerCertsController(ICertApiClient certApiClient,
+    ILogger<OpenVpnServerCertsController> logger) : BaseController
 {
-    private readonly ILogger<OpenVpnServerCertsController> _logger = logger;
-
-    [HttpGet("GetAllVpnServerCertificates/{VpnServerId:int}")]
-    public async Task<IActionResult> GetAllVpnServerCertificates(
-        [FromRoute] GetAllVpnServerCertificatesRequest request,
-        CancellationToken cancellationToken = default)
+    [HttpGet("{vpnServerId}/get-all")]
+    public async Task<ActionResult<ApiResponse<GetAllCertificatesResponse>>> GetAllCertificates(
+        [FromRoute] GetAllCertificatesRequest request, CancellationToken ct)
     {
-        var certificates = await certVpnService.GetAllVpnServerCertificates(request.VpnServerId, cancellationToken);
-        return Ok(ApiResponse<List<VpnServerCertificateResponse>>.SuccessResponse(certificates.Adapt<List<VpnServerCertificateResponse>>()));
+        try
+        {
+            var certificates = await certApiClient.GetAllCertificatesAsync(request.VpnServerId, ct);
+
+            var mapped = certificates
+                .Select(cert => (cert, request.VpnServerId))
+                .Select(item => item.Adapt<MonitorServerCertificate>())
+                .ToList();
+
+            var response = new GetAllCertificatesResponse { MonitorServerCertificates = mapped };
+
+            return Ok(ApiResponse<GetAllCertificatesResponse>.SuccessResponse(response));
+        }
+        catch (Exception ex)
+        {
+            logger.LogError(ex, "Failed to get certificates from server {VpnServerId}", request.VpnServerId);
+            return BadRequest(ApiResponse<string>.ErrorResponse(ex.Message));
+        }
     }
 
-    [HttpGet("GetAllVpnServerCertificatesByStatus/{VpnServerId:int}")]
-    public async Task<IActionResult> GetAllVpnServerCertificatesByStatus(
-        [FromRoute] GetAllVpnServerCertificatesByStatusRequest request,
-        CancellationToken cancellationToken = default)
+    
+    [HttpPost("build")]
+    public async Task<ActionResult<ApiResponse<BuildCertificateResponse>>> BuildCertificate(
+        [FromBody] BuildCertificateRequest request, CancellationToken cancellationToken)
     {
-        var certificates = await certVpnService.GetAllVpnServerCertificatesByStatus(
-            request.VpnServerId, request.CertificateStatus, cancellationToken);
-        return Ok(ApiResponse<List<VpnServerCertificateResponse>>.SuccessResponse(certificates.Adapt<List<VpnServerCertificateResponse>>()));
-    }
+        try
+        {
+            var result = await certApiClient.BuildCertificateAsync(
+                request.VpnServerId, request.CommonName, cancellationToken);
 
-    [HttpPost("AddServerCertificate")]
-    public async Task<IActionResult> AddServerCertificate(
-        [FromBody] AddServerCertificateRequest request,
-        CancellationToken cancellationToken = default)
-    {
-        var certificate = await certVpnService.AddServerCertificate(
-            request.VpnServerId, request.CommonName, cancellationToken);
+            var mappedCertificate = (result, request.VpnServerId).Adapt<MonitorServerCertificate>();
 
-        return Ok(ApiResponse<VpnServerCertificateResponse>.SuccessResponse(certificate.Adapt<VpnServerCertificateResponse>()));
+            var response = new BuildCertificateResponse
+            {
+                MonitorServerCertificate = mappedCertificate
+            };
+
+            return Ok(ApiResponse<BuildCertificateResponse>.SuccessResponse(response));
+        }
+        catch (Exception ex)
+        {
+            logger.LogError(ex, "Failed to build certificate for {CommonName} on server {VpnServerId}", 
+                request.CommonName, request.VpnServerId);
+
+            return BadRequest(ApiResponse<string>.ErrorResponse(ex.Message));
+        }
     }
     
-    [HttpPost("RevokeServerCertificate")]
-    public async Task<IActionResult> RevokeServerCertificate(
+    [HttpPost("revoke")]
+    public async Task<ActionResult<ApiResponse<RevokeCertificateResponse>>> RevokeCertificate(
         [FromBody] RevokeCertificateRequest request,
-        CancellationToken cancellationToken = default)
+        CancellationToken cancellationToken)
     {
-        var result = await certVpnService.RevokeServerCertificate(request.VpnServerId, request.CommonName, cancellationToken);
-        return Ok(ApiResponse<RevokeCertificateResponse>.SuccessResponse(result.Adapt<RevokeCertificateResponse>()));
-    }
-
-    [HttpGet("GetOpenVpnServerCertConf/{vpnServerId:int}")]
-    public async Task<IActionResult> GetOpenVpnServerCertConf(
-        [FromRoute] GetOpenVpnServerCertConfRequest request,
-        CancellationToken cancellationToken = default)
-    {
-        var config = await certVpnService.GetOpenVpnServerCertConf(request.VpnServerId, cancellationToken);
-        return Ok(ApiResponse<ServerCertConfigResponse>.SuccessResponse(config.Adapt<ServerCertConfigResponse>()));
-    }
-
-    [HttpPost("UpdateServerCertConfig")]
-    public async Task<IActionResult> UpdateServerCertConfig(
-        [FromBody] UpdateServerCertConfigRequest request,
-        CancellationToken cancellationToken = default)
-    {
-        var updatedConfig = await certVpnService.UpdateServerCertConfig(request.Adapt<OpenVpnServerCertConfigInfo>(), cancellationToken);
-
-        return Ok(ApiResponse<UpdateServerCertConfigResponse>.SuccessResponse(updatedConfig.Adapt<UpdateServerCertConfigResponse>()));
+        try
+        {
+            var result = await certApiClient.RevokeCertificateAsync(request, cancellationToken);
+    
+            var mappedCertificate = (result, request.VpnServerId).Adapt<MonitorServerCertificate>();
+    
+            var response = new RevokeCertificateResponse
+            {
+                MonitorServerCertificate = mappedCertificate
+            };
+    
+            return Ok(ApiResponse<RevokeCertificateResponse>.SuccessResponse(response));
+        }
+        catch (Exception ex)
+        {
+            logger.LogError(ex, "Failed to revoke certificate for {CommonName} on server {VpnServerId}", 
+                request.CommonName, request.VpnServerId);
+    
+            return BadRequest(ApiResponse<string>.ErrorResponse(ex.Message));
+        }
     }
 }

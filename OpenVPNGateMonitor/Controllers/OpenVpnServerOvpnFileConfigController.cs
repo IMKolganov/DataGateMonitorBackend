@@ -1,37 +1,36 @@
-using Mapster;
+﻿using Mapster;
 using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Mvc;
 using OpenVPNGateMonitor.Models;
 using OpenVPNGateMonitor.Services.Api.Interfaces;
-using OpenVPNGateMonitor.SharedModels.OpenVpnServerOvpnFileConfig.Requests;
-using OpenVPNGateMonitor.SharedModels.OpenVpnServerOvpnFileConfig.Responses;
+using OpenVPNGateMonitor.SharedModels.DataGateMonitorBackend.OpenVpnServerOvpnFileConfig.Requests;
+using OpenVPNGateMonitor.SharedModels.DataGateMonitorBackend.OpenVpnServerOvpnFileConfig.Responses;
 using OpenVPNGateMonitor.SharedModels.Responses;
 
 namespace OpenVPNGateMonitor.Controllers;
 
 [ApiController]
-[Route("api/[controller]")]
+[Route("api/open-vpn-configs")]
 [Authorize]
+[Authorize(Roles = "Admin,App")]
 public class OpenVpnServerOvpnFileConfigController(
-    IOpenVpnServerOvpnFileConfigService openVpnServerOvpnFileConfigService)
-    : ControllerBase
+    IOpenVpnServerOvpnFileConfigService openVpnServerOvpnFileConfigService) : BaseController
 {
-    [HttpGet("GetOvpnFileConfig")]
-    public async Task<IActionResult> GetOvpnFileConfig(
-        [FromBody] int vpnServerId, CancellationToken cancellationToken = default)
+    [HttpGet("get/{vpnServerId:int}")]
+    public async Task<ActionResult<ApiResponse<OvpnFileConfigResponse>>> GetOvpnFileConfig(
+        [FromRoute] GetOvpnFileConfigRequest request, CancellationToken cancellationToken)
     {
         var config = await openVpnServerOvpnFileConfigService
-            .GetOpenVpnServerOvpnFileConfigByServerId(vpnServerId, cancellationToken);
+            .GetOpenVpnServerOvpnFileConfigByServerId(request.VpnServerId, cancellationToken);
 
         return Ok(ApiResponse<OvpnFileConfigResponse>.SuccessResponse(config.Adapt<OvpnFileConfigResponse>()));
     }
-    
-    [HttpPost("AddOrUpdateOvpnFileConfig")]
-    public async Task<IActionResult> AddOrUpdateOvpnFileConfig(
-        [FromBody] AddOrUpdateOvpnFileConfigRequest request, CancellationToken cancellationToken = default)
+    [HttpPost("add-update")]
+    public async Task<ActionResult<ApiResponse<OvpnFileConfigResponse>>> AddOrUpdateOvpnFileConfig(
+        [FromBody] AddOrUpdateOvpnFileConfigRequest request, CancellationToken ct)
     {
         var config = await openVpnServerOvpnFileConfigService
-            .AddOrUpdateOpenVpnServerOvpnFileConfigByServerId(request.Adapt<OpenVpnServerOvpnFileConfig>(), cancellationToken);
+            .AddOrUpdateOpenVpnServerOvpnFileConfigByServerId(request.Adapt<OpenVpnServerOvpnFileConfig>(), ct);
 
         return Ok(ApiResponse<OvpnFileConfigResponse>.SuccessResponse(config.Adapt<OvpnFileConfigResponse>()));
     }

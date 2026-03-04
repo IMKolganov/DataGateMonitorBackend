@@ -1,37 +1,54 @@
-using Mapster;
+﻿using Mapster;
 using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Mvc;
-using OpenVPNGateMonitor.Services.Api.Auth;
-using OpenVPNGateMonitor.SharedModels.Applications.Requests;
-using OpenVPNGateMonitor.SharedModels.Applications.Responses;
+using OpenVPNGateMonitor.Services.Api.Auth.Registers.Interfaces;
+using OpenVPNGateMonitor.SharedModels.DataGateMonitorBackend.Applications.Dto;
+using OpenVPNGateMonitor.SharedModels.DataGateMonitorBackend.Applications.Requests;
+using OpenVPNGateMonitor.SharedModels.DataGateMonitorBackend.Applications.Responses;
 using OpenVPNGateMonitor.SharedModels.Responses;
 
 namespace OpenVPNGateMonitor.Controllers;
 
-[Route("api/[controller]")]
+[Route("api/applications")]
 [ApiController]
 [Authorize]
-public class ApplicationsController(IApplicationService appService) : ControllerBase
+[Authorize(Roles = "Admin,App")]
+public class ApplicationsController(IApplicationService appService) : BaseController
 {
-    [HttpPost("RegisterApplication")]
-    public async Task<IActionResult> RegisterApplication([FromBody] RegisterApplicationRequest request)
+    [HttpPost("register")]
+    public async Task<ActionResult<ApiResponse<RegisterApplicationResponse>>> RegisterApplication([FromBody] 
+        RegisterApplicationRequest request, 
+        CancellationToken cancellationToken)
     {
-        var newApp = await appService.RegisterApplicationAsync(request.Name);
+        var newApp = await appService.RegisterApplicationAsync(request.Name, cancellationToken);
         
-        return Ok(ApiResponse<RegisterApplicationResponse>.SuccessResponse(newApp.Adapt<RegisterApplicationResponse>()));
+        return Ok(ApiResponse<RegisterApplicationResponse>.SuccessResponse(
+            newApp.Adapt<RegisterApplicationResponse>()));
     }
 
-    [HttpGet("GetAllApplications")]
-    public async Task<IActionResult> GetAllApplications()
+    [HttpGet("get-all")]
+    public async Task<ActionResult<ApiResponse<ApplicationsResponse>>> GetAllApplications(
+        CancellationToken cancellationToken)
     {
-        var apps = await appService.GetAllApplicationsAsync();
-        return Ok(ApiResponse<List<ApplicationResponse>>.SuccessResponse(apps.Adapt<List<ApplicationResponse>>()));
+        var apps = await appService.GetAllApplicationsAsync(cancellationToken);
+
+        var dtoList = apps.Adapt<List<ApplicationDto>>();
+
+        var response = new ApplicationsResponse
+        {
+            Applications = dtoList
+        };
+
+        return Ok(ApiResponse<ApplicationsResponse>.SuccessResponse(response));
     }
 
-    [HttpPost("RevokeApplication")]
-    public async Task<IActionResult> RevokeApplication([FromBody] RevokeApplicationRequest request)
+
+    [HttpPost("revoke")]
+    public async Task<ActionResult<ApiResponse<string>>> RevokeApplication(
+        [FromBody] RevokeApplicationRequest request, 
+        CancellationToken cancellationToken)
     {
-        var result = await appService.RevokeApplicationAsync(request.ClientId);
+        var result = await appService.RevokeApplicationAsync(request.ClientId, cancellationToken);
         
         if (!result)
             return NotFound(ApiResponse<string>.ErrorResponse("Application not found"));
