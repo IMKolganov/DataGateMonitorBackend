@@ -1,4 +1,4 @@
-﻿using OpenVPNGateMonitor.SharedModels.DataGateMonitorBackend.OpenVpnServerClients.Responses;
+using OpenVPNGateMonitor.SharedModels.DataGateMonitorBackend.OpenVpnServerClients.Responses;
 using OpenVPNGateMonitor.SharedModels.Enums;
 
 namespace OpenVPNGateMonitor.DataBase.Services.Query.OpenVpnServerClientTable;
@@ -25,6 +25,17 @@ public interface IOpenVpnOverviewSeriesQuery
     Task<OverviewUsersResponse> GetOverviewUsersFromSessionsAsync(
         DateTimeOffset fromUtc,
         DateTimeOffset toUtc,
+        int? vpnServerId,
+        string? externalId,
+        CancellationToken ct = default);
+
+    /// <summary>
+    /// Returns time-bucketed series of session count and unique user count per bucket (same params as overview/series).
+    /// </summary>
+    Task<OverviewUsersSeriesResponse> GetOverviewUsersSeriesFromSessionsAsync(
+        DateTimeOffset fromUtc,
+        DateTimeOffset toUtc,
+        OverviewGrouping grouping,
         int? vpnServerId,
         string? externalId,
         CancellationToken ct = default);

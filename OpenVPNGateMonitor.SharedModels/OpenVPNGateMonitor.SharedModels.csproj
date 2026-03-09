@@ -19,9 +19,9 @@
         <PackageTags>#OpenVPNGateMonitor #OpenVpn #GateMonitor #Dashboard</PackageTags>
         <PackageLicenseExpression>MIT</PackageLicenseExpression>
         <PackageReadmeFile>README.md</PackageReadmeFile>
-        <Version>1.0.91</Version>
-        <AssemblyVersion>1.0.91.0</AssemblyVersion>
-        <FileVersion>1.0.91.0</FileVersion>
+        <Version>1.0.92</Version>
+        <AssemblyVersion>1.0.92.0</AssemblyVersion>
+        <FileVersion>1.0.92.0</FileVersion>
         <PackageIcon>favicon.png</PackageIcon>
 
         <Deterministic>true</Deterministic>
