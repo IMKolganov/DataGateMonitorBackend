@@ -1,4 +1,4 @@
-﻿using Mapster;
+using Mapster;
 using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Mvc;
 using OpenVPNGateMonitor.DataBase.Services.Query.OpenVpnServerClientTable;
@@ -99,5 +99,24 @@ public class OpenVpnServerClientsController(IOpenVpnServerClientOverviewQuery op
             ct);
 
         return Ok(ApiResponse<OverviewUsersResponse>.SuccessResponse(users));
+    }
+
+    /// <summary>
+    /// Time-bucketed series of session count and unique user count per bucket. Same query params as overview/series (From, To, Grouping, VpnServerId, ExternalId).
+    /// </summary>
+    [HttpGet("overview/users/series")]
+    public async Task<ActionResult<ApiResponse<OverviewUsersSeriesResponse>>> GetOverviewUsersSeries(
+        [FromQuery] GetOverviewSeriesRequest request,
+        CancellationToken ct = default)
+    {
+        var result = await openVpnOverviewSeriesQuery.GetOverviewUsersSeriesFromSessionsAsync(
+            request.From,
+            request.To,
+            request.Grouping,
+            request.VpnServerId,
+            request.ExternalId,
+            ct);
+
+        return Ok(ApiResponse<OverviewUsersSeriesResponse>.SuccessResponse(result));
     }
 }
