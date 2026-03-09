@@ -28,10 +28,13 @@ public class OpenVpnServerConflogService(
         var payloadJson = JsonSerializer.Serialize(response, JsonOptions);
         var requestUrl = baseUrl.TrimEnd('/').Trim();
 
+        // When called by server id: only compare with last record for THIS server (by VpnServerId).
+        // Do not fallback to GetLastByRequestUrl — after server recreate the same URL may have old
+        // conflog from the deleted server, so we would skip saving and the new server would never get history.
         OpenVpnServerConflog? last = null;
         if (vpnServerId.HasValue)
             last = await conflogQueryService.GetLastByVpnServerId(vpnServerId.Value, ct);
-        if (last == null)
+        if (last == null && !vpnServerId.HasValue)
             last = await conflogQueryService.GetLastByRequestUrl(requestUrl, ct);
 
         if (last != null && last.PayloadJson == payloadJson)
