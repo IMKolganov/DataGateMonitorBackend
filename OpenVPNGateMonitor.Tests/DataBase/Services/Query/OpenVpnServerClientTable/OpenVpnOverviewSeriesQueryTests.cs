@@ -158,4 +158,51 @@ public class OpenVpnOverviewSeriesQueryTests
         Assert.Equal(10, u2.TrafficOutBytes);
         Assert.True(u2.FirstSeen <= u2.LastSeen);
     }
+
+    [Fact]
+    public async Task GetOverviewUsersSeriesFromSessionsAsync_Buckets_ActiveSessions_And_ActiveUsers()
+    {
+        var (uow, ctx) = CreateUow();
+        var baseTs = new DateTimeOffset(2025, 1, 1, 0, 0, 0, TimeSpan.Zero);
+        var from = baseTs;
+        var to = baseTs.AddHours(2);
+
+        var sA = Guid.NewGuid();
+        var sB = Guid.NewGuid();
+
+        // u1: one session in bucket 00:00
+        ctx.Traffic.Add(
+            new OpenVpnServerClientTraffic { Id = 1, VpnServerId = 1, ExternalId = "u1", SessionId = sA, BytesReceived = 10, BytesSent = 5, MeasuredAt = baseTs.AddMinutes(15) });
+
+        // u1 again + u2 in bucket 01:00 (two users, two sessions)
+        ctx.Traffic.AddRange(new[]
+        {
+            new OpenVpnServerClientTraffic { Id = 2, VpnServerId = 1, ExternalId = "u1", SessionId = sA, BytesReceived = 20, BytesSent = 10, MeasuredAt = baseTs.AddHours(1).AddMinutes(10) },
+            new OpenVpnServerClientTraffic { Id = 3, VpnServerId = 1, ExternalId = "u2", SessionId = sB, BytesReceived = 7, BytesSent = 3, MeasuredAt = baseTs.AddHours(1).AddMinutes(30) },
+        });
+        await ctx.SaveChangesAsync();
+
+        var sut = new OpenVpnOverviewSeriesQuery(uow.Object);
+        var res = await sut.GetOverviewUsersSeriesFromSessionsAsync(from, to, OverviewGrouping.Auto, vpnServerId: 1, externalId: null, CancellationToken.None);
+
+        Assert.Equal(3, res.Rows.Count); // 00:00, 01:00, 02:00 (zero-filled)
+
+        var b0 = res.Rows[0];
+        Assert.Equal(baseTs, b0.Ts);
+        Assert.Equal(1, b0.ActiveSessions);
+        Assert.Equal(1, b0.ActiveUsers);
+
+        var b1 = res.Rows[1];
+        Assert.Equal(baseTs.AddHours(1), b1.Ts);
+        Assert.Equal(2, b1.ActiveSessions);
+        Assert.Equal(2, b1.ActiveUsers);
+
+        var b2 = res.Rows[2];
+        Assert.Equal(baseTs.AddHours(2), b2.Ts);
+        Assert.Equal(0, b2.ActiveSessions);
+        Assert.Equal(0, b2.ActiveUsers);
+
+        Assert.Equal(2, res.Summary.PeakActiveSessions);
+        Assert.Equal(2, res.Summary.PeakActiveUsers);
+    }
 }
