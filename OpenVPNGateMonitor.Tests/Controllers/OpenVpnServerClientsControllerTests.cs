@@ -165,4 +165,33 @@ public class OpenVpnServerClientsControllerTests
         var response = Assert.IsType<ApiResponse<OverviewUsersResponse>>(ok.Value);
         Assert.True(response.Success);
     }
+
+    [Fact]
+    public async Task GetOverviewUsersSeries_Returns_Ok()
+    {
+        _seriesQuery
+            .Setup(s => s.GetOverviewUsersSeriesFromSessionsAsync(
+                It.IsAny<DateTimeOffset>(),
+                It.IsAny<DateTimeOffset>(),
+                It.IsAny<OpenVPNGateMonitor.SharedModels.Enums.OverviewGrouping>(),
+                It.IsAny<int?>(),
+                It.IsAny<string?>(),
+                It.IsAny<CancellationToken>()))
+            .ReturnsAsync(new OverviewUsersSeriesResponse());
+
+        var req = new GetOverviewSeriesRequest
+        {
+            From = DateTimeOffset.UtcNow.AddDays(-7),
+            To = DateTimeOffset.UtcNow,
+            Grouping = OpenVPNGateMonitor.SharedModels.Enums.OverviewGrouping.Days,
+            VpnServerId = 3,
+            ExternalId = null
+        };
+
+        var result = await _controller.GetOverviewUsersSeries(req, CancellationToken.None);
+
+        var ok = Assert.IsType<OkObjectResult>(result.Result);
+        var response = Assert.IsType<ApiResponse<OverviewUsersSeriesResponse>>(ok.Value);
+        Assert.True(response.Success);
+    }
 }
