@@ -1,4 +1,4 @@
-﻿<Project Sdk="Microsoft.NET.Sdk">
+<Project Sdk="Microsoft.NET.Sdk">
 
     <PropertyGroup>
         <ImplicitUsings>enable</ImplicitUsings>
@@ -8,6 +8,7 @@
 
     <ItemGroup>
       <ProjectReference Include="..\OpenVPNGateMonitor.Models\OpenVPNGateMonitor.Models.csproj" />
+      <ProjectReference Include="..\OpenVPNGateMonitor.SharedModels\OpenVPNGateMonitor.SharedModels.csproj" />
     </ItemGroup>
 
     <ItemGroup>
