@@ -17,11 +17,65 @@ public class GlobalExceptionMiddleware(
         {
             await next(context);
         }
+        catch (OperationCanceledException ex)
+        {
+            await HandleOperationCanceledAsync(context, ex);
+        }
         catch (Exception ex)
         {
             logger.LogError(ex, "Unhandled exception occurred.");
             await HandleExceptionAsync(context, ex);
         }
+    }
+
+    private async Task HandleOperationCanceledAsync(HttpContext context, OperationCanceledException exception)
+    {
+        var method = context.Request.Method;
+        var path = context.Request.Path;
+        var queryString = context.Request.QueryString.ToString();
+        var traceId = context.TraceIdentifier;
+        var wasAbortedByClient = context.RequestAborted.IsCancellationRequested;
+
+        if (wasAbortedByClient)
+        {
+            logger.LogInformation(
+                exception,
+                "Request was cancelled by client. " +
+                "Method: {Method}. Path: {Path}. QueryString: {QueryString}. TraceId: {TraceId}",
+                method,
+                path,
+                queryString,
+                traceId);
+        }
+        else
+        {
+            logger.LogWarning(
+                exception,
+                "Operation was cancelled. " +
+                "Method: {Method}. Path: {Path}. QueryString: {QueryString}. TraceId: {TraceId}",
+                method,
+                path,
+                queryString,
+                traceId);
+        }
+
+        if (context.Response.HasStarted)
+            return;
+
+        context.Response.Clear();
+        context.Response.ContentType = "application/json";
+        context.Response.StatusCode = 499;
+
+        var payload = new
+        {
+            statusCode = 499,
+            message = "Request was cancelled.",
+            detail = exception.Message,
+            traceId
+        };
+
+        var json = JsonConvert.SerializeObject(payload);
+        await context.Response.WriteAsync(json);
     }
 
     private async Task HandleExceptionAsync(HttpContext context, Exception exception)
@@ -60,16 +114,17 @@ public class GlobalExceptionMiddleware(
         {
             statusCode = statusCodeInt,
             message = responseMessage,
-            detail = GetExceptionDetails(exception)
+            detail = GetExceptionDetails(exception),
+            traceId = context.TraceIdentifier
         };
 
         var json = JsonConvert.SerializeObject(payload);
         await context.Response.WriteAsync(json);
     }
-    
-    private static string GetExceptionDetails(Exception exception)
+
+    private static string GetExceptionDetails(Exception ex)
     {
-        if (exception is DbUpdateException dbEx)
+        if (ex is DbUpdateException dbEx)
         {
             if (dbEx.InnerException is PostgresException pg)
             {
@@ -82,6 +137,12 @@ public class GlobalExceptionMiddleware(
             }
         }
 
-        return exception.InnerException?.Message ?? exception.Message;
+        var current = ex;
+        while (current.InnerException != null)
+        {
+            current = current.InnerException;
+        }
+
+        return current.Message;
     }
 }
