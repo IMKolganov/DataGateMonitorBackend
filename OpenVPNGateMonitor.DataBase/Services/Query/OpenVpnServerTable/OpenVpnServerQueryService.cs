@@ -16,8 +16,15 @@ public class OpenVpnServerQueryService(IQueryService<OpenVpnServer, int> q) : IO
     public Task<List<OpenVpnServer>> GetDefaultExcept(int exceptId, CancellationToken ct = default)
         => q.Where(x => x.IsDefault && x.Id != exceptId && !x.IsDeleted, ct: ct);
 
-    public Task<IPagedResult<OpenVpnServer>> GetPage(int page, int pageSize, bool includeDeleted = false, CancellationToken ct = default)
+    public Task<IPagedResult<OpenVpnServer>> GetPage(int page, int pageSize, bool includeDeleted = false,
+        CancellationToken ct = default)
         => includeDeleted
             ? q.Page(page, pageSize, ct: ct)
             : q.Page(page, pageSize, predicate: x => !x.IsDeleted, ct: ct);
+
+    public Task<bool> AnyByServerName(string serverName, CancellationToken ct = default)
+        => q.Any(x => x.ServerName == serverName && !x.IsDeleted, ct: ct);
+
+    public Task<bool> AnyByServerNameExceptId(string serverName, int id, CancellationToken ct = default)
+        => q.Any(x => x.ServerName == serverName && x.Id != id && !x.IsDeleted, ct: ct);
 }
