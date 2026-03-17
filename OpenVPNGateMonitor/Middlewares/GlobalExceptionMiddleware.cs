@@ -60,10 +60,28 @@ public class GlobalExceptionMiddleware(
         {
             statusCode = statusCodeInt,
             message = responseMessage,
-            detail = exception.Message
+            detail = GetExceptionDetails(exception)
         };
 
         var json = JsonConvert.SerializeObject(payload);
         await context.Response.WriteAsync(json);
+    }
+    
+    private static string GetExceptionDetails(Exception exception)
+    {
+        if (exception is DbUpdateException dbEx)
+        {
+            if (dbEx.InnerException is PostgresException pg)
+            {
+                return $"{pg.MessageText} (SQLSTATE {pg.SqlState})";
+            }
+
+            if (dbEx.InnerException != null)
+            {
+                return dbEx.InnerException.Message;
+            }
+        }
+
+        return exception.InnerException?.Message ?? exception.Message;
     }
 }
