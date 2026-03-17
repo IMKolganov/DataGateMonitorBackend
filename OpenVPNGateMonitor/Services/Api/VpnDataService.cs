@@ -30,9 +30,15 @@ public class VpnDataService(
         {
             var now = DateTimeOffset.UtcNow;
 
+            if (await openVpnServerQueryService.AnyByServerName(server.ServerName, ct))
+            {
+                logger.LogWarning("OpenVPN server with name '{ServerName}' already exists", server.ServerName);
+                throw new InvalidOperationException("OpenVPN server with the same name already exists");
+            }
+            
             if (server.IsDefault)
             {
-                // Unset previous default in one SQL statement (no entity loading)
+                // Unset the previous default in one SQL statement (no entity loading)
                 await openVpnServerCommandService.UpdateWhere(
                     s => s.IsDefault,
                     u => u.SetProperty(x => x.IsDefault, false)
@@ -40,7 +46,7 @@ public class VpnDataService(
                     ct);
             }
 
-            // Insert server (need Id immediately for further operations)
+            // Insert server (need ID immediately for further operations)
             server.CreateDate = now;
             server.LastUpdate = now;
             await openVpnServerCommandService.Add(server, saveChanges: true, ct);
@@ -48,7 +54,7 @@ public class VpnDataService(
             await SyncQuotaPlanLinksAsync(server.Id, quotaPlanIds, ct);
             await SyncTagLinksAsync(server.Id, tagIds, ct);
 
-            // Additional writes that must be part of the same transaction
+            // Additionally, writes that must be part of the same transaction
             if (!await CheckAndPutDefaultExpiredSettings(server, ct))
                 logger.LogWarning("Failed to add default settings for OpenVPN server.");
 
@@ -67,6 +73,12 @@ public class VpnDataService(
         var result = await transactionRunner.RunAsync(async _ =>
         {
             var now = DateTimeOffset.UtcNow;
+
+            if (await openVpnServerQueryService.AnyByServerNameExceptId(server.ServerName, server.Id, ct))
+            {
+                logger.LogWarning("OpenVPN server with name '{ServerName}' already exists", server.ServerName);
+                throw new InvalidOperationException("OpenVPN server with the same name already exists");
+            }
 
             if (server.IsDefault)
             {
