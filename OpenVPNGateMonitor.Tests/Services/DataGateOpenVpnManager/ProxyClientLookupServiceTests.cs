@@ -1,0 +1,61 @@
+using OpenVPNGateMonitor.Services.DataGateOpenVpnManager;
+using OpenVPNGateMonitor.SharedModels.DataGateOpenVpnManager.Proxy.Responses;
+
+namespace OpenVPNGateMonitor.Tests.Services.DataGateOpenVpnManager;
+
+public class ProxyClientLookupServiceTests
+{
+    [Theory]
+    [InlineData("127.0.0.1:41810", "127.0.0.1", 41810)]
+    [InlineData("[::1]:50000", "::1", 50000)]
+    public void TryParseLoopbackIpAndPort_AcceptsLoopbackWithPort(string input, string expectedHost, int expectedPort)
+    {
+        var ok = ProxyClientLookupService.TryParseLoopbackIpAndPort(input, out var host, out var port);
+        Assert.True(ok);
+        Assert.Equal(expectedHost, host);
+        Assert.Equal(expectedPort, port);
+    }
+
+    [Theory]
+    [InlineData("203.0.113.5:443")]
+    [InlineData("")]
+    [InlineData("not-an-endpoint")]
+    public void TryParseLoopbackIpAndPort_RejectsNonLoopbackOrInvalid(string input)
+    {
+        var ok = ProxyClientLookupService.TryParseLoopbackIpAndPort(input, out _, out _);
+        Assert.False(ok);
+    }
+
+    [Fact]
+    public void FormatProxyRealIpValue_FormatsIpAndPort()
+    {
+        var s = ProxyClientLookupService.FormatProxyRealIpValue(new ProxyClientLookupResponse
+        {
+            RealClientIp = "198.51.100.1",
+            RealClientPort = 8443
+        });
+        Assert.Equal("198.51.100.1:8443", s);
+    }
+
+    [Fact]
+    public void FormatProxyRealIpValue_IpOnlyWhenPortZero()
+    {
+        var s = ProxyClientLookupService.FormatProxyRealIpValue(new ProxyClientLookupResponse
+        {
+            RealClientIp = "198.51.100.2",
+            RealClientPort = 0
+        });
+        Assert.Equal("198.51.100.2", s);
+    }
+
+    [Fact]
+    public void FormatProxyRealIpValue_NullWhenNoIp()
+    {
+        var s = ProxyClientLookupService.FormatProxyRealIpValue(new ProxyClientLookupResponse
+        {
+            RealClientIp = null,
+            RealClientPort = 443
+        });
+        Assert.Null(s);
+    }
+}

@@ -1,4 +1,4 @@
-﻿namespace OpenVPNGateMonitor.SharedModels.DataGateMonitorBackend.OpenVpnServers.Dto;
+namespace OpenVPNGateMonitor.SharedModels.DataGateMonitorBackend.OpenVpnServers.Dto;
 
 public class VpnClientInfoDto
 {
@@ -9,6 +9,10 @@ public class VpnClientInfoDto
     public Guid SessionId { get; set; }
     public string CommonName { get; set; } = string.Empty;
     public string RemoteIp { get; set; } = string.Empty;
+
+    /// <summary>Real client IP:port when management shows loopback and proxy lookup succeeded.</summary>
+    public string? ProxyRealIp { get; set; }
+
     public string LocalIp { get; set; } = string.Empty;
     public long BytesReceived { get; set; }
     public long BytesSent { get; set; }
