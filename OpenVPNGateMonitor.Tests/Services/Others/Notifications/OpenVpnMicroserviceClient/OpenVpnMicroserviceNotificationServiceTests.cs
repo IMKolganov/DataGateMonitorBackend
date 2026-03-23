@@ -124,4 +124,30 @@ public class OpenVpnMicroserviceNotificationServiceTests
         captured.ServerId.Should().Be(serverId);
         _notificationService.VerifyAll();
     }
+
+    [Fact]
+    public async Task NotifyProxyClientLookupFailed_CallsNotifyAdmins_WithCorrectTypeAndSeverity()
+    {
+        var serverId = 9;
+        string? serverName = "proxy-test";
+        var detail = "RealAddress=127.0.0.1:1; HTTP 404; localPort=1";
+        var ct = CancellationToken.None;
+
+        NotificationRequest? captured = null;
+        _notificationService
+            .Setup(s => s.NotifyAdmins(It.IsAny<NotificationRequest>(), It.IsAny<IEnumerable<string>?>(), ct))
+            .Callback<NotificationRequest, IEnumerable<string>?, CancellationToken>((req, _, _) => captured = req)
+            .ReturnsAsync(5);
+
+        await _sut.NotifyProxyClientLookupFailed(serverId, serverName, detail, NotificationSeverity.Warning, ct);
+
+        captured.Should().NotBeNull();
+        captured!.Type.Should().Be("microservice.proxy-client-lookup-failed");
+        captured.Title.Should().Be("Proxy client lookup failed");
+        captured.Message.Should().Contain("ServerId=9").And.Contain("Name=proxy-test").And.Contain(detail);
+        captured.Severity.Should().Be(NotificationSeverity.Warning);
+        captured.Source.Should().Be("openvpn-microservice-client");
+        captured.ServerId.Should().Be(serverId);
+        _notificationService.VerifyAll();
+    }
 }

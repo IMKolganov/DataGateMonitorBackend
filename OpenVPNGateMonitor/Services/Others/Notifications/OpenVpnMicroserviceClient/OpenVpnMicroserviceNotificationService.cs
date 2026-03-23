@@ -24,6 +24,11 @@ public class OpenVpnMicroserviceNotificationService(INotificationService notific
             Detail(serverId, serverName) + (string.IsNullOrEmpty(errorMessage) ? "" : $"; Error={errorMessage}"),
             serverId, NotificationSeverity.Error, ErrorChannels, ct);
 
+    public Task NotifyProxyClientLookupFailed(int serverId, string? serverName, string detail, NotificationSeverity severity, CancellationToken ct)
+        => Notify("microservice.proxy-client-lookup-failed", "Proxy client lookup failed",
+            Detail(serverId, serverName) + (string.IsNullOrEmpty(detail) ? "" : $"; {detail}"),
+            serverId, severity, ErrorChannels, ct);
+
     private static string Detail(int serverId, string? serverName)
         => $"ServerId={serverId}" + (string.IsNullOrEmpty(serverName) ? "" : $"; Name={serverName}");
 
