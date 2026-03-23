@@ -78,6 +78,7 @@ public class VpnDataServiceTests
 
         cfgQ.Setup(q => q.AnyByVpnServerId(It.IsAny<int>(), It.IsAny<CancellationToken>())).ReturnsAsync(false);
         ip.Setup(x => x.GetRemoteIpAddress(It.IsAny<CancellationToken>())).ReturnsAsync("203.0.113.10");
+        serverQ.Setup(q => q.AnyByServerName("Srv", It.IsAny<CancellationToken>())).ReturnsAsync(false);
 
         serverCmd.Setup(c => c.Add(It.IsAny<OpenVpnServer>(), true, It.IsAny<CancellationToken>()))
             .Callback<OpenVpnServer, bool, CancellationToken>((s, _, _) => s.Id = 101)
@@ -117,6 +118,7 @@ public class VpnDataServiceTests
 
         cfgQ.Setup(q => q.AnyByVpnServerId(It.IsAny<int>(), It.IsAny<CancellationToken>())).ReturnsAsync(true);
         ip.Setup(x => x.GetRemoteIpAddress(It.IsAny<CancellationToken>())).ReturnsAsync("ignored");
+        serverQ.Setup(q => q.AnyByServerName("DefaultSrv", It.IsAny<CancellationToken>())).ReturnsAsync(false);
 
         serverCmd.Setup(c => c.UpdateWhere(
                 It.IsAny<Expression<Func<OpenVpnServer, bool>>>(),
@@ -150,6 +152,7 @@ public class VpnDataServiceTests
 
         cfgQ.Setup(q => q.AnyByVpnServerId(51, It.IsAny<CancellationToken>())).ReturnsAsync(false);
         ip.Setup(x => x.GetRemoteIpAddress(It.IsAny<CancellationToken>())).ReturnsAsync("198.51.100.5");
+        serverQ.Setup(q => q.AnyByServerNameExceptId("Srv", 51, It.IsAny<CancellationToken>())).ReturnsAsync(false);
         cfgCmd.Setup(c => c.Add(It.IsAny<OpenVpnServerOvpnFileConfig>(), true, It.IsAny<CancellationToken>()))
             .ReturnsAsync((OpenVpnServerOvpnFileConfig e, bool _, CancellationToken _) => e);
 
@@ -176,6 +179,7 @@ public class VpnDataServiceTests
 
         cfgQ.Setup(q => q.AnyByVpnServerId(9, It.IsAny<CancellationToken>())).ReturnsAsync(true);
         ip.Setup(x => x.GetRemoteIpAddress(It.IsAny<CancellationToken>())).ReturnsAsync("ignored");
+        serverQ.Setup(q => q.AnyByServerNameExceptId("Srv", 9, It.IsAny<CancellationToken>())).ReturnsAsync(false);
 
         serverCmd.Setup(c => c.UpdateWhere(
                 It.IsAny<Expression<Func<OpenVpnServer, bool>>>(),

@@ -2,6 +2,7 @@ using System.Reflection;
 using Microsoft.Extensions.Logging;
 using Moq;
 using OpenVPNGateMonitor.Models;
+using OpenVPNGateMonitor.Services.DataGateOpenVpnManager.Interfaces;
 using OpenVPNGateMonitor.Services.DataGateOpenVpnManager.OpenVpnProxy;
 using OpenVPNGateMonitor.Services.GeoLite.Interfaces;
 using OpenVPNGateMonitor.Services.OpenVpnManagementInterfaces;
@@ -15,19 +16,47 @@ public class OpenVpnClientServiceTests
     private static OpenVpnClientService CreateService(
         out Mock<IGeoLiteQueryService> geoMock,
         out Mock<IOpenVpnMicroserviceClientFactory> factoryMock,
-        out Mock<ILogger<IOpenVpnClientService>> loggerMock)
+        out Mock<ILogger<IOpenVpnClientService>> loggerMock,
+        out Mock<IProxyClientLookupService> proxyMock)
     {
         loggerMock = new Mock<ILogger<IOpenVpnClientService>>();
         geoMock = new Mock<IGeoLiteQueryService>(MockBehavior.Strict);
         factoryMock = new Mock<IOpenVpnMicroserviceClientFactory>(MockBehavior.Strict);
-        return new OpenVpnClientService(loggerMock.Object, factoryMock.Object, geoMock.Object);
+        proxyMock = new Mock<IProxyClientLookupService>(MockBehavior.Strict);
+        var geoService = geoMock.Object;
+        proxyMock
+            .Setup(x => x.EnrichFromManagementRealAddressAsync(It.IsAny<OpenVpnServer>(), It.IsAny<OpenVpnServerClient>(),
+                It.IsAny<CancellationToken>()))
+            .Returns<OpenVpnServer, OpenVpnServerClient, CancellationToken>((_, client, ct) =>
+                DefaultEnrichFromGeoAsync(geoService, client, ct));
+
+        return new OpenVpnClientService(loggerMock.Object, factoryMock.Object, proxyMock.Object);
     }
 
-    private static async Task<OpenVpnManagementStatusResult> InvokeParseStatusAsync(OpenVpnClientService svc, string data)
+    /// <summary>Mimics the non-loopback path: GeoLite on management <see cref="OpenVpnServerClient.RemoteIp"/> only.</summary>
+    private static async Task DefaultEnrichFromGeoAsync(IGeoLiteQueryService geo, OpenVpnServerClient client,
+        CancellationToken ct)
     {
+        var geoInfo = await geo.GetGeoInfoAsync(client.RemoteIp, ct);
+        if (geoInfo is not null)
+        {
+            client.Country = geoInfo.Country;
+            client.Region = geoInfo.Region;
+            client.City = geoInfo.City;
+            client.Latitude = geoInfo.Latitude;
+            client.Longitude = geoInfo.Longitude;
+        }
+
+        client.ProxyRealIp = null;
+    }
+
+    private static async Task<OpenVpnManagementStatusResult> InvokeParseStatusAsync(OpenVpnClientService svc, string data,
+        OpenVpnServer? server = null)
+    {
+        server ??= new OpenVpnServer { Id = 1, ApiUrl = "https://example.com" };
         var mi = typeof(OpenVpnClientService)
             .GetMethod("ParseStatus", BindingFlags.Instance | BindingFlags.NonPublic)!;
-        var task = (Task<OpenVpnManagementStatusResult>)mi.Invoke(svc, new object[] { data, CancellationToken.None })!;
+        var task = (Task<OpenVpnManagementStatusResult>)mi.Invoke(svc, new object[] { data, server, CancellationToken.None })!;
         return await task.ConfigureAwait(false);
     }
 
@@ -35,7 +64,7 @@ public class OpenVpnClientServiceTests
     public async Task ParseStatus_WithSampleResponse_ParsesClients_And_EnrichesGeo_And_SetsDeterministicSessionId()
     {
         // Arrange
-        var svc = CreateService(out var geoMock, out var factoryMock, out _);
+        var svc = CreateService(out var geoMock, out var factoryMock, out _, out _);
 
         // Geo mocks per remote IP: both are used once per client (anonymized IPs)
         geoMock.Setup(x => x.GetGeoInfoAsync("203.0.113.5:40884", It.IsAny<CancellationToken>()))
@@ -122,7 +151,7 @@ public class OpenVpnClientServiceTests
     [Fact]
     public async Task ParseStatus_GLOBAL_STATS_DcoEnabledZero_SetsDcoEnabledFalse()
     {
-        var svc = CreateService(out _, out _, out _);
+        var svc = CreateService(out _, out _, out _, out _);
         const string sample = "GLOBAL_STATS\tdco_enabled\t0\nEND\n";
         var result = await InvokeParseStatusAsync(svc, sample);
         Assert.Empty(result.Clients);
@@ -132,7 +161,7 @@ public class OpenVpnClientServiceTests
     [Fact]
     public async Task ParseStatus_NoClientListLines_ReturnsEmpty_And_NoGeoCalls()
     {
-        var svc = CreateService(out var geoMock, out _, out _);
+        var svc = CreateService(out var geoMock, out _, out _, out _);
 
         const string sample = "TITLE\tOpenVPN\nHEADER\tROUTING_TABLE\t...\nEND\n";
         var result = await InvokeParseStatusAsync(svc, sample);
@@ -145,7 +174,7 @@ public class OpenVpnClientServiceTests
     [Fact]
     public async Task ParseStatus_GeoReturnsNull_ClientParsedWithoutGeo()
     {
-        var svc = CreateService(out var geoMock, out _, out _);
+        var svc = CreateService(out var geoMock, out _, out _, out _);
 
         geoMock.Setup(x => x.GetGeoInfoAsync("203.0.113.5:1111", It.IsAny<CancellationToken>()))
                .ReturnsAsync((OpenVpnGeoInfo?)null);
@@ -173,7 +202,7 @@ public class OpenVpnClientServiceTests
     [Fact]
     public async Task ParseStatus_UsernameProvided_UsesUsernameField()
     {
-        var svc = CreateService(out var geoMock, out _, out _);
+        var svc = CreateService(out var geoMock, out _, out _, out _);
         geoMock.Setup(x => x.GetGeoInfoAsync("198.51.100.10:2222", It.IsAny<CancellationToken>()))
                .ReturnsAsync(new OpenVpnGeoInfo());
 
@@ -188,7 +217,7 @@ public class OpenVpnClientServiceTests
     [Fact]
     public async Task ParseStatus_InsufficientColumns_IsSkipped()
     {
-        var svc = CreateService(out var geoMock, out _, out _);
+        var svc = CreateService(out var geoMock, out _, out _, out _);
         const string sample = "CLIENT_LIST\tclient-z\t203.0.113.9:3333\t10.0.0.4\n"; // < 8 columns
         var result = await InvokeParseStatusAsync(svc, sample);
         Assert.Empty(result.Clients);
@@ -204,7 +233,7 @@ public class OpenVpnClientServiceTests
     [Fact]
     public void TryParseLong_Empty_ReturnsZero_And_LogsWarning()
     {
-        var svc = CreateService(out _, out _, out var loggerMock);
+        var svc = CreateService(out _, out _, out var loggerMock, out _);
         var result = InvokePrivate<long>(svc, "TryParseLong", " \t", "BytesReceived");
         Assert.Equal(0, result);
 
@@ -220,7 +249,7 @@ public class OpenVpnClientServiceTests
     [Fact]
     public void TryParseLong_Invalid_Throws_And_LogsError()
     {
-        var svc = CreateService(out _, out _, out var loggerMock);
+        var svc = CreateService(out _, out _, out var loggerMock, out _);
         var ex = Assert.Throws<TargetInvocationException>(() => InvokePrivate<long>(svc, "TryParseLong", "abc", "BytesSent"));
         Assert.IsType<FormatException>(ex.InnerException);
 
@@ -236,7 +265,7 @@ public class OpenVpnClientServiceTests
     [Fact]
     public void TryParseInstantUtc_Empty_ReturnsMin_And_LogsWarning()
     {
-        var svc = CreateService(out _, out _, out var loggerMock);
+        var svc = CreateService(out _, out _, out var loggerMock, out _);
         var dto = InvokePrivate<DateTimeOffset>(svc, "TryParseInstantUtc", " ", "ConnectedSince");
         Assert.Equal(DateTimeOffset.MinValue, dto);
         loggerMock.Verify(x => x.Log(
@@ -251,7 +280,7 @@ public class OpenVpnClientServiceTests
     [Fact]
     public void TryParseInstantUtc_UnixSeconds_Parses()
     {
-        var svc = CreateService(out _, out _, out _);
+        var svc = CreateService(out _, out _, out _, out _);
         var dto = InvokePrivate<DateTimeOffset>(svc, "TryParseInstantUtc", "1764752135", "ConnectedSince");
         Assert.Equal(DateTimeOffset.FromUnixTimeSeconds(1764752135), dto);
     }
@@ -259,7 +288,7 @@ public class OpenVpnClientServiceTests
     [Fact]
     public void TryParseInstantUtc_Iso8601WithOffset_NormalizedToUtc()
     {
-        var svc = CreateService(out _, out _, out _);
+        var svc = CreateService(out _, out _, out _, out _);
         var dto = InvokePrivate<DateTimeOffset>(svc, "TryParseInstantUtc", "2025-12-03T10:00:00+02:00", "ConnectedSince");
         Assert.Equal(new DateTimeOffset(2025, 12, 3, 8, 0, 0, TimeSpan.Zero), dto);
     }
@@ -267,7 +296,7 @@ public class OpenVpnClientServiceTests
     [Fact]
     public void TryParseInstantUtc_Invalid_Throws_And_LogsError()
     {
-        var svc = CreateService(out _, out _, out var loggerMock);
+        var svc = CreateService(out _, out _, out var loggerMock, out _);
         var ex = Assert.Throws<TargetInvocationException>(() => InvokePrivate<DateTimeOffset>(svc, "TryParseInstantUtc", "not-a-date", "ConnectedSince"));
         Assert.IsType<FormatException>(ex.InnerException);
         loggerMock.Verify(x => x.Log(
@@ -282,7 +311,7 @@ public class OpenVpnClientServiceTests
     [Fact]
     public async Task ParseStatus_InvalidFirstLine_Skipped_SecondValidParsed()
     {
-        var svc = CreateService(out var geoMock, out _, out _);
+        var svc = CreateService(out var geoMock, out _, out _, out _);
         geoMock.Setup(x => x.GetGeoInfoAsync("203.0.113.5:1234", It.IsAny<CancellationToken>()))
                .ReturnsAsync(new OpenVpnGeoInfo { Country = "X" });
 
@@ -300,7 +329,7 @@ public class OpenVpnClientServiceTests
     [Fact]
     public void GenerateSessionId_Deterministic_And_SensitiveToInputs()
     {
-        var svc = CreateService(out _, out _, out _);
+        var svc = CreateService(out _, out _, out _, out _);
         var mi = typeof(OpenVpnClientService).GetMethod("GenerateSessionId", BindingFlags.Instance | BindingFlags.NonPublic)!;
 
         var cn = "client-a";
@@ -329,8 +358,13 @@ public class OpenVpnClientServiceTests
         var geo = new Mock<IGeoLiteQueryService>(MockBehavior.Strict);
         var factory = new Mock<IOpenVpnMicroserviceClientFactory>(MockBehavior.Strict);
         var client = new Mock<IOpenVpnMicroserviceClient>(MockBehavior.Strict);
+        var proxy = new Mock<IProxyClientLookupService>(MockBehavior.Strict);
+        proxy.Setup(x => x.EnrichFromManagementRealAddressAsync(It.IsAny<OpenVpnServer>(), It.IsAny<OpenVpnServerClient>(),
+                It.IsAny<CancellationToken>()))
+            .Returns<OpenVpnServer, OpenVpnServerClient, CancellationToken>((_, cl, ct) =>
+                DefaultEnrichFromGeoAsync(geo.Object, cl, ct));
 
-        var svc = new OpenVpnClientService(logger.Object, factory.Object, geo.Object);
+        var svc = new OpenVpnClientService(logger.Object, factory.Object, proxy.Object);
 
         var server = new OpenVpnServer { Id = 123, ApiUrl = "https://api.example" };
 
@@ -390,7 +424,8 @@ public class OpenVpnClientServiceTests
         var geo = new Mock<IGeoLiteQueryService>(MockBehavior.Strict);
         var factory = new Mock<IOpenVpnMicroserviceClientFactory>(MockBehavior.Strict);
         var client = new Mock<IOpenVpnMicroserviceClient>(MockBehavior.Strict);
-        var svc = new OpenVpnClientService(logger.Object, factory.Object, geo.Object);
+        var proxy = new Mock<IProxyClientLookupService>(MockBehavior.Strict);
+        var svc = new OpenVpnClientService(logger.Object, factory.Object, proxy.Object);
         var server = new OpenVpnServer { Id = 1, ApiUrl = "https://api.example" };
 
         factory.Setup(f => f.Create(server)).Returns(client.Object);

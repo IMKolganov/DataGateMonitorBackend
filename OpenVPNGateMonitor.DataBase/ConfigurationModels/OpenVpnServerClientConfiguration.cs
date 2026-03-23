@@ -1,4 +1,4 @@
-﻿using Microsoft.EntityFrameworkCore;
+using Microsoft.EntityFrameworkCore;
 using OpenVPNGateMonitor.Models;
 using Microsoft.EntityFrameworkCore.Metadata.Builders;
 
@@ -21,6 +21,8 @@ public class OpenVpnServerClientConfiguration : BaseEntityConfiguration<OpenVpnS
         entity.Property(e => e.RemoteIp)
             .IsRequired()
             .HasMaxLength(50);
+        entity.Property(e => e.ProxyRealIp)
+            .HasMaxLength(128);
         entity.Property(e => e.LocalIp)
             .IsRequired()
             .HasMaxLength(50);

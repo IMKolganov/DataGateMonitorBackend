@@ -1,4 +1,4 @@
-﻿using OpenVPNGateMonitor.Models;
+using OpenVPNGateMonitor.Models;
 
 namespace OpenVPNGateMonitor.Services.TelegramBot.Interfaces;
 
@@ -8,9 +8,9 @@ public interface ITelegramUserService
         CancellationToken cancellationToken);
 
     Task<TelegramBotUser> GetUserAsync(long telegramId, CancellationToken cancellationToken);
-    Task<List<TelegramBotUser>?> GetAdminsAsync(CancellationToken cancellationToken);
+    Task<List<TelegramBotUser>> GetAdminsAsync(CancellationToken cancellationToken);
 
-    Task<List<TelegramBotUser>?> GetAllUsersAsync(CancellationToken cancellationToken);
+    Task<List<TelegramBotUser>> GetAllUsersAsync(CancellationToken cancellationToken);
 
     Task<TelegramBotUser?> GetUserByTelegramIdAsync(long telegramId, CancellationToken cancellationToken);
 

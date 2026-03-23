@@ -2,8 +2,8 @@ using System.Globalization;
 using System.Security.Cryptography;
 using System.Text;
 using OpenVPNGateMonitor.Models;
+using OpenVPNGateMonitor.Services.DataGateOpenVpnManager.Interfaces;
 using OpenVPNGateMonitor.Services.DataGateOpenVpnManager.OpenVpnProxy;
-using OpenVPNGateMonitor.Services.GeoLite.Interfaces;
 using OpenVPNGateMonitor.Services.OpenVpnManagementInterfaces.Interfaces;
 
 namespace OpenVPNGateMonitor.Services.OpenVpnManagementInterfaces;
@@ -11,7 +11,7 @@ namespace OpenVPNGateMonitor.Services.OpenVpnManagementInterfaces;
 public class OpenVpnClientService(
     ILogger<IOpenVpnClientService> logger,
     IOpenVpnMicroserviceClientFactory openVpnMicroserviceClientFactory,
-    IGeoLiteQueryService geoLiteQueryService)
+    IProxyClientLookupService proxyClientLookupService)
     : IOpenVpnClientService
 {
     public async Task<OpenVpnManagementStatusResult> GetClientsFromManagementAsync(OpenVpnServer openVpnServer,
@@ -22,7 +22,7 @@ public class OpenVpnClientService(
 
         logger.LogDebug("Received status response:\n{Response}", response);
 
-        var result = await ParseStatus(response, cancellationToken);
+        var result = await ParseStatus(response, openVpnServer, cancellationToken);
         logger.LogInformation("Found {ClientCount} connected clients", result.Clients.Count);
 
         if (result.Clients.Any())
@@ -34,7 +34,8 @@ public class OpenVpnClientService(
         return result;
     }
 
-    private async Task<OpenVpnManagementStatusResult> ParseStatus(string data, CancellationToken cancellationToken)
+    private async Task<OpenVpnManagementStatusResult> ParseStatus(string data, OpenVpnServer server,
+        CancellationToken cancellationToken)
     {
         var result = new OpenVpnManagementStatusResult();
         var lines = data.Split('\n', StringSplitOptions.RemoveEmptyEntries | StringSplitOptions.TrimEntries);
@@ -55,15 +56,7 @@ public class OpenVpnClientService(
             var client = TryParseClient(parts);
             if (client is null) continue;
 
-            var geoInfo = await geoLiteQueryService.GetGeoInfoAsync(client.RemoteIp, cancellationToken);
-            if (geoInfo is not null)
-            {
-                client.Country = geoInfo.Country;
-                client.Region = geoInfo.Region;
-                client.City = geoInfo.City;
-                client.Latitude = geoInfo.Latitude;
-                client.Longitude = geoInfo.Longitude;
-            }
+            await proxyClientLookupService.EnrichFromManagementRealAddressAsync(server, client, cancellationToken);
 
             client.SessionId = GenerateSessionId(client.CommonName, client.RemoteIp, client.ConnectedSince);
             result.Clients.Add(client);
