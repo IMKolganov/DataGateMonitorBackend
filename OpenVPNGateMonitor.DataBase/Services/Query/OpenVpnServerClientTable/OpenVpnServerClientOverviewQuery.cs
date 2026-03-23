@@ -1,4 +1,4 @@
-﻿using System.Linq.Expressions;
+using System.Linq.Expressions;
 using Microsoft.EntityFrameworkCore;
 using OpenVPNGateMonitor.DataBase.Services.Query.UserTable;
 using OpenVPNGateMonitor.DataBase.UnitOfWork;
@@ -21,6 +21,7 @@ public class OpenVpnServerClientOverviewQuery(
             SessionId = x.SessionId,
             CommonName = x.CommonName,
             RemoteIp = x.RemoteIp,
+            ProxyRealIp = x.ProxyRealIp,
             LocalIp = x.LocalIp,
             BytesReceived = x.BytesReceived,
             BytesSent = x.BytesSent,

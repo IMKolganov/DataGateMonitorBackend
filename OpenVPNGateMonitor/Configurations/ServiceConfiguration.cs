@@ -83,6 +83,7 @@ public static class ServiceConfiguration
         services.AddScoped<IOvpnFileApiClient, OvpnFileApiClient>();
         services.AddScoped<IOvpnFileApiService, OvpnFileApiService>();
         services.AddScoped<IMicroserviceInfoService, MicroserviceInfoService>();
+        services.AddScoped<IProxyClientLookupService, ProxyClientLookupService>();
         services.AddScoped<IOpenVpnServerConflogService, OpenVpnServerConflogService>();
 
         services.AddSingleton<IOpenVpnMicroserviceClientFactory, OpenVpnMicroserviceClientFactory>();

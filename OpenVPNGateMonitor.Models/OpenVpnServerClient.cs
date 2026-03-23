@@ -1,4 +1,4 @@
-﻿namespace OpenVPNGateMonitor.Models;
+namespace OpenVPNGateMonitor.Models;
 
 public class OpenVpnServerClient : BaseEntity<int>
 {
@@ -8,6 +8,13 @@ public class OpenVpnServerClient : BaseEntity<int>
     public Guid SessionId { get; set; }
     public string CommonName { get; set; } = string.Empty;
     public string RemoteIp { get; set; } = string.Empty;
+
+    /// <summary>
+    /// When <see cref="RemoteIp"/> is loopback (proxy toward OpenVPN), the real client IP:port from the
+    /// microservice (<c>GET .../client/by-local-port</c>), e.g. <c>203.0.113.5:443</c>.
+    /// </summary>
+    public string? ProxyRealIp { get; set; }
+
     public string LocalIp { get; set; } = string.Empty;
     public long BytesReceived { get; set; }
     public long BytesSent { get; set; }
