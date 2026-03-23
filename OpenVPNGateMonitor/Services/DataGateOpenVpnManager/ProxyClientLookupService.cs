@@ -1,3 +1,4 @@
+using System.Collections.Concurrent;
 using System.Globalization;
 using System.Net;
 using System.Net.Http.Headers;
@@ -5,7 +6,9 @@ using OpenVPNGateMonitor.Models;
 using OpenVPNGateMonitor.Services.Api.Auth.Registers.Interfaces;
 using OpenVPNGateMonitor.Services.DataGateOpenVpnManager.Interfaces;
 using OpenVPNGateMonitor.Services.GeoLite.Interfaces;
+using OpenVPNGateMonitor.Services.Others.Notifications.OpenVpnMicroserviceClient;
 using OpenVPNGateMonitor.SharedModels.DataGateOpenVpnManager.Proxy.Responses;
+using OpenVPNGateMonitor.SharedModels.Enums;
 
 namespace OpenVPNGateMonitor.Services.DataGateOpenVpnManager;
 
@@ -16,10 +19,16 @@ public sealed class ProxyClientLookupService(
     IHttpClientFactory httpClientFactory,
     IMicroserviceTokenService tokenService,
     IGeoLiteQueryService geoLiteQueryService,
+    IOpenVpnMicroserviceNotificationService microserviceNotifications,
     ILogger<ProxyClientLookupService> logger) : IProxyClientLookupService
 {
     /// <summary>Relative to microservice base (trailing slash added by caller).</summary>
     private const string ProxyClientByLocalPortPath = "api/proxy/client/by-local-port";
+
+    /// <summary>At most one admin notification per server within this window (many clients can connect at once).</summary>
+    private static readonly TimeSpan ProxyLookupNotifyThrottle = TimeSpan.FromMinutes(10);
+
+    private static readonly ConcurrentDictionary<int, DateTimeOffset> s_lastProxyLookupNotifyUtc = new();
 
     public async Task EnrichFromManagementRealAddressAsync(OpenVpnServer server, OpenVpnServerClient client,
         CancellationToken ct)
@@ -97,6 +106,8 @@ public sealed class ProxyClientLookupService(
                 logger.LogDebug(
                     "Proxy client lookup returned 404 for VpnServerId={ServerId}, {Host}:{Port}",
                     server.Id, host, localPort);
+                await NotifyLookupFailureAsync(server, realAddress,
+                    $"HTTP 404; localPort={localPort}; host={host}", NotificationSeverity.Warning, ct).ConfigureAwait(false);
                 return null;
             }
 
@@ -105,6 +116,13 @@ public sealed class ProxyClientLookupService(
             var body = await response.Content.ReadFromJsonAsync<ProxyClientLookupResponse>(cancellationToken: ct)
                        .ConfigureAwait(false);
 
+            if (body is null)
+            {
+                await NotifyLookupFailureAsync(server, realAddress,
+                    "Empty or invalid JSON in proxy client lookup response", NotificationSeverity.Error, ct)
+                    .ConfigureAwait(false);
+            }
+
             return body;
         }
         catch (Exception ex)
@@ -112,8 +130,44 @@ public sealed class ProxyClientLookupService(
             logger.LogWarning(ex,
                 "Proxy client lookup failed for VpnServerId={ServerId}, RealAddress={RealAddress}",
                 server.Id, realAddress);
+            await NotifyLookupFailureAsync(server, realAddress, ex.Message, NotificationSeverity.Error, ct)
+                .ConfigureAwait(false);
             return null;
         }
+    }
+
+    private async Task NotifyLookupFailureAsync(OpenVpnServer server, string realAddress, string detail,
+        NotificationSeverity severity, CancellationToken ct)
+    {
+        if (!TryAcquireProxyLookupNotifySlot(server.Id))
+            return;
+
+        try
+        {
+            await microserviceNotifications.NotifyProxyClientLookupFailed(
+                server.Id,
+                server.ServerName,
+                $"RealAddress={realAddress}; {detail}",
+                severity,
+                ct).ConfigureAwait(false);
+        }
+        catch (Exception ex)
+        {
+            logger.LogWarning(ex,
+                "Failed to send proxy client lookup notification for VpnServerId={ServerId}",
+                server.Id);
+        }
+    }
+
+    private static bool TryAcquireProxyLookupNotifySlot(int serverId)
+    {
+        var now = DateTimeOffset.UtcNow;
+        var shouldNotify = s_lastProxyLookupNotifyUtc.AddOrUpdate(
+            serverId,
+            _ => now,
+            (_, last) => now - last >= ProxyLookupNotifyThrottle ? now : last);
+
+        return shouldNotify == now;
     }
 
     private async Task ApplyGeoFromIpAsync(OpenVpnServerClient client, string ip, CancellationToken ct)
