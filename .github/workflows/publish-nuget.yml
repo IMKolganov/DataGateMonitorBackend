@@ -1,4 +1,4 @@
-﻿name: Publish NuGet (release by branch)
+name: Publish NuGet (release by branch)
 
 on:
   push:
@@ -29,11 +29,11 @@ jobs:
       - name: Setup .NET
         uses: actions/setup-dotnet@v4
         with:
-          dotnet-version: '8.0.x'
+          # SharedModels targets net10.0;net8.0;net9.0 — need SDK that includes net10.0
+          dotnet-version: '10.0.x'
           cache: true
           cache-dependency-path: |
             **/*.csproj
-            **/packages.lock.json
 
       - name: Get version from branch
         id: get_version

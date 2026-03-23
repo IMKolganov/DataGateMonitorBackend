@@ -65,9 +65,11 @@ public class TelegramBotIncomingMessageLogController(
         [FromRoute] GetByIdMessageRequest request,
         CancellationToken cancellationToken)
     {
-        var response = await incomingMessageLogService.GetByIdAsync(request.Id, cancellationToken);
-    
+        var message = await incomingMessageLogService.GetByIdAsync(request.Id, cancellationToken);
+        if (message is null)
+            return NotFound(ApiResponse<GetByIdMessageResponse>.ErrorResponse("Message not found"));
+
         return Ok(ApiResponse<GetByIdMessageResponse>.SuccessResponse(
-            response.Adapt<GetByIdMessageResponse>()));
+            message.Adapt<GetByIdMessageResponse>()));
     }
 }

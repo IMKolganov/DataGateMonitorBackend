@@ -1,4 +1,4 @@
-﻿using Mapster;
+using Mapster;
 using OpenVPNGateMonitor.DataBase.Services.Command;
 using OpenVPNGateMonitor.DataBase.Services.Command.Interfaces;
 using OpenVPNGateMonitor.DataBase.Services.Query.TelegramBotUserTable;
@@ -55,20 +55,12 @@ public class TelegramUserService(
         throw new NotImplementedException();
     }
 
-    public async Task<List<TelegramBotUser>?> GetAdminsAsync(CancellationToken ct)
+    public async Task<List<TelegramBotUser>> GetAdminsAsync(CancellationToken ct)
     {
-        var telegramBotUser = await telegramBotUserQueryService.GetAllAdmins(ct);
-
-        if (telegramBotUser is { Count: 0 })
-        {
-            logger.LogError("Admins for telegram bot not found, returning empty list");
-            return new List<TelegramBotUser>();
-        }
-
-        return telegramBotUser;
+        return await telegramBotUserQueryService.GetAllAdmins(ct);
     }
 
-    public async Task<List<TelegramBotUser>?> GetAllUsersAsync(CancellationToken ct)
+    public async Task<List<TelegramBotUser>> GetAllUsersAsync(CancellationToken ct)
     {
         var telegramBotUser = await telegramBotUserQueryService.GetAll(ct);
         return telegramBotUser.OrderBy(x => x.Id).ToList();

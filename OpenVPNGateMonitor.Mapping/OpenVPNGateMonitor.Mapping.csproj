@@ -7,7 +7,9 @@
     </PropertyGroup>
 
     <ItemGroup>
-      <PackageReference Include="Mapster" Version="7.4.0" />
+      <!-- OpenVPNGateMonitor.SharedModels: NuGet package only; do not use ProjectReference to the SharedModels .csproj. -->
+      <PackageReference Include="OpenVPNGateMonitor.SharedModels" Version="1.0.94" />
+      <PackageReference Include="Mapster" Version="10.0.3" />
       <PackageReference Include="Microsoft.Extensions.Configuration.Abstractions" Version="10.0.3" />
       <PackageReference Include="Newtonsoft.Json" Version="13.0.4" />
     </ItemGroup>

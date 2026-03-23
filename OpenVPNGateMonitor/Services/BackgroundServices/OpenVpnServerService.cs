@@ -84,6 +84,7 @@ public class OpenVpnServerService(
                         .SetProperty(c => c.UserId, user?.Id)
                         .SetProperty(c => c.CommonName, m.CommonName)
                         .SetProperty(c => c.RemoteIp, m.RemoteIp)
+                        .SetProperty(c => c.ProxyRealIp, m.ProxyRealIp)
                         .SetProperty(c => c.LocalIp, m.LocalIp)
                         .SetProperty(c => c.BytesReceived, m.BytesReceived)
                         .SetProperty(c => c.BytesSent, m.BytesSent)
