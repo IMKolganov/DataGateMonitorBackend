@@ -10,8 +10,19 @@ public class OpenVpnServerQueryService(
     IQuotaPlanAllowedServerQueryService quotaPlanAllowedServerQueryService) : IOpenVpnServerQueryService
 {
     public async Task<List<OpenVpnServer>> GetAll(bool includeDeleted = false, bool requireQuotaPlanAssignment = false,
-        CancellationToken ct = default)
+        int? restrictToQuotaPlanId = null, CancellationToken ct = default)
     {
+        if (restrictToQuotaPlanId is int planId)
+        {
+            var ids = await quotaPlanAllowedServerQueryService.GetVpnServerIdsByQuotaPlanId(planId, ct);
+            if (ids.Count == 0)
+                return [];
+
+            return includeDeleted
+                ? await q.Where(x => ids.Contains(x.Id), ct: ct)
+                : await q.Where(x => ids.Contains(x.Id) && !x.IsDeleted, ct: ct);
+        }
+
         if (!requireQuotaPlanAssignment)
         {
             return includeDeleted
@@ -36,8 +47,29 @@ public class OpenVpnServerQueryService(
         => q.Where(x => x.IsDefault && x.Id != exceptId && !x.IsDeleted, ct: ct);
 
     public async Task<IPagedResult<OpenVpnServer>> GetPage(int page, int pageSize, bool includeDeleted = false,
-        bool requireQuotaPlanAssignment = false, CancellationToken ct = default)
+        bool requireQuotaPlanAssignment = false, int? restrictToQuotaPlanId = null, CancellationToken ct = default)
     {
+        if (restrictToQuotaPlanId is int planId)
+        {
+            var ids = await quotaPlanAllowedServerQueryService.GetVpnServerIdsByQuotaPlanId(planId, ct);
+            if (ids.Count == 0)
+            {
+                return new PagedResponse<OpenVpnServer>
+                {
+                    Page = page,
+                    PageSize = pageSize,
+                    TotalCount = 0,
+                    Items = []
+                };
+            }
+
+            Expression<Func<OpenVpnServer, bool>> predicate = includeDeleted
+                ? x => ids.Contains(x.Id)
+                : x => ids.Contains(x.Id) && !x.IsDeleted;
+
+            return await q.Page(page, pageSize, predicate: predicate, ct: ct);
+        }
+
         if (!requireQuotaPlanAssignment)
         {
             return includeDeleted
@@ -57,11 +89,11 @@ public class OpenVpnServerQueryService(
             };
         }
 
-        Expression<Func<OpenVpnServer, bool>> predicate = includeDeleted
+        Expression<Func<OpenVpnServer, bool>> predicate2 = includeDeleted
             ? x => allowedIds.Contains(x.Id)
             : x => allowedIds.Contains(x.Id) && !x.IsDeleted;
 
-        return await q.Page(page, pageSize, predicate: predicate, ct: ct);
+        return await q.Page(page, pageSize, predicate: predicate2, ct: ct);
     }
 
     public Task<bool> AnyByServerName(string serverName, CancellationToken ct = default)

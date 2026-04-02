@@ -27,7 +27,8 @@ public class VpnServerMapping : IRegister
             .Map(dest => dest.OpenVpnServers, src => src);
 
         config.NewConfig<OpenVpnServerDto, OpenVpnServerV2Dto>()
-            .Ignore(dest => dest.QuotaPlanGroups);
+            .Ignore(dest => dest.QuotaPlanGroups)
+            .Ignore(dest => dest.IsAccessibleForUserQuotaPlan);
         #endregion
         #region "get-all-with-status"
         config.NewConfig<OpenVpnServer, OpenVpnServerDto>();
