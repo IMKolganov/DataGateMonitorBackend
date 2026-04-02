@@ -44,14 +44,19 @@ public class OpenVpnServersControllerTests
             _microserviceInfo.Object,
             _userQuotaPlan.Object,
             _vpnAccess.Object);
-        _controller.ControllerContext = new ControllerContext
+        SetUserAsAdmin(_controller);
+    }
+
+    private static void SetUserAsAdmin(OpenVpnServersController controller) =>
+        SetUser(controller, new ClaimsPrincipal(new ClaimsIdentity(
+            [new Claim(ClaimTypes.Role, "Admin")],
+            "mock")));
+
+    private static void SetUser(OpenVpnServersController controller, ClaimsPrincipal user)
+    {
+        controller.ControllerContext = new ControllerContext
         {
-            HttpContext = new DefaultHttpContext
-            {
-                User = new ClaimsPrincipal(new ClaimsIdentity(
-                    [new Claim(ClaimTypes.Role, "Admin")],
-                    "mock"))
-            }
+            HttpContext = new DefaultHttpContext { User = user }
         };
     }
 
@@ -294,4 +299,86 @@ public class OpenVpnServersControllerTests
         _backgroundService.Verify(b => b.RunNow(It.IsAny<CancellationToken>()), Times.Never);
     }
 
+    [Fact]
+    public async Task GetAllServersWithStatus_WhenVpnUserAndNoUserIdClaim_Returns_Unauthorized()
+    {
+        SetUser(_controller, new ClaimsPrincipal(new ClaimsIdentity(
+            [new Claim(ClaimTypes.Role, "VpnUser")],
+            "mock")));
+
+        var result = await _controller.GetAllServersWithStatus(false, CancellationToken.None);
+
+        var unauthorized = Assert.IsType<UnauthorizedObjectResult>(result.Result);
+        var response = Assert.IsType<ApiResponse<OpenVpnServerWithStatusesResponse>>(unauthorized.Value);
+        Assert.False(response.Success);
+        _overviewQuery.Verify(
+            q => q.GetAllOpenVpnServersWithStatusAsync(It.IsAny<bool>(), It.IsAny<bool>(), It.IsAny<int?>(), It.IsAny<CancellationToken>()),
+            Times.Never);
+    }
+
+    [Fact]
+    public async Task GetAllServers_WhenVpnUserAndNoQuotaPlan_Returns_EmptyList()
+    {
+        SetUser(_controller, new ClaimsPrincipal(new ClaimsIdentity(
+            [
+                new Claim(ClaimTypes.Role, "VpnUser"),
+                new Claim(ClaimTypes.NameIdentifier, "50")
+            ],
+            "mock")));
+        _userQuotaPlan.Setup(u => u.GetByUserId(50, It.IsAny<CancellationToken>()))
+            .ReturnsAsync((UserQuotaPlan?)null);
+
+        var result = await _controller.GetAllServers(false, CancellationToken.None);
+
+        var ok = Assert.IsType<OkObjectResult>(result.Result);
+        var response = Assert.IsType<ApiResponse<OpenVpnServersResponse>>(ok.Value);
+        Assert.True(response.Success);
+        Assert.Empty(response.Data!.OpenVpnServers);
+        _serverQuery.Verify(s => s.GetAll(It.IsAny<bool>(), It.IsAny<bool>(), It.IsAny<int?>(), It.IsAny<CancellationToken>()), Times.Never);
+    }
+
+    [Fact]
+    public async Task GetAllServers_WhenVpnUserWithQuotaPlan_PassesRestrictToQuotaPlanId()
+    {
+        SetUser(_controller, new ClaimsPrincipal(new ClaimsIdentity(
+            [
+                new Claim(ClaimTypes.Role, "VpnUser"),
+                new Claim(ClaimTypes.NameIdentifier, "51")
+            ],
+            "mock")));
+        _userQuotaPlan.Setup(u => u.GetByUserId(51, It.IsAny<CancellationToken>()))
+            .ReturnsAsync(new UserQuotaPlan { Id = 1, UserId = 51, QuotaPlanId = 9 });
+        _serverQuery.Setup(s => s.GetAll(false, false, 9, It.IsAny<CancellationToken>()))
+            .ReturnsAsync([]);
+        _tagQuery.Setup(q => q.GetTagNamesByVpnServerIds(It.IsAny<List<int>>(), It.IsAny<CancellationToken>()))
+            .ReturnsAsync(new Dictionary<int, List<string>>());
+
+        var result = await _controller.GetAllServers(false, CancellationToken.None);
+
+        var ok = Assert.IsType<OkObjectResult>(result.Result);
+        var response = Assert.IsType<ApiResponse<OpenVpnServersResponse>>(ok.Value);
+        Assert.True(response.Success);
+        _serverQuery.Verify(s => s.GetAll(false, false, 9, It.IsAny<CancellationToken>()), Times.Once);
+    }
+
+    [Fact]
+    public async Task GetServer_WhenVpnUserNoAccess_Returns_Forbidden()
+    {
+        SetUser(_controller, new ClaimsPrincipal(new ClaimsIdentity(
+            [
+                new Claim(ClaimTypes.Role, "VpnUser"),
+                new Claim(ClaimTypes.NameIdentifier, "60")
+            ],
+            "mock")));
+        _vpnAccess.Setup(a => a.UserHasAccessAsync(60, 10, It.IsAny<CancellationToken>()))
+            .ReturnsAsync(false);
+
+        var result = await _controller.GetServer(new GetServerRequest { VpnServerId = 10 }, CancellationToken.None);
+
+        var forbid = Assert.IsType<ObjectResult>(result.Result);
+        Assert.Equal(StatusCodes.Status403Forbidden, forbid.StatusCode);
+        _serverQuery.Verify(s => s.GetById(It.IsAny<int>(), It.IsAny<CancellationToken>()), Times.Never);
+    }
+
 }
+
