@@ -78,6 +78,7 @@ public static class QueryCommandConfiguration
 
         // Feature: overview queries
         services.AddScoped<IOpenVpnServerOverviewQuery, OpenVpnServerOverviewQuery>();
+        services.AddScoped<IOpenVpnServerQuotaPlanGroupsQuery, OpenVpnServerQuotaPlanGroupsQuery>();
 
     }
 }

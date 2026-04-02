@@ -10,10 +10,18 @@ namespace OpenVPNGateMonitor.DataBase.Services.Query.OpenVpnServerTable;
 public class OpenVpnServerOverviewQuery(IUnitOfWork uow) : IOpenVpnServerOverviewQuery
 {
     // Single roundtrip with correlated subqueries
-    public async Task<List<OpenVpnServerWithStatusDto>> GetAllOpenVpnServersWithStatusAsync(bool includeDeleted = false, CancellationToken ct = default)
+    public async Task<List<OpenVpnServerWithStatusDto>> GetAllOpenVpnServersWithStatusAsync(
+        bool includeDeleted = false,
+        bool requireQuotaPlanAssignment = false,
+        CancellationToken ct = default)
     {
         var serversBase = uow.GetQuery<OpenVpnServer>().AsQueryable();
         var servers = includeDeleted ? serversBase : serversBase.Where(s => !s.IsDeleted);
+        if (requireQuotaPlanAssignment)
+        {
+            var allowed = uow.GetQuery<QuotaPlanAllowedServer>().AsQueryable();
+            servers = servers.Where(s => allowed.Any(a => a.VpnServerId == s.Id));
+        }
         var clients = uow.GetQuery<OpenVpnServerClient>().AsQueryable();
         var logs = uow.GetQuery<OpenVpnServerStatusLog>().AsQueryable();
 

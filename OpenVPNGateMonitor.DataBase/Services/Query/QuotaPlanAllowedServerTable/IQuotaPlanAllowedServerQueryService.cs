@@ -5,6 +5,9 @@ namespace OpenVPNGateMonitor.DataBase.Services.Query.QuotaPlanAllowedServerTable
 
 public interface IQuotaPlanAllowedServerQueryService
 {
+    /// <summary>Distinct VPN server ids that have at least one quota-plan assignment.</summary>
+    Task<HashSet<int>> GetDistinctVpnServerIds(CancellationToken ct);
+
     Task<List<QuotaPlanAllowedServer>> GetAll(CancellationToken ct);
     Task<QuotaPlanAllowedServer?> GetById(int id, CancellationToken ct);
     Task<QuotaPlanAllowedServer?> GetByQuotaPlanIdAndServerId(int quotaPlanId, int vpnServerId,

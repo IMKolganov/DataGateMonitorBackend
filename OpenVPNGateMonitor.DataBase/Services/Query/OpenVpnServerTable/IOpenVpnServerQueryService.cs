@@ -5,7 +5,9 @@ namespace OpenVPNGateMonitor.DataBase.Services.Query.OpenVpnServerTable;
 
 public interface IOpenVpnServerQueryService
 {
-    Task<List<OpenVpnServer>> GetAll(bool includeDeleted = false, CancellationToken ct = default);
+    /// <param name="requireQuotaPlanAssignment">When true, only servers present in <c>QuotaPlanAllowedServers</c> are returned.</param>
+    Task<List<OpenVpnServer>> GetAll(bool includeDeleted = false, bool requireQuotaPlanAssignment = false,
+        CancellationToken ct = default);
 
     Task<OpenVpnServer?> GetById(int id, CancellationToken ct = default);
 
@@ -15,6 +17,7 @@ public interface IOpenVpnServerQueryService
         int page,
         int pageSize,
         bool includeDeleted = false,
+        bool requireQuotaPlanAssignment = false,
         CancellationToken ct = default);
 
     Task<bool> AnyByServerName(string serverName, CancellationToken ct = default);
