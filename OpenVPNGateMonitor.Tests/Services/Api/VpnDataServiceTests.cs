@@ -147,10 +147,7 @@ public class VpnDataServiceTests
 
         quotaPlanCmd.Verify(c => c.AddRange(
             It.Is<IEnumerable<QuotaPlanAllowedServer>>(xs =>
-            {
-                var list = xs.ToList();
-                return list.Count == 1 && list[0].QuotaPlanId == 42 && list[0].VpnServerId == 101;
-            }),
+                xs.Single().QuotaPlanId == 42 && xs.Single().VpnServerId == 101),
             true,
             It.IsAny<CancellationToken>()), Times.Once);
     }

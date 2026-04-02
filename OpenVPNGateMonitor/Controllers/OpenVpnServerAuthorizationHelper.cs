@@ -9,7 +9,8 @@ namespace OpenVPNGateMonitor.Controllers;
 
 public static class OpenVpnServerAuthorizationHelper
 {
-    public static async Task<IActionResult?> RequireVpnServerAccessOrForbidAsync(
+    /// <typeparam name="T">Success payload type for <see cref="ApiResponse{T}"/> on this action (error bodies may still use <see cref="string"/>).</typeparam>
+    public static async Task<ActionResult<ApiResponse<T>>?> RequireVpnServerAccessOrForbidAsync<T>(
         ClaimsPrincipal user,
         IVpnServerAccessQueryService access,
         int vpnServerId,
@@ -18,11 +19,12 @@ public static class OpenVpnServerAuthorizationHelper
         if (HttpUserContext.IsPrivileged(user))
             return null;
         if (!HttpUserContext.TryGetUserId(user, out var userId))
-            return new UnauthorizedObjectResult(ApiResponse<string>.ErrorResponse("User id missing from token."));
+            return new ActionResult<ApiResponse<T>>(new UnauthorizedObjectResult(
+                ApiResponse<string>.ErrorResponse("User id missing from token.")));
         if (!await access.UserHasAccessAsync(userId, vpnServerId, ct))
-            return new ObjectResult(ApiResponse<string>.ErrorResponse(
+            return new ActionResult<ApiResponse<T>>(new ObjectResult(ApiResponse<string>.ErrorResponse(
                     "Access to this VPN server is denied for your quota plan."))
-                { StatusCode = StatusCodes.Status403Forbidden };
+                { StatusCode = StatusCodes.Status403Forbidden });
         return null;
     }
 }

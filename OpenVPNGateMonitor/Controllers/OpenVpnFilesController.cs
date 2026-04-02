@@ -34,7 +34,7 @@ public class OpenVpnFilesController(
         try
         {
             var result = await ovpnFileApiService.GetByToken(request.Token, cancellationToken);
-            if (await OpenVpnServerAuthorizationHelper.RequireVpnServerAccessOrForbidAsync(User,
+            if (await OpenVpnServerAuthorizationHelper.RequireVpnServerAccessOrForbidAsync<OvpnFileResponse>(User,
                     vpnServerAccessQueryService, result.VpnServerId, cancellationToken) is { } deny)
                 return deny;
             var response = result.Adapt<OvpnFileResponse>();
@@ -51,7 +51,7 @@ public class OpenVpnFilesController(
     public async Task<ActionResult<ApiResponse<OvpnFilesResponse>>> GetAllByVpnServerId(
         [FromRoute] ByVpnServerIdRequest request, CancellationToken cancellationToken)
     {
-        if (await OpenVpnServerAuthorizationHelper.RequireVpnServerAccessOrForbidAsync(User,
+        if (await OpenVpnServerAuthorizationHelper.RequireVpnServerAccessOrForbidAsync<OvpnFilesResponse>(User,
                 vpnServerAccessQueryService, request.VpnServerId, cancellationToken) is { } deny)
             return deny;
 
@@ -73,7 +73,7 @@ public class OpenVpnFilesController(
     public async Task<ActionResult<ApiResponse<OvpnFilesResponse>>> GetAllByExternalIdAndVpnServerId(
         [FromRoute] ByExternalIdAndVpnServerIdRequest request, CancellationToken cancellationToken)
     {
-        if (await OpenVpnServerAuthorizationHelper.RequireVpnServerAccessOrForbidAsync(User,
+        if (await OpenVpnServerAuthorizationHelper.RequireVpnServerAccessOrForbidAsync<OvpnFilesResponse>(User,
                 vpnServerAccessQueryService, request.VpnServerId, cancellationToken) is { } deny)
             return deny;
 
@@ -98,7 +98,7 @@ public class OpenVpnFilesController(
     public async Task<ActionResult<ApiResponse<OvpnFilesWithTokensResponse>>> GetAllWithToken(
         [FromRoute] ByVpnServerIdRequest request, CancellationToken cancellationToken)
     {
-        if (await OpenVpnServerAuthorizationHelper.RequireVpnServerAccessOrForbidAsync(User,
+        if (await OpenVpnServerAuthorizationHelper.RequireVpnServerAccessOrForbidAsync<OvpnFilesWithTokensResponse>(User,
                 vpnServerAccessQueryService, request.VpnServerId, cancellationToken) is { } deny)
             return deny;
 
@@ -122,7 +122,7 @@ public class OpenVpnFilesController(
     public async Task<ActionResult<ApiResponse<OvpnFilesWithTokensResponse>>> GetAllWithToken(
         [FromRoute] ByExternalIdAndVpnServerIdRequest request, CancellationToken cancellationToken)
     {
-        if (await OpenVpnServerAuthorizationHelper.RequireVpnServerAccessOrForbidAsync(User,
+        if (await OpenVpnServerAuthorizationHelper.RequireVpnServerAccessOrForbidAsync<OvpnFilesWithTokensResponse>(User,
                 vpnServerAccessQueryService, request.VpnServerId, cancellationToken) is { } deny)
             return deny;
 
@@ -169,7 +169,7 @@ public class OpenVpnFilesController(
     public async Task<ActionResult<ApiResponse<OvpnFileResponse>>> AddFile(
         [FromBody] AddFileRequest request, CancellationToken cancellationToken)
     {
-        if (await OpenVpnServerAuthorizationHelper.RequireVpnServerAccessOrForbidAsync(User,
+        if (await OpenVpnServerAuthorizationHelper.RequireVpnServerAccessOrForbidAsync<OvpnFileResponse>(User,
                 vpnServerAccessQueryService, request.VpnServerId, cancellationToken) is { } deny)
             return deny;
 
@@ -191,7 +191,7 @@ public class OpenVpnFilesController(
     public async Task<ActionResult<ApiResponse<OvpnFileWithTokenResponse>>> AddFileWithToken(
         [FromBody] AddFileRequest request, CancellationToken cancellationToken)
     {
-        if (await OpenVpnServerAuthorizationHelper.RequireVpnServerAccessOrForbidAsync(User,
+        if (await OpenVpnServerAuthorizationHelper.RequireVpnServerAccessOrForbidAsync<OvpnFileWithTokenResponse>(User,
                 vpnServerAccessQueryService, request.VpnServerId, cancellationToken) is { } deny)
             return deny;
 
@@ -215,7 +215,7 @@ public class OpenVpnFilesController(
     public async Task<ActionResult<ApiResponse<OvpnFileResponse>>> RevokeFile([FromBody] RevokeFileRequest request,
         CancellationToken cancellationToken)
     {
-        if (await OpenVpnServerAuthorizationHelper.RequireVpnServerAccessOrForbidAsync(User,
+        if (await OpenVpnServerAuthorizationHelper.RequireVpnServerAccessOrForbidAsync<OvpnFileResponse>(User,
                 vpnServerAccessQueryService, request.VpnServerId, cancellationToken) is { } deny)
             return deny;
 
@@ -237,7 +237,7 @@ public class OpenVpnFilesController(
     public async Task<ActionResult<ApiResponse<DownloadFileResponse>>> DownloadFile(
         [FromBody] DownloadFileRequest request, CancellationToken cancellationToken)
     {
-        if (await OpenVpnServerAuthorizationHelper.RequireVpnServerAccessOrForbidAsync(User,
+        if (await OpenVpnServerAuthorizationHelper.RequireVpnServerAccessOrForbidAsync<DownloadFileResponse>(User,
                 vpnServerAccessQueryService, request.VpnServerId, cancellationToken) is { } deny)
             return deny;
 
@@ -259,7 +259,7 @@ public class OpenVpnFilesController(
     public async Task<ActionResult<ApiResponse<DownloadFileResponse>>> DownloadFileByCn(
         [FromBody] DownloadFileByCnRequest request, CancellationToken cancellationToken)
     {
-        if (await OpenVpnServerAuthorizationHelper.RequireVpnServerAccessOrForbidAsync(User,
+        if (await OpenVpnServerAuthorizationHelper.RequireVpnServerAccessOrForbidAsync<DownloadFileResponse>(User,
                 vpnServerAccessQueryService, request.VpnServerId, cancellationToken) is { } deny)
             return deny;
 

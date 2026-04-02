@@ -22,7 +22,7 @@ public class OpenVpnServerCertsController(ICertApiClient certApiClient,
     public async Task<ActionResult<ApiResponse<GetAllCertificatesResponse>>> GetAllCertificates(
         [FromRoute] GetAllCertificatesRequest request, CancellationToken ct)
     {
-        if (await OpenVpnServerAuthorizationHelper.RequireVpnServerAccessOrForbidAsync(User,
+        if (await OpenVpnServerAuthorizationHelper.RequireVpnServerAccessOrForbidAsync<GetAllCertificatesResponse>(User,
                 vpnServerAccessQueryService, request.VpnServerId, ct) is { } deny)
             return deny;
 
@@ -50,7 +50,7 @@ public class OpenVpnServerCertsController(ICertApiClient certApiClient,
     public async Task<ActionResult<ApiResponse<BuildCertificateResponse>>> BuildCertificate(
         [FromBody] BuildCertificateRequest request, CancellationToken cancellationToken)
     {
-        if (await OpenVpnServerAuthorizationHelper.RequireVpnServerAccessOrForbidAsync(User,
+        if (await OpenVpnServerAuthorizationHelper.RequireVpnServerAccessOrForbidAsync<BuildCertificateResponse>(User,
                 vpnServerAccessQueryService, request.VpnServerId, cancellationToken) is { } deny)
             return deny;
 
@@ -82,7 +82,7 @@ public class OpenVpnServerCertsController(ICertApiClient certApiClient,
         [FromBody] RevokeCertificateRequest request,
         CancellationToken cancellationToken)
     {
-        if (await OpenVpnServerAuthorizationHelper.RequireVpnServerAccessOrForbidAsync(User,
+        if (await OpenVpnServerAuthorizationHelper.RequireVpnServerAccessOrForbidAsync<RevokeCertificateResponse>(User,
                 vpnServerAccessQueryService, request.VpnServerId, cancellationToken) is { } deny)
             return deny;
 
