@@ -62,7 +62,7 @@ public class OpenVpnServersController(IVpnDataService vpnDataService,
     public async Task<ActionResult<ApiResponse<OpenVpnServerWithStatusResponse>>> GetServerWithStatus(
         [FromRoute] GetServerWithStatsRequest request, CancellationToken ct)
     {
-        if (await OpenVpnServerAuthorizationHelper.RequireVpnServerAccessOrForbidAsync(User, vpnServerAccessQueryService,
+        if (await OpenVpnServerAuthorizationHelper.RequireVpnServerAccessOrForbidAsync<OpenVpnServerWithStatusResponse>(User, vpnServerAccessQueryService,
                 request.VpnServerId, ct) is { } denyStatus)
             return denyStatus;
 
@@ -77,7 +77,7 @@ public class OpenVpnServersController(IVpnDataService vpnDataService,
     public async Task<ActionResult<ApiResponse<RootInfoResponse>>> GetMicroserviceInfo(
         [FromRoute] int vpnServerId, CancellationToken ct)
     {
-        if (await OpenVpnServerAuthorizationHelper.RequireVpnServerAccessOrForbidAsync(User, vpnServerAccessQueryService,
+        if (await OpenVpnServerAuthorizationHelper.RequireVpnServerAccessOrForbidAsync<RootInfoResponse>(User, vpnServerAccessQueryService,
                 vpnServerId, ct) is { } denyMicro)
             return denyMicro;
 
@@ -133,7 +133,7 @@ public class OpenVpnServersController(IVpnDataService vpnDataService,
     public async Task<ActionResult<ApiResponse<OpenVpnServerResponse>>> GetServer(
         [FromRoute] GetServerRequest request, CancellationToken ct)
     {
-        if (await OpenVpnServerAuthorizationHelper.RequireVpnServerAccessOrForbidAsync(User, vpnServerAccessQueryService,
+        if (await OpenVpnServerAuthorizationHelper.RequireVpnServerAccessOrForbidAsync<OpenVpnServerResponse>(User, vpnServerAccessQueryService,
                 request.VpnServerId, ct) is { } denyGet)
             return denyGet;
 

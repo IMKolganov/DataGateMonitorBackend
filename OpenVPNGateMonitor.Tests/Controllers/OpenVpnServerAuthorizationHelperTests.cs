@@ -16,7 +16,7 @@ public class OpenVpnServerAuthorizationHelperTests
         var user = new ClaimsPrincipal(new ClaimsIdentity([new Claim(ClaimTypes.Role, "Admin")], "mock"));
         var access = new Mock<IVpnServerAccessQueryService>(MockBehavior.Strict);
 
-        var result = await OpenVpnServerAuthorizationHelper.RequireVpnServerAccessOrForbidAsync(
+        var result = await OpenVpnServerAuthorizationHelper.RequireVpnServerAccessOrForbidAsync<string>(
             user, access.Object, 1, CancellationToken.None);
 
         Assert.Null(result);
@@ -28,10 +28,11 @@ public class OpenVpnServerAuthorizationHelperTests
         var user = new ClaimsPrincipal(new ClaimsIdentity([new Claim(ClaimTypes.Role, "VpnUser")], "mock"));
         var access = new Mock<IVpnServerAccessQueryService>(MockBehavior.Strict);
 
-        var result = await OpenVpnServerAuthorizationHelper.RequireVpnServerAccessOrForbidAsync(
+        var result = await OpenVpnServerAuthorizationHelper.RequireVpnServerAccessOrForbidAsync<string>(
             user, access.Object, 1, CancellationToken.None);
 
-        var unauthorized = Assert.IsType<UnauthorizedObjectResult>(result);
+        Assert.NotNull(result);
+        var unauthorized = Assert.IsType<UnauthorizedObjectResult>(result!.Result);
         var api = Assert.IsType<ApiResponse<string>>(unauthorized.Value);
         Assert.False(api.Success);
     }
@@ -48,10 +49,11 @@ public class OpenVpnServerAuthorizationHelperTests
         var access = new Mock<IVpnServerAccessQueryService>();
         access.Setup(a => a.UserHasAccessAsync(42, 7, It.IsAny<CancellationToken>())).ReturnsAsync(false);
 
-        var result = await OpenVpnServerAuthorizationHelper.RequireVpnServerAccessOrForbidAsync(
+        var result = await OpenVpnServerAuthorizationHelper.RequireVpnServerAccessOrForbidAsync<string>(
             user, access.Object, 7, CancellationToken.None);
 
-        var forbid = Assert.IsType<ObjectResult>(result);
+        Assert.NotNull(result);
+        var forbid = Assert.IsType<ObjectResult>(result!.Result);
         Assert.Equal(StatusCodes.Status403Forbidden, forbid.StatusCode);
     }
 }
