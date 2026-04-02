@@ -25,6 +25,9 @@ public class VpnServerMapping : IRegister
         // Mapping list → response wrapper
         config.NewConfig<List<OpenVpnServer>, OpenVpnServersResponse>()
             .Map(dest => dest.OpenVpnServers, src => src);
+
+        config.NewConfig<OpenVpnServerDto, OpenVpnServerV2Dto>()
+            .Ignore(dest => dest.QuotaPlanGroups);
         #endregion
         #region "get-all-with-status"
         config.NewConfig<OpenVpnServer, OpenVpnServerDto>();

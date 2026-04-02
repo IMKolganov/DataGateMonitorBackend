@@ -1,6 +1,7 @@
 using OpenVPNGateMonitor.DataBase.Services.Command.Interfaces;
 using OpenVPNGateMonitor.DataBase.Services.Query.OpenVpnServerOvpnFileConfigTable;
 using OpenVPNGateMonitor.DataBase.Services.Query.OpenVpnServerTable;
+using OpenVPNGateMonitor.DataBase.Services.Query.QuotaPlanTable;
 using OpenVPNGateMonitor.Models;
 using OpenVPNGateMonitor.Services.Api.Interfaces;
 using OpenVPNGateMonitor.Services.DataGateOpenVpnManager.Events;
@@ -13,6 +14,7 @@ namespace OpenVPNGateMonitor.Services.Api;
 public class VpnDataService(
     ILogger<IVpnDataService> logger,
     IExternalIpAddressService externalIpAddressService,
+    IQuotaPlanQueryService quotaPlanQueryService,
     IOpenVpnServerQueryService openVpnServerQueryService,
     IOpenVpnServerOvpnFileConfigQueryService openVpnServerOvpnFileConfigQueryService,
     ITransactionRunner transactionRunner,
@@ -51,7 +53,13 @@ public class VpnDataService(
             server.LastUpdate = now;
             await openVpnServerCommandService.Add(server, saveChanges: true, ct);
 
-            await SyncQuotaPlanLinksAsync(server.Id, quotaPlanIds, ct);
+            var effectiveQuotaPlanIds = quotaPlanIds.Count > 0
+                ? quotaPlanIds
+                : (await quotaPlanQueryService.GetDefault(ct)) is { } defaultPlan
+                    ? [defaultPlan.Id]
+                    : [];
+
+            await SyncQuotaPlanLinksAsync(server.Id, effectiveQuotaPlanIds, ct);
             await SyncTagLinksAsync(server.Id, tagIds, ct);
 
             // Additionally, writes that must be part of the same transaction

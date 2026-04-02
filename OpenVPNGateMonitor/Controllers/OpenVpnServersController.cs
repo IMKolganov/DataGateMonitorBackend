@@ -32,7 +32,8 @@ public class OpenVpnServersController(IVpnDataService vpnDataService,
         [FromQuery] bool includeDeleted = false,
         CancellationToken ct = default)
     {
-        var result = await openVpnServerOverviewQuery.GetAllOpenVpnServersWithStatusAsync(includeDeleted, ct);
+        var result = await openVpnServerOverviewQuery.GetAllOpenVpnServersWithStatusAsync(
+            includeDeleted, requireQuotaPlanAssignment: true, ct);
         var response = result.Adapt<OpenVpnServerWithStatusesResponse>();
         await FillTagsForOverviewResponse(response, ct);
         return Ok(ApiResponse<OpenVpnServerWithStatusesResponse>.SuccessResponse(response));
@@ -73,7 +74,7 @@ public class OpenVpnServersController(IVpnDataService vpnDataService,
         [FromQuery] bool includeDeleted = false,
         CancellationToken ct = default)
     {
-        var serversList = await openVpnServerQueryService.GetAll(includeDeleted, ct);
+        var serversList = await openVpnServerQueryService.GetAll(includeDeleted, requireQuotaPlanAssignment: true, ct);
         var response = serversList.Adapt<OpenVpnServersResponse>();
         if (serversList.Count > 0)
         {
