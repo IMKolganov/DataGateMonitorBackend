@@ -42,7 +42,7 @@ public class OpenVpnServersControllerTests
     public async Task GetAllServersWithStatus_Returns_Ok()
     {
         _overviewQuery
-            .Setup(q => q.GetAllOpenVpnServersWithStatusAsync(It.IsAny<bool>(), It.IsAny<CancellationToken>()))
+            .Setup(q => q.GetAllOpenVpnServersWithStatusAsync(It.IsAny<bool>(), It.IsAny<bool>(), It.IsAny<CancellationToken>()))
             .ReturnsAsync(new List<OpenVpnServerWithStatusDto>());
         _tagQuery.Setup(q => q.GetTagNamesByVpnServerIds(It.IsAny<List<int>>(), It.IsAny<CancellationToken>()))
             .ReturnsAsync(new Dictionary<int, List<string>>());
@@ -52,21 +52,21 @@ public class OpenVpnServersControllerTests
         var ok = Assert.IsType<OkObjectResult>(result.Result);
         var response = Assert.IsType<ApiResponse<OpenVpnServerWithStatusesResponse>>(ok.Value);
         Assert.True(response.Success);
-        _overviewQuery.Verify(q => q.GetAllOpenVpnServersWithStatusAsync(false, It.IsAny<CancellationToken>()), Times.Once);
+        _overviewQuery.Verify(q => q.GetAllOpenVpnServersWithStatusAsync(false, true, It.IsAny<CancellationToken>()), Times.Once);
     }
 
     [Fact]
     public async Task GetAllServersWithStatus_WhenIncludeDeletedTrue_PassesTrue()
     {
         _overviewQuery
-            .Setup(q => q.GetAllOpenVpnServersWithStatusAsync(true, It.IsAny<CancellationToken>()))
+            .Setup(q => q.GetAllOpenVpnServersWithStatusAsync(true, It.IsAny<bool>(), It.IsAny<CancellationToken>()))
             .ReturnsAsync(new List<OpenVpnServerWithStatusDto>());
         _tagQuery.Setup(q => q.GetTagNamesByVpnServerIds(It.IsAny<List<int>>(), It.IsAny<CancellationToken>()))
             .ReturnsAsync(new Dictionary<int, List<string>>());
 
         await _controller.GetAllServersWithStatus(includeDeleted: true, CancellationToken.None);
 
-        _overviewQuery.Verify(q => q.GetAllOpenVpnServersWithStatusAsync(true, It.IsAny<CancellationToken>()), Times.Once);
+        _overviewQuery.Verify(q => q.GetAllOpenVpnServersWithStatusAsync(true, true, It.IsAny<CancellationToken>()), Times.Once);
     }
 
     [Fact]
@@ -110,7 +110,7 @@ public class OpenVpnServersControllerTests
     [Fact]
     public async Task GetAllServers_Returns_Ok()
     {
-        _serverQuery.Setup(s => s.GetAll(It.IsAny<bool>(), It.IsAny<CancellationToken>())).ReturnsAsync(new List<OpenVpnServer>());
+        _serverQuery.Setup(s => s.GetAll(It.IsAny<bool>(), It.IsAny<bool>(), It.IsAny<CancellationToken>())).ReturnsAsync(new List<OpenVpnServer>());
         _tagQuery.Setup(q => q.GetTagNamesByVpnServerIds(It.IsAny<List<int>>(), It.IsAny<CancellationToken>()))
             .ReturnsAsync(new Dictionary<int, List<string>>());
 
@@ -119,7 +119,7 @@ public class OpenVpnServersControllerTests
         var ok = Assert.IsType<OkObjectResult>(result.Result);
         var response = Assert.IsType<ApiResponse<OpenVpnServersResponse>>(ok.Value);
         Assert.True(response.Success);
-        _serverQuery.Verify(s => s.GetAll(false, It.IsAny<CancellationToken>()), Times.Once);
+        _serverQuery.Verify(s => s.GetAll(false, true, It.IsAny<CancellationToken>()), Times.Once);
     }
 
     [Fact]
