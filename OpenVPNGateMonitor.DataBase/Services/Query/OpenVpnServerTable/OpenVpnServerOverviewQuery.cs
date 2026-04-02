@@ -13,11 +13,17 @@ public class OpenVpnServerOverviewQuery(IUnitOfWork uow) : IOpenVpnServerOvervie
     public async Task<List<OpenVpnServerWithStatusDto>> GetAllOpenVpnServersWithStatusAsync(
         bool includeDeleted = false,
         bool requireQuotaPlanAssignment = false,
+        int? restrictToQuotaPlanId = null,
         CancellationToken ct = default)
     {
         var serversBase = uow.GetQuery<OpenVpnServer>().AsQueryable();
         var servers = includeDeleted ? serversBase : serversBase.Where(s => !s.IsDeleted);
-        if (requireQuotaPlanAssignment)
+        if (restrictToQuotaPlanId is int pid)
+        {
+            var allowed = uow.GetQuery<QuotaPlanAllowedServer>().AsQueryable();
+            servers = servers.Where(s => allowed.Any(a => a.VpnServerId == s.Id && a.QuotaPlanId == pid));
+        }
+        else if (requireQuotaPlanAssignment)
         {
             var allowed = uow.GetQuery<QuotaPlanAllowedServer>().AsQueryable();
             servers = servers.Where(s => allowed.Any(a => a.VpnServerId == s.Id));

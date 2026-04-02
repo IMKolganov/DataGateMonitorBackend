@@ -1,7 +1,12 @@
+using System.Security.Claims;
+using Microsoft.AspNetCore.Http;
 using Microsoft.AspNetCore.Mvc;
 using Microsoft.Extensions.Logging;
 using Moq;
 using OpenVPNGateMonitor.Controllers;
+using OpenVPNGateMonitor.DataBase.Services.Query.QuotaPlanAllowedServerTable;
+using OpenVPNGateMonitor.DataBase.Services.Query.UserQuotaPlanTable;
+using OpenVPNGateMonitor.Services.Api.Auth.Handlers.Interfaces;
 using OpenVPNGateMonitor.Services.DataGateOpenVpnManager.Interfaces;
 using OpenVPNGateMonitor.SharedModels.DataGateMonitorBackend.OpenVpnFiles.Requests;
 using OpenVPNGateMonitor.SharedModels.DataGateMonitorBackend.OpenVpnFiles.Responses;
@@ -13,11 +18,24 @@ public class OpenVpnFilesControllerTests
 {
     private readonly Mock<IOvpnFileApiService> _service = new();
     private readonly Mock<ILogger<OpenVpnFilesController>> _logger = new();
+    private readonly Mock<IUserQuotaPlanQueryService> _userQuotaPlan = new();
+    private readonly Mock<IQuotaPlanAllowedServerQueryService> _quotaAllowed = new();
+    private readonly Mock<IVpnServerAccessQueryService> _vpnAccess = new();
     private readonly OpenVpnFilesController _controller;
 
     public OpenVpnFilesControllerTests()
     {
-        _controller = new OpenVpnFilesController(_service.Object, _logger.Object);
+        _controller = new OpenVpnFilesController(_service.Object, _logger.Object, _userQuotaPlan.Object,
+            _quotaAllowed.Object, _vpnAccess.Object);
+        _controller.ControllerContext = new ControllerContext
+        {
+            HttpContext = new DefaultHttpContext
+            {
+                User = new ClaimsPrincipal(new ClaimsIdentity(
+                    [new Claim(ClaimTypes.Role, "Admin")],
+                    "mock"))
+            }
+        };
     }
 
     [Fact]

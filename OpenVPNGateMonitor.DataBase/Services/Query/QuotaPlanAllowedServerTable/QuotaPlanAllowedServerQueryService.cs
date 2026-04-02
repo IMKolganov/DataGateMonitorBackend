@@ -16,6 +16,12 @@ public class QuotaPlanAllowedServerQueryService(
         return ids.ToHashSet();
     }
 
+    public async Task<HashSet<int>> GetVpnServerIdsByQuotaPlanId(int quotaPlanId, CancellationToken ct)
+    {
+        var list = await q.Where(x => x.QuotaPlanId == quotaPlanId, ct: ct);
+        return list.Select(x => x.VpnServerId).ToHashSet();
+    }
+
     public Task<List<QuotaPlanAllowedServer>> GetAll(CancellationToken ct)
         => q.GetAll(ct: ct);
 

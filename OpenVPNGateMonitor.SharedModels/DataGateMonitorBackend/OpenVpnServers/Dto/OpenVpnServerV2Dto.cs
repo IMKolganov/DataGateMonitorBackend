@@ -19,4 +19,10 @@ public class OpenVpnServerV2Dto
     public bool? DcoIsEnabled { get; set; }
     public List<string> Tags { get; set; } = [];
     public List<QuotaPlanGroupDto> QuotaPlanGroups { get; set; } = [];
+
+    /// <summary>
+    /// Whether the current user may connect to this server (their quota plan includes it).
+    /// Always true for Admin/App. For users without a quota plan, false for all servers.
+    /// </summary>
+    public bool IsAccessibleForUserQuotaPlan { get; set; }
 }

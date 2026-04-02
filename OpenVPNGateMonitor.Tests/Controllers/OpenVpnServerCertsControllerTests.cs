@@ -1,8 +1,11 @@
+using System.Security.Claims;
 using Mapster;
+using Microsoft.AspNetCore.Http;
 using Microsoft.AspNetCore.Mvc;
 using Microsoft.Extensions.Logging;
 using Moq;
 using OpenVPNGateMonitor.Controllers;
+using OpenVPNGateMonitor.Services.Api.Auth.Handlers.Interfaces;
 using OpenVPNGateMonitor.Mapping.OpenVpnServerCerts.Mappings;
 using OpenVPNGateMonitor.Services.DataGateOpenVpnManager.Interfaces;
 using OpenVPNGateMonitor.SharedModels.DataGateMonitorBackend.OpenVpnServerCerts.Requests;
@@ -17,6 +20,7 @@ public class OpenVpnServerCertsControllerTests
 {
     private readonly Mock<ICertApiClient> _certApiClient = new();
     private readonly Mock<ILogger<OpenVpnServerCertsController>> _logger = new();
+    private readonly Mock<IVpnServerAccessQueryService> _vpnAccess = new();
 
     public OpenVpnServerCertsControllerTests()
     {
@@ -24,8 +28,20 @@ public class OpenVpnServerCertsControllerTests
         new VpnServerCertificateMapping().Register(TypeAdapterConfig.GlobalSettings);
     }
 
-    private OpenVpnServerCertsController CreateController() =>
-        new(_certApiClient.Object, _logger.Object);
+    private OpenVpnServerCertsController CreateController()
+    {
+        var c = new OpenVpnServerCertsController(_certApiClient.Object, _logger.Object, _vpnAccess.Object);
+        c.ControllerContext = new ControllerContext
+        {
+            HttpContext = new DefaultHttpContext
+            {
+                User = new ClaimsPrincipal(new ClaimsIdentity(
+                    [new Claim(ClaimTypes.Role, "Admin")],
+                    "mock"))
+            }
+        };
+        return c;
+    }
 
     [Fact]
     public async Task GetAllCertificates_ReturnsOk_WithMappedResponse()
