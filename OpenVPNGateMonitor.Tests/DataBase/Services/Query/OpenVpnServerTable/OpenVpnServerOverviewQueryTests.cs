@@ -35,6 +35,10 @@ public class OpenVpnServerOverviewQueryTests
             .Setup(u => u.GetQuery<OpenVpnServerStatusLog>())
             .Returns(new TestQuery<OpenVpnServerStatusLog>(ctx.OpenVpnServerStatusLogs));
 
+        uowMock
+            .Setup(u => u.GetQuery<QuotaPlanAllowedServer>())
+            .Returns(new TestQuery<QuotaPlanAllowedServer>(ctx.QuotaPlanAllowedServers));
+
         var sut = new OpenVpnServerOverviewQuery(uowMock.Object);
         return (sut, ctx);
     }
@@ -356,6 +360,96 @@ public class OpenVpnServerOverviewQueryTests
         Assert.Equal(0, sessions);
     }
 
+    [Fact]
+    public async Task GetAllOpenVpnServersWithStatusAsync_WithRestrictToQuotaPlanId_ReturnsOnlyServersLinkedToPlan()
+    {
+        var (sut, ctx) = CreateSutWithContext();
+        var now = DateTimeOffset.UtcNow;
+
+        var sAllowed = new OpenVpnServer
+        {
+            Id = 301,
+            ServerName = "in-plan",
+            IsDeleted = false,
+            ApiUrl = "https://a",
+            CreateDate = now,
+            LastUpdate = now
+        };
+        var sOther = new OpenVpnServer
+        {
+            Id = 302,
+            ServerName = "not-in-plan",
+            IsDeleted = false,
+            ApiUrl = "https://b",
+            CreateDate = now,
+            LastUpdate = now
+        };
+        await ctx.OpenVpnServers.AddRangeAsync(sAllowed, sOther);
+        await ctx.QuotaPlanAllowedServers.AddAsync(new QuotaPlanAllowedServer
+        {
+            Id = 1,
+            QuotaPlanId = 77,
+            VpnServerId = 301,
+            CreateDate = now,
+            LastUpdate = now
+        });
+        await ctx.SaveChangesAsync();
+
+        var result = await sut.GetAllOpenVpnServersWithStatusAsync(
+            includeDeleted: false,
+            requireQuotaPlanAssignment: false,
+            restrictToQuotaPlanId: 77,
+            ct: CancellationToken.None);
+
+        Assert.Single(result);
+        Assert.Equal(301, result[0].OpenVpnServerResponses.OpenVpnServer.Id);
+    }
+
+    [Fact]
+    public async Task GetAllOpenVpnServersWithStatusAsync_WithRequireQuotaPlanAssignment_ReturnsOnlyServersWithAnyQuotaLink()
+    {
+        var (sut, ctx) = CreateSutWithContext();
+        var now = DateTimeOffset.UtcNow;
+
+        var sLinked = new OpenVpnServer
+        {
+            Id = 401,
+            ServerName = "linked",
+            IsDeleted = false,
+            ApiUrl = "https://l",
+            CreateDate = now,
+            LastUpdate = now
+        };
+        var sOrphan = new OpenVpnServer
+        {
+            Id = 402,
+            ServerName = "orphan",
+            IsDeleted = false,
+            ApiUrl = "https://o",
+            CreateDate = now,
+            LastUpdate = now
+        };
+        await ctx.OpenVpnServers.AddRangeAsync(sLinked, sOrphan);
+        await ctx.QuotaPlanAllowedServers.AddAsync(new QuotaPlanAllowedServer
+        {
+            Id = 2,
+            QuotaPlanId = 1,
+            VpnServerId = 401,
+            CreateDate = now,
+            LastUpdate = now
+        });
+        await ctx.SaveChangesAsync();
+
+        var result = await sut.GetAllOpenVpnServersWithStatusAsync(
+            includeDeleted: false,
+            requireQuotaPlanAssignment: true,
+            restrictToQuotaPlanId: null,
+            ct: CancellationToken.None);
+
+        Assert.Single(result);
+        Assert.Equal(401, result[0].OpenVpnServerResponses.OpenVpnServer.Id);
+    }
+
     // ---- Test DbContext ----
 
     private sealed class TestDbContext : DbContext
@@ -365,6 +459,7 @@ public class OpenVpnServerOverviewQueryTests
         public DbSet<OpenVpnServer> OpenVpnServers => Set<OpenVpnServer>();
         public DbSet<OpenVpnServerClient> OpenVpnServerClients => Set<OpenVpnServerClient>();
         public DbSet<OpenVpnServerStatusLog> OpenVpnServerStatusLogs => Set<OpenVpnServerStatusLog>();
+        public DbSet<QuotaPlanAllowedServer> QuotaPlanAllowedServers => Set<QuotaPlanAllowedServer>();
     }
 
     // ---- IQuery adapter for tests ----
