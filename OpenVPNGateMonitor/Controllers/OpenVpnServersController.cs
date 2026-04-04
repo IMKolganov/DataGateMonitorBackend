@@ -1,11 +1,12 @@
-using System.Net.WebSockets;
-using System.Text;
 using Mapster;
 using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Mvc;
 using OpenVPNGateMonitor.DataBase.Services.Query.OpenVpnServerTable;
 using OpenVPNGateMonitor.DataBase.Services.Query.OpenVpnServerTagTable;
+using OpenVPNGateMonitor.DataBase.Services.Query.UserQuotaPlanTable;
 using OpenVPNGateMonitor.Models;
+using OpenVPNGateMonitor.Services.Api;
+using OpenVPNGateMonitor.Services.Api.Auth.Handlers.Interfaces;
 using OpenVPNGateMonitor.Services.Api.Interfaces;
 using OpenVPNGateMonitor.Services.BackgroundServices.Interfaces;
 using OpenVPNGateMonitor.Services.DataGateOpenVpnManager.Interfaces;
@@ -25,14 +26,33 @@ public class OpenVpnServersController(IVpnDataService vpnDataService,
     IOpenVpnServerOverviewQuery openVpnServerOverviewQuery, IOpenVpnServerQueryService openVpnServerQueryService,
     IOpenVpnServerTagQueryService openVpnServerTagQueryService,
     IOpenVpnBackgroundService openVpnBackgroundService,
-    IMicroserviceInfoService microserviceInfoService) : BaseController
+    IMicroserviceInfoService microserviceInfoService,
+    IUserQuotaPlanQueryService userQuotaPlanQueryService,
+    IVpnServerAccessQueryService vpnServerAccessQueryService) : BaseController
 {
     [HttpGet("get-all-with-status")]
     public async Task<ActionResult<ApiResponse<OpenVpnServerWithStatusesResponse>>> GetAllServersWithStatus(
         [FromQuery] bool includeDeleted = false,
         CancellationToken ct = default)
     {
-        var result = await openVpnServerOverviewQuery.GetAllOpenVpnServersWithStatusAsync(includeDeleted, ct);
+        List<OpenVpnServerWithStatusDto> result;
+        if (HttpUserContext.IsPrivileged(User))
+        {
+            result = await openVpnServerOverviewQuery.GetAllOpenVpnServersWithStatusAsync(
+                includeDeleted, requireQuotaPlanAssignment: false, restrictToQuotaPlanId: null, ct);
+        }
+        else
+        {
+            if (!HttpUserContext.TryGetUserId(User, out var userId))
+                return Unauthorized(ApiResponse<OpenVpnServerWithStatusesResponse>.ErrorResponse("User id missing from token."));
+            var uqp = await userQuotaPlanQueryService.GetActiveByUserId(userId, ct);
+            if (uqp is null)
+                result = [];
+            else
+                result = await openVpnServerOverviewQuery.GetAllOpenVpnServersWithStatusAsync(
+                    includeDeleted, requireQuotaPlanAssignment: false, restrictToQuotaPlanId: uqp.QuotaPlanId, ct);
+        }
+
         var response = result.Adapt<OpenVpnServerWithStatusesResponse>();
         await FillTagsForOverviewResponse(response, ct);
         return Ok(ApiResponse<OpenVpnServerWithStatusesResponse>.SuccessResponse(response));
@@ -42,6 +62,10 @@ public class OpenVpnServersController(IVpnDataService vpnDataService,
     public async Task<ActionResult<ApiResponse<OpenVpnServerWithStatusResponse>>> GetServerWithStatus(
         [FromRoute] GetServerWithStatsRequest request, CancellationToken ct)
     {
+        if (await OpenVpnServerAuthorizationHelper.RequireVpnServerAccessOrForbidAsync<OpenVpnServerWithStatusResponse>(User, vpnServerAccessQueryService,
+                request.VpnServerId, ct) is { } denyStatus)
+            return denyStatus;
+
         var serverInfo = await openVpnServerOverviewQuery.GetOpenVpnServerWithStatusAsync(request.VpnServerId, ct);
         var response = serverInfo.Adapt<OpenVpnServerWithStatusResponse>();
         if (response.OpenVpnServerWithStatus?.OpenVpnServerResponses?.OpenVpnServer != null)
@@ -53,6 +77,10 @@ public class OpenVpnServersController(IVpnDataService vpnDataService,
     public async Task<ActionResult<ApiResponse<RootInfoResponse>>> GetMicroserviceInfo(
         [FromRoute] int vpnServerId, CancellationToken ct)
     {
+        if (await OpenVpnServerAuthorizationHelper.RequireVpnServerAccessOrForbidAsync<RootInfoResponse>(User, vpnServerAccessQueryService,
+                vpnServerId, ct) is { } denyMicro)
+            return denyMicro;
+
         var info = await microserviceInfoService.GetInfoAsync(vpnServerId, ct);
         return Ok(ApiResponse<RootInfoResponse>.SuccessResponse(info));
     }
@@ -73,7 +101,24 @@ public class OpenVpnServersController(IVpnDataService vpnDataService,
         [FromQuery] bool includeDeleted = false,
         CancellationToken ct = default)
     {
-        var serversList = await openVpnServerQueryService.GetAll(includeDeleted, ct);
+        List<OpenVpnServer> serversList;
+        if (HttpUserContext.IsPrivileged(User))
+        {
+            serversList = await openVpnServerQueryService.GetAll(includeDeleted, requireQuotaPlanAssignment: false,
+                restrictToQuotaPlanId: null, ct);
+        }
+        else
+        {
+            if (!HttpUserContext.TryGetUserId(User, out var userId))
+                return Unauthorized(ApiResponse<OpenVpnServersResponse>.ErrorResponse("User id missing from token."));
+            var uqp = await userQuotaPlanQueryService.GetActiveByUserId(userId, ct);
+            if (uqp is null)
+                serversList = [];
+            else
+                serversList = await openVpnServerQueryService.GetAll(includeDeleted, requireQuotaPlanAssignment: false,
+                    restrictToQuotaPlanId: uqp.QuotaPlanId, ct);
+        }
+
         var response = serversList.Adapt<OpenVpnServersResponse>();
         if (serversList.Count > 0)
         {
@@ -88,6 +133,10 @@ public class OpenVpnServersController(IVpnDataService vpnDataService,
     public async Task<ActionResult<ApiResponse<OpenVpnServerResponse>>> GetServer(
         [FromRoute] GetServerRequest request, CancellationToken ct)
     {
+        if (await OpenVpnServerAuthorizationHelper.RequireVpnServerAccessOrForbidAsync<OpenVpnServerResponse>(User, vpnServerAccessQueryService,
+                request.VpnServerId, ct) is { } denyGet)
+            return denyGet;
+
         var server = await openVpnServerQueryService.GetById(request.VpnServerId, ct);
         if (server == null)
             return NotFound();

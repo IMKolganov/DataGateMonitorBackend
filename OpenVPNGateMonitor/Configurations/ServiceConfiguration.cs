@@ -15,6 +15,7 @@ using OpenVPNGateMonitor.Services.OpenVpnManagementInterfaces.Interfaces;
 using OpenVPNGateMonitor.Services.Others;
 using OpenVPNGateMonitor.Services.QuotaPlans;
 using OpenVPNGateMonitor.Services.Tags;
+using OpenVPNGateMonitor.Services.UserRoles;
 using OpenVPNGateMonitor.Services.Users;
 using OpenVPNGateMonitor.Services.Users.Interfaces;
 
@@ -71,6 +72,7 @@ public static class ServiceConfiguration
         services.AddScoped<IUserService, UserService>();
         
         services.AddScoped<IQuotaPlanService, QuotaPlanService>();
+        services.AddScoped<IUserRoleManagementService, UserRoleManagementService>();
         services.AddScoped<IQuotaPlanAllowedServerService, QuotaPlanAllowedServerService>();
         services.AddScoped<ITagService, TagService>();
         

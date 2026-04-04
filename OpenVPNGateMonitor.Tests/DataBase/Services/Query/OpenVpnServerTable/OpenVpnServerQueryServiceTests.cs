@@ -1,4 +1,5 @@
 using Moq;
+using OpenVPNGateMonitor.DataBase.Services.Query.QuotaPlanAllowedServerTable;
 using OpenVPNGateMonitor.DataBase.Services.Query.OpenVpnServerTable;
 using OpenVPNGateMonitor.Models;
 using OpenVPNGateMonitor.SharedModels.Responses;
@@ -18,8 +19,10 @@ public class OpenVpnServerQueryServiceTests
             .ReturnsAsync(list)
             .Verifiable();
 
-        var sut = new OpenVpnServerQueryService(q.Object);
-        var result = await sut.GetAll(includeDeleted: false, CancellationToken.None);
+        var allowed = new Mock<IQuotaPlanAllowedServerQueryService>(MockBehavior.Strict);
+        var sut = new OpenVpnServerQueryService(q.Object, allowed.Object);
+        var result = await sut.GetAll(includeDeleted: false, requireQuotaPlanAssignment: false,
+            restrictToQuotaPlanId: null, CancellationToken.None);
 
         Assert.Single(result);
         Assert.False(result[0].IsDeleted);
@@ -37,8 +40,10 @@ public class OpenVpnServerQueryServiceTests
         var q = new Mock<IQueryService<OpenVpnServer, int>>();
         q.Setup(x => x.GetAll(It.IsAny<bool>(), It.IsAny<CancellationToken>())).ReturnsAsync(list);
 
-        var sut = new OpenVpnServerQueryService(q.Object);
-        var result = await sut.GetAll(includeDeleted: true, CancellationToken.None);
+        var allowed = new Mock<IQuotaPlanAllowedServerQueryService>(MockBehavior.Strict);
+        var sut = new OpenVpnServerQueryService(q.Object, allowed.Object);
+        var result = await sut.GetAll(includeDeleted: true, requireQuotaPlanAssignment: false,
+            restrictToQuotaPlanId: null, CancellationToken.None);
 
         Assert.Equal(2, result.Count);
         q.Verify(x => x.GetAll(It.IsAny<bool>(), It.IsAny<CancellationToken>()), Times.Once);
@@ -52,7 +57,8 @@ public class OpenVpnServerQueryServiceTests
         q.Setup(x => x.FindById(10, It.IsAny<bool>(), It.IsAny<CancellationToken>(), It.IsAny<System.Linq.Expressions.Expression<Func<OpenVpnServer, object>>[]>()))
             .ReturnsAsync(server);
 
-        var sut = new OpenVpnServerQueryService(q.Object);
+        var allowed = new Mock<IQuotaPlanAllowedServerQueryService>(MockBehavior.Strict);
+        var sut = new OpenVpnServerQueryService(q.Object, allowed.Object);
         var result = await sut.GetById(10, CancellationToken.None);
 
         Assert.NotNull(result);
@@ -67,7 +73,8 @@ public class OpenVpnServerQueryServiceTests
         q.Setup(x => x.Where(It.IsAny<System.Linq.Expressions.Expression<Func<OpenVpnServer, bool>>>(), null, true, It.IsAny<CancellationToken>(), It.IsAny<System.Linq.Expressions.Expression<Func<OpenVpnServer, object>>[]>()))
             .ReturnsAsync(list);
 
-        var sut = new OpenVpnServerQueryService(q.Object);
+        var allowed = new Mock<IQuotaPlanAllowedServerQueryService>(MockBehavior.Strict);
+        var sut = new OpenVpnServerQueryService(q.Object, allowed.Object);
         var result = await sut.GetDefaultExcept(5, CancellationToken.None);
 
         Assert.Single(result);
@@ -84,8 +91,10 @@ public class OpenVpnServerQueryServiceTests
         q.Setup(x => x.Page(1, 10, It.IsAny<System.Linq.Expressions.Expression<Func<OpenVpnServer, bool>>>(), null, It.IsAny<bool>(), It.IsAny<CancellationToken>(), It.IsAny<System.Linq.Expressions.Expression<Func<OpenVpnServer, object>>[]>()))
             .ReturnsAsync(paged);
 
-        var sut = new OpenVpnServerQueryService(q.Object);
-        var result = await sut.GetPage(1, 10, includeDeleted: false, CancellationToken.None);
+        var allowed = new Mock<IQuotaPlanAllowedServerQueryService>(MockBehavior.Strict);
+        var sut = new OpenVpnServerQueryService(q.Object, allowed.Object);
+        var result = await sut.GetPage(1, 10, includeDeleted: false, requireQuotaPlanAssignment: false,
+            restrictToQuotaPlanId: null, CancellationToken.None);
 
         Assert.NotNull(result);
         Assert.Equal(1, result.Page);
@@ -100,8 +109,10 @@ public class OpenVpnServerQueryServiceTests
         q.Setup(x => x.Page(1, 10, null, null, It.IsAny<bool>(), It.IsAny<CancellationToken>(), It.IsAny<System.Linq.Expressions.Expression<Func<OpenVpnServer, object>>[]>()))
             .ReturnsAsync(paged);
 
-        var sut = new OpenVpnServerQueryService(q.Object);
-        var result = await sut.GetPage(1, 10, includeDeleted: true, CancellationToken.None);
+        var allowed = new Mock<IQuotaPlanAllowedServerQueryService>(MockBehavior.Strict);
+        var sut = new OpenVpnServerQueryService(q.Object, allowed.Object);
+        var result = await sut.GetPage(1, 10, includeDeleted: true, requireQuotaPlanAssignment: false,
+            restrictToQuotaPlanId: null, CancellationToken.None);
 
         Assert.Equal(2, result.TotalCount);
         q.Verify(x => x.Page(1, 10, null, null, It.IsAny<bool>(), It.IsAny<CancellationToken>(), It.IsAny<System.Linq.Expressions.Expression<Func<OpenVpnServer, object>>[]>()), Times.Once);

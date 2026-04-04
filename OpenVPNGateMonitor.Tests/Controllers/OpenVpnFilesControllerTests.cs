@@ -1,7 +1,12 @@
+using System.Security.Claims;
+using Microsoft.AspNetCore.Http;
 using Microsoft.AspNetCore.Mvc;
 using Microsoft.Extensions.Logging;
 using Moq;
 using OpenVPNGateMonitor.Controllers;
+using OpenVPNGateMonitor.DataBase.Services.Query.QuotaPlanAllowedServerTable;
+using OpenVPNGateMonitor.DataBase.Services.Query.UserQuotaPlanTable;
+using OpenVPNGateMonitor.Services.Api.Auth.Handlers.Interfaces;
 using OpenVPNGateMonitor.Services.DataGateOpenVpnManager.Interfaces;
 using OpenVPNGateMonitor.SharedModels.DataGateMonitorBackend.OpenVpnFiles.Requests;
 using OpenVPNGateMonitor.SharedModels.DataGateMonitorBackend.OpenVpnFiles.Responses;
@@ -13,11 +18,29 @@ public class OpenVpnFilesControllerTests
 {
     private readonly Mock<IOvpnFileApiService> _service = new();
     private readonly Mock<ILogger<OpenVpnFilesController>> _logger = new();
+    private readonly Mock<IUserQuotaPlanQueryService> _userQuotaPlan = new();
+    private readonly Mock<IQuotaPlanAllowedServerQueryService> _quotaAllowed = new();
+    private readonly Mock<IVpnServerAccessQueryService> _vpnAccess = new();
     private readonly OpenVpnFilesController _controller;
 
     public OpenVpnFilesControllerTests()
     {
-        _controller = new OpenVpnFilesController(_service.Object, _logger.Object);
+        _controller = new OpenVpnFilesController(_service.Object, _logger.Object, _userQuotaPlan.Object,
+            _quotaAllowed.Object, _vpnAccess.Object);
+        SetUserAsAdmin(_controller);
+    }
+
+    private static void SetUserAsAdmin(OpenVpnFilesController controller) =>
+        SetUser(controller, new ClaimsPrincipal(new ClaimsIdentity(
+            [new Claim(ClaimTypes.Role, "Admin")],
+            "mock")));
+
+    private static void SetUser(OpenVpnFilesController controller, ClaimsPrincipal user)
+    {
+        controller.ControllerContext = new ControllerContext
+        {
+            HttpContext = new DefaultHttpContext { User = user }
+        };
     }
 
     [Fact]
@@ -290,5 +313,44 @@ public class OpenVpnFilesControllerTests
         var bad = Assert.IsType<BadRequestObjectResult>(result.Result);
         var response = Assert.IsType<ApiResponse<string>>(bad.Value);
         Assert.False(response.Success);
+    }
+
+    [Fact]
+    public async Task GetAllByVpnServerId_WhenVpnUserNoAccess_Returns_Forbidden()
+    {
+        SetUser(_controller, new ClaimsPrincipal(new ClaimsIdentity(
+            [
+                new Claim(ClaimTypes.Role, "VpnUser"),
+                new Claim(ClaimTypes.NameIdentifier, "900")
+            ],
+            "mock")));
+        _vpnAccess.Setup(a => a.UserHasAccessAsync(900, 5, It.IsAny<CancellationToken>()))
+            .ReturnsAsync(false);
+
+        var result = await _controller.GetAllByVpnServerId(new ByVpnServerIdRequest { VpnServerId = 5 }, CancellationToken.None);
+
+        var forbid = Assert.IsType<ObjectResult>(result.Result);
+        Assert.Equal(StatusCodes.Status403Forbidden, forbid.StatusCode);
+        _service.Verify(s => s.GetAllByVpnServerId(It.IsAny<int>(), It.IsAny<CancellationToken>()), Times.Never);
+    }
+
+    [Fact]
+    public async Task GetByToken_WhenVpnUserNoAccess_Returns_Forbidden()
+    {
+        SetUser(_controller, new ClaimsPrincipal(new ClaimsIdentity(
+            [
+                new Claim(ClaimTypes.Role, "VpnUser"),
+                new Claim(ClaimTypes.NameIdentifier, "901")
+            ],
+            "mock")));
+        _service.Setup(s => s.GetByToken("tok", It.IsAny<CancellationToken>(), It.IsAny<bool>()))
+            .ReturnsAsync(new OpenVPNGateMonitor.Models.IssuedOvpnFile { VpnServerId = 12 });
+        _vpnAccess.Setup(a => a.UserHasAccessAsync(901, 12, It.IsAny<CancellationToken>()))
+            .ReturnsAsync(false);
+
+        var result = await _controller.GetByToken(new ByTokenRequest { Token = "tok" }, CancellationToken.None);
+
+        var forbid = Assert.IsType<ObjectResult>(result.Result);
+        Assert.Equal(StatusCodes.Status403Forbidden, forbid.StatusCode);
     }
 }
