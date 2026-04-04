@@ -12,7 +12,7 @@
 
     <ItemGroup>
       <!-- OpenVPNGateMonitor.SharedModels: NuGet package only; do not use ProjectReference to the SharedModels .csproj. -->
-      <PackageReference Include="OpenVPNGateMonitor.SharedModels" Version="1.0.95" />
+      <PackageReference Include="OpenVPNGateMonitor.SharedModels" Version="1.0.96" />
       <PackageReference Include="Mapster" Version="10.0.6" />
       <PackageReference Include="Microsoft.AspNetCore.Cryptography.KeyDerivation" Version="10.0.5" />
       <PackageReference Include="Microsoft.EntityFrameworkCore" Version="10.0.5" />
