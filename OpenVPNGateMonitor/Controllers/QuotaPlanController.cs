@@ -1,4 +1,4 @@
-﻿using Mapster;
+using Mapster;
 using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Mvc;
 using OpenVPNGateMonitor.Models;
@@ -13,10 +13,10 @@ namespace OpenVPNGateMonitor.Controllers;
 [ApiController]
 [Route("api/quota-plans")]
 [Authorize]
-[Authorize(Roles = "Admin,App")]
 public class QuotaPlanController(IQuotaPlanService quotaPlanService) : BaseController
 {
     /// <summary>Get all quota plans.</summary>
+    [Authorize(Roles = "Admin,App,VpnUser")]
     [HttpPost("get-all")]
     public async Task<ActionResult<ApiResponse<QuotaPlansResponse>>> GetAll(
         [FromBody] GetQuotaPlansRequest request,
@@ -32,6 +32,7 @@ public class QuotaPlanController(IQuotaPlanService quotaPlanService) : BaseContr
     }
 
     /// <summary>Get a quota plan by id.</summary>
+    [Authorize(Roles = "Admin,App,VpnUser")]
     [HttpGet("get/{id:int}")]
     public async Task<ActionResult<ApiResponse<QuotaPlanResponse>>> GetById(int id, CancellationToken ct)
     {
@@ -44,6 +45,7 @@ public class QuotaPlanController(IQuotaPlanService quotaPlanService) : BaseContr
     }
 
     /// <summary>Create a new quota plan.</summary>
+    [Authorize(Roles = "Admin,App")]
     [HttpPost("create")]
     public async Task<ActionResult<ApiResponse<QuotaPlanResponse>>> Create(
         [FromBody] CreateOrUpdateQuotaPlanRequest request,
@@ -61,6 +63,7 @@ public class QuotaPlanController(IQuotaPlanService quotaPlanService) : BaseContr
     }
 
     /// <summary>Update an existing quota plan.</summary>
+    [Authorize(Roles = "Admin,App")]
     [HttpPut("update")]
     public async Task<ActionResult<ApiResponse<string>>> Update(
         [FromBody] CreateOrUpdateQuotaPlanRequest request,
@@ -72,6 +75,7 @@ public class QuotaPlanController(IQuotaPlanService quotaPlanService) : BaseContr
     }
 
     /// <summary>Delete a quota plan by id.</summary>
+    [Authorize(Roles = "Admin,App")]
     [HttpDelete("delete/{id:int}")]
     public async Task<ActionResult<ApiResponse<string>>> Delete(int id, CancellationToken ct)
     {
@@ -80,6 +84,7 @@ public class QuotaPlanController(IQuotaPlanService quotaPlanService) : BaseContr
     }
 
     /// <summary>Set quota plan as default.</summary>
+    [Authorize(Roles = "Admin,App")]
     [HttpPost("set-default/{id:int}")]
     public async Task<ActionResult<ApiResponse<string>>> SetDefault(int id, CancellationToken ct)
     {

@@ -1,6 +1,10 @@
+using System.Security.Claims;
+using Microsoft.AspNetCore.Http;
 using Microsoft.AspNetCore.Mvc;
 using Moq;
 using OpenVPNGateMonitor.Controllers;
+using OpenVPNGateMonitor.DataBase.Services.Query.UserQuotaPlanTable;
+using OpenVPNGateMonitor.Models;
 using OpenVPNGateMonitor.Services.QuotaPlans;
 using OpenVPNGateMonitor.SharedModels.DataGateMonitorBackend.QuotaPlanAllowedServers.Dto;
 using OpenVPNGateMonitor.SharedModels.DataGateMonitorBackend.QuotaPlanAllowedServers.Requests;
@@ -12,11 +16,25 @@ namespace OpenVPNGateMonitor.Tests.Controllers;
 public class QuotaPlanAllowedServerControllerTests
 {
     private readonly Mock<IQuotaPlanAllowedServerService> _service = new(MockBehavior.Strict);
+    private readonly Mock<IUserQuotaPlanQueryService> _userQuotaPlanQuery = new(MockBehavior.Strict);
     private readonly QuotaPlanAllowedServerController _controller;
 
     public QuotaPlanAllowedServerControllerTests()
     {
-        _controller = new QuotaPlanAllowedServerController(_service.Object);
+        _controller = new QuotaPlanAllowedServerController(_service.Object, _userQuotaPlanQuery.Object);
+    }
+
+    private static void SetRole(QuotaPlanAllowedServerController controller, string role)
+    {
+        controller.ControllerContext = new ControllerContext
+        {
+            HttpContext = new DefaultHttpContext
+            {
+                User = new ClaimsPrincipal(new ClaimsIdentity(
+                    [new Claim(ClaimTypes.Role, role)],
+                    "Test"))
+            }
+        };
     }
 
     [Fact]
@@ -89,6 +107,8 @@ public class QuotaPlanAllowedServerControllerTests
     [Fact]
     public async Task GetByQuotaPlanId_ReturnsOk_WithItems()
     {
+        SetRole(_controller, "Admin");
+
         var items = new List<QuotaPlanAllowedServerDto>
         {
             new() { Id = 1, QuotaPlanId = 10, VpnServerId = 5 }
@@ -106,6 +126,60 @@ public class QuotaPlanAllowedServerControllerTests
         Assert.NotNull(response.Data);
         Assert.Single(response.Data.Items);
         _service.VerifyAll();
+    }
+
+    [Fact]
+    public async Task GetByQuotaPlanId_WhenVpnUserAndOwnPlan_ReturnsOk()
+    {
+        SetRole(_controller, "VpnUser");
+        _controller.ControllerContext.HttpContext.User = new ClaimsPrincipal(new ClaimsIdentity(
+        [
+            new Claim(ClaimTypes.Role, "VpnUser"),
+            new Claim(ClaimTypes.NameIdentifier, "42")
+        ], "Test"));
+
+        _userQuotaPlanQuery
+            .Setup(q => q.GetActiveByUserId(42, It.IsAny<CancellationToken>()))
+            .ReturnsAsync(new UserQuotaPlan { UserId = 42, QuotaPlanId = 7 });
+
+        var items = new List<QuotaPlanAllowedServerDto>
+        {
+            new() { Id = 1, QuotaPlanId = 7, VpnServerId = 5 }
+        };
+
+        _service
+            .Setup(s => s.GetListByQuotaPlanIdAsync(7, It.IsAny<CancellationToken>()))
+            .ReturnsAsync(items);
+
+        var result = await _controller.GetByQuotaPlanId(7, CancellationToken.None);
+
+        var ok = Assert.IsType<OkObjectResult>(result.Result);
+        var response = Assert.IsType<ApiResponse<GetQuotaPlanAllowedServersByQuotaPlanIdResponse>>(ok.Value);
+        Assert.True(response.Success);
+        Assert.Single(response.Data!.Items);
+        _service.VerifyAll();
+        _userQuotaPlanQuery.VerifyAll();
+    }
+
+    [Fact]
+    public async Task GetByQuotaPlanId_WhenVpnUserAndOtherPlan_Returns403()
+    {
+        SetRole(_controller, "VpnUser");
+        _controller.ControllerContext.HttpContext.User = new ClaimsPrincipal(new ClaimsIdentity(
+        [
+            new Claim(ClaimTypes.Role, "VpnUser"),
+            new Claim(ClaimTypes.NameIdentifier, "42")
+        ], "Test"));
+
+        _userQuotaPlanQuery
+            .Setup(q => q.GetActiveByUserId(42, It.IsAny<CancellationToken>()))
+            .ReturnsAsync(new UserQuotaPlan { UserId = 42, QuotaPlanId = 7 });
+
+        var result = await _controller.GetByQuotaPlanId(99, CancellationToken.None);
+
+        var forbidden = Assert.IsType<ObjectResult>(result.Result);
+        Assert.Equal(StatusCodes.Status403Forbidden, forbidden.StatusCode);
+        _userQuotaPlanQuery.VerifyAll();
     }
 
     [Fact]
