@@ -39,6 +39,7 @@ public class QueryCommandConfigurationTests
         AssertRegistered(services, typeof(IOpenVpnServerQueryService));
         AssertRegistered(services, typeof(IOpenVpnServerOvpnFileConfigQueryService));
         AssertRegistered(services, typeof(IOpenVpnServerOverviewQuery));
+        AssertRegistered(services, typeof(IOpenVpnServerQuotaPlanGroupsQuery));
         AssertRegistered(services, typeof(ITagQueryService));
         AssertRegistered(services, typeof(IOpenVpnServerTagQueryService));
         AssertRegistered(services, typeof(IOpenVpnServerConflogQueryService));

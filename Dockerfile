@@ -4,8 +4,11 @@ FROM mcr.microsoft.com/dotnet/sdk:10.0 AS build
 # Set the working directory
 WORKDIR /src
 
-# Copy the project file and restore dependencies
+# Copy project files for restore. SharedModels comes from NuGet (PackageReference); that package version must be published on nuget.org.
 COPY ["OpenVPNGateMonitor/OpenVPNGateMonitor.csproj", "OpenVPNGateMonitor/"]
+COPY ["OpenVPNGateMonitor.Models/OpenVPNGateMonitor.Models.csproj", "OpenVPNGateMonitor.Models/"]
+COPY ["OpenVPNGateMonitor.DataBase/OpenVPNGateMonitor.DataBase.csproj", "OpenVPNGateMonitor.DataBase/"]
+COPY ["OpenVPNGateMonitor.Mapping/OpenVPNGateMonitor.Mapping.csproj", "OpenVPNGateMonitor.Mapping/"]
 WORKDIR /src/OpenVPNGateMonitor
 RUN dotnet restore "OpenVPNGateMonitor.csproj"
 

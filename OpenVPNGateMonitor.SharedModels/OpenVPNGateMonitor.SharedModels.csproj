@@ -19,9 +19,10 @@
         <PackageTags>#OpenVPNGateMonitor #OpenVpn #GateMonitor #Dashboard</PackageTags>
         <PackageLicenseExpression>MIT</PackageLicenseExpression>
         <PackageReadmeFile>README.md</PackageReadmeFile>
-        <Version>1.0.94</Version>
-        <AssemblyVersion>1.0.94.0</AssemblyVersion>
-        <FileVersion>1.0.94.0</FileVersion>
+        <!-- Backend consumes this library via NuGet (PackageReference) only. After changes here: dotnet pack, publish to nuget.org, then bump package version in all referencing .csproj files. -->
+        <Version>1.0.97</Version>
+        <AssemblyVersion>1.0.97.0</AssemblyVersion>
+        <FileVersion>1.0.97.0</FileVersion>
         <PackageIcon>favicon.png</PackageIcon>
 
         <Deterministic>true</Deterministic>

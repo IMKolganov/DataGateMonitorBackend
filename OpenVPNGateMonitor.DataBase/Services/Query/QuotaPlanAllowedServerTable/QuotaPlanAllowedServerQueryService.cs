@@ -1,3 +1,4 @@
+using Microsoft.EntityFrameworkCore;
 using OpenVPNGateMonitor.Models;
 using OpenVPNGateMonitor.SharedModels.Responses;
 
@@ -6,6 +7,21 @@ namespace OpenVPNGateMonitor.DataBase.Services.Query.QuotaPlanAllowedServerTable
 public class QuotaPlanAllowedServerQueryService(
     IQueryService<QuotaPlanAllowedServer, int> q) : IQuotaPlanAllowedServerQueryService
 {
+    public async Task<HashSet<int>> GetDistinctVpnServerIds(CancellationToken ct)
+    {
+        var ids = await q.Query()
+            .Select(x => x.VpnServerId)
+            .Distinct()
+            .ToListAsync(ct);
+        return ids.ToHashSet();
+    }
+
+    public async Task<HashSet<int>> GetVpnServerIdsByQuotaPlanId(int quotaPlanId, CancellationToken ct)
+    {
+        var list = await q.Where(x => x.QuotaPlanId == quotaPlanId, ct: ct);
+        return list.Select(x => x.VpnServerId).ToHashSet();
+    }
+
     public Task<List<QuotaPlanAllowedServer>> GetAll(CancellationToken ct)
         => q.GetAll(ct: ct);
 
