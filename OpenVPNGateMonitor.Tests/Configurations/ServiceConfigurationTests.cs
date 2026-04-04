@@ -8,6 +8,7 @@ using OpenVPNGateMonitor.Services.Helpers.Interfaces;
 using OpenVPNGateMonitor.Services.OpenVpnManagementInterfaces.Interfaces;
 using OpenVPNGateMonitor.Services.QuotaPlans;
 using OpenVPNGateMonitor.Services.Tags;
+using OpenVPNGateMonitor.Services.UserRoles;
 using OpenVPNGateMonitor.Services.Users;
 using OpenVPNGateMonitor.Services.Users.Interfaces;
 using OpenVPNGateMonitor.Services.DataGateOpenVpnManager.OpenVpnProxy;
@@ -37,6 +38,7 @@ public class ServiceConfigurationTests
         AssertRegistered(services, typeof(IExternalIpAddressService));
         AssertRegistered(services, typeof(IUserService));
         AssertRegistered(services, typeof(IQuotaPlanService));
+        AssertRegistered(services, typeof(IUserRoleManagementService));
         AssertRegistered(services, typeof(ITagService));
         AssertRegistered(services, typeof(IMicroserviceInfoService));
         AssertRegistered(services, typeof(IOpenVpnServerConflogService));

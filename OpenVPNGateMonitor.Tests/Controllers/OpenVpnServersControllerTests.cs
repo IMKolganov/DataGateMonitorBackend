@@ -325,7 +325,7 @@ public class OpenVpnServersControllerTests
                 new Claim(ClaimTypes.NameIdentifier, "50")
             ],
             "mock")));
-        _userQuotaPlan.Setup(u => u.GetByUserId(50, It.IsAny<CancellationToken>()))
+        _userQuotaPlan.Setup(u => u.GetActiveByUserId(50, It.IsAny<CancellationToken>()))
             .ReturnsAsync((UserQuotaPlan?)null);
 
         var result = await _controller.GetAllServers(false, CancellationToken.None);
@@ -346,7 +346,7 @@ public class OpenVpnServersControllerTests
                 new Claim(ClaimTypes.NameIdentifier, "51")
             ],
             "mock")));
-        _userQuotaPlan.Setup(u => u.GetByUserId(51, It.IsAny<CancellationToken>()))
+        _userQuotaPlan.Setup(u => u.GetActiveByUserId(51, It.IsAny<CancellationToken>()))
             .ReturnsAsync(new UserQuotaPlan { Id = 1, UserId = 51, QuotaPlanId = 9 });
         _serverQuery.Setup(s => s.GetAll(false, false, 9, It.IsAny<CancellationToken>()))
             .ReturnsAsync([]);
