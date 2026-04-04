@@ -16,7 +16,7 @@ public class VpnServerAccessQueryServiceTests
         var allowed = new QuotaPlanAllowedServer { QuotaPlanId = 5, VpnServerId = 10 };
 
         var quotaQuery = new Mock<IUserQuotaPlanQueryService>();
-        quotaQuery.Setup(q => q.GetByUserId(1, It.IsAny<CancellationToken>())).ReturnsAsync(userQuotaPlan);
+        quotaQuery.Setup(q => q.GetActiveByUserId(1, It.IsAny<CancellationToken>())).ReturnsAsync(userQuotaPlan);
         var allowedQuery = new Mock<IQuotaPlanAllowedServerQueryService>();
         allowedQuery.Setup(q => q.GetByQuotaPlanIdAndServerId(5, 10, It.IsAny<CancellationToken>())).ReturnsAsync(allowed);
 
@@ -31,7 +31,7 @@ public class VpnServerAccessQueryServiceTests
     public async Task UserHasAccessAsync_When_UserHasNoQuotaPlan_Returns_False()
     {
         var quotaQuery = new Mock<IUserQuotaPlanQueryService>();
-        quotaQuery.Setup(q => q.GetByUserId(1, It.IsAny<CancellationToken>())).ReturnsAsync((UserQuotaPlan?)null);
+        quotaQuery.Setup(q => q.GetActiveByUserId(1, It.IsAny<CancellationToken>())).ReturnsAsync((UserQuotaPlan?)null);
         var allowedQuery = new Mock<IQuotaPlanAllowedServerQueryService>();
 
         var sut = new VpnServerAccessQueryService(quotaQuery.Object, allowedQuery.Object);
@@ -46,7 +46,7 @@ public class VpnServerAccessQueryServiceTests
     {
         var userQuotaPlan = new UserQuotaPlan { UserId = 1, QuotaPlanId = 5 };
         var quotaQuery = new Mock<IUserQuotaPlanQueryService>();
-        quotaQuery.Setup(q => q.GetByUserId(1, It.IsAny<CancellationToken>())).ReturnsAsync(userQuotaPlan);
+        quotaQuery.Setup(q => q.GetActiveByUserId(1, It.IsAny<CancellationToken>())).ReturnsAsync(userQuotaPlan);
         var allowedQuery = new Mock<IQuotaPlanAllowedServerQueryService>();
         allowedQuery.Setup(q => q.GetByQuotaPlanIdAndServerId(5, 10, It.IsAny<CancellationToken>())).ReturnsAsync((QuotaPlanAllowedServer?)null);
 
