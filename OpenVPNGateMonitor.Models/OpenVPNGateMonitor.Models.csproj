@@ -7,7 +7,7 @@
     </PropertyGroup>
 
     <ItemGroup>
-      <!-- OpenVPNGateMonitor.SharedModels: NuGet package only; do not use ProjectReference to the SharedModels .csproj. -->
+      <!-- SharedModels: NuGet only (never ProjectReference). Publish new package version to nuget.org after DTO changes. -->
       <PackageReference Include="OpenVPNGateMonitor.SharedModels" Version="1.0.96" />
       <PackageReference Include="Microsoft.Extensions.Configuration.Abstractions" Version="10.0.3" />
       <PackageReference Include="Newtonsoft.Json" Version="13.0.4" />

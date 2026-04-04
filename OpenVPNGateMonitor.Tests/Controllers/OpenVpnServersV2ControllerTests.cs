@@ -74,7 +74,7 @@ public class OpenVpnServersV2ControllerTests
             "mock"));
         var controller = CreateController(user);
 
-        _userQuotaPlan.Setup(u => u.GetByUserId(100, It.IsAny<CancellationToken>()))
+        _userQuotaPlan.Setup(u => u.GetActiveByUserId(100, It.IsAny<CancellationToken>()))
             .ReturnsAsync(new UserQuotaPlan { Id = 1, UserId = 100, QuotaPlanId = 7 });
         _quotaAllowed.Setup(q => q.GetVpnServerIdsByQuotaPlanId(7, It.IsAny<CancellationToken>()))
             .ReturnsAsync(new HashSet<int> { 1 });
