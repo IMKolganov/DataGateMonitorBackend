@@ -11,7 +11,7 @@ public sealed class VpnServerAccessQueryService(
 {
     public async Task<bool> UserHasAccessAsync(int userId, int vpnServerId, CancellationToken ct)
     {
-        var userQuotaPlan = await userQuotaPlanQueryService.GetByUserId(userId, ct);
+        var userQuotaPlan = await userQuotaPlanQueryService.GetActiveByUserId(userId, ct);
         if (userQuotaPlan is null)
             return false;
 

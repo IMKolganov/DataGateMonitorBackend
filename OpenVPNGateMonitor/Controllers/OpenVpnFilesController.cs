@@ -284,7 +284,7 @@ public class OpenVpnFilesController(
             return files;
         if (!HttpUserContext.TryGetUserId(User, out var userId))
             return files;
-        var uqp = await userQuotaPlanQueryService.GetByUserId(userId, ct);
+        var uqp = await userQuotaPlanQueryService.GetActiveByUserId(userId, ct);
         if (uqp is null)
             return [];
         var allowed = await quotaPlanAllowedServerQueryService.GetVpnServerIdsByQuotaPlanId(uqp.QuotaPlanId, ct);

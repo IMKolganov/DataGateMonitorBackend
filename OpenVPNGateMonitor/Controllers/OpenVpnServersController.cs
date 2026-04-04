@@ -45,7 +45,7 @@ public class OpenVpnServersController(IVpnDataService vpnDataService,
         {
             if (!HttpUserContext.TryGetUserId(User, out var userId))
                 return Unauthorized(ApiResponse<OpenVpnServerWithStatusesResponse>.ErrorResponse("User id missing from token."));
-            var uqp = await userQuotaPlanQueryService.GetByUserId(userId, ct);
+            var uqp = await userQuotaPlanQueryService.GetActiveByUserId(userId, ct);
             if (uqp is null)
                 result = [];
             else
@@ -111,7 +111,7 @@ public class OpenVpnServersController(IVpnDataService vpnDataService,
         {
             if (!HttpUserContext.TryGetUserId(User, out var userId))
                 return Unauthorized(ApiResponse<OpenVpnServersResponse>.ErrorResponse("User id missing from token."));
-            var uqp = await userQuotaPlanQueryService.GetByUserId(userId, ct);
+            var uqp = await userQuotaPlanQueryService.GetActiveByUserId(userId, ct);
             if (uqp is null)
                 serversList = [];
             else
