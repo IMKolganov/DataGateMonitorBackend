@@ -1,5 +1,7 @@
 using Microsoft.EntityFrameworkCore;
 using OpenVPNGateMonitor.Models;
+using OpenVPNGateMonitor.SharedModels.Enums;
+using OpenVPNGateMonitor.SharedModels.Notifications.Requests;
 using OpenVPNGateMonitor.SharedModels.Responses;
 
 namespace OpenVPNGateMonitor.DataBase.Services.Query.NotificationRecipientTable;
@@ -26,8 +28,10 @@ public class NotificationRecipientQueryService(
         return list;
     }
 
-    public async Task<IPagedResult<NotificationListRow>> GetNotificationListPageByAdminUserIdAsync(int adminUserId, int page, int pageSize, CancellationToken ct = default)
+    public async Task<IPagedResult<NotificationListRow>> GetNotificationListPageByAdminUserIdAsync(int adminUserId, GetNotificationsRequest request, CancellationToken ct = default)
     {
+        var page = request.Page;
+        var pageSize = request.PageSize;
         if (page < 1) page = 1;
         if (pageSize < 1) pageSize = 10;
 
@@ -37,13 +41,29 @@ public class NotificationRecipientQueryService(
             .GroupBy(r => r.NotificationId)
             .Select(g => new { NotificationId = g.Key, IsRead = g.Any(r => r.ReadAt != null), ReadAt = g.Min(r => r.ReadAt) });
 
-        var baseQuery = from a in agg
-                        join n in notificationQuery.Query(asNoTracking: true) on a.NotificationId equals n.Id
-                        orderby n.CreateDate descending
-                        select new NotificationListRow(n.Id, n.Type, (int)n.Severity, n.Title, n.Message, a.IsRead, n.CreateDate, a.ReadAt);
+        var joined = from a in agg
+                     join n in notificationQuery.Query(asNoTracking: true) on a.NotificationId equals n.Id
+                     select new { a, n };
 
-        var total = await baseQuery.CountAsync(ct);
-        var items = await baseQuery.Skip((page - 1) * pageSize).Take(pageSize).ToListAsync(ct);
+        var filtered = joined;
+        if (request.IsRead.HasValue)
+            filtered = filtered.Where(x => x.a.IsRead == request.IsRead.Value);
+
+        if (!string.IsNullOrWhiteSpace(request.Type))
+        {
+            var typeFilter = request.Type.Trim();
+            filtered = filtered.Where(x => x.n.Type == typeFilter);
+        }
+
+        var severities = request.Severities;
+        if (severities is { Length: > 0 })
+            filtered = filtered.Where(x => severities.Contains(x.n.Severity));
+
+        var ordered = filtered.OrderByDescending(x => x.n.CreateDate);
+        var projected = ordered.Select(x => new NotificationListRow(x.n.Id, x.n.Type, (int)x.n.Severity, x.n.Title, x.n.Message, x.a.IsRead, x.n.CreateDate, x.a.ReadAt));
+
+        var total = await projected.CountAsync(ct);
+        var items = await projected.Skip((page - 1) * pageSize).Take(pageSize).ToListAsync(ct);
 
         return new PagedResponse<NotificationListRow>
         {

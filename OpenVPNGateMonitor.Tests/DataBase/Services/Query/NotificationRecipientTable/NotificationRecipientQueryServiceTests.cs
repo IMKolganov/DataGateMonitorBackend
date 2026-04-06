@@ -4,6 +4,7 @@ using OpenVPNGateMonitor.DataBase.Services.Query;
 using OpenVPNGateMonitor.DataBase.Services.Query.NotificationRecipientTable;
 using OpenVPNGateMonitor.Models;
 using OpenVPNGateMonitor.SharedModels.Enums;
+using OpenVPNGateMonitor.SharedModels.Notifications.Requests;
 using OpenVPNGateMonitor.Tests.Helpers;
 using Xunit;
 
@@ -103,7 +104,7 @@ public class NotificationRecipientQueryServiceTests
         }
         await ctx.SaveChangesAsync();
 
-        var page = await sut.GetNotificationListPageByAdminUserIdAsync(1, page: 2, pageSize: 2, CancellationToken.None);
+        var page = await sut.GetNotificationListPageByAdminUserIdAsync(1, new GetNotificationsRequest { Page = 2, PageSize = 2 }, CancellationToken.None);
 
         page.Page.Should().Be(2);
         page.PageSize.Should().Be(2);
@@ -121,7 +122,7 @@ public class NotificationRecipientQueryServiceTests
         await ctx.NotificationRecipients.AddAsync(new NotificationRecipient { Id = 1, NotificationId = 1, AdminUserId = 1, CreateDate = t, LastUpdate = t });
         await ctx.SaveChangesAsync();
 
-        var page = await sut.GetNotificationListPageByAdminUserIdAsync(1, page: 0, pageSize: 0, CancellationToken.None);
+        var page = await sut.GetNotificationListPageByAdminUserIdAsync(1, new GetNotificationsRequest { Page = 0, PageSize = 0 }, CancellationToken.None);
 
         page.Page.Should().Be(1);
         page.PageSize.Should().Be(10);
@@ -159,4 +160,88 @@ public class NotificationRecipientQueryServiceTests
 
         count.Should().Be(0);
     }
+
+    [Fact]
+    public async Task GetNotificationListPageByAdminUserIdAsync_FiltersBySeverities()
+    {
+        var (sut, ctx) = CreateSutWithContext();
+        var t = new DateTimeOffset(2025, 1, 1, 0, 0, 0, TimeSpan.Zero);
+        await ctx.Notifications.AddRangeAsync(
+            new Notification { Id = 1, Type = "a", Severity = NotificationSeverity.Info, Title = "I", Message = "M", CreateDate = t, LastUpdate = t },
+            new Notification { Id = 2, Type = "b", Severity = NotificationSeverity.Warning, Title = "W", Message = "M", CreateDate = t.AddMinutes(1), LastUpdate = t.AddMinutes(1) },
+            new Notification { Id = 3, Type = "c", Severity = NotificationSeverity.Error, Title = "E", Message = "M", CreateDate = t.AddMinutes(2), LastUpdate = t.AddMinutes(2) }
+        );
+        await ctx.NotificationRecipients.AddRangeAsync(
+            new NotificationRecipient { Id = 1, NotificationId = 1, AdminUserId = 1, CreateDate = t, LastUpdate = t },
+            new NotificationRecipient { Id = 2, NotificationId = 2, AdminUserId = 1, CreateDate = t, LastUpdate = t },
+            new NotificationRecipient { Id = 3, NotificationId = 3, AdminUserId = 1, CreateDate = t, LastUpdate = t }
+        );
+        await ctx.SaveChangesAsync();
+
+        var page = await sut.GetNotificationListPageByAdminUserIdAsync(1,
+            new GetNotificationsRequest
+            {
+                Page = 1,
+                PageSize = 10,
+                Severities =
+                [
+                    NotificationSeverity.Warning,
+                    NotificationSeverity.Error,
+                    NotificationSeverity.Critical
+                ]
+            },
+            CancellationToken.None);
+
+        page.TotalCount.Should().Be(2);
+        page.Items.Select(x => x.Id).Should().Equal(3, 2);
+    }
+
+    [Fact]
+    public async Task GetNotificationListPageByAdminUserIdAsync_FiltersByIsRead()
+    {
+        var (sut, ctx) = CreateSutWithContext();
+        var t = new DateTimeOffset(2025, 1, 1, 0, 0, 0, TimeSpan.Zero);
+        await ctx.Notifications.AddRangeAsync(
+            new Notification { Id = 1, Type = "a", Severity = NotificationSeverity.Info, Title = "A", Message = "M", CreateDate = t, LastUpdate = t },
+            new Notification { Id = 2, Type = "b", Severity = NotificationSeverity.Info, Title = "B", Message = "M", CreateDate = t.AddMinutes(1), LastUpdate = t.AddMinutes(1) }
+        );
+        await ctx.NotificationRecipients.AddRangeAsync(
+            new NotificationRecipient { Id = 1, NotificationId = 1, AdminUserId = 1, ReadAt = null, CreateDate = t, LastUpdate = t },
+            new NotificationRecipient { Id = 2, NotificationId = 2, AdminUserId = 1, ReadAt = t, CreateDate = t, LastUpdate = t }
+        );
+        await ctx.SaveChangesAsync();
+
+        var page = await sut.GetNotificationListPageByAdminUserIdAsync(1,
+            new GetNotificationsRequest { Page = 1, PageSize = 10, IsRead = false },
+            CancellationToken.None);
+
+        page.TotalCount.Should().Be(1);
+        page.Items[0].Id.Should().Be(1);
+        page.Items[0].IsRead.Should().BeFalse();
+    }
+
+    [Fact]
+    public async Task GetNotificationListPageByAdminUserIdAsync_FiltersByType()
+    {
+        var (sut, ctx) = CreateSutWithContext();
+        var t = new DateTimeOffset(2025, 1, 1, 0, 0, 0, TimeSpan.Zero);
+        await ctx.Notifications.AddRangeAsync(
+            new Notification { Id = 1, Type = "server.down", Severity = NotificationSeverity.Critical, Title = "Down", Message = "M", CreateDate = t.AddMinutes(2), LastUpdate = t.AddMinutes(2) },
+            new Notification { Id = 2, Type = "server.up", Severity = NotificationSeverity.Info, Title = "Up", Message = "M", CreateDate = t.AddMinutes(1), LastUpdate = t.AddMinutes(1) }
+        );
+        await ctx.NotificationRecipients.AddRangeAsync(
+            new NotificationRecipient { Id = 1, NotificationId = 1, AdminUserId = 1, CreateDate = t, LastUpdate = t },
+            new NotificationRecipient { Id = 2, NotificationId = 2, AdminUserId = 1, CreateDate = t, LastUpdate = t }
+        );
+        await ctx.SaveChangesAsync();
+
+        var page = await sut.GetNotificationListPageByAdminUserIdAsync(1,
+            new GetNotificationsRequest { Page = 1, PageSize = 10, Type = "server.up" },
+            CancellationToken.None);
+
+        page.TotalCount.Should().Be(1);
+        page.Items[0].Id.Should().Be(2);
+        page.Items[0].Type.Should().Be("server.up");
+    }
+
 }

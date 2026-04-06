@@ -1,4 +1,5 @@
 using OpenVPNGateMonitor.Models;
+using OpenVPNGateMonitor.SharedModels.Notifications.Requests;
 using OpenVPNGateMonitor.SharedModels.Responses;
 
 namespace OpenVPNGateMonitor.DataBase.Services.Query.NotificationRecipientTable;
@@ -11,9 +12,9 @@ public interface INotificationRecipientQueryService
     Task<List<NotificationListRow>> GetNotificationListByAdminUserIdAsync(int adminUserId, CancellationToken ct = default);
 
     /// <summary>
-    /// Paged list of notifications for an admin (same as above with Skip/Take).
+    /// Paged list of notifications for an admin (same as above with Skip/Take). Uses filter fields from <paramref name="request"/> (read state, severities, type).
     /// </summary>
-    Task<IPagedResult<NotificationListRow>> GetNotificationListPageByAdminUserIdAsync(int adminUserId, int page, int pageSize, CancellationToken ct = default);
+    Task<IPagedResult<NotificationListRow>> GetNotificationListPageByAdminUserIdAsync(int adminUserId, GetNotificationsRequest request, CancellationToken ct = default);
 
     Task<int> GetUnreadCountByAdminUserIdAsync(int adminUserId, CancellationToken ct = default);
 }
