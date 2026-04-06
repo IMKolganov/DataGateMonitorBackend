@@ -1,4 +1,5 @@
-﻿using OpenVPNGateMonitor.Services.GeoLite;
+using Microsoft.Extensions.DependencyInjection;
+using OpenVPNGateMonitor.Services.GeoLite;
 using OpenVPNGateMonitor.Services.GeoLite.Interfaces;
 
 namespace OpenVPNGateMonitor.Configurations;
@@ -26,5 +27,8 @@ public static class GeoLiteServiceConfiguration
         services.AddSingleton<IGeoLiteProgressNotifier, GeoLiteProgressNotifier>();
         services.AddSingleton<IHttpErrorMapper, HttpErrorMapper>();
         services.AddSingleton<IStreamCopier, StreamCopier>();
+
+        services.AddSingleton<IGeoLiteScheduledUpdateRunner, GeoLiteScheduledUpdateRunner>();
+        services.AddHostedService<GeoLiteAutoUpdateBackgroundService>();
     }
 }

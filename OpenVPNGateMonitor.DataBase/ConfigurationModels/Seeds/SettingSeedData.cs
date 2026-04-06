@@ -1,4 +1,4 @@
-﻿using OpenVPNGateMonitor.Models;
+using OpenVPNGateMonitor.Models;
 
 namespace OpenVPNGateMonitor.DataBase.ConfigurationModels.Seeds;
 
@@ -93,6 +93,21 @@ public static class SettingSeedData
             Key = "GeoIp_License_Key_Type",
             ValueType = "string",
             StringValue = "string"
+        },
+        
+        new Setting
+        {
+            Id = 13,
+            Key = "GeoIp_Auto_Update_Interval_Days",
+            ValueType = "int",
+            IntValue = 0
+        },
+        new Setting
+        {
+            Id = 14,
+            Key = "GeoIp_Auto_Update_Interval_Days_Type",
+            ValueType = "string",
+            StringValue = "int"
         },
     };
 }

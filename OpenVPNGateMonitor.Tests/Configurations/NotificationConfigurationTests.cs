@@ -7,6 +7,7 @@ using OpenVPNGateMonitor.Services.Others.Notifications.CertApiClient;
 using OpenVPNGateMonitor.Services.Others.Notifications.OvpnFileApi;
 using OpenVPNGateMonitor.Services.Others.Notifications.ServerOpenVpnApiClient;
 using OpenVPNGateMonitor.Services.Others.Notifications.OpenVpnMicroserviceClient;
+using OpenVPNGateMonitor.Services.Others.Notifications.GeoLite;
 using Xunit;
 
 namespace OpenVPNGateMonitor.Tests.Configurations;
@@ -27,6 +28,7 @@ public class NotificationConfigurationTests
         AssertRegistered(services, typeof(ICertificateNotificationService));
         AssertRegistered(services, typeof(IServerOpenVpnNotificationService));
         AssertRegistered(services, typeof(IOpenVpnMicroserviceNotificationService));
+        AssertRegistered(services, typeof(IGeoLiteNotificationService));
         AssertRegistered(services, typeof(IAdminNotificationHub));
         AssertRegistered(services, typeof(INotifier));
     }
