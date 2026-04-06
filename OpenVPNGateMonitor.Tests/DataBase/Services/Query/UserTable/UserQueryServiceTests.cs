@@ -60,7 +60,7 @@ public class UserQueryServiceTests
     }
 
     [Fact]
-    public async Task Paging_Works()
+    public async Task Paging_Works_With_Desc_Sort()
     {
         var (sut, ctx) = CreateSutWithContext();
         await ctx.Users.AddRangeAsync(Enumerable.Range(1, 15).Select(i => new User { Id = i, DisplayName = $"u{i}" }));
@@ -71,7 +71,9 @@ public class UserQueryServiceTests
         Assert.Equal(10, page.PageSize);
         Assert.Equal(15, page.TotalCount);
         Assert.Equal(5, page.Items.Count);
-        Assert.Equal(11, page.Items.First().Id);
+        // При сортировке DESC: 15, 14, 13, 12, 11, 10, 9, 8, 7, 6 (страница 1)
+        // 5, 4, 3, 2, 1 (страница 2)
+        Assert.Equal(5, page.Items.First().Id);
     }
 
     private sealed class TestDbContext : DbContext

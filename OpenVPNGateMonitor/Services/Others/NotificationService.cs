@@ -5,6 +5,7 @@ using OpenVPNGateMonitor.Models;
 using OpenVPNGateMonitor.Services.Others.Models;
 using OpenVPNGateMonitor.SharedModels.Auth;
 using OpenVPNGateMonitor.SharedModels.Enums;
+using OpenVPNGateMonitor.SharedModels.Notifications.Requests;
 using OpenVPNGateMonitor.SharedModels.Notifications.Responses;
 using OpenVPNGateMonitor.SharedModels.Responses;
 
@@ -152,9 +153,9 @@ public class NotificationService(
         return new GetAllNotificationsResponse { Notifications = items };
     }
 
-    public async Task<GetNotificationsResponse> GetPageForUserAsync(int adminUserId, int page, int pageSize, CancellationToken ct = default)
+    public async Task<GetNotificationsResponse> GetPageForUserAsync(int adminUserId, GetNotificationsRequest request, CancellationToken ct = default)
     {
-        var paged = await notificationRecipientQueryService.GetNotificationListPageByAdminUserIdAsync(adminUserId, page, pageSize, ct);
+        var paged = await notificationRecipientQueryService.GetNotificationListPageByAdminUserIdAsync(adminUserId, request, ct);
         var items = paged.Items.Select(r => new NotificationItemDto
         {
             Id = r.Id,

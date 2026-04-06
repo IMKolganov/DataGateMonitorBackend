@@ -1,4 +1,4 @@
-﻿using System.Reflection;
+using System.Reflection;
 using Microsoft.AspNetCore.Diagnostics.HealthChecks;
 using Microsoft.AspNetCore.Http.Connections;
 using Microsoft.AspNetCore.HttpOverrides;
@@ -105,7 +105,12 @@ public static class PipelineConfiguration
         app.MapHub<AdminNotificationHub>("/api/hubs/admin-notify");
         app.MapHub<OpenVpnStatusHub>("/api/hubs/status-stream", options =>
         {
-            options.Transports = HttpTransportType.WebSockets;
+            // Default: WebSockets only — publisher sends ~every 700ms; long polling is heavy at scale.
+            // Set SignalR:StatusStreamAllowLongPolling=true where WS is blocked (e.g. some dev proxies) — env SignalR__StatusStreamAllowLongPolling.
+            var allowLongPolling = app.Configuration.GetValue("SignalR:StatusStreamAllowLongPolling", false);
+            options.Transports = allowLongPolling
+                ? HttpTransportType.WebSockets | HttpTransportType.LongPolling
+                : HttpTransportType.WebSockets;
         });
 
         var version = Assembly.GetExecutingAssembly().GetName().Version?.ToString() ?? "Unknown version";
