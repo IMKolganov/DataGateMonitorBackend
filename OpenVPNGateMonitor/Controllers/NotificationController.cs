@@ -68,7 +68,7 @@ public class NotificationController(INotificationService notificationService) : 
         if (!TryGetAdminUserId(out var adminUserId))
             return Unauthorized(ApiResponse<GetNotificationsResponse>.ErrorResponse("User not identified."));
 
-        var result = await notificationService.GetPageForUserAsync(adminUserId, request.Page, request.PageSize, cancellationToken);
+        var result = await notificationService.GetPageForUserAsync(adminUserId, request, cancellationToken);
         return Ok(ApiResponse<GetNotificationsResponse>.SuccessResponse(result));
     }
 

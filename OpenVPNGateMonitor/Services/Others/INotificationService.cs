@@ -1,4 +1,5 @@
 using OpenVPNGateMonitor.Services.Others.Models;
+using OpenVPNGateMonitor.SharedModels.Notifications.Requests;
 using OpenVPNGateMonitor.SharedModels.Notifications.Responses;
 
 namespace OpenVPNGateMonitor.Services.Others;
@@ -43,7 +44,7 @@ public interface INotificationService
     /// <summary>
     /// Returns a paged list of notifications for the given admin user.
     /// </summary>
-    Task<GetNotificationsResponse> GetPageForUserAsync(int adminUserId, int page, int pageSize, CancellationToken ct = default);
+    Task<GetNotificationsResponse> GetPageForUserAsync(int adminUserId, GetNotificationsRequest request, CancellationToken ct = default);
 
     /// <summary>
     /// Returns the count of notifications not yet read by the given admin user.
