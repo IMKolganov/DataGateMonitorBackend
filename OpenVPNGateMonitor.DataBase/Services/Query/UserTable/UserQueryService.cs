@@ -44,7 +44,11 @@ public class UserQueryService(
     }
 
     public Task<IPagedResult<User>> GetPage(int page, int pageSize, CancellationToken ct)
-        => q.Page(page, pageSize, ct: ct);
+        => q.Page(
+            page: page, 
+            pageSize: pageSize, 
+            orderBy: x => x.OrderByDescending(u => u.Id),
+            ct: ct);
 
     public Task<List<User>> Search(
         Expression<Func<User, bool>> predicate,
