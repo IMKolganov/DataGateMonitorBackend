@@ -1,43 +1,41 @@
 using DataGateMonitor.DataBase.Services.Command.Interfaces;
 using DataGateMonitor.Models;
 using DataGateMonitor.Services.BackgroundServices.Interfaces;
+using DataGateMonitor.Services.XrayNode;
 
 namespace DataGateMonitor.Services.BackgroundServices;
 
 /// <summary>
-/// Minimal Xray node polling: HTTP GET to <see cref="VpnServer.ApiUrl"/> must return 2xx (health endpoint).
-/// Full client/session sync comes in a later phase.
+/// Xray node polling: GET active clients from the agent, sync to <see cref="VpnServerClient"/>, update <see cref="VpnServer.IsOnline"/>.
 /// </summary>
 public sealed class XrayServerProcessor(
     ILogger<XrayServerProcessor> logger,
-    IHttpClientFactory httpClientFactory,
     IServiceProvider serviceProvider) : IVpnServerWorkProcessor
 {
-    public const string HttpClientName = "XrayNodeHealth";
-
     public async Task ProcessServerAsync(VpnServer server, CancellationToken ct)
     {
         logger.LogInformation(
-            "XrayServerProcessor: VpnServerId: {Id}. Name: {Name}. Health Url: {Url}",
+            "XrayServerProcessor: VpnServerId: {Id}. Name: {Name}. Base Url: {Url}",
             server.Id, server.ServerName, server.ApiUrl);
 
         using var scope = serviceProvider.CreateScope();
+        var xrayApi = scope.ServiceProvider.GetRequiredService<IXrayNodeApiClient>();
+        var sync = scope.ServiceProvider.GetRequiredService<IXrayVpnClientSyncService>();
         var serverCmd = scope.ServiceProvider.GetRequiredService<ICommandService<VpnServer, int>>();
 
         try
         {
             if (string.IsNullOrWhiteSpace(server.ApiUrl))
-                throw new InvalidOperationException("ApiUrl is required for Xray server health check.");
+                throw new InvalidOperationException("ApiUrl is required for Xray server polling.");
 
-            var client = httpClientFactory.CreateClient(HttpClientName);
-            using var request = new HttpRequestMessage(HttpMethod.Get, server.ApiUrl.TrimEnd('/'));
-            using var response = await client.SendAsync(request, HttpCompletionOption.ResponseHeadersRead, ct);
-
-            if (!response.IsSuccessStatusCode)
+            var clientsPayload = await xrayApi.GetActiveClientsAsync(server.ApiUrl.TrimEnd('/'), ct);
+            if (clientsPayload is null)
             {
                 throw new HttpRequestException(
-                    $"Xray node health check returned {(int)response.StatusCode} {response.ReasonPhrase}.");
+                    "Xray node did not return a successful clients response (see logs for status).");
             }
+
+            await sync.SyncConnectedClientsAsync(server, clientsPayload.Clients, ct);
 
             var now = DateTimeOffset.UtcNow;
             await serverCmd.UpdateWhere(
@@ -47,8 +45,8 @@ public sealed class XrayServerProcessor(
                 ct);
 
             logger.LogInformation(
-                "XrayServerProcessor: VpnServerId: {Id}. Name: {Name}. Health check OK.",
-                server.Id, server.ServerName);
+                "XrayServerProcessor: VpnServerId: {Id}. Name: {Name}. Synced {Count} client session(s).",
+                server.Id, server.ServerName, clientsPayload.Clients.Count);
         }
         catch (Exception ex)
         {
