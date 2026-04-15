@@ -1,0 +1,8 @@
+﻿namespace DataGateMonitor.DataBase.Services.Command.Interfaces;
+
+// Interface
+public interface ITransactionRunner
+{
+    Task RunAsync(Func<CancellationToken, Task> action, CancellationToken ct);
+    Task<T> RunAsync<T>(Func<CancellationToken, Task<T>> action, CancellationToken ct);
+}

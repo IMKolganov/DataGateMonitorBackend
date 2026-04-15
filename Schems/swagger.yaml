@@ -860,7 +860,7 @@ paths:
   /:
     get:
       tags:
-        - OpenVPNGateMonitor
+        - DataGateMonitor
       responses:
         '200':
           description: OK
