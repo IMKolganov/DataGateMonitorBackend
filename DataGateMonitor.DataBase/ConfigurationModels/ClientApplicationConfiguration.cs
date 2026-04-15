@@ -1,0 +1,22 @@
+﻿using DataGateMonitor.Models;
+using Microsoft.EntityFrameworkCore.Metadata.Builders;
+
+namespace DataGateMonitor.DataBase.ConfigurationModels;
+
+public class ClientApplicationConfiguration : BaseEntityConfiguration<ClientApplication, int>
+{
+    public override void Configure(EntityTypeBuilder<ClientApplication> entity)
+    {
+        base.Configure(entity);
+        entity.Property(e => e.ClientId)
+            .IsRequired();
+        entity.Property(e => e.Name)
+            .IsRequired();
+        entity.Property(e => e.ClientSecret)
+            .IsRequired();
+        entity.Property(e => e.IsRevoked)
+            .IsRequired();
+        entity.Property(e => e.IsSystem)
+            .IsRequired();
+    }
+}

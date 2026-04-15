@@ -16,6 +16,9 @@
 # Mono auto generated files
 mono_crash.*
 
+# Local NuGet feed (dotnet pack OpenVPNGateMonitor.SharedModels -o packages)
+/packages/
+
 # Build results
 [Dd]ebug/
 [Dd]ebugPublic/

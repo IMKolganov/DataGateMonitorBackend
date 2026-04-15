@@ -55,14 +55,14 @@ jobs:
           fi
 
       - name: Restore (project)
-        run: dotnet restore OpenVPNGateMonitor.SharedModels/OpenVPNGateMonitor.SharedModels.csproj
+        run: dotnet restore DataGateMonitor.SharedModels/DataGateMonitor.SharedModels.csproj
 
       - name: Build (project)
-        run: dotnet build OpenVPNGateMonitor.SharedModels/OpenVPNGateMonitor.SharedModels.csproj -c Release --no-restore /p:ContinuousIntegrationBuild=true
+        run: dotnet build DataGateMonitor.SharedModels/DataGateMonitor.SharedModels.csproj -c Release --no-restore /p:ContinuousIntegrationBuild=true
 
       - name: Pack
         run: |
-          dotnet pack OpenVPNGateMonitor.SharedModels/OpenVPNGateMonitor.SharedModels.csproj \
+          dotnet pack DataGateMonitor.SharedModels/DataGateMonitor.SharedModels.csproj \
             -c Release \
             --no-build \
             -o ./artifacts \

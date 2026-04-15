@@ -1,0 +1,110 @@
+using DataGateMonitor.DataBase.ConfigurationModels;
+using DataGateMonitor.Models;
+using Microsoft.EntityFrameworkCore;
+using Microsoft.Extensions.Configuration;
+
+namespace DataGateMonitor.DataBase.Contexts;
+
+public class ApplicationDbContext(DbContextOptions<ApplicationDbContext> options, IConfiguration configuration)
+    : DbContext(options)
+{
+    private readonly string _defaultSchema = (Environment.GetEnvironmentVariable("DB_DEFAULT_SCHEMA") 
+                                              ?? configuration["DataBaseSettings:DefaultSchema"]) ?? "xgb_dashopnvpn";
+
+    public override int SaveChanges()
+    {
+        UpdateTimestamps();
+        return base.SaveChanges();
+    }
+
+    public override async Task<int> SaveChangesAsync(CancellationToken cancellationToken = default)
+    {
+        UpdateTimestamps();
+        return await base.SaveChangesAsync(cancellationToken);
+    }
+    
+    public DbSet<VpnServerStatusLog> VpnServerStatusLogs { get; set; } = null!;
+    public DbSet<VpnServerClient> VpnServerClients { get; set; } = null!;
+    public DbSet<VpnServer> VpnServers { get; set; } = null!;
+    public DbSet<IssuedOvpnFile> IssuedOvpnFiles { get; set; } = null!;
+    public DbSet<IssuedOvpnFileToken> IssuedOvpnFileTokens { get; set; } = null!;
+    public DbSet<VpnServerOvpnFileConfig> VpnServerOvpnFileConfigs { get; set; } = null!;
+    public DbSet<ClientApplication> ClientApplications { get; set; } = null!;
+    public DbSet<Setting> Settings { get; set; } = null!;
+    public DbSet<TelegramBotUser> TelegramBotUsers { get; set; } = null!;
+    public DbSet<TelegramUserLanguagePreference> TelegramUserLanguagePreferences { get; set; } = null!;
+    public DbSet<LocalizationText> LocalizationTexts { get; set; } = null!;
+    public DbSet<IncomingMessageLog> IncomingMessageLogs { get; set; } = null!;
+    public DbSet<VpnServerEventLog> VpnServerEventLogs { get; set; } = null!;
+    public DbSet<VpnServerClientTraffic> VpnServerClientTraffics { get; set; } = null!;
+    public DbSet<Notification> Notifications { get; set; } = null!;
+    public DbSet<NotificationRecipient> NotificationRecipients { get; set; } = null!;
+    public DbSet<User> Users { get; set; } = null!;
+    public DbSet<UserCredential> UserCredentials { get; set; } = null!;
+    public DbSet<UserIdentityLink> UserIdentityLinks { get; set; } = null!;
+    public DbSet<QuotaPlan> QuotaPlans { get; set; } = null!;
+    public DbSet<UserQuotaPlan> UserQuotaPlans { get; set; } = null!;
+    public DbSet<QuotaPlanAllowedServer> QuotaPlanAllowedServers { get; set; } = null!;
+    public DbSet<Tag> Tags { get; set; } = null!;
+    public DbSet<VpnServerTag> VpnServerTags { get; set; } = null!;
+    public DbSet<VpnServerConflog> VpnServerConflogs { get; set; } = null!;
+
+    protected override void OnModelCreating(ModelBuilder modelBuilder)
+    {
+        modelBuilder.HasDefaultSchema(_defaultSchema);
+        base.OnModelCreating(modelBuilder);
+        modelBuilder.ApplyConfiguration(new VpnServerStatusLogConfiguration());
+        modelBuilder.ApplyConfiguration(new VpnServerClientConfiguration());
+        modelBuilder.ApplyConfiguration(new VpnServerConfiguration());
+        modelBuilder.ApplyConfiguration(new IssuedOvpnFileConfiguration());
+        modelBuilder.ApplyConfiguration(new IssuedOvpnFileTokenConfiguration());
+        modelBuilder.ApplyConfiguration(new VpnServerOvpnFileConfigConfiguration());
+        modelBuilder.ApplyConfiguration(new ClientApplicationConfiguration());
+        modelBuilder.ApplyConfiguration(new SettingConfiguration());
+        modelBuilder.ApplyConfiguration(new TelegramBotUserConfiguration());
+        modelBuilder.ApplyConfiguration(new TelegramUserLanguagePreferenceConfiguration());
+        modelBuilder.ApplyConfiguration(new LocalizationTextConfiguration());
+        modelBuilder.ApplyConfiguration(new IncomingMessageLogConfiguration());
+        modelBuilder.ApplyConfiguration(new VpnServerEventLogConfiguration());
+        modelBuilder.ApplyConfiguration(new VpnServerClientTrafficConfiguration());
+        modelBuilder.ApplyConfiguration(new NotificationConfiguration());
+        modelBuilder.ApplyConfiguration(new NotificationRecipientConfiguration());
+        modelBuilder.ApplyConfiguration(new UserConfiguration());
+        modelBuilder.ApplyConfiguration(new UserCredentialConfiguration());
+        modelBuilder.ApplyConfiguration(new UserIdentityLinkConfiguration());
+        modelBuilder.ApplyConfiguration(new QuotaPlanConfiguration());
+        modelBuilder.ApplyConfiguration(new UserQuotaPlanConfiguration());
+        modelBuilder.ApplyConfiguration(new QuotaPlanAllowedServerConfiguration());
+        modelBuilder.ApplyConfiguration(new TagConfiguration());
+        modelBuilder.ApplyConfiguration(new VpnServerTagConfiguration());
+        modelBuilder.ApplyConfiguration(new VpnServerConflogConfiguration());
+        modelBuilder.ApplyConfiguration(new RoleConfiguration());
+        modelBuilder.ApplyConfiguration(new UserRoleConfiguration());
+        modelBuilder.ApplyConfiguration(new DeviceConfiguration());
+        modelBuilder.ApplyConfiguration(new UserRefreshTokenConfiguration());
+    }
+    
+    private void UpdateTimestamps()
+    {
+        var entries = ChangeTracker.Entries()
+            .Where(e => e.Entity is IBaseEntity)
+            .ToList();
+
+        foreach (var entry in entries)
+        {
+            var entity = (IBaseEntity)entry.Entity;
+
+            if (entry.State == EntityState.Added)
+            {
+                var now = DateTimeOffset.UtcNow;
+                entity.CreateDate = now;
+                entity.LastUpdate = now;
+            }
+            else if (entry.State == EntityState.Modified)
+            {
+                entry.Property(nameof(IBaseEntity.CreateDate)).IsModified = false;
+                entity.LastUpdate = DateTimeOffset.UtcNow;
+            }
+        }
+    }
+}

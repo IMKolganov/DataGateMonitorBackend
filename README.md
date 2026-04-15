@@ -67,7 +67,7 @@ uid=1000(app) gid=1000(app)
 ### Build and Run
 Clone the repository:
 ```bash
-git clone https://github.com/your-repo/OpenVPNGateMonitor.git && cd OpenVPNGateMonitor
+git clone https://github.com/your-repo/DataGateMonitor.git && cd DataGateMonitor
 ```
 Build and run with Docker Compose:
 ```bash

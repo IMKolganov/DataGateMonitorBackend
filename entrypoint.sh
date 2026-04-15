@@ -13,4 +13,4 @@ mkdir -p /app/resources/certs
 chown -R app:app /app/resources/certs || echo "[entrypoint] chown failed on certs"
 
 echo "[entrypoint] Starting application..."
-exec dotnet OpenVPNGateMonitor.dll
+exec dotnet DataGateMonitor.dll
