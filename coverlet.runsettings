@@ -7,7 +7,7 @@
           <!-- Exclude EF Core migrations (auto-generated code) -->
           <ExcludeByFile>**/Migrations/**/*.cs,**/*.Designer.cs</ExcludeByFile>
           <!-- Optional: exclude SharedModels (DTOs, contracts — typically no logic) -->
-          <Exclude>[*]OpenVPNGateMonitor.SharedModels*</Exclude>
+          <Exclude>[*]DataGateMonitor.SharedModels*</Exclude>
         </Configuration>
       </DataCollector>
     </DataCollectors>

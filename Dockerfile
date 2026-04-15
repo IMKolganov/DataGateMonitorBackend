@@ -5,12 +5,12 @@ FROM mcr.microsoft.com/dotnet/sdk:10.0 AS build
 WORKDIR /src
 
 # Copy project files for restore. SharedModels comes from NuGet (PackageReference); that package version must be published on nuget.org.
-COPY ["OpenVPNGateMonitor/OpenVPNGateMonitor.csproj", "OpenVPNGateMonitor/"]
-COPY ["OpenVPNGateMonitor.Models/OpenVPNGateMonitor.Models.csproj", "OpenVPNGateMonitor.Models/"]
-COPY ["OpenVPNGateMonitor.DataBase/OpenVPNGateMonitor.DataBase.csproj", "OpenVPNGateMonitor.DataBase/"]
-COPY ["OpenVPNGateMonitor.Mapping/OpenVPNGateMonitor.Mapping.csproj", "OpenVPNGateMonitor.Mapping/"]
-WORKDIR /src/OpenVPNGateMonitor
-RUN dotnet restore "OpenVPNGateMonitor.csproj"
+COPY ["DataGateMonitor/DataGateMonitor.csproj", "DataGateMonitor/"]
+COPY ["DataGateMonitor.Models/DataGateMonitor.Models.csproj", "DataGateMonitor.Models/"]
+COPY ["DataGateMonitor.DataBase/DataGateMonitor.DataBase.csproj", "DataGateMonitor.DataBase/"]
+COPY ["DataGateMonitor.Mapping/DataGateMonitor.Mapping.csproj", "DataGateMonitor.Mapping/"]
+WORKDIR /src/DataGateMonitor
+RUN dotnet restore "DataGateMonitor.csproj"
 
 # Copy the rest of the application source code
 WORKDIR /src
@@ -20,7 +20,7 @@ COPY . .
 FROM build AS publish
 ARG BUILD_CONFIGURATION=Release
 RUN echo "Using build configuration: $BUILD_CONFIGURATION" && \
-    dotnet publish "OpenVPNGateMonitor/OpenVPNGateMonitor.csproj" \
+    dotnet publish "DataGateMonitor/DataGateMonitor.csproj" \
       -c $BUILD_CONFIGURATION \
       -o /app/publish
 
