@@ -18,6 +18,7 @@ using DataGateMonitor.Services.Tags;
 using DataGateMonitor.Services.UserRoles;
 using DataGateMonitor.Services.Users;
 using DataGateMonitor.Services.Users.Interfaces;
+using DataGateMonitor.Services.XrayNode;
 
 namespace DataGateMonitor.Configurations;
 
@@ -48,6 +49,9 @@ public static class ServiceConfiguration
         services.AddScoped<IOpenVpnVersionService, OpenVpnVersionService>();
         
         services.AddScoped<IVpnServerService, VpnServerService>();
+
+        services.AddScoped<IXrayNodeApiClient, XrayNodeApiClient>();
+        services.AddScoped<IXrayVpnClientSyncService, XrayVpnClientSyncService>();
         
         services.AddScoped<IVpnDataService, VpnDataService>();
         services.AddScoped<IVpnServerStatisticsService, VpnServerStatisticsService>();
@@ -55,7 +59,7 @@ public static class ServiceConfiguration
         services.AddSingleton<VpnServerStatusManager>();
         services.AddSingleton<VpnServerProcessorFactory>();
 
-        services.AddHttpClient(XrayServerProcessor.HttpClientName, client =>
+        services.AddHttpClient(XrayNodeApiClient.HttpClientName, client =>
         {
             client.Timeout = TimeSpan.FromSeconds(15);
         });
