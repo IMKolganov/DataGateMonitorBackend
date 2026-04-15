@@ -2,9 +2,10 @@ using DataGateMonitor.DataBase.Services.Command.Interfaces;
 using DataGateMonitor.DataBase.Services.Query.IssuedOvpnFileTable;
 using DataGateMonitor.DataBase.Services.Query.UserTable;
 using DataGateMonitor.Models;
+using DataGateMonitor.Models.XrayNode;
+using DataGateMonitor.Services.GeoLite.Interfaces;
 using DataGateMonitor.Services.Helpers;
 using DataGateMonitor.Services.Helpers.Interfaces;
-using DataGateMonitor.Models.XrayNode;
 
 namespace DataGateMonitor.Services.XrayNode;
 
@@ -12,6 +13,7 @@ public sealed class XrayVpnClientSyncService(
     ILogger<XrayVpnClientSyncService> logger,
     IIssuedOvpnFileQueryService issuedOvpnFileQueryService,
     IUserQueryService userQueryService,
+    IGeoLiteQueryService geoLiteQueryService,
     ITransactionRunner transactionRunner,
     ICommandService<VpnServerClient, int> vpnServerClientCommandService,
     ICommandService<VpnServerClientTraffic, int> vpnClientTrafficCommandService)
@@ -56,6 +58,8 @@ public sealed class XrayVpnClientSyncService(
 
                 var username = string.IsNullOrWhiteSpace(c.Username) ? commonName : c.Username!;
 
+                var (country, region, city, lat, lon) = await ResolveGeoAsync(c.RemoteAddress, cancellationToken);
+
                 var rows = await vpnServerClientCommandService.UpdateWhere(
                     x => x.VpnServerId == server.Id && x.SessionId == sessionId,
                     s => s
@@ -68,11 +72,11 @@ public sealed class XrayVpnClientSyncService(
                         .SetProperty(x => x.BytesSent, c.BytesSent)
                         .SetProperty(x => x.ConnectedSince, c.ConnectedSince)
                         .SetProperty(x => x.Username, username)
-                        .SetProperty(x => x.Country, (string?)null)
-                        .SetProperty(x => x.Region, (string?)null)
-                        .SetProperty(x => x.City, (string?)null)
-                        .SetProperty(x => x.Latitude, (double?)null)
-                        .SetProperty(x => x.Longitude, (double?)null)
+                        .SetProperty(x => x.Country, country)
+                        .SetProperty(x => x.Region, region)
+                        .SetProperty(x => x.City, city)
+                        .SetProperty(x => x.Latitude, lat)
+                        .SetProperty(x => x.Longitude, lon)
                         .SetProperty(x => x.ExternalId, externalId)
                         .SetProperty(x => x.IsConnected, true)
                         .SetProperty(x => x.DisconnectedAt, _ => (DateTimeOffset?)null)
@@ -94,11 +98,11 @@ public sealed class XrayVpnClientSyncService(
                         BytesSent = c.BytesSent,
                         ConnectedSince = c.ConnectedSince,
                         Username = username,
-                        Country = null,
-                        Region = null,
-                        City = null,
-                        Latitude = null,
-                        Longitude = null,
+                        Country = country,
+                        Region = region,
+                        City = city,
+                        Latitude = lat,
+                        Longitude = lon,
                         ExternalId = externalId,
                         IsConnected = true,
                         DisconnectedAt = null,
@@ -145,5 +149,27 @@ public sealed class XrayVpnClientSyncService(
 
             logger.LogInformation("VpnServerId: {Id}. Xray SyncConnectedClientsAsync completed.", server.Id);
         }, cancellationToken);
+    }
+
+    private async Task<(string? Country, string? Region, string? City, double? Latitude, double? Longitude)>
+        ResolveGeoAsync(string remoteAddress, CancellationToken cancellationToken)
+    {
+        var host = ClientEndpointHost.TryGetHostForGeoLookup(remoteAddress);
+        if (host is null || !ClientEndpointHost.IsNonLoopbackIpOrHost(host))
+            return (null, null, null, null, null);
+
+        try
+        {
+            var geo = await geoLiteQueryService.GetGeoInfoAsync(host, cancellationToken);
+            if (geo is null)
+                return (null, null, null, null, null);
+
+            return (geo.Country, geo.Region, geo.City, geo.Latitude, geo.Longitude);
+        }
+        catch (Exception ex)
+        {
+            logger.LogDebug(ex, "GeoLite lookup failed for endpoint host {Host}", host);
+            return (null, null, null, null, null);
+        }
     }
 }

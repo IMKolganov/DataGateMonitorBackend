@@ -52,6 +52,7 @@ public static class ServiceConfiguration
 
         services.AddScoped<IXrayNodeApiClient, XrayNodeApiClient>();
         services.AddScoped<IXrayVpnClientSyncService, XrayVpnClientSyncService>();
+        services.AddScoped<IXrayVpnServerStatusLogService, XrayVpnServerStatusLogService>();
         
         services.AddScoped<IVpnDataService, VpnDataService>();
         services.AddScoped<IVpnServerStatisticsService, VpnServerStatisticsService>();

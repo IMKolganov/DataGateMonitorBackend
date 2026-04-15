@@ -12,6 +12,7 @@ using DataGateMonitor.SharedModels.DataGateOpenVpnManager.OvpnFile.Requests;
 using DataGateMonitor.SharedModels.DataGateMonitor.OpenVpnFiles.Requests;
 using DataGateMonitor.SharedModels.DataGateMonitor.OpenVpnFiles.Responses;
 using DataGateMonitor.SharedModels.DataGateMonitor.OpenVpnFiles.Responses.Dto;
+using DataGateMonitor.SharedModels.Enums;
 
 namespace DataGateMonitor.Services.DataGateOpenVpnManager;
 
@@ -233,6 +234,8 @@ public class OvpnFileApiService(
         RevokeFileRequest request,
         CancellationToken ct)
     {
+        await RequireOpenVpnServerAsync(request.VpnServerId, ct);
+
         logger.LogInformation(
             "Attempting to revoke OVPN file: OvpnFileId={OvpnFileId}, CommonName={CommonName}, " +
             "VpnServerId={VpnServerId}, IsRevokedFilter={IsRevokedFilter}",
@@ -326,6 +329,8 @@ public class OvpnFileApiService(
     public async Task<DownloadFileResponse> DownloadOvpnFile(DownloadFileRequest request, 
         CancellationToken ct, bool isRevoked = false)
     {
+        await RequireOpenVpnServerAsync(request.VpnServerId, ct);
+
         logger.LogInformation("Start downloading OVPN file:" +
                               " VpnServerId={VpnServerId}, IssuedOvpnFileId={IssuedOvpnFileId}",
             request.VpnServerId, request.IssuedOvpnFileId);
@@ -400,8 +405,20 @@ public class OvpnFileApiService(
     private async Task<VpnServerOvpnFileConfig> GetVpnServerOvpnFileConfig(int vpnServerId, 
         CancellationToken ct)
     {
+        await RequireOpenVpnServerAsync(vpnServerId, ct);
+
         return await openVpnServerOvpnFileConfigQueryService.GetByVpnServerIdId(vpnServerId, ct) 
                ?? throw new InvalidOperationException("OpenVPN File Server Config not found");
+    }
+
+    private async Task RequireOpenVpnServerAsync(int vpnServerId, CancellationToken ct)
+    {
+        var server = await openVpnServerQueryService.GetById(vpnServerId, ct)
+            ?? throw new InvalidOperationException($"VPN server {vpnServerId} not found.");
+        if (server.ServerType != VpnServerType.OpenVpn)
+            throw new InvalidOperationException(
+                "This operation is only supported for OpenVPN servers. " +
+                $"Server '{server.ServerName}' (id {vpnServerId}) has type {server.ServerType}.");
     }
     
     private async Task<string> MakeFriendlyName(int vpnServerId, string commonName, CancellationToken ct)
@@ -425,6 +442,8 @@ public class OvpnFileApiService(
     public async Task<DownloadFileResponse> DownloadOvpnFileByCn(DownloadFileByCnRequest request, CancellationToken ct, 
         bool isRevoked = false)
     {
+        await RequireOpenVpnServerAsync(request.VpnServerId, ct);
+
         logger.LogInformation("Start downloading OVPN file:" +
                               " VpnServerId={VpnServerId}, CommonName={CommonName}",
             request.VpnServerId, request.CommonName);
