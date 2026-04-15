@@ -37,6 +37,9 @@ public sealed class XrayServerProcessor(
 
             await sync.SyncConnectedClientsAsync(server, clientsPayload.Clients, ct);
 
+            var statusLog = scope.ServiceProvider.GetRequiredService<IXrayVpnServerStatusLogService>();
+            await statusLog.TryAppendOrUpdateAsync(server, clientsPayload, ct);
+
             var now = DateTimeOffset.UtcNow;
             await serverCmd.UpdateWhere(
                 s => s.Id == server.Id,

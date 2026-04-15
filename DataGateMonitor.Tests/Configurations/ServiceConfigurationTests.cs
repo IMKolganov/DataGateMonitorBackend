@@ -34,6 +34,7 @@ public class ServiceConfigurationTests
         AssertRegistered(services, typeof(IVpnServerService));
         AssertRegistered(services, typeof(IXrayNodeApiClient));
         AssertRegistered(services, typeof(IXrayVpnClientSyncService));
+        AssertRegistered(services, typeof(IXrayVpnServerStatusLogService));
         AssertRegistered(services, typeof(IVpnDataService));
         AssertRegistered(services, typeof(IVpnServerStatisticsService));
         AssertRegistered(services, typeof(IOpenVpnBackgroundService));
