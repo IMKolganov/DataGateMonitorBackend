@@ -3,6 +3,7 @@ using DataGateMonitor.DataBase.Services.Query.VpnServerTable;
 using DataGateMonitor.Services.Api.Auth.Registers.Interfaces;
 using DataGateMonitor.Services.DataGateOpenVpnManager.Interfaces;
 using DataGateMonitor.SharedModels.DataGateOpenVpnManager.Info;
+using DataGateMonitor.SharedModels.Enums;
 
 namespace DataGateMonitor.Services.DataGateOpenVpnManager;
 
@@ -13,6 +14,8 @@ public class MicroserviceInfoService(
     ILogger<MicroserviceInfoService> logger) : IMicroserviceInfoService
 {
     private const string EndpointInfo = "api/info";
+    private const string AudienceOpenVpnManager = "DataGateOpenVpnManager";
+    private const string AudienceXRayManager = "DataGateXRayManager";
 
     public async Task<RootInfoResponse> GetInfoAsync(int vpnServerId, CancellationToken cancellationToken)
     {
@@ -22,9 +25,11 @@ public class MicroserviceInfoService(
         if (string.IsNullOrWhiteSpace(server.ApiUrl))
             throw new InvalidOperationException("API URL is not set for the server");
 
+        var audience = server.ServerType == VpnServerType.Xray ? AudienceXRayManager : AudienceOpenVpnManager;
+
         using var client = httpClientFactory.CreateClient();
         client.BaseAddress = new Uri(server.ApiUrl.TrimEnd('/') + "/");
-        var jwt = tokenService.GenerateToken("vpn-cert-issuer", "cert-create", "backend", "DataGateOpenVpnManager");
+        var jwt = tokenService.GenerateToken("vpn-cert-issuer", "cert-create", "backend", audience);
         client.DefaultRequestHeaders.Authorization = new AuthenticationHeaderValue("Bearer", jwt);
 
         var response = await client.GetAsync(EndpointInfo, cancellationToken);
@@ -53,10 +58,23 @@ public class MicroserviceInfoService(
 
         using var client = httpClientFactory.CreateClient();
         client.BaseAddress = uri;
-        var jwt = tokenService.GenerateToken("vpn-cert-issuer", "cert-create", "backend", "DataGateOpenVpnManager");
-        client.DefaultRequestHeaders.Authorization = new AuthenticationHeaderValue("Bearer", jwt);
 
-        var response = await client.GetAsync(EndpointInfo, cancellationToken);
+        using var request = new HttpRequestMessage(HttpMethod.Get, EndpointInfo);
+        request.Headers.Authorization =
+            new AuthenticationHeaderValue("Bearer",
+                tokenService.GenerateToken("vpn-cert-issuer", "cert-create", "backend", AudienceOpenVpnManager));
+
+        var response = await client.SendAsync(request, cancellationToken);
+        if (response.StatusCode == System.Net.HttpStatusCode.Unauthorized)
+        {
+            using var retry = new HttpRequestMessage(HttpMethod.Get, EndpointInfo);
+            retry.Headers.Authorization =
+                new AuthenticationHeaderValue("Bearer",
+                    tokenService.GenerateToken("vpn-cert-issuer", "cert-create", "backend", AudienceXRayManager));
+            response.Dispose();
+            response = await client.SendAsync(retry, cancellationToken);
+        }
+
         if (!response.IsSuccessStatusCode)
         {
             if (response.StatusCode == System.Net.HttpStatusCode.NotFound)
@@ -66,6 +84,7 @@ public class MicroserviceInfoService(
                     uri.Host);
                 return (RootInfoResponse?)null;
             }
+
             response.EnsureSuccessStatusCode();
         }
 

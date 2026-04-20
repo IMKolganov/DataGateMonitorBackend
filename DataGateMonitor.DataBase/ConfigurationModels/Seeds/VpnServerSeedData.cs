@@ -35,5 +35,19 @@ public static class VpnServerSeedData
             IsEnableWss = false,
             IsDeleted = false,
         },
+        new VpnServer
+        {
+            Id = 3,
+            ServerType = VpnServerType.Xray,
+            ServerName = "Xray Server (VLESS)",
+            IsOnline = false,
+            IsDefault = false,
+            IsDisable = false,
+            ApiUrl = "http://xray:5010/",
+            Latitude = 52.3676,   // Amsterdam
+            Longitude = 4.9041,
+            IsEnableWss = false,
+            IsDeleted = false,
+        },
     };
 }
