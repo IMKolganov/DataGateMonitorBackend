@@ -16,7 +16,7 @@ concurrency:
   cancel-in-progress: true
 
 env:
-  IMAGE_REPO: ${{ secrets.DOCKERHUB_USERNAME }}/openvpn-gate-monitor-backend
+  IMAGE_REPO: ${{ secrets.DOCKERHUB_USERNAME }}/datagate-monitor-backend
   BUILD_CONFIGURATION: Release
   LATEST_ON: ${{ github.event.inputs.latest_on || 'amd64' }}
 
