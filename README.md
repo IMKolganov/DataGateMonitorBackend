@@ -51,13 +51,13 @@ WORKDIR /app
 
 ### Step 2: Pass UID/GID During Build
 ```bash
-docker build --build-arg HOST_UID=1000 --build-arg HOST_GID=1000 -t openvpn-gate-monitor .
+docker build --build-arg HOST_UID=1000 --build-arg HOST_GID=1000 -t datagate-monitor-backend .
 ```
 
 ## Verify User in Container
 Check user inside the running container:
 ```bash
-docker exec -it open-vpn-gate-monitor-backend id
+docker exec -it datagate-monitor-backend id
 ```
 Expected output:
 ```
@@ -71,7 +71,7 @@ git clone https://github.com/your-repo/DataGateMonitor.git && cd DataGateMonitor
 ```
 Build and run with Docker Compose:
 ```bash
-docker build --build-arg HOST_UID=1000 --build-arg HOST_GID=1000 -t openvpn-gate-monitor .
+docker build --build-arg HOST_UID=1000 --build-arg HOST_GID=1000 -t datagate-monitor-backend .
 docker-compose up -d
 ```
 Check running containers:
@@ -116,7 +116,7 @@ curl -X DELETE http://localhost:5581/api/certificates/GateMonitor1
 
 ### Attach to a Running Container
 ```bash
-docker exec -it open-vpn-gate-monitor-backend /bin/sh
+docker exec -it datagate-monitor-backend /bin/sh
 ```
 ### Restart the Backend
 ```bash
