@@ -4,6 +4,7 @@ using DataGateMonitor.DataBase.Services.Query.VpnServerTable;
 using DataGateMonitor.DataBase.Services.Query.QuotaPlanTable;
 using DataGateMonitor.Models;
 using DataGateMonitor.Services.Api.Interfaces;
+using DataGateMonitor.SharedModels.Enums;
 using DataGateMonitor.Services.DataGateOpenVpnManager.Events;
 using DataGateMonitor.Services.DataGateOpenVpnManager.OpenVpnProxy;
 using DataGateMonitor.Services.Helpers.Interfaces;
@@ -139,6 +140,9 @@ public class VpnDataService(
     private async Task<bool> CheckAndPutDefaultExpiredSettings(VpnServer openVpnServer, CancellationToken ct)
     {
         var changesMade = false;
+
+        if (openVpnServer.ServerType != VpnServerType.OpenVpn)
+            return false;
 
         if (!await openVpnServerOvpnFileConfigQueryService.AnyByVpnServerId(openVpnServer.Id, ct))
         {

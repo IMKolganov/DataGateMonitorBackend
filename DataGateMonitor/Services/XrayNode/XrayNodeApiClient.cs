@@ -1,16 +1,19 @@
-using System.Net.Http.Json;
+using System.Net.Http.Headers;
 using System.Text.Json;
 using DataGateMonitor.Models.XrayNode;
+using DataGateMonitor.Services.Api.Auth.Registers.Interfaces;
 
 namespace DataGateMonitor.Services.XrayNode;
 
 public sealed class XrayNodeApiClient(
     ILogger<XrayNodeApiClient> logger,
-    IHttpClientFactory httpClientFactory) : IXrayNodeApiClient
+    IHttpClientFactory httpClientFactory,
+    IMicroserviceTokenService tokenService) : IXrayNodeApiClient
 {
     public const string HttpClientName = "XrayNodeApi";
 
     internal const string ClientsRelativePath = "api/xray/clients";
+    private const string AudienceXRayManager = "DataGateXRayManager";
 
     private static readonly JsonSerializerOptions JsonOptions = new()
     {
@@ -27,7 +30,11 @@ public sealed class XrayNodeApiClient(
         var requestUri = new Uri(new Uri(baseUri, UriKind.Absolute), ClientsRelativePath);
 
         var client = httpClientFactory.CreateClient(HttpClientName);
-        using var response = await client.GetAsync(requestUri, cancellationToken);
+        using var request = new HttpRequestMessage(HttpMethod.Get, requestUri);
+        request.Headers.Authorization = new AuthenticationHeaderValue("Bearer",
+            tokenService.GenerateToken("vpn-cert-issuer", "cert-create", "backend", AudienceXRayManager));
+
+        using var response = await client.SendAsync(request, cancellationToken);
 
         if (!response.IsSuccessStatusCode)
         {

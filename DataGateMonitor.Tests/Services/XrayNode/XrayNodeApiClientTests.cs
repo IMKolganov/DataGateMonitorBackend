@@ -2,6 +2,7 @@ using System.Net;
 using System.Text;
 using Microsoft.Extensions.Logging.Abstractions;
 using Moq;
+using DataGateMonitor.Services.Api.Auth.Registers.Interfaces;
 using DataGateMonitor.Services.XrayNode;
 using Xunit;
 
@@ -39,7 +40,11 @@ public class XrayNodeApiClientTests
         factory.Setup(f => f.CreateClient(XrayNodeApiClient.HttpClientName))
             .Returns(new HttpClient(handler) { BaseAddress = new Uri("https://agent.example/") });
 
-        var sut = new XrayNodeApiClient(NullLogger<XrayNodeApiClient>.Instance, factory.Object);
+        var token = new Mock<IMicroserviceTokenService>();
+        token.Setup(t => t.GenerateToken(It.IsAny<string>(), It.IsAny<string>(), It.IsAny<string>(), It.IsAny<string>()))
+            .Returns("test-jwt");
+
+        var sut = new XrayNodeApiClient(NullLogger<XrayNodeApiClient>.Instance, factory.Object, token.Object);
 
         var result = await sut.GetActiveClientsAsync("https://agent.example/", CancellationToken.None);
 
@@ -59,7 +64,11 @@ public class XrayNodeApiClientTests
         factory.Setup(f => f.CreateClient(XrayNodeApiClient.HttpClientName))
             .Returns(new HttpClient(handler));
 
-        var sut = new XrayNodeApiClient(NullLogger<XrayNodeApiClient>.Instance, factory.Object);
+        var token = new Mock<IMicroserviceTokenService>();
+        token.Setup(t => t.GenerateToken(It.IsAny<string>(), It.IsAny<string>(), It.IsAny<string>(), It.IsAny<string>()))
+            .Returns("test-jwt");
+
+        var sut = new XrayNodeApiClient(NullLogger<XrayNodeApiClient>.Instance, factory.Object, token.Object);
 
         var result = await sut.GetActiveClientsAsync("https://agent.example/", CancellationToken.None);
 
