@@ -1,4 +1,6 @@
-﻿name: Backend → Docker Hub (amd64/arm64 images + latest)
+﻿# Monorepo: publish images from repo root with ./build.sh (backend, frontend, …), not this workflow path.
+# This file is kept for repositories where backend/ is the Git root.
+name: Backend → Docker Hub (amd64/arm64 images + latest)
 
 on:
   push:
