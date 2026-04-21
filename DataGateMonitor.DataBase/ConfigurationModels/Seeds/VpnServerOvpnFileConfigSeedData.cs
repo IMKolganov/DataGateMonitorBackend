@@ -71,6 +71,16 @@ verb 3
 {{tls_auth_key}}
 </tls-crypt>".NormalizeUnixLineEndings()
         },
+        new VpnServerOvpnFileConfig
+        {
+            Id = 3,
+            VpnServerId = 3,
+            VpnServerIp = "127.0.0.1",
+            VpnServerPort = 443,
+            ConfigTemplate =
+                "{{vless_uri}}\n# {{friendly_name}}\nUUID: {{uuid}}\nEndpoint: {{server_ip}}:{{server_port}}\n"
+                    .NormalizeUnixLineEndings()
+        },
     };
 }
 // verify-x509-name vpn-server name todo: added param for this

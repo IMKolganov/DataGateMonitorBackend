@@ -18,6 +18,7 @@ using DataGateMonitor.Services.Tags;
 using DataGateMonitor.Services.UserRoles;
 using DataGateMonitor.Services.Users;
 using DataGateMonitor.Services.Users.Interfaces;
+using DataGateMonitor.Services.DataGateXRayManager.ClientLinks;
 using DataGateMonitor.Services.XrayNode;
 
 namespace DataGateMonitor.Configurations;
@@ -94,6 +95,8 @@ public static class ServiceConfiguration
         services.AddScoped<ICertApiClient, CertApiClient>();
         services.AddScoped<IOvpnFileApiClient, OvpnFileApiClient>();
         services.AddScoped<IOvpnFileApiService, OvpnFileApiService>();
+        services.AddScoped<IXrayClientLinkMicroserviceClient, XrayClientLinkMicroserviceClient>();
+        services.AddScoped<IXrayClientLinkService, XrayClientLinkService>();
         services.AddScoped<IMicroserviceInfoService, MicroserviceInfoService>();
         services.AddScoped<IProxyClientLookupService, ProxyClientLookupService>();
         services.AddScoped<IVpnServerConflogService, VpnServerConflogService>();

@@ -18,6 +18,7 @@ mono_crash.*
 
 # Local NuGet feed (optional: mkdir packages, pack into it, then: dotnet nuget add source ./packages -n local-packages)
 /packages/
+local-packages/
 
 # Build results
 [Dd]ebug/

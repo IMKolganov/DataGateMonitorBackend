@@ -28,4 +28,8 @@ public class VpnServerV2Dto
     /// Always true for Admin/App. For users without a quota plan, false for all servers.
     /// </summary>
     public bool IsAccessibleForUserQuotaPlan { get; set; }
+
+    public DateTimeOffset? XrayClientsPolledAt { get; set; }
+
+    public string? XrayClientsPollError { get; set; }
 }

@@ -4,6 +4,10 @@ using DataGateMonitor.SharedModels.DataGateMonitor.OpenVpnFiles.Responses;
 
 namespace DataGateMonitor.Services.DataGateOpenVpnManager.Interfaces;
 
+/// <summary>
+/// Application service for issued client material per VPN server: OpenVPN (.ovpn via DataGateOpenVpnManager)
+/// or Xray (client links via DataGateXRayManager). Persistence uses <see cref="IssuedOvpnFile"/> regardless of stack.
+/// </summary>
 public interface IOvpnFileApiService
 {
     Task<IssuedOvpnFile> GetByToken(string token, CancellationToken cancellationToken

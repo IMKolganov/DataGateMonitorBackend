@@ -19,4 +19,9 @@ public class VpnServerDto
     /// <summary>DCO (Data Channel Offload) enabled; optional, not required in DB.</summary>
     public bool? DcoIsEnabled { get; set; }
     public List<string> Tags { get; set; } = [];
+
+    /// <summary>Last Xray node clients poll (dashboard UX).</summary>
+    public DateTimeOffset? XrayClientsPolledAt { get; set; }
+
+    public string? XrayClientsPollError { get; set; }
 }

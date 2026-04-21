@@ -10,6 +10,7 @@ using AddServerCertificateRequest = DataGateMonitor.SharedModels.DataGateOpenVpn
 
 namespace DataGateMonitor.Services.DataGateOpenVpnManager;
 
+/// <summary>Calls <c>api/certs/*</c> on DataGateOpenVpnManager for OpenVPN server rows.</summary>
 public class CertApiClient(
     IHttpClientFactory httpClientFactory,
     IMicroserviceTokenService tokenService,
@@ -22,7 +23,7 @@ public class CertApiClient(
     private const string EndpointCertsGetAll = "api/certs/get-all";
     private const string EndpointCertsAdd = "api/certs/add";
     private const string EndpointCertsRevoke = "api/certs/revoke";
-    
+
     private void LogSafe(Action action)
     {
         if (IsLogging.Value)
@@ -45,11 +46,14 @@ public class CertApiClient(
 
     private async Task<HttpClient> GetClientForServerAsync(int vpnServerId, CancellationToken cancellationToken)
     {
-        var server = await openVpnServerQueryService.GetById(vpnServerId, cancellationToken) 
-            ?? throw new InvalidOperationException("OpenVPN server not found");
+        var server = await openVpnServerQueryService.GetById(vpnServerId, cancellationToken)
+                     ?? throw new InvalidOperationException("OpenVPN server not found");
+        if (string.IsNullOrWhiteSpace(server.ApiUrl))
+            throw new InvalidOperationException("API url is missing for the VPN server.");
+
         var client = httpClientFactory.CreateClient();
-        client.BaseAddress = new Uri(server.ApiUrl);
-        
+        client.BaseAddress = new Uri(server.ApiUrl.TrimEnd('/') + "/");
+
         return client;
     }
 
@@ -60,7 +64,7 @@ public class CertApiClient(
         {
             using var client = await GetClientForServerAsync(vpnServerId, cancellationToken);
             var jwt = tokenService.GenerateToken("vpn-cert-issuer", "cert-create",
-            "backend", "DataGateOpenVpnManager");
+                "backend", "DataGateOpenVpnManager");
             client.DefaultRequestHeaders.Authorization = new AuthenticationHeaderValue("Bearer", jwt);
 
             var response = await client.GetAsync(EndpointCertsGetAll, cancellationToken);
@@ -76,7 +80,7 @@ public class CertApiClient(
 
             var certificates =
                 await response.Content.ReadFromJsonAsync<List<ServerCertificate>>(cancellationToken: cancellationToken);
-            
+
             await certificateNotificationService.NotifyReadAllAsync(vpnServerId, certificates!.Count, cancellationToken);
             return certificates;
         }
@@ -186,8 +190,8 @@ public class CertApiClient(
                 "Certificate revocation completed for {CommonName} on server {VpnServerId}." +
                 " IsRevoked: {IsRevoked}, Message: {Message}",
                 request.CommonName, request.VpnServerId, certificate.IsRevoked, certificate.Message);
-            
-            await certificateNotificationService.NotifyRevokedAsync(request.VpnServerId, request, certificate, 
+
+            await certificateNotificationService.NotifyRevokedAsync(request.VpnServerId, request, certificate,
                 cancellationToken);
             return certificate;
         }
