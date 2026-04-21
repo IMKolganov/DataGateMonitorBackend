@@ -9,6 +9,7 @@ using DataGateMonitor.SharedModels.DataGateOpenVpnManager.OvpnFile.Responses;
 
 namespace DataGateMonitor.Services.DataGateOpenVpnManager;
 
+/// <summary>HTTP client to DataGateOpenVpnManager (<c>api/ovpn-files/*</c>) on the OpenVPN server row.</summary>
 public class OvpnFileApiClient(
     IHttpClientFactory httpClientFactory,
     IVpnServerQueryService openVpnServerQueryService,
@@ -20,23 +21,15 @@ public class OvpnFileApiClient(
     private const string EndpointOvpnFilesRevoke = "api/ovpn-files/revoke";
     private const string EndpointOvpnFilesDownload = "api/ovpn-files/download";
 
-    
     private async Task<HttpClient> GetClientForServer(int serverId, CancellationToken cancellationToken)
     {
-        var server = await openVpnServerQueryService.GetById(serverId, cancellationToken);
+        var server = await openVpnServerQueryService.GetById(serverId, cancellationToken)
+                     ?? throw new InvalidOperationException($"VPN server {serverId} not found.");
+        if (string.IsNullOrEmpty(server.ApiUrl))
+            throw new InvalidOperationException("API url is missing");
+
         var client = httpClientFactory.CreateClient();
-        if (server != null)
-        {
-            if (string.IsNullOrEmpty(server.ApiUrl))
-            {
-                throw new InvalidOperationException("API url is missing");
-            }
-            client.BaseAddress = new Uri(server.ApiUrl);
-        }
-        else
-        {
-            throw new Exception("Server not found");
-        }
+        client.BaseAddress = new Uri(server.ApiUrl.TrimEnd('/') + "/");
         return client;
     }
 
@@ -49,7 +42,7 @@ public class OvpnFileApiClient(
             var jwt = tokenService.GenerateToken("vpn-cert-issuer", "cert-create",
                 "backend", "DataGateOpenVpnManager");
             client.DefaultRequestHeaders.Authorization = new AuthenticationHeaderValue("Bearer", jwt);
-            
+
             var response = await client.PostAsJsonAsync(EndpointOvpnFilesAdd, request, cancellationToken);
 
             if (!response.IsSuccessStatusCode)
@@ -175,7 +168,7 @@ public class OvpnFileApiClient(
             var jwt = tokenService.GenerateToken("vpn-cert-issuer", "cert-create",
                 "backend", "DataGateOpenVpnManager");
             client.DefaultRequestHeaders.Authorization = new AuthenticationHeaderValue("Bearer", jwt);
-            
+
             var response = await client.PostAsJsonAsync(EndpointOvpnFilesDownload, request, cancellationToken);
 
             if (!response.IsSuccessStatusCode)
@@ -230,5 +223,4 @@ public class OvpnFileApiClient(
             throw;
         }
     }
-
 }

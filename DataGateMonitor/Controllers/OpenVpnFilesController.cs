@@ -13,6 +13,11 @@ using DataGateMonitor.SharedModels.Responses;
 
 namespace DataGateMonitor.Controllers;
 
+/// <summary>
+/// HTTP API for listing, issuing, revoking, and downloading client exports stored as <see cref="IssuedOvpnFile"/>.
+/// Route and DTO names say &quot;open-vpn&quot; for historical reasons; the same endpoints serve Xray (VLESS) links
+/// when the target <c>VpnServer</c> is an Xray stack. Prefer neutral wording in user-facing docs and in API v2.
+/// </summary>
 [ApiController]
 [Route("api/open-vpn-files")]
 [Authorize]

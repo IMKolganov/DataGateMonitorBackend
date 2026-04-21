@@ -28,6 +28,8 @@ public class ApplicationDbContext(DbContextOptions<ApplicationDbContext> options
     public DbSet<VpnServer> VpnServers { get; set; } = null!;
     public DbSet<IssuedOvpnFile> IssuedOvpnFiles { get; set; } = null!;
     public DbSet<IssuedOvpnFileToken> IssuedOvpnFileTokens { get; set; } = null!;
+    public DbSet<IssuedXrayClientLink> IssuedXrayClientLinks { get; set; } = null!;
+    public DbSet<IssuedXrayClientLinkToken> IssuedXrayClientLinkTokens { get; set; } = null!;
     public DbSet<VpnServerOvpnFileConfig> VpnServerOvpnFileConfigs { get; set; } = null!;
     public DbSet<ClientApplication> ClientApplications { get; set; } = null!;
     public DbSet<Setting> Settings { get; set; } = null!;
@@ -58,6 +60,8 @@ public class ApplicationDbContext(DbContextOptions<ApplicationDbContext> options
         modelBuilder.ApplyConfiguration(new VpnServerConfiguration());
         modelBuilder.ApplyConfiguration(new IssuedOvpnFileConfiguration());
         modelBuilder.ApplyConfiguration(new IssuedOvpnFileTokenConfiguration());
+        modelBuilder.ApplyConfiguration(new IssuedXrayClientLinkConfiguration());
+        modelBuilder.ApplyConfiguration(new IssuedXrayClientLinkTokenConfiguration());
         modelBuilder.ApplyConfiguration(new VpnServerOvpnFileConfigConfiguration());
         modelBuilder.ApplyConfiguration(new ClientApplicationConfiguration());
         modelBuilder.ApplyConfiguration(new SettingConfiguration());

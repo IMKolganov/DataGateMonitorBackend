@@ -137,24 +137,47 @@ public class VpnDataService(
         return true;
     }
 
+    private const string DefaultXrayClientLinkTemplate =
+        "{{vless_uri}}\r\n# {{friendly_name}}\r\nUUID: {{uuid}}\r\nEndpoint: {{server_ip}}:{{server_port}}\r\n";
+
     private async Task<bool> CheckAndPutDefaultExpiredSettings(VpnServer openVpnServer, CancellationToken ct)
     {
-        var changesMade = false;
+        if (openVpnServer.ServerType == VpnServerType.OpenVpn)
+            return await EnsureOpenVpnDefaultExportConfigAsync(openVpnServer, ct);
 
-        if (openVpnServer.ServerType != VpnServerType.OpenVpn)
+        if (openVpnServer.ServerType == VpnServerType.Xray)
+            return await EnsureXrayDefaultExportConfigAsync(openVpnServer, ct);
+
+        return false;
+    }
+
+    private async Task<bool> EnsureOpenVpnDefaultExportConfigAsync(VpnServer server, CancellationToken ct)
+    {
+        if (await openVpnServerOvpnFileConfigQueryService.AnyByVpnServerId(server.Id, ct))
             return false;
 
-        if (!await openVpnServerOvpnFileConfigQueryService.AnyByVpnServerId(openVpnServer.Id, ct))
+        await openVpnServerOvpnFileConfigCommandService.Add(new VpnServerOvpnFileConfig
         {
-            await openVpnServerOvpnFileConfigCommandService.Add(new VpnServerOvpnFileConfig
-            {
-                VpnServerId = openVpnServer.Id,
-                VpnServerIp = await externalIpAddressService.GetRemoteIpAddress(ct),
-            }, true, ct);
-            changesMade = true;
-        }
+            VpnServerId = server.Id,
+            VpnServerIp = await externalIpAddressService.GetRemoteIpAddress(ct),
+        }, true, ct);
+        return true;
+    }
 
-        return changesMade;
+    private async Task<bool> EnsureXrayDefaultExportConfigAsync(VpnServer server, CancellationToken ct)
+    {
+        if (await openVpnServerOvpnFileConfigQueryService.AnyByVpnServerId(server.Id, ct))
+            return false;
+
+        var ip = await externalIpAddressService.GetRemoteIpAddress(ct);
+        await openVpnServerOvpnFileConfigCommandService.Add(new VpnServerOvpnFileConfig
+        {
+            VpnServerId = server.Id,
+            VpnServerIp = string.IsNullOrWhiteSpace(ip) ? "127.0.0.1" : ip,
+            VpnServerPort = 443,
+            ConfigTemplate = DefaultXrayClientLinkTemplate,
+        }, true, ct);
+        return true;
     }
     
     private async Task SyncQuotaPlanLinksAsync(

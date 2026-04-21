@@ -6,11 +6,14 @@
         <TargetFramework>net10.0</TargetFramework>
         <Product>DataGateMonitor</Product>
         <AssemblyTitle>DataGateMonitor.Models</AssemblyTitle>
+        <Version>1.0.3.15</Version>
+        <AssemblyVersion>1.0.3.15</AssemblyVersion>
+        <FileVersion>1.0.3.15</FileVersion>
     </PropertyGroup>
 
     <ItemGroup>
       <!-- SharedModels: NuGet only (never ProjectReference). Publish new package version to nuget.org after DTO changes. -->
-      <PackageReference Include="DataGateMonitor.SharedModels" Version="1.0.0" />
+      <PackageReference Include="DataGateMonitor.SharedModels" Version="1.0.1" />
       <PackageReference Include="Microsoft.Extensions.Configuration.Abstractions" Version="10.0.3" />
       <PackageReference Include="Newtonsoft.Json" Version="13.0.4" />
     </ItemGroup>

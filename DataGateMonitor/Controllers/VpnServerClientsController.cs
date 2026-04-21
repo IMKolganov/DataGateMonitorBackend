@@ -10,6 +10,7 @@ namespace DataGateMonitor.Controllers;
 
 [ApiController]
 [Route("api/open-vpn-clients")]
+[Route("api/v2/vpn-sessions")]
 [Authorize]
 public class VpnServerClientsController(IVpnServerClientOverviewQuery openVpnServerClientOverviewQuery,
     IOpenVpnGeoQueryService openVpnGeoQueryService, IOpenVpnOverviewTotalsQuery openVpnOverviewTotalsQuery,
