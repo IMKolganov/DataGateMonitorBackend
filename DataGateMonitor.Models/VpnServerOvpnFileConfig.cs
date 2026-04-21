@@ -2,6 +2,10 @@
 
 namespace DataGateMonitor.Models;
 
+/// <summary>
+/// Per-server template and public endpoint hints for <b>client exports</b>: OpenVPN .ovpn layout or
+/// Xray/VLESS link text (placeholders such as <c>{{vless_uri}}</c>, <c>{{uuid}}</c>). Table name is historical.
+/// </summary>
 public class VpnServerOvpnFileConfig : BaseEntity<int>
 {
     [Required]

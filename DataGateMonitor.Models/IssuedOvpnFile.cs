@@ -2,6 +2,16 @@
 
 namespace DataGateMonitor.Models;
 
+/// <summary>
+/// Persisted record of a client-facing export for a <c>VpnServer</c> (issue, revoke, download, quotas).
+/// Despite the name, this is <b>not</b> OpenVPN-only: for Xray (VLESS) servers the artifact is typically a
+/// client link file from DataGateXRayManager; certificate-related paths may still be set by the sidecar.
+/// </summary>
+/// <remarks>
+/// Conceptual name for new code and future API v2: &quot;issued client export&quot; (stack-agnostic).
+/// Renaming the entity or <c>/api/open-vpn-files</c> is a breaking change and should ship only with a versioned
+/// HTTP API and migration plan for all consumers (dashboard, bots, mobile).
+/// </remarks>
 public class IssuedOvpnFile : BaseEntity<int>
 {
     [Required]

@@ -34,7 +34,7 @@ public class OvpnFileApiClientTests
 
         var act = () => sut.AddOvpnFile(99, request, CancellationToken.None);
 
-        await act.Should().ThrowAsync<Exception>().WithMessage("*Server not found*");
+        await act.Should().ThrowAsync<InvalidOperationException>().WithMessage("*VPN server 99 not found*");
         serverQuery.VerifyAll();
     }
 

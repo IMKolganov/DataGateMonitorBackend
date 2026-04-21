@@ -39,6 +39,8 @@ public class VpnServerConfiguration : BaseEntityConfiguration<VpnServer, int>
 
         entity.Property(e => e.DcoIsEnabled);
 
+        entity.Property(e => e.XrayClientsPollError).HasMaxLength(2000);
+
         // Indexes
         entity.HasIndex(e => e.ServerName)
             .IsUnique();

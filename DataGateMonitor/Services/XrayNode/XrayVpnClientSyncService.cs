@@ -1,5 +1,6 @@
 using DataGateMonitor.DataBase.Services.Command.Interfaces;
 using DataGateMonitor.DataBase.Services.Query.IssuedOvpnFileTable;
+using DataGateMonitor.DataBase.Services.Query.IssuedXrayClientLinkTable;
 using DataGateMonitor.DataBase.Services.Query.UserTable;
 using DataGateMonitor.Models;
 using DataGateMonitor.Models.XrayNode;
@@ -11,6 +12,7 @@ namespace DataGateMonitor.Services.XrayNode;
 
 public sealed class XrayVpnClientSyncService(
     ILogger<XrayVpnClientSyncService> logger,
+    IIssuedXrayClientLinkQueryService issuedXrayClientLinkQueryService,
     IIssuedOvpnFileQueryService issuedOvpnFileQueryService,
     IUserQueryService userQueryService,
     IGeoLiteQueryService geoLiteQueryService,
@@ -52,8 +54,11 @@ public sealed class XrayVpnClientSyncService(
                     c.Email, c.RemoteAddress, c.ConnectedSince);
 
                 var commonName = c.Email;
-                var externalId = await issuedOvpnFileQueryService.GetExternalIdByCommonName(
-                    commonName, server.Id, cancellationToken) ?? string.Empty;
+                var externalId = await issuedXrayClientLinkQueryService.GetExternalIdByCommonName(
+                                     commonName, server.Id, cancellationToken)
+                                 ?? await issuedOvpnFileQueryService.GetExternalIdByCommonName(
+                                     commonName, server.Id, cancellationToken)
+                                 ?? string.Empty;
                 var user = await userQueryService.GetByExternalId(externalId, cancellationToken);
 
                 var username = string.IsNullOrWhiteSpace(c.Username) ? commonName : c.Username!;

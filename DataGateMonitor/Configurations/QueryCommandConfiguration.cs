@@ -6,6 +6,8 @@ using DataGateMonitor.DataBase.Services.Query.DeviceTable;
 using DataGateMonitor.DataBase.Services.Query.IncomingMessageLogTable;
 using DataGateMonitor.DataBase.Services.Query.IssuedOvpnFileTable;
 using DataGateMonitor.DataBase.Services.Query.IssuedOvpnFileTokenTable;
+using DataGateMonitor.DataBase.Services.Query.IssuedXrayClientLinkTable;
+using DataGateMonitor.DataBase.Services.Query.IssuedXrayClientLinkTokenTable;
 using DataGateMonitor.DataBase.Services.Query.LocalizationTextTable;
 using DataGateMonitor.DataBase.Services.Query.NotificationRecipientTable;
 using DataGateMonitor.DataBase.Services.Query.VpnServerClientTable;
@@ -43,6 +45,8 @@ public static class QueryCommandConfiguration
         services.AddScoped<IIncomingMessageLogQueryService, IncomingMessageLogQueryService>();
         services.AddScoped<IIssuedOvpnFileQueryService, IssuedOvpnFileQueryService>();
         services.AddScoped<IIssuedOvpnFileTokenQueryService, IssuedOvpnFileTokenQueryService>();
+        services.AddScoped<IIssuedXrayClientLinkQueryService, IssuedXrayClientLinkQueryService>();
+        services.AddScoped<IIssuedXrayClientLinkTokenQueryService, IssuedXrayClientLinkTokenQueryService>();
         services.AddScoped<ILocalizationTextQueryService, LocalizationTextQueryService>();
         services.AddScoped<INotificationRecipientQueryService, NotificationRecipientQueryService>();
 

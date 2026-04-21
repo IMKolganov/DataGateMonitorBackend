@@ -10,6 +10,11 @@ using DataGateMonitor.SharedModels.Enums;
 
 namespace DataGateMonitor.Services.BackgroundServices;
 
+/// <summary>
+/// Background poller for <strong>all</strong> enabled <see cref="DataGateMonitor.Models.VpnServer"/> rows (OpenVPN and Xray).
+/// Interval comes from settings <c>OpenVPN_Polling_Interval</c> / <c>OpenVPN_Polling_Interval_Unit</c> (shared for every stack).
+/// Set environment variable <c>OPEN_VPN_BACKGROUND_SERVICE_DISABLED=true</c> to stop polling (including Xray node sync).
+/// </summary>
 public class OpenVpnBackgroundService : BackgroundService, IOpenVpnBackgroundService
 {
     private static int _instanceCount = 0;
@@ -144,7 +149,7 @@ public class OpenVpnBackgroundService : BackgroundService, IOpenVpnBackgroundSer
         }
         catch (Exception ex)
         {
-            _logger.LogError(ex, "Error during first OpenVPN task execution. Retrying after short delay.");
+            _logger.LogError(ex, "Error during VPN servers polling task. Retrying after short delay.");
             await Task.Delay(TimeSpan.FromSeconds(30), cancellationToken);
         }
     }
@@ -161,7 +166,7 @@ public class OpenVpnBackgroundService : BackgroundService, IOpenVpnBackgroundSer
             return;
         }
 
-        _logger.LogInformation("OpenVPN Background Service: Execution started.");
+        _logger.LogInformation("VPN servers background poller: execution started (OpenVPN + Xray).");
 
         var nextRunSeconds = await GetPollingIntervalSecondsAsync(cancellationToken);
         await RunOpenVpnTask(nextRunSeconds, cancellationToken);
@@ -172,7 +177,7 @@ public class OpenVpnBackgroundService : BackgroundService, IOpenVpnBackgroundSer
 
             if (nextRunSeconds == 0)
             {
-                _logger.LogWarning("OpenVPN Background Service: Polling interval is 0. Pausing execution...");
+                _logger.LogWarning("VPN servers poller: polling interval is 0. Pausing execution...");
 
                 try
                 {
@@ -181,7 +186,7 @@ public class OpenVpnBackgroundService : BackgroundService, IOpenVpnBackgroundSer
                 }
                 catch (TaskCanceledException)
                 {
-                    _logger.LogInformation("OpenVPN Background Service: Cancellation requested. Exiting service.");
+                    _logger.LogInformation("VPN servers poller: cancellation requested. Exiting service.");
                     return;
                 }
             }
@@ -198,9 +203,9 @@ public class OpenVpnBackgroundService : BackgroundService, IOpenVpnBackgroundSer
                 var waitTime = (nextRunTime - now).TotalMilliseconds;
 
                 _logger.LogInformation(
-                    $"OpenVPN Background Service: Waiting {waitTime / 1000:F0} seconds until next run at {nextRunTime}");
+                    $"VPN servers poller: waiting {waitTime / 1000:F0} seconds until next run at {nextRunTime}");
                 _logger.LogInformation(
-                    $"OpenVPN Background Service: Delay token before waiting: {_delayTokenSource.GetHashCode()}");
+                    $"VPN servers poller: delay token before waiting: {_delayTokenSource.GetHashCode()}");
 
                 try
                 {
@@ -212,14 +217,14 @@ public class OpenVpnBackgroundService : BackgroundService, IOpenVpnBackgroundSer
                 }
                 catch (TaskCanceledException)
                 {
-                    _logger.LogInformation("OpenVPN Background Service: Manual trigger received. Skipping wait.");
+                    _logger.LogInformation("VPN servers poller: manual trigger received. Skipping wait.");
                     _logger.LogInformation(
-                        $"OpenVPN Background Service: Is cancellation requested: " +
+                        $"VPN servers poller: is cancellation requested: " +
                         $"{cancellationToken.IsCancellationRequested}");
                 }
             }
 
-            _logger.LogInformation("OpenVPN Background Service: Executing OpenVPN task.");
+            _logger.LogInformation("VPN servers background poller: running sync cycle.");
             await RunOpenVpnTask(nextRunSeconds, cancellationToken);
         }
     }

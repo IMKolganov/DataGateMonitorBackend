@@ -16,6 +16,7 @@ using DataGateMonitor.SharedModels.Enums;
 
 namespace DataGateMonitor.Services.DataGateOpenVpnManager;
 
+/// <inheritdoc cref="IOvpnFileApiService" />
 public class OvpnFileApiService(
     IOvpnFileApiClient ovpnFileApiClient, 
     ILogger<OvpnFileApiClient> logger,
