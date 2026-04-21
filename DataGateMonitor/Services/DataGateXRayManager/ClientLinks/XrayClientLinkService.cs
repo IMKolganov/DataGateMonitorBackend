@@ -135,13 +135,19 @@ public sealed class XrayClientLinkService(
 
         var exportConfig = await GetExportConfigAsync(request.VpnServerId, ct);
         var friendlyName = await MakeFriendlyName(request.VpnServerId, request.CommonName, ct);
+        var (serverIp, serverPort) = NormalizeServerEndpoint(exportConfig.VpnServerIp, exportConfig.VpnServerPort);
+        if (serverIp != exportConfig.VpnServerIp || serverPort != exportConfig.VpnServerPort)
+            logger.LogWarning(
+                "VpnServerOvpnFileConfig endpoint normalized (host had :port while VpnServerPort was also set). VpnServerId={Id}, before {BeforeIp} port {BeforePort}, after {AfterIp} port {AfterPort}.",
+                request.VpnServerId, exportConfig.VpnServerIp, exportConfig.VpnServerPort, serverIp, serverPort);
+
         var microRequest = new GenerateClientLinkMicroserviceRequest
         {
             CommonName = request.CommonName,
             FriendlyName = friendlyName,
             ConfigTemplate = exportConfig.ConfigTemplate,
-            ServerIp = exportConfig.VpnServerIp,
-            ServerPort = exportConfig.VpnServerPort,
+            ServerIp = serverIp,
+            ServerPort = serverPort,
             IssuedTo = request.IssuedTo,
             LinkExpireDays = request.OvpnFileExpireDays
         };
@@ -308,6 +314,35 @@ public sealed class XrayClientLinkService(
     {
         var match = Regex.Match(input, @"(\d+)$");
         return match.Success ? match.Value : null;
+    }
+
+    /// <summary>
+    /// If <paramref name="vpnServerIp"/> is <c>hostname:30443</c> while <paramref name="vpnServerPort"/> is still
+    /// <c>443</c>, the Xray manager would build <c>vless://…@hostname:30443:443</c>. Strip inline port when unambiguous.
+    /// </summary>
+    private static (string Host, int Port) NormalizeServerEndpoint(string vpnServerIp, int vpnServerPort)
+    {
+        vpnServerIp = (vpnServerIp ?? "").Trim();
+        if (vpnServerIp.Length == 0)
+            return (vpnServerIp, vpnServerPort);
+
+        if (vpnServerIp[0] == '[')
+        {
+            var end = vpnServerIp.IndexOf(']', 1);
+            if (end > 1 && end < vpnServerIp.Length - 2 && vpnServerIp[end + 1] == ':'
+                && int.TryParse(vpnServerIp.AsSpan(end + 2), out var p6) && p6 is > 0 and <= 65535)
+                return (vpnServerIp[..(end + 1)], p6);
+            return (vpnServerIp, vpnServerPort);
+        }
+
+        if (vpnServerIp.Count(c => c == ':') == 1)
+        {
+            var idx = vpnServerIp.IndexOf(':');
+            if (idx > 0 && int.TryParse(vpnServerIp.AsSpan(idx + 1), out var p) && p is > 0 and <= 65535)
+                return (vpnServerIp[..idx], p);
+        }
+
+        return (vpnServerIp, vpnServerPort);
     }
 
     private static IssuedXrayClientLink ToNewEntity(AddFileRequest request, ClientLinkMetadataDto meta)
