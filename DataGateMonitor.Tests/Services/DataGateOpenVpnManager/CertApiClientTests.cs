@@ -10,6 +10,7 @@ using DataGateMonitor.Services.Api.Auth.Registers.Interfaces;
 using DataGateMonitor.Services.Others.Notifications.CertApiClient;
 using DataGateMonitor.SharedModels.DataGateOpenVpnManager.Cert.Responses;
 using DataGateMonitor.SharedModels.DataGateMonitor.VpnServerCerts.Requests;
+using DataGateMonitor.SharedModels.Enums;
 using Xunit;
 
 namespace DataGateMonitor.Tests.Services.DataGateOpenVpnManager;
@@ -38,7 +39,7 @@ public class CertApiClientTests
         var act = () => sut.GetAllCertificatesAsync(99, CancellationToken.None);
 
         await act.Should().ThrowAsync<InvalidOperationException>()
-            .WithMessage("*OpenVPN server not found*");
+            .WithMessage("*VPN server not found*");
         serverQuery.VerifyAll();
     }
 
@@ -78,6 +79,44 @@ public class CertApiClientTests
         result[1].CommonName.Should().Be("cert2");
         result[1].IsRevoked.Should().BeTrue();
         notification.Verify(n => n.NotifyReadAllAsync(1, 2, It.IsAny<CancellationToken>()), Times.Once);
+    }
+
+    [Fact]
+    public async Task GetAllCertificatesAsync_ForXrayServer_UsesDataGateXRayManagerAudience()
+    {
+        var certs = new List<ServerCertificate> { new() { CommonName = "x1", IsRevoked = false } };
+        var response = new HttpResponseMessage(HttpStatusCode.OK) { Content = JsonContent.Create(certs) };
+        var client = CreateMockHttpClient(response);
+
+        var httpFactory = new Mock<IHttpClientFactory>(MockBehavior.Strict);
+        httpFactory.Setup(f => f.CreateClient(It.IsAny<string>())).Returns(client);
+        var tokenService = new Mock<IMicroserviceTokenService>(MockBehavior.Strict);
+        tokenService
+            .Setup(t => t.GenerateToken("vpn-cert-issuer", "cert-create", "backend", "DataGateXRayManager"))
+            .Returns("fake-jwt");
+        var server = new VpnServer
+        {
+            Id = 3,
+            ApiUrl = "http://xray:5010/",
+            ServerName = "Xray",
+            ServerType = VpnServerType.Xray,
+            CreateDate = DateTimeOffset.UtcNow,
+            LastUpdate = DateTimeOffset.UtcNow
+        };
+        var serverQuery = new Mock<IVpnServerQueryService>(MockBehavior.Strict);
+        serverQuery.Setup(q => q.GetById(3, It.IsAny<CancellationToken>())).ReturnsAsync(server);
+        var notification = new Mock<ICertificateNotificationService>(MockBehavior.Strict);
+        notification.Setup(n => n.NotifyReadAllAsync(3, 1, It.IsAny<CancellationToken>())).Returns(Task.CompletedTask);
+
+        var logger = Mock.Of<ILogger<CertApiClient>>();
+        var sut = new CertApiClient(httpFactory.Object, tokenService.Object, serverQuery.Object,
+            notification.Object, logger);
+
+        var result = await sut.GetAllCertificatesAsync(3, CancellationToken.None);
+
+        result.Should().HaveCount(1);
+        tokenService.Verify(
+            t => t.GenerateToken("vpn-cert-issuer", "cert-create", "backend", "DataGateXRayManager"), Times.Once);
     }
 
     [Fact]
