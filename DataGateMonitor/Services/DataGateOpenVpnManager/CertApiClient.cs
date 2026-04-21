@@ -1,4 +1,5 @@
-﻿using System.Net.Http.Headers;
+﻿using System.Net;
+using System.Net.Http.Headers;
 using Newtonsoft.Json;
 using DataGateMonitor.DataBase.Services.Query.VpnServerTable;
 using DataGateMonitor.Services.Api.Auth.Registers.Interfaces;
@@ -23,6 +24,24 @@ public class CertApiClient(
     private const string EndpointCertsGetAll = "api/certs/get-all";
     private const string EndpointCertsAdd = "api/certs/add";
     private const string EndpointCertsRevoke = "api/certs/revoke";
+
+    private static async Task<HttpRequestException> BuildManagerFailureExceptionAsync(
+        HttpResponseMessage response,
+        int vpnServerId,
+        CancellationToken cancellationToken)
+    {
+        var error = await response.Content.ReadAsStringAsync(cancellationToken);
+        var message = $"Server returned {(int)response.StatusCode} ({response.StatusCode}): {error}";
+        if (response.StatusCode == HttpStatusCode.Unauthorized)
+        {
+            message +=
+                " The OpenVPN node (DataGateOpenVpnManager) rejected the JWT issued by this API. "
+                + "On the node, set Backend:BaseUrl to this dashboard API base URL so it can fetch MicroserviceJwt public key "
+                + $"(vpn server id {vpnServerId} ApiUrl must point to that manager). Restart the manager after key rotation.";
+        }
+
+        return new HttpRequestException(message, null, response.StatusCode);
+    }
 
     private void LogSafe(Action action)
     {
@@ -71,11 +90,10 @@ public class CertApiClient(
 
             if (!response.IsSuccessStatusCode)
             {
-                var error = await response.Content.ReadAsStringAsync(cancellationToken);
-                var message = $"Server returned {(int)response.StatusCode} ({response.StatusCode}): {error}";
+                var ex = await BuildManagerFailureExceptionAsync(response, vpnServerId, cancellationToken);
                 LogSafe(() => logger.LogError("Failed to get certificates from server {VpnServerId}: {Message}",
-                    vpnServerId, message));
-                throw new HttpRequestException(message, null, response.StatusCode);
+                    vpnServerId, ex.Message));
+                throw ex;
             }
 
             var certificates =
@@ -119,12 +137,11 @@ public class CertApiClient(
 
             if (!response.IsSuccessStatusCode)
             {
-                var error = await response.Content.ReadAsStringAsync(cancellationToken);
-                var message = $"Server returned {(int)response.StatusCode} ({response.StatusCode}): {error}";
+                var ex = await BuildManagerFailureExceptionAsync(response, vpnServerId, cancellationToken);
                 LogSafe(() =>
                     logger.LogError("Failed to build certificate for {CommonName} on server {VpnServerId}: {Message}",
-                        commonName, vpnServerId, message));
-                throw new HttpRequestException(message, null, response.StatusCode);
+                        commonName, vpnServerId, ex.Message));
+                throw ex;
             }
 
             var certificate =
@@ -173,12 +190,11 @@ public class CertApiClient(
 
             if (!response.IsSuccessStatusCode)
             {
-                var error = await response.Content.ReadAsStringAsync(cancellationToken);
-                var message = $"Server returned {(int)response.StatusCode} ({response.StatusCode}): {error}";
+                var ex = await BuildManagerFailureExceptionAsync(response, request.VpnServerId, cancellationToken);
                 LogSafe(() =>
                     logger.LogError("Failed to revoke certificate for {CommonName} on server {VpnServerId}: {Message}",
-                        request.CommonName, request.VpnServerId, message));
-                throw new HttpRequestException(message, null, response.StatusCode);
+                        request.CommonName, request.VpnServerId, ex.Message));
+                throw ex;
             }
 
             var certificate =
