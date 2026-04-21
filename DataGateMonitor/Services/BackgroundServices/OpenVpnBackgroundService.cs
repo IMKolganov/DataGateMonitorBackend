@@ -168,6 +168,29 @@ public class OpenVpnBackgroundService : BackgroundService, IOpenVpnBackgroundSer
 
         _logger.LogInformation("VPN servers background poller: execution started (OpenVPN + Xray).");
 
+        // First cycle only: give VPN sidecars / microservices time to listen (Compose start order).
+        var startupDelaySeconds = 5;
+        var delayEnv = Environment.GetEnvironmentVariable("BACKGROUND_SERVICE_STARTUP_DELAY_SECONDS");
+        if (!string.IsNullOrWhiteSpace(delayEnv) && int.TryParse(delayEnv, out var parsed) && parsed >= 0)
+        {
+            startupDelaySeconds = parsed;
+        }
+
+        if (startupDelaySeconds > 0)
+        {
+            _logger.LogInformation(
+                "VPN poller: waiting {Seconds}s before first sync (set BACKGROUND_SERVICE_STARTUP_DELAY_SECONDS=0 to skip).",
+                startupDelaySeconds);
+            try
+            {
+                await Task.Delay(TimeSpan.FromSeconds(startupDelaySeconds), cancellationToken);
+            }
+            catch (OperationCanceledException)
+            {
+                return;
+            }
+        }
+
         var nextRunSeconds = await GetPollingIntervalSecondsAsync(cancellationToken);
         await RunOpenVpnTask(nextRunSeconds, cancellationToken);
 
