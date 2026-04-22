@@ -3,6 +3,7 @@ using DataGateMonitor.DataBase.Services.Query.NotificationRecipientTable;
 using DataGateMonitor.DataBase.Services.Query.UserRoleTable;
 using DataGateMonitor.Models;
 using DataGateMonitor.Services.Others.Models;
+using DataGateMonitor.Services.Others.Notifications;
 using DataGateMonitor.SharedModels.Auth;
 using DataGateMonitor.SharedModels.Enums;
 using DataGateMonitor.SharedModels.Notifications.Requests;
