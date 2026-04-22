@@ -2824,6 +2824,84 @@ paths:
             text/json:
               schema:
                 $ref: '#/components/schemas/StringApiResponse'
+  /api/vpn-profile-notification-preferences:
+    get:
+      tags:
+        - VpnProfileNotificationPreferences
+      responses:
+        '200':
+          description: OK
+          content:
+            text/plain:
+              schema:
+                $ref: '#/components/schemas/GetVpnProfileNotificationPreferencesResponseApiResponse'
+            application/json:
+              schema:
+                $ref: '#/components/schemas/GetVpnProfileNotificationPreferencesResponseApiResponse'
+            text/json:
+              schema:
+                $ref: '#/components/schemas/GetVpnProfileNotificationPreferencesResponseApiResponse'
+    put:
+      tags:
+        - VpnProfileNotificationPreferences
+      requestBody:
+        content:
+          application/json-patch+json:
+            schema:
+              $ref: '#/components/schemas/PutVpnProfileNotificationPreferencesRequest'
+          application/json:
+            schema:
+              $ref: '#/components/schemas/PutVpnProfileNotificationPreferencesRequest'
+          text/json:
+            schema:
+              $ref: '#/components/schemas/PutVpnProfileNotificationPreferencesRequest'
+          application/*+json:
+            schema:
+              $ref: '#/components/schemas/PutVpnProfileNotificationPreferencesRequest'
+      responses:
+        '200':
+          description: OK
+          content:
+            text/plain:
+              schema:
+                $ref: '#/components/schemas/GetVpnProfileNotificationPreferencesResponseApiResponse'
+            application/json:
+              schema:
+                $ref: '#/components/schemas/GetVpnProfileNotificationPreferencesResponseApiResponse'
+            text/json:
+              schema:
+                $ref: '#/components/schemas/GetVpnProfileNotificationPreferencesResponseApiResponse'
+  /api/vpn-profile-notification-preferences/set-all-categories:
+    post:
+      tags:
+        - VpnProfileNotificationPreferences
+      requestBody:
+        content:
+          application/json-patch+json:
+            schema:
+              $ref: '#/components/schemas/SetAllVpnProfileNotificationCategoriesRequest'
+          application/json:
+            schema:
+              $ref: '#/components/schemas/SetAllVpnProfileNotificationCategoriesRequest'
+          text/json:
+            schema:
+              $ref: '#/components/schemas/SetAllVpnProfileNotificationCategoriesRequest'
+          application/*+json:
+            schema:
+              $ref: '#/components/schemas/SetAllVpnProfileNotificationCategoriesRequest'
+      responses:
+        '200':
+          description: OK
+          content:
+            text/plain:
+              schema:
+                $ref: '#/components/schemas/GetVpnProfileNotificationPreferencesResponseApiResponse'
+            application/json:
+              schema:
+                $ref: '#/components/schemas/GetVpnProfileNotificationPreferencesResponseApiResponse'
+            text/json:
+              schema:
+                $ref: '#/components/schemas/GetVpnProfileNotificationPreferencesResponseApiResponse'
 components:
   schemas:
     AddFileRequest:
@@ -3669,6 +3747,27 @@ components:
           nullable: true
         data:
           $ref: '#/components/schemas/GetVersionDatabaseResponse'
+      additionalProperties: false
+    GetVpnProfileNotificationPreferencesResponse:
+      type: object
+      properties:
+        globallyEnabled:
+          type: boolean
+        preferences:
+          type: array
+          items:
+            $ref: '#/components/schemas/VpnProfileNotificationPreferenceItemDto'
+      additionalProperties: false
+    GetVpnProfileNotificationPreferencesResponseApiResponse:
+      type: object
+      properties:
+        success:
+          type: boolean
+        message:
+          type: string
+          nullable: true
+        data:
+          $ref: '#/components/schemas/GetVpnProfileNotificationPreferencesResponse'
       additionalProperties: false
     Int32ApiResponse:
       type: object
@@ -4777,6 +4876,33 @@ components:
           nullable: true
         data:
           $ref: '#/components/schemas/SetTelegramUserLanguageResponse'
+      additionalProperties: false
+    VpnProfileNotificationPreferenceItemDto:
+      type: object
+      properties:
+        kind:
+          type: integer
+          format: int32
+        enabled:
+          type: boolean
+      additionalProperties: false
+    PutVpnProfileNotificationPreferencesRequest:
+      type: object
+      properties:
+        globallyEnabled:
+          type: boolean
+          nullable: true
+        preferences:
+          type: array
+          nullable: true
+          items:
+            $ref: '#/components/schemas/VpnProfileNotificationPreferenceItemDto'
+      additionalProperties: false
+    SetAllVpnProfileNotificationCategoriesRequest:
+      type: object
+      properties:
+        enabled:
+          type: boolean
       additionalProperties: false
     SettingResponse:
       type: object
