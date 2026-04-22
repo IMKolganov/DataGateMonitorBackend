@@ -13,6 +13,7 @@ public class CertificateNotificationService(INotificationService notifications)
 
     public Task NotifyReadAllAsync(int vpnServerId, int count, CancellationToken ct)
         => Notify(
+            ApplicationNotificationKind.CertApiReadAll,
             type: "cert.read.all",
             title: "All certificates requested",
             message: $"ServerId={vpnServerId}; Count={count}",
@@ -24,6 +25,7 @@ public class CertificateNotificationService(INotificationService notifications)
 
     public Task NotifyBuiltAsync(int vpnServerId, ServerCertificate certificate, CancellationToken ct)
         => Notify(
+            ApplicationNotificationKind.CertApiCertificateCreated,
             type: "cert.built",
             title: "Certificate created",
             message:
@@ -37,6 +39,7 @@ public class CertificateNotificationService(INotificationService notifications)
     public Task NotifyRevokedAsync(int vpnServerId, RevokeCertificateRequest request,
         ServerCertificate? certificate, CancellationToken ct)
         => Notify(
+            ApplicationNotificationKind.CertApiCertificateRevoked,
             type: "cert.revoked",
             title: "Certificate revoked",
             message: $"CommonName={Short(request.CommonName)}; Serial={Short(certificate?.SerialNumber)}",
@@ -47,7 +50,7 @@ public class CertificateNotificationService(INotificationService notifications)
         );
 
     // ---- helper ----
-    private Task Notify(string type, string title, string message, int serverId,
+    private Task Notify(ApplicationNotificationKind preferenceKind, string type, string title, string message, int serverId,
         NotificationSeverity severity, string[] channels, CancellationToken ct, int? actorUserId = null)
         => notifications.NotifyAdmins(new NotificationRequest
         {
@@ -57,7 +60,8 @@ public class CertificateNotificationService(INotificationService notifications)
             Severity = severity,
             Source = "cert-api",
             ServerId = serverId,
-            ActorUserId = actorUserId
+            ActorUserId = actorUserId,
+            PreferenceKind = preferenceKind
         }, channels, ct);
 
     private static string Short(string? value)

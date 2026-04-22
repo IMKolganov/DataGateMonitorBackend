@@ -17,6 +17,7 @@ public class NotificationService(
     ICommandService<NotificationRecipient, int> notificationRecipientCommandServices,
     INotificationRecipientQueryService notificationRecipientQueryService,
     Dictionary<string, INotifier> notifiersByChannel,
+    IVpnProfileNotificationPreferenceService vpnProfileNotificationPreferences,
     ILogger<NotificationService> logger
 ) : INotificationService
 {
@@ -25,6 +26,15 @@ public class NotificationService(
         IEnumerable<string>? channels = null,
         CancellationToken ct = default)
     {
+        if (request.PreferenceKind is { } kind)
+        {
+            if (!await vpnProfileNotificationPreferences.IsApplicationNotificationAllowedAsync(kind, ct))
+            {
+                logger.LogDebug("Skipping admin notification (preference disabled): {Kind} {Type}", kind, request.Type);
+                return 0;
+            }
+        }
+
         // 1) Resolve recipients: users with Admin role (User.Id), same identity as dashboard and JWT
         var adminUserIds = await userRoleQueryService.GetUserIdsByRoleIdAsync(SystemRoles.AdminId, ct);
         if (adminUserIds.Count == 0)

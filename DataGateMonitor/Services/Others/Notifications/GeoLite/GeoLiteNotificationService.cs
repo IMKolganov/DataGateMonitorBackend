@@ -16,7 +16,8 @@ public sealed class GeoLiteNotificationService(INotificationService notification
             Title = "GeoLite database updated",
             Message = $"Automatic GeoLite2 update completed. Database path: {databasePath}",
             Severity = NotificationSeverity.Info,
-            Source = Source
+            Source = Source,
+            PreferenceKind = ApplicationNotificationKind.GeoLiteAutoUpdateSucceeded
         }, Channels, ct);
 
     public Task NotifyAutoUpdateFailedAsync(string phase, string detail, CancellationToken ct)
@@ -26,6 +27,7 @@ public sealed class GeoLiteNotificationService(INotificationService notification
             Title = "GeoLite automatic update failed",
             Message = $"Phase: {phase}. {detail}",
             Severity = NotificationSeverity.Error,
-            Source = Source
+            Source = Source,
+            PreferenceKind = ApplicationNotificationKind.GeoLiteAutoUpdateFailed
         }, Channels, ct);
 }

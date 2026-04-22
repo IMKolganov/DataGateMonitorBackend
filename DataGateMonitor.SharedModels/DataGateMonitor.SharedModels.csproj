@@ -21,10 +21,10 @@
         <PackageTags>#DataGateMonitor #OpenVpn #GateMonitor #Dashboard</PackageTags>
         <PackageLicenseExpression>MIT</PackageLicenseExpression>
         <PackageReadmeFile>README.md</PackageReadmeFile>
-        <!-- Backend consumes this library via NuGet (PackageReference) only. After changes here: dotnet pack, publish to nuget.org, then bump package version in all referencing .csproj files. -->
-        <Version>1.0.2</Version>
-        <AssemblyVersion>1.0.2.0</AssemblyVersion>
-        <FileVersion>1.0.2.0</FileVersion>
+        <!-- Backend consumes this library via NuGet (PackageReference) only. Keep <Version> in sync with what you publish; bump when you release a new package, then update PackageReference in other projects. -->
+        <Version>1.0.3</Version>
+        <AssemblyVersion>1.0.3.0</AssemblyVersion>
+        <FileVersion>1.0.3.0</FileVersion>
         <PackageIcon>favicon.png</PackageIcon>
 
         <Deterministic>true</Deterministic>

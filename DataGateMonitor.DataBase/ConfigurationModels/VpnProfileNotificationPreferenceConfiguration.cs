@@ -13,20 +13,16 @@ public class VpnProfileNotificationPreferenceConfiguration : BaseEntityConfigura
 
         entity.ToTable("VpnProfileNotificationPreferences");
 
-        entity.Property(e => e.Stack)
-            .IsRequired()
-            .HasConversion<int>();
-
-        entity.Property(e => e.Category)
+        entity.Property(e => e.Kind)
             .IsRequired()
             .HasConversion<int>();
 
         entity.Property(e => e.Enabled)
             .IsRequired();
 
-        entity.HasIndex(e => new { e.Stack, e.Category })
+        entity.HasIndex(e => e.Kind)
             .IsUnique();
 
-        entity.HasData(VpnProfileNotificationPreferenceSeedData.Data);
+        entity.HasData(ApplicationNotificationPreferenceSeedData.Data);
     }
 }

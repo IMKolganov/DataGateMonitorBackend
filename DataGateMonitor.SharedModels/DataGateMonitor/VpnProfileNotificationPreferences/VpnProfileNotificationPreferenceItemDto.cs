@@ -4,7 +4,7 @@ namespace DataGateMonitor.SharedModels.DataGateMonitor.VpnProfileNotificationPre
 
 public class VpnProfileNotificationPreferenceItemDto
 {
-    public VpnProfileNotificationStack Stack { get; set; }
-    public VpnProfileNotificationCategory Category { get; set; }
+    public ApplicationNotificationKind Kind { get; set; }
+
     public bool Enabled { get; set; }
 }

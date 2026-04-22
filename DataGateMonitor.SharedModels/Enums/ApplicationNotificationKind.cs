@@ -1,0 +1,48 @@
+namespace DataGateMonitor.SharedModels.Enums;
+
+/// <summary>
+/// One persisted toggle per admin-notification family. Values 0–5 match legacy (stack × category) as (stack * 3 + category).
+/// </summary>
+public enum ApplicationNotificationKind
+{
+    // OpenVPN profile API (stack 0)
+    OpenVpnProfileRead = 0,
+    OpenVpnProfileMutate = 1,
+    OpenVpnProfileDownload = 2,
+
+    // Xray client link API (stack 1)
+    XrayProfileRead = 3,
+    XrayProfileMutate = 4,
+    XrayProfileDownload = 5,
+
+    // Certificate microservice API (cert-api)
+    CertApiReadAll = 6,
+    CertApiCertificateCreated = 7,
+    CertApiCertificateRevoked = 8,
+
+    // OpenVPN server CRUD / sync (server-openvpn-api)
+    OpenVpnServerBecameAvailable = 9,
+    OpenVpnServerAdded = 10,
+    OpenVpnServerUpdated = 11,
+    OpenVpnServerDeleted = 12,
+    OpenVpnServerBecameUnavailable = 13,
+    OpenVpnServerSyncError = 14,
+    OpenVpnServerNoResponse = 15,
+
+    // OpenVPN microservice client
+    OpenVpnMicroserviceSendCommandFailed = 16,
+    OpenVpnMicroserviceReconnectFailed = 17,
+    OpenVpnMicroserviceEventHubConnectionFailed = 18,
+    OpenVpnMicroserviceProxyClientLookupFailed = 19,
+
+    // GeoLite automatic update
+    GeoLiteAutoUpdateSucceeded = 20,
+    GeoLiteAutoUpdateFailed = 21,
+
+    // In-app catalog / monitor / backend events
+    AppUnhandledException = 22,
+    AppFileCreated = 23,
+    AppCertificateIssued = 24,
+    AppServerMonitorDown = 25,
+    AppServerMonitorUp = 26,
+}

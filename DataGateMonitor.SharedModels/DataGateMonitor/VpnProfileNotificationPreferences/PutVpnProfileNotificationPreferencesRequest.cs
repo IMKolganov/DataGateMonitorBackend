@@ -4,6 +4,6 @@ public class PutVpnProfileNotificationPreferencesRequest
 {
     public bool? GloballyEnabled { get; set; }
 
-    /// <summary>When set, only listed pairs are updated; omitted pairs keep current values.</summary>
+    /// <summary>When set, only listed kinds are updated; omitted rows keep current values.</summary>
     public List<VpnProfileNotificationPreferenceItemDto>? Preferences { get; set; }
 }
