@@ -11,6 +11,7 @@ using DataGateMonitor.Models;
 using DataGateMonitor.Services.DataGateOpenVpnManager;
 using DataGateMonitor.Services.DataGateOpenVpnManager.Interfaces;
 using DataGateMonitor.Services.Others.Notifications.OvpnFileApi;
+using DataGateMonitor.SharedModels.Enums;
 using Xunit;
 
 namespace DataGateMonitor.Tests.Services.DataGateOpenVpnManager;
@@ -41,7 +42,8 @@ public class OvpnFileApiServiceTests
         var fileQuery = new Mock<IIssuedOvpnFileQueryService>(MockBehavior.Strict);
         fileQuery.Setup(q => q.GetByIdAndIsRevoked(10, false, It.IsAny<CancellationToken>())).ReturnsAsync(file);
         var notification = new Mock<IOvpnFileNotificationService>(MockBehavior.Strict);
-        notification.Setup(n => n.NotifyReadByToken("valid-token", 10, 1, false, It.IsAny<CancellationToken>())).Returns(Task.CompletedTask);
+        notification.Setup(n => n.NotifyReadByToken("valid-token", 10, 1, false, It.IsAny<CancellationToken>(),
+            It.IsAny<VpnProfileNotificationStack>())).Returns(Task.CompletedTask);
 
         var sut = CreateService(tokenQuery: tokenQuery, fileQuery: fileQuery, notification: notification);
         var result = await sut.GetByToken("valid-token", CancellationToken.None);
@@ -49,7 +51,9 @@ public class OvpnFileApiServiceTests
         result.Should().NotBeNull();
         result.Id.Should().Be(10);
         result.CommonName.Should().Be("cn");
-        notification.Verify(n => n.NotifyReadByToken("valid-token", 10, 1, false, It.IsAny<CancellationToken>()), Times.Once);
+        notification.Verify(
+            n => n.NotifyReadByToken("valid-token", 10, 1, false, It.IsAny<CancellationToken>(),
+                VpnProfileNotificationStack.OpenVpn), Times.Once);
     }
 
     [Fact]
@@ -63,14 +67,17 @@ public class OvpnFileApiServiceTests
         var fileQuery = new Mock<IIssuedOvpnFileQueryService>(MockBehavior.Strict);
         fileQuery.Setup(q => q.GetAllByExternalId("ext1", It.IsAny<CancellationToken>())).ReturnsAsync(files);
         var notification = new Mock<IOvpnFileNotificationService>(MockBehavior.Strict);
-        notification.Setup(n => n.NotifyReadByExternalId("ext1", 2, It.IsAny<CancellationToken>())).Returns(Task.CompletedTask);
+        notification.Setup(n => n.NotifyReadByExternalId("ext1", 2, It.IsAny<CancellationToken>(),
+            It.IsAny<VpnProfileNotificationStack>())).Returns(Task.CompletedTask);
 
         var sut = CreateService(fileQuery: fileQuery, notification: notification);
         var result = await sut.GetAllByExternalId("ext1", CancellationToken.None);
 
         result.Should().HaveCount(2);
         result[0].ExternalId.Should().Be("ext1");
-        notification.Verify(n => n.NotifyReadByExternalId("ext1", 2, It.IsAny<CancellationToken>()), Times.Once);
+        notification.Verify(
+            n => n.NotifyReadByExternalId("ext1", 2, It.IsAny<CancellationToken>(), VpnProfileNotificationStack.OpenVpn),
+            Times.Once);
     }
 
     private static OvpnFileApiService CreateService(
