@@ -21,6 +21,7 @@ public static class NotificationConfiguration
         services.AddScoped<IAppNotificationFacade, AppNotificationFacade>();
 
         // Area-specific adapters
+        services.AddScoped<IVpnProfileNotificationPreferenceService, VpnProfileNotificationPreferenceService>();
         services.AddScoped<IOvpnFileNotificationService, OvpnFileNotificationService>();
         services.AddScoped<ICertificateNotificationService, CertificateNotificationService>();
         services.AddScoped<IServerOpenVpnNotificationService, ServerOpenVpnNotificationService>();

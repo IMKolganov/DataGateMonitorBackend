@@ -47,7 +47,8 @@ public sealed class XrayClientLinkService(
             link.Id,
             link.VpnServerId,
             isRevoked,
-            ct);
+            ct,
+            VpnProfileNotificationStack.Xray);
 
         return link;
     }
@@ -55,7 +56,8 @@ public sealed class XrayClientLinkService(
     public async Task<List<IssuedXrayClientLink>> GetAllByExternalId(string externalId, CancellationToken ct)
     {
         var list = await issuedXrayClientLinkQueryService.GetAllByExternalId(externalId, ct);
-        await ovpnFileNotificationService.NotifyReadByExternalId(externalId, list.Count, ct);
+        await ovpnFileNotificationService.NotifyReadByExternalId(externalId, list.Count, ct,
+            VpnProfileNotificationStack.Xray);
         return list;
     }
 
@@ -63,7 +65,7 @@ public sealed class XrayClientLinkService(
     {
         await RequireXrayServerAsync(vpnServerId, ct);
         var list = await issuedXrayClientLinkQueryService.GetAllByVpnServerId(vpnServerId, ct);
-        await ovpnFileNotificationService.NotifyReadAll(vpnServerId, list.Count, ct);
+        await ovpnFileNotificationService.NotifyReadAll(vpnServerId, list.Count, ct, VpnProfileNotificationStack.Xray);
         return list;
     }
 
@@ -78,7 +80,8 @@ public sealed class XrayClientLinkService(
             var t = tokens.FirstOrDefault(x => x.IssuedXrayClientLinkId == f.Id);
             return (File: f, Token: t);
         }).ToList();
-        await ovpnFileNotificationService.NotifyReadAllWithToken(vpnServerId, result.Count, isRevoked, ct);
+        await ovpnFileNotificationService.NotifyReadAllWithToken(vpnServerId, result.Count, isRevoked, ct,
+            VpnProfileNotificationStack.Xray);
         return result;
     }
 
@@ -89,7 +92,7 @@ public sealed class XrayClientLinkService(
         var result = await issuedXrayClientLinkQueryService.GetAllByVpnServerIdAndExternalIdAndIsRevoked(
             vpnServerId, externalId, isRevoked, ct);
         await ovpnFileNotificationService.NotifyReadByExternalIdAndVpnServerId(vpnServerId, externalId, result.Count,
-            isRevoked, ct);
+            isRevoked, ct, VpnProfileNotificationStack.Xray);
         return result;
     }
 
@@ -107,7 +110,7 @@ public sealed class XrayClientLinkService(
             return (File: f, Token: t);
         }).ToList();
         await ovpnFileNotificationService.NotifyReadByExternalIdWithToken(vpnServerId, externalId, result.Count,
-            isRevoked, ct);
+            isRevoked, ct, VpnProfileNotificationStack.Xray);
         return result;
     }
 
@@ -117,7 +120,7 @@ public sealed class XrayClientLinkService(
         var link = await AddClientLink(request, ct);
         var token = await MakeTokenForLink(link, ct);
         await ovpnFileNotificationService.NotifyIssuedWithToken(
-            link.VpnServerId, link.Id, link.FileName, link.ExternalId, token.Id, ct);
+            link.VpnServerId, link.Id, link.FileName, link.ExternalId, token.Id, ct, VpnProfileNotificationStack.Xray);
         return (link, token);
     }
 
@@ -161,7 +164,7 @@ public sealed class XrayClientLinkService(
                 $"Client link was not persisted. CommonName='{request.CommonName}', VpnServerId={request.VpnServerId}.");
 
         await ovpnFileNotificationService.NotifyIssued(
-            saved.VpnServerId, saved.Id, saved.FileName, saved.ExternalId, ct);
+            saved.VpnServerId, saved.Id, saved.FileName, saved.ExternalId, ct, VpnProfileNotificationStack.Xray);
 
         return await issuedXrayClientLinkQueryService.GetByVpnServerIdAndCommonName(
                    saved.Id, request.VpnServerId, request.CommonName, ct)
@@ -201,7 +204,7 @@ public sealed class XrayClientLinkService(
         await issuedXrayClientLinkCommandService.Update(link, true, ct);
 
         await ovpnFileNotificationService.NotifyRevoked(
-            link.VpnServerId, link.Id, link.FileName, link.ExternalId, ct);
+            link.VpnServerId, link.Id, link.FileName, link.ExternalId, ct, VpnProfileNotificationStack.Xray);
 
         return await issuedXrayClientLinkQueryService.GetByVpnServerIdAndCommonName(
                    link.Id, request.VpnServerId, request.CommonName, ct)
@@ -228,7 +231,7 @@ public sealed class XrayClientLinkService(
         var result = await xrayClientLinkMicroserviceClient.DownloadClientLink(request.VpnServerId, downloadRequest, ct);
 
         await ovpnFileNotificationService.NotifyDownloaded(
-            link.VpnServerId, link.FileName, link.ExternalId, isRevoked, ct);
+            link.VpnServerId, link.FileName, link.ExternalId, isRevoked, ct, VpnProfileNotificationStack.Xray);
 
         return new DownloadFileResponse
         {
@@ -258,7 +261,7 @@ public sealed class XrayClientLinkService(
         var result = await xrayClientLinkMicroserviceClient.DownloadClientLink(request.VpnServerId, downloadRequest, ct);
 
         await ovpnFileNotificationService.NotifyDownloaded(
-            link.VpnServerId, link.FileName, link.ExternalId, isRevoked, ct);
+            link.VpnServerId, link.FileName, link.ExternalId, isRevoked, ct, VpnProfileNotificationStack.Xray);
 
         return new DownloadFileResponse
         {
