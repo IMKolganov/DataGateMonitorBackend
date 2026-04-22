@@ -1,81 +1,153 @@
 ﻿using DataGateMonitor.Services.Others.Models;
+using DataGateMonitor.Services.Others.Notifications;
 using DataGateMonitor.SharedModels.Enums;
 
 namespace DataGateMonitor.Services.Others.Notifications.OvpnFileApi;
 
-public class OvpnFileNotificationService(INotificationService notifications) : IOvpnFileNotificationService
+public class OvpnFileNotificationService(
+    INotificationService notifications,
+    IVpnProfileNotificationPreferenceService preferenceService) : IOvpnFileNotificationService
 {
     private static readonly string[] ReadChannels = ["web"];
     private static readonly string[] ChangeChannels = ["web", "telegram"];
 
-    public Task NotifyReadByToken(string token, int fileId, int vpnServerId, bool isRevoked, CancellationToken ct)
-        => Notify("ovpn.read.by-token", "OVPN file requested by token",
+    public Task NotifyReadByToken(string token, int fileId, int vpnServerId, bool isRevoked, CancellationToken ct,
+        VpnProfileNotificationStack stack = VpnProfileNotificationStack.OpenVpn)
+    {
+        var label = stack == VpnProfileNotificationStack.Xray ? "Xray client link" : "OpenVPN profile";
+        return NotifyWhenAllowedAsync(stack, VpnProfileNotificationCategory.Read, stack == VpnProfileNotificationStack.Xray ? "xray.vless.read.by-token" : "ovpn.read.by-token",
+            $"{label} requested by token",
             $"Token={Short(token)}; FileId={fileId}; Revoked={isRevoked}", vpnServerId, NotificationSeverity.Info,
             ReadChannels, ct);
+    }
 
-    public Task NotifyReadAll(int vpnServerId, int count, CancellationToken ct)
-        => Notify("ovpn.read.all", "All OVPN files requested",
+    public Task NotifyReadAll(int vpnServerId, int count, CancellationToken ct,
+        VpnProfileNotificationStack stack = VpnProfileNotificationStack.OpenVpn)
+    {
+        var label = stack == VpnProfileNotificationStack.Xray ? "Xray client links" : "OpenVPN profiles";
+        return NotifyWhenAllowedAsync(stack, VpnProfileNotificationCategory.Read, stack == VpnProfileNotificationStack.Xray ? "xray.vless.read.all" : "ovpn.read.all",
+            $"All {label} listed",
             $"ServerId={vpnServerId}; Count={count}", vpnServerId, NotificationSeverity.Info, ReadChannels, ct);
+    }
 
-    public Task NotifyReadAllWithToken(int vpnServerId, int count, bool isRevoked, CancellationToken ct)
-        => Notify("ovpn.read.all-with-token", "All OVPN files with tokens requested",
+    public Task NotifyReadAllWithToken(int vpnServerId, int count, bool isRevoked, CancellationToken ct,
+        VpnProfileNotificationStack stack = VpnProfileNotificationStack.OpenVpn)
+    {
+        var label = stack == VpnProfileNotificationStack.Xray ? "Xray client links" : "OpenVPN profiles";
+        return NotifyWhenAllowedAsync(stack, VpnProfileNotificationCategory.Read,
+            stack == VpnProfileNotificationStack.Xray ? "xray.vless.read.all-with-token" : "ovpn.read.all-with-token",
+            $"All {label} (with tokens) listed",
             $"ServerId={vpnServerId}; Count={count}; Revoked={isRevoked}", vpnServerId, NotificationSeverity.Info,
             ReadChannels, ct);
+    }
 
-    public Task NotifyReadByExternalId(string externalId, int count,
-        CancellationToken ct)
-        => Notify("ovpn.read.by-external", "OVPN files requested by ExternalId",
-            $"ExternalId={externalId}; Count={count};", null,
-            NotificationSeverity.Info, ReadChannels, ct);
+    public Task NotifyReadByExternalId(string externalId, int count, CancellationToken ct,
+        VpnProfileNotificationStack stack = VpnProfileNotificationStack.OpenVpn)
+    {
+        var label = stack == VpnProfileNotificationStack.Xray ? "Xray client links" : "OpenVPN profiles";
+        return NotifyWhenAllowedAsync(stack, VpnProfileNotificationCategory.Read,
+            stack == VpnProfileNotificationStack.Xray ? "xray.vless.read.by-external" : "ovpn.read.by-external",
+            $"{label} listed by external id",
+            $"ExternalId={externalId}; Count={count};", null, NotificationSeverity.Info, ReadChannels, ct);
+    }
+
     public Task NotifyReadByExternalIdAndVpnServerId(int vpnServerId, string externalId, int count, bool isRevoked,
-        CancellationToken ct)
-        => Notify("ovpn.read.by-external", "OVPN files requested by ExternalId",
+        CancellationToken ct, VpnProfileNotificationStack stack = VpnProfileNotificationStack.OpenVpn)
+    {
+        var label = stack == VpnProfileNotificationStack.Xray ? "Xray client links" : "OpenVPN profiles";
+        return NotifyWhenAllowedAsync(stack, VpnProfileNotificationCategory.Read,
+            stack == VpnProfileNotificationStack.Xray ? "xray.vless.read.by-external" : "ovpn.read.by-external",
+            $"{label} listed by external id",
             $"ServerId={vpnServerId}; ExternalId={externalId}; Count={count}; Revoked={isRevoked}", vpnServerId,
             NotificationSeverity.Info, ReadChannels, ct);
+    }
 
     public Task NotifyReadByExternalIdWithToken(int vpnServerId, string externalId, int count, bool isRevoked,
-        CancellationToken ct)
-        => Notify("ovpn.read.by-external-with-token", "OVPN files (with tokens) requested by ExternalId",
+        CancellationToken ct, VpnProfileNotificationStack stack = VpnProfileNotificationStack.OpenVpn)
+    {
+        var label = stack == VpnProfileNotificationStack.Xray ? "Xray client links" : "OpenVPN profiles";
+        return NotifyWhenAllowedAsync(stack, VpnProfileNotificationCategory.Read,
+            stack == VpnProfileNotificationStack.Xray ? "xray.vless.read.by-external-with-token" : "ovpn.read.by-external-with-token",
+            $"{label} (with tokens) listed by external id",
             $"ServerId={vpnServerId}; ExternalId={externalId}; Count={count}; Revoked={isRevoked}", vpnServerId,
             NotificationSeverity.Info, ReadChannels, ct);
+    }
 
-    public Task NotifyIssued(int vpnServerId, int fileId, string fileName, string externalId, 
-        CancellationToken ct)
-        => Notify("ovpn.issued", "OVPN file issued",
+    public Task NotifyIssued(int vpnServerId, int fileId, string fileName, string externalId, CancellationToken ct,
+        VpnProfileNotificationStack stack = VpnProfileNotificationStack.OpenVpn)
+    {
+        var label = stack == VpnProfileNotificationStack.Xray ? "Xray client link" : "OpenVPN profile";
+        return NotifyWhenAllowedAsync(stack, VpnProfileNotificationCategory.Mutate,
+            stack == VpnProfileNotificationStack.Xray ? "xray.vless.issued" : "ovpn.issued",
+            $"{label} issued",
             $"FileId={fileId}; FileName={fileName}; ExternalId={externalId}", vpnServerId, NotificationSeverity.Info,
             ChangeChannels, ct);
+    }
 
-    public Task NotifyIssuedWithToken(int vpnServerId, int fileId, string fileName, string externalId, int tokenId, 
-        CancellationToken ct)
-        => Notify("ovpn.issued", "OVPN file (with token) issued",
+    public Task NotifyIssuedWithToken(int vpnServerId, int fileId, string fileName, string externalId, int tokenId,
+        CancellationToken ct, VpnProfileNotificationStack stack = VpnProfileNotificationStack.OpenVpn)
+    {
+        var label = stack == VpnProfileNotificationStack.Xray ? "Xray client link" : "OpenVPN profile";
+        return NotifyWhenAllowedAsync(stack, VpnProfileNotificationCategory.Mutate,
+            stack == VpnProfileNotificationStack.Xray ? "xray.vless.issued" : "ovpn.issued",
+            $"{label} (with token) issued",
             $"FileId={fileId}; FileName={fileName}; ExternalId={externalId}; TokenId={tokenId}", vpnServerId,
             NotificationSeverity.Info, ChangeChannels, ct);
+    }
 
-    public Task NotifyRevoked(int vpnServerId, int fileId, string fileName, string externalId,
-        CancellationToken ct)
-        => Notify("ovpn.revoked", "OVPN file revoked",
+    public Task NotifyRevoked(int vpnServerId, int fileId, string fileName, string externalId, CancellationToken ct,
+        VpnProfileNotificationStack stack = VpnProfileNotificationStack.OpenVpn)
+    {
+        var label = stack == VpnProfileNotificationStack.Xray ? "Xray client link" : "OpenVPN profile";
+        return NotifyWhenAllowedAsync(stack, VpnProfileNotificationCategory.Mutate,
+            stack == VpnProfileNotificationStack.Xray ? "xray.vless.revoked" : "ovpn.revoked",
+            $"{label} revoked",
             $"FileId={fileId}; FileName={fileName}; ExternalId={externalId}", vpnServerId, NotificationSeverity.Warning,
             ChangeChannels, ct);
+    }
 
-    public Task NotifyDownloaded(int vpnServerId, string fileName, string externalId,
-        bool isRevoked, CancellationToken ct)
-        => Notify("ovpn.downloaded", "OVPN file downloaded",
+    public Task NotifyDownloaded(int vpnServerId, string fileName, string externalId, bool isRevoked, CancellationToken ct,
+        VpnProfileNotificationStack stack = VpnProfileNotificationStack.OpenVpn)
+    {
+        var label = stack == VpnProfileNotificationStack.Xray ? "Xray client link" : "OpenVPN profile";
+        return NotifyWhenAllowedAsync(stack, VpnProfileNotificationCategory.Download,
+            stack == VpnProfileNotificationStack.Xray ? "xray.vless.downloaded" : "ovpn.downloaded",
+            $"{label} downloaded",
             $"FileName={fileName}; ExternalId={externalId}; Revoked={isRevoked}", vpnServerId,
             NotificationSeverity.Info, ChangeChannels, ct);
+    }
 
-    // ---- helper ----
-    private Task Notify(string type, string title, string message, int? serverId, NotificationSeverity severity,
-        string[] channels, CancellationToken ct, int? actorUserId = null)
-        => notifications.NotifyAdmins(new NotificationRequest
+    private async Task NotifyWhenAllowedAsync(
+        VpnProfileNotificationStack stack,
+        VpnProfileNotificationCategory category,
+        string type,
+        string title,
+        string message,
+        int? serverId,
+        NotificationSeverity severity,
+        string[] channels,
+        CancellationToken ct,
+        int? actorUserId = null)
+    {
+        if (!await IsCategoryAllowedAsync(stack, category, ct))
+            return;
+
+        var source = stack == VpnProfileNotificationStack.Xray ? "xray-client-links" : "openvpn-files";
+        await notifications.NotifyAdmins(new NotificationRequest
         {
             Type = type,
             Title = title,
             Message = message,
             Severity = severity,
-            Source = "ovpn-api",
+            Source = source,
             ServerId = serverId,
             ActorUserId = actorUserId
         }, channels, ct);
+    }
+
+    private Task<bool> IsCategoryAllowedAsync(VpnProfileNotificationStack stack, VpnProfileNotificationCategory category,
+        CancellationToken ct)
+        => preferenceService.IsVpnProfileNotificationAllowedAsync(stack, category, ct);
 
     private static string Short(string token)
         => string.IsNullOrEmpty(token) ? "" : (token.Length > 8 ? $"{token[..4]}…{token[^4..]}" : token);

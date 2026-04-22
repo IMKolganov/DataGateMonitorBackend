@@ -33,6 +33,8 @@ public class ApplicationDbContext(DbContextOptions<ApplicationDbContext> options
     public DbSet<VpnServerOvpnFileConfig> VpnServerOvpnFileConfigs { get; set; } = null!;
     public DbSet<ClientApplication> ClientApplications { get; set; } = null!;
     public DbSet<Setting> Settings { get; set; } = null!;
+    public DbSet<VpnProfileNotificationGlobalPreference> VpnProfileNotificationGlobalPreferences { get; set; } = null!;
+    public DbSet<VpnProfileNotificationPreference> VpnProfileNotificationPreferences { get; set; } = null!;
     public DbSet<TelegramBotUser> TelegramBotUsers { get; set; } = null!;
     public DbSet<TelegramUserLanguagePreference> TelegramUserLanguagePreferences { get; set; } = null!;
     public DbSet<LocalizationText> LocalizationTexts { get; set; } = null!;
@@ -65,6 +67,8 @@ public class ApplicationDbContext(DbContextOptions<ApplicationDbContext> options
         modelBuilder.ApplyConfiguration(new VpnServerOvpnFileConfigConfiguration());
         modelBuilder.ApplyConfiguration(new ClientApplicationConfiguration());
         modelBuilder.ApplyConfiguration(new SettingConfiguration());
+        modelBuilder.ApplyConfiguration(new VpnProfileNotificationGlobalPreferenceConfiguration());
+        modelBuilder.ApplyConfiguration(new VpnProfileNotificationPreferenceConfiguration());
         modelBuilder.ApplyConfiguration(new TelegramBotUserConfiguration());
         modelBuilder.ApplyConfiguration(new TelegramUserLanguagePreferenceConfiguration());
         modelBuilder.ApplyConfiguration(new LocalizationTextConfiguration());
