@@ -17,7 +17,8 @@ public class NotificationCatalog : INotificationCatalog
             Title = "Unhandled exception occurred",
             Message = $"{ex.GetType().Name}: {ex.Message}",
             Severity = NotificationSeverity.Error,
-            Source = "middleware"
+            Source = "middleware",
+            PreferenceKind = ApplicationNotificationKind.AppUnhandledException
         };
         return new NotificationEnvelope(req, WebAndTelegram);
     }
@@ -31,7 +32,8 @@ public class NotificationCatalog : INotificationCatalog
             Message = $"User #{actorUserId} created file \"{fileName}\".",
             Severity = NotificationSeverity.Info,
             Source = "backend",
-            ActorUserId = actorUserId
+            ActorUserId = actorUserId,
+            PreferenceKind = ApplicationNotificationKind.AppFileCreated
         };
         return new NotificationEnvelope(req, WebOnly);
     }
@@ -46,7 +48,8 @@ public class NotificationCatalog : INotificationCatalog
             Severity = NotificationSeverity.Info,
             Source = "backend",
             ActorUserId = actorUserId,
-            ServerId = serverId
+            ServerId = serverId,
+            PreferenceKind = ApplicationNotificationKind.AppCertificateIssued
         };
         return new NotificationEnvelope(req, WebAndTelegram);
     }
@@ -60,7 +63,8 @@ public class NotificationCatalog : INotificationCatalog
             Message = $"OpenVPN server \"{serverName}\" (id={serverId}) is unreachable.",
             Severity = NotificationSeverity.Critical,
             Source = "monitor",
-            ServerId = serverId
+            ServerId = serverId,
+            PreferenceKind = ApplicationNotificationKind.AppServerMonitorDown
         };
         return new NotificationEnvelope(req, WebAndTelegram);
     }
@@ -74,7 +78,8 @@ public class NotificationCatalog : INotificationCatalog
             Message = $"OpenVPN server \"{serverName}\" (id={serverId}) is reachable again.",
             Severity = NotificationSeverity.Info,
             Source = "monitor",
-            ServerId = serverId
+            ServerId = serverId,
+            PreferenceKind = ApplicationNotificationKind.AppServerMonitorUp
         };
         return new NotificationEnvelope(req, WebAndTelegram);
     }

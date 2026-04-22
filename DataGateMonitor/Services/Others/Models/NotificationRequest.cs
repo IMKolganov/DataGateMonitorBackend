@@ -14,4 +14,7 @@ public class NotificationRequest
     public int? RelatedClientId = null;
     public string? CorrelationId = null;
     public string? DedupKey = null;
+
+    /// <summary>When set, delivery is skipped if this kind is disabled in admin notification preferences.</summary>
+    public ApplicationNotificationKind? PreferenceKind { get; set; }
 }

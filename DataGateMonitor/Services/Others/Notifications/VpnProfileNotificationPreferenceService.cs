@@ -15,21 +15,24 @@ public class VpnProfileNotificationPreferenceService(
 {
     private const int GlobalRowId = 1;
 
-    public async Task<bool> IsVpnProfileNotificationAllowedAsync(VpnProfileNotificationStack stack,
-        VpnProfileNotificationCategory category, CancellationToken ct)
+    public async Task<bool> IsApplicationNotificationAllowedAsync(ApplicationNotificationKind kind,
+        CancellationToken ct)
     {
         var global = await globalQuery.FindById(GlobalRowId, asNoTracking: true, ct);
         if (global is not { GloballyEnabled: true })
             return false;
 
         var pref = await preferenceQuery.FirstOrDefault(
-            p => p.Stack == stack && p.Category == category,
+            p => p.Kind == kind,
             orderBy: q => q.OrderBy(p => p.Id),
             asNoTracking: true,
             ct: ct);
 
         if (pref == null)
-            return category != VpnProfileNotificationCategory.Download;
+        {
+            return kind is not (ApplicationNotificationKind.OpenVpnProfileDownload
+                or ApplicationNotificationKind.XrayProfileDownload);
+        }
 
         return pref.Enabled;
     }
@@ -41,7 +44,7 @@ public class VpnProfileNotificationPreferenceService(
 
         var rows = await preferenceQuery.Where(
             _ => true,
-            orderBy: q => q.OrderBy(p => p.Stack).ThenBy(p => p.Category),
+            orderBy: q => q.OrderBy(p => p.Kind),
             asNoTracking: true,
             ct: ct);
 
@@ -50,8 +53,7 @@ public class VpnProfileNotificationPreferenceService(
             GloballyEnabled = global.GloballyEnabled,
             Preferences = rows.Select(p => new VpnProfileNotificationPreferenceItemDto
             {
-                Stack = p.Stack,
-                Category = p.Category,
+                Kind = p.Kind,
                 Enabled = p.Enabled
             }).ToList()
         };
@@ -75,7 +77,7 @@ public class VpnProfileNotificationPreferenceService(
             foreach (var item in request.Preferences)
             {
                 var entity = await preferenceQuery.FirstOrDefault(
-                    p => p.Stack == item.Stack && p.Category == item.Category,
+                    p => p.Kind == item.Kind,
                     asNoTracking: false,
                     ct: ct);
 
@@ -92,7 +94,7 @@ public class VpnProfileNotificationPreferenceService(
             await globalCommand.SaveChanges(ct);
     }
 
-    public async Task SetAllCategoriesEnabledAsync(bool enabled, CancellationToken ct)
+    public async Task SetAllPreferencesEnabledAsync(bool enabled, CancellationToken ct)
     {
         var rows = await preferenceQuery.Where(_ => true, asNoTracking: false, ct: ct);
         foreach (var row in rows)

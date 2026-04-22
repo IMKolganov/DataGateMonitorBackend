@@ -10,29 +10,29 @@ public class OpenVpnMicroserviceNotificationService(INotificationService notific
     private const string Source = "openvpn-microservice-client";
 
     public Task NotifySendCommandFailed(int serverId, string? serverName, string? errorMessage, CancellationToken ct)
-        => Notify("microservice.send-command-failed", "Failed to send command to OpenVPN microservice",
+        => Notify(ApplicationNotificationKind.OpenVpnMicroserviceSendCommandFailed, "microservice.send-command-failed", "Failed to send command to OpenVPN microservice",
             Detail(serverId, serverName) + (string.IsNullOrEmpty(errorMessage) ? "" : $"; Error={errorMessage}"),
             serverId, NotificationSeverity.Error, ErrorChannels, ct);
 
     public Task NotifyReconnectFailed(int serverId, string? serverName, string? errorMessage, CancellationToken ct)
-        => Notify("microservice.reconnect-failed", "Failed to reconnect to OpenVPN microservice",
+        => Notify(ApplicationNotificationKind.OpenVpnMicroserviceReconnectFailed, "microservice.reconnect-failed", "Failed to reconnect to OpenVPN microservice",
             Detail(serverId, serverName) + (string.IsNullOrEmpty(errorMessage) ? "" : $"; Error={errorMessage}"),
             serverId, NotificationSeverity.Error, ErrorChannels, ct);
 
     public Task NotifyEventHubConnectionFailed(int serverId, string? serverName, string? errorMessage, CancellationToken ct)
-        => Notify("microservice.event-hub-connection-failed", "Failed to connect to OpenVPN microservice event hub",
+        => Notify(ApplicationNotificationKind.OpenVpnMicroserviceEventHubConnectionFailed, "microservice.event-hub-connection-failed", "Failed to connect to OpenVPN microservice event hub",
             Detail(serverId, serverName) + (string.IsNullOrEmpty(errorMessage) ? "" : $"; Error={errorMessage}"),
             serverId, NotificationSeverity.Error, ErrorChannels, ct);
 
     public Task NotifyProxyClientLookupFailed(int serverId, string? serverName, string detail, NotificationSeverity severity, CancellationToken ct)
-        => Notify("microservice.proxy-client-lookup-failed", "Proxy client lookup failed",
+        => Notify(ApplicationNotificationKind.OpenVpnMicroserviceProxyClientLookupFailed, "microservice.proxy-client-lookup-failed", "Proxy client lookup failed",
             Detail(serverId, serverName) + (string.IsNullOrEmpty(detail) ? "" : $"; {detail}"),
             serverId, severity, ErrorChannels, ct);
 
     private static string Detail(int serverId, string? serverName)
         => $"ServerId={serverId}" + (string.IsNullOrEmpty(serverName) ? "" : $"; Name={serverName}");
 
-    private Task Notify(string type, string title, string message, int serverId, NotificationSeverity severity,
+    private Task Notify(ApplicationNotificationKind preferenceKind, string type, string title, string message, int serverId, NotificationSeverity severity,
         string[] channels, CancellationToken ct)
         => notifications.NotifyAdmins(new NotificationRequest
         {
@@ -41,6 +41,7 @@ public class OpenVpnMicroserviceNotificationService(INotificationService notific
             Message = message,
             Severity = severity,
             Source = Source,
-            ServerId = serverId
+            ServerId = serverId,
+            PreferenceKind = preferenceKind
         }, channels, ct);
 }
