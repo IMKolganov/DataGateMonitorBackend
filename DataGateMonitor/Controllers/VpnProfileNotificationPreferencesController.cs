@@ -33,7 +33,7 @@ public class VpnProfileNotificationPreferencesController(IVpnProfileNotification
     public async Task<ActionResult<ApiResponse<GetVpnProfileNotificationPreferencesResponse>>> SetAllCategories(
         [FromBody] SetAllVpnProfileNotificationCategoriesRequest request, CancellationToken ct)
     {
-        await preferences.SetAllCategoriesEnabledAsync(request.Enabled, ct);
+        await preferences.SetAllPreferencesEnabledAsync(request.Enabled, ct);
         var data = await preferences.GetAsync(ct);
         return Ok(ApiResponse<GetVpnProfileNotificationPreferencesResponse>.SuccessResponse(data));
     }
