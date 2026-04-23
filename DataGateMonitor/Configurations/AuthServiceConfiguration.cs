@@ -74,6 +74,10 @@ public static class AuthServiceConfiguration
                     Version = "v1"
                 });
 
+                // SharedModels reuse simple names (e.g. RootInfoResponse for OpenVPN and Xray); default schemaIds collide.
+                options.CustomSchemaIds(type =>
+                    type.FullName?.Replace('+', '.') ?? type.Name);
+
                 options.AddSecurityDefinition("Bearer", new OpenApiSecurityScheme
                 {
                     Type = SecuritySchemeType.Http,
