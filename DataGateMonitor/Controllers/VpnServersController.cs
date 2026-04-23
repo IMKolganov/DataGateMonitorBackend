@@ -13,7 +13,6 @@ using DataGateMonitor.Services.DataGateOpenVpnManager.Interfaces;
 using DataGateMonitor.SharedModels.DataGateMonitor.VpnServers.Dto;
 using DataGateMonitor.SharedModels.DataGateMonitor.VpnServers.Requests;
 using DataGateMonitor.SharedModels.DataGateMonitor.VpnServers.Responses;
-using DataGateMonitor.SharedModels.DataGateOpenVpnManager.Info;
 using DataGateMonitor.SharedModels.Enums;
 using DataGateMonitor.SharedModels.Responses;
 
@@ -74,26 +73,28 @@ public class VpnServersController(IVpnDataService vpnDataService,
     }
 
     [HttpGet("get-microservice-info/{VpnServerId:int}")]
-    public async Task<ActionResult<ApiResponse<RootInfoResponse>>> GetMicroserviceInfo(
+    public async Task<ActionResult<ApiResponse<VpnMicroserviceDiagnosticsDto>>> GetMicroserviceInfo(
         [FromRoute] int vpnServerId, CancellationToken ct)
     {
-        if (await VpnServerAuthorizationHelper.RequireVpnServerAccessOrForbidAsync<RootInfoResponse>(User, vpnServerAccessQueryService,
+        if (await VpnServerAuthorizationHelper.RequireVpnServerAccessOrForbidAsync<VpnMicroserviceDiagnosticsDto>(User, vpnServerAccessQueryService,
                 vpnServerId, ct) is { } denyMicro)
             return denyMicro;
 
         var info = await microserviceInfoService.GetInfoAsync(vpnServerId, ct);
-        return Ok(ApiResponse<RootInfoResponse>.SuccessResponse(info));
+        return Ok(ApiResponse<VpnMicroserviceDiagnosticsDto>.SuccessResponse(info));
     }
 
     [Authorize(Roles = "Admin,App")]
     [HttpGet("get-microservice-info-by-url")]
-    public async Task<ActionResult<ApiResponse<RootInfoResponse>>> GetMicroserviceInfoByUrl(
-        [FromQuery] string baseUrl, CancellationToken ct)
+    public async Task<ActionResult<ApiResponse<VpnMicroserviceDiagnosticsDto>>> GetMicroserviceInfoByUrl(
+        [FromQuery] string baseUrl,
+        [FromQuery] VpnServerType? serverType,
+        CancellationToken ct)
     {
-        var info = await microserviceInfoService.GetInfoByUrlAsync(baseUrl, ct);
+        var info = await microserviceInfoService.GetInfoByUrlAsync(baseUrl, serverType, ct);
         if (info is null)
-            return NotFound(ApiResponse<RootInfoResponse>.ErrorResponse("Microservice info endpoint not found (404)."));
-        return Ok(ApiResponse<RootInfoResponse>.SuccessResponse(info));
+            return NotFound(ApiResponse<VpnMicroserviceDiagnosticsDto>.ErrorResponse("Microservice info endpoint not found (404)."));
+        return Ok(ApiResponse<VpnMicroserviceDiagnosticsDto>.SuccessResponse(info));
     }
 
     [HttpGet("get-all")]
