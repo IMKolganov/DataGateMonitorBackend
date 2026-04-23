@@ -20,7 +20,7 @@ public class VpnServerConflogServiceTests
         var response = new VpnMicroserviceDiagnosticsDto
         {
             ServerType = VpnServerType.OpenVpn,
-            OpenVpn = new RootInfoResponse(),
+            OpenVpn = new RootOpenVpnInfoResponse(),
         };
         var micro = new Mock<IMicroserviceInfoService>();
         micro.Setup(m => m.GetInfoByUrlAsync("https://host", VpnServerType.OpenVpn, It.IsAny<CancellationToken>()))
@@ -57,7 +57,7 @@ public class VpnServerConflogServiceTests
         var response = new VpnMicroserviceDiagnosticsDto
         {
             ServerType = VpnServerType.OpenVpn,
-            OpenVpn = new RootInfoResponse(),
+            OpenVpn = new RootOpenVpnInfoResponse(),
         };
         var micro = new Mock<IMicroserviceInfoService>();
         micro.Setup(m => m.GetInfoByUrlAsync("https://host", null, It.IsAny<CancellationToken>())).ReturnsAsync(response);
@@ -123,7 +123,7 @@ public class VpnServerConflogServiceTests
         var response = new VpnMicroserviceDiagnosticsDto
         {
             ServerType = VpnServerType.OpenVpn,
-            OpenVpn = new RootInfoResponse(),
+            OpenVpn = new RootOpenVpnInfoResponse(),
         };
         var micro = new Mock<IMicroserviceInfoService>();
         micro.Setup(m => m.GetInfoByUrlAsync("https://host", VpnServerType.OpenVpn, It.IsAny<CancellationToken>()))

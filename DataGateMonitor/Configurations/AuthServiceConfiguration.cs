@@ -1,3 +1,4 @@
+using System.Text;
 using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Identity;
 using Microsoft.OpenApi;
@@ -74,9 +75,8 @@ public static class AuthServiceConfiguration
                     Version = "v1"
                 });
 
-                // SharedModels reuse simple names (e.g. RootInfoResponse for OpenVPN and Xray); default schemaIds collide.
-                options.CustomSchemaIds(type =>
-                    type.FullName?.Replace('+', '.') ?? type.Name);
+                // SharedModels: avoid short-name collisions. FullName alone breaks OpenAPI 3.0.3 (keys must match /^[a-zA-Z0-9.\-_]+$/) because .NET generic FullName contains ` [ ] , = etc.
+                options.CustomSchemaIds(ToOpenApiComponentSchemaId);
 
                 options.AddSecurityDefinition("Bearer", new OpenApiSecurityScheme
                 {
@@ -93,5 +93,32 @@ public static class AuthServiceConfiguration
                 });
             })
             .AddSwaggerGenNewtonsoftSupport();
+    }
+
+    /// <summary>
+    /// OpenAPI 3.0.3: <c>components.schemas</c> keys must match <c>/^[a-zA-Z0-9.\-_]+$/</c>.
+    /// .NET <see cref="Type.FullName"/> for generics uses backticks and brackets (e.g. <c>ApiResponse`1[[T,...]]</c>), which Orval rejects.
+    /// </summary>
+    private static string ToOpenApiComponentSchemaId(Type type)
+    {
+        var raw = type.FullName ?? type.Name;
+        var sb = new StringBuilder(raw.Length);
+        foreach (var ch in raw)
+        {
+            if (char.IsAsciiLetter(ch) || char.IsAsciiDigit(ch) || ch is '.' or '-' or '_')
+                sb.Append(ch);
+            else if (ch == '+')
+                sb.Append('.'); // nested type separator in CLR metadata
+            else
+                sb.Append('_');
+        }
+
+        var id = sb.ToString();
+        while (id.Contains("__", StringComparison.Ordinal))
+            id = id.Replace("__", "_", StringComparison.Ordinal);
+        while (id.Contains("..", StringComparison.Ordinal))
+            id = id.Replace("..", ".", StringComparison.Ordinal);
+        id = id.Trim('_', '.');
+        return id.Length > 0 ? id : type.Name;
     }
 }
