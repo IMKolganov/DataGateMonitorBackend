@@ -6,7 +6,7 @@ namespace DataGateMonitor.Configurations;
 
 public static class GeoLiteServiceConfiguration
 {
-    public static void ConfigureGeoLiteServices(this IServiceCollection services)
+    public static void ConfigureGeoLiteServices(this IServiceCollection services, DatabaseRuntimeOptions databaseRuntime)
     {
         // Singleton database factory (shared across app)
         services.AddSingleton<GeoLiteDatabaseFactory>();
@@ -29,6 +29,7 @@ public static class GeoLiteServiceConfiguration
         services.AddSingleton<IStreamCopier, StreamCopier>();
 
         services.AddSingleton<IGeoLiteScheduledUpdateRunner, GeoLiteScheduledUpdateRunner>();
-        services.AddHostedService<GeoLiteAutoUpdateBackgroundService>();
+        if (databaseRuntime.IsConnectionConfigured)
+            services.AddHostedService<GeoLiteAutoUpdateBackgroundService>();
     }
 }

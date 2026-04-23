@@ -28,7 +28,8 @@ public class ServiceConfigurationTests
         var services = new ServiceCollection();
         var config = CreateMinimalConfig();
 
-        services.ConfigureServices(config);
+        var databaseRuntime = DatabaseRuntimeOptions.FromConfiguration(config);
+        services.ConfigureServices(config, databaseRuntime);
 
         AssertRegistered(services, typeof(IOpenVpnClientService));
         AssertRegistered(services, typeof(IVpnServerService));

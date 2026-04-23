@@ -1,5 +1,6 @@
 ﻿using System.Reflection;
 using DataGateMonitor.Configurations;
+using Microsoft.Extensions.Hosting;
 using Serilog;
 
 var builder = WebApplication.CreateBuilder(args);
@@ -31,17 +32,24 @@ if (!string.IsNullOrEmpty(googleAuthSecret))
 }
 #endregion
 
+var databaseRuntime = DatabaseRuntimeOptions.FromConfiguration(builder.Configuration);
+builder.Services.AddSingleton(databaseRuntime);
+builder.Services.Configure<HostOptions>(options =>
+{
+    if (!databaseRuntime.IsConnectionConfigured)
+        options.BackgroundServiceExceptionBehavior = BackgroundServiceExceptionBehavior.Ignore;
+});
 
-builder.Services.ConfigureServices(builder.Configuration);
+builder.Services.ConfigureServices(builder.Configuration, databaseRuntime);
 builder.Services.ConfigureQueryCommand();
 builder.Services.ConfigureTelegramServices();
-builder.Services.ConfigureGeoLiteServices();
+builder.Services.ConfigureGeoLiteServices(databaseRuntime);
 builder.Services.ConfigureAuthServices(builder.Configuration);
-builder.Services.DataBaseServices(builder.Configuration, logger);
+builder.Services.DataBaseServices(builder.Configuration, logger, databaseRuntime);
 builder.Services.ConfigureJwt(builder.Configuration);
 builder.Services.ConfigureMapster();
 builder.Services.ConfigureNotificationServices();
-builder.Services.ConfigureHealthCheckServices(builder.Configuration);
+builder.Services.ConfigureHealthCheckServices(databaseRuntime);
 
 builder.ConfigureWebHost();
 builder.ConfigureExternalIpServices();
