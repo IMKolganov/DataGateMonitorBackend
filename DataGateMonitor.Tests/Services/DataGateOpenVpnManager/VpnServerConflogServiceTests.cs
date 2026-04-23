@@ -5,7 +5,9 @@ using DataGateMonitor.DataBase.Services.Query.VpnServerTable;
 using DataGateMonitor.Models;
 using DataGateMonitor.Services.DataGateOpenVpnManager;
 using DataGateMonitor.Services.DataGateOpenVpnManager.Interfaces;
+using DataGateMonitor.SharedModels.DataGateMonitor.VpnServers.Dto;
 using DataGateMonitor.SharedModels.DataGateOpenVpnManager.Info;
+using DataGateMonitor.SharedModels.Enums;
 using Xunit;
 
 namespace DataGateMonitor.Tests.Services.DataGateOpenVpnManager;
@@ -15,9 +17,18 @@ public class VpnServerConflogServiceTests
     [Fact]
     public async Task FetchAndSaveIfChangedAsync_WhenNoLastRecord_SavesAndReturnsEntity()
     {
-        var response = new RootInfoResponse();
+        var response = new VpnMicroserviceDiagnosticsDto
+        {
+            ServerType = VpnServerType.OpenVpn,
+            OpenVpn = new RootInfoResponse(),
+        };
         var micro = new Mock<IMicroserviceInfoService>();
-        micro.Setup(m => m.GetInfoByUrlAsync("https://host", It.IsAny<CancellationToken>())).ReturnsAsync(response);
+        micro.Setup(m => m.GetInfoByUrlAsync("https://host", VpnServerType.OpenVpn, It.IsAny<CancellationToken>()))
+            .ReturnsAsync(response);
+
+        var serverQ = new Mock<IVpnServerQueryService>();
+        serverQ.Setup(q => q.GetById(1, It.IsAny<CancellationToken>()))
+            .ReturnsAsync(new VpnServer { Id = 1, ServerType = VpnServerType.OpenVpn, ApiUrl = "https://host" });
 
         var conflogQ = new Mock<IVpnServerConflogQueryService>();
         conflogQ.Setup(q => q.GetLastByVpnServerId(1, It.IsAny<CancellationToken>())).ReturnsAsync((VpnServerConflog?)null);
@@ -29,7 +40,7 @@ public class VpnServerConflogServiceTests
             .Callback<VpnServerConflog, bool, CancellationToken>((e, _, _) => added = e)
             .ReturnsAsync((VpnServerConflog e, bool _, CancellationToken _) => { e.Id = 10; return e; });
 
-        var sut = new VpnServerConflogService(micro.Object, conflogQ.Object, command.Object, Mock.Of<IVpnServerQueryService>());
+        var sut = new VpnServerConflogService(micro.Object, conflogQ.Object, command.Object, serverQ.Object);
         var result = await sut.FetchAndSaveIfChangedAsync("https://host", 1, CancellationToken.None);
 
         Assert.NotNull(result);
@@ -43,9 +54,13 @@ public class VpnServerConflogServiceTests
     [Fact]
     public async Task FetchAndSaveIfChangedAsync_WhenLastSamePayload_ReturnsNull()
     {
-        var response = new RootInfoResponse();
+        var response = new VpnMicroserviceDiagnosticsDto
+        {
+            ServerType = VpnServerType.OpenVpn,
+            OpenVpn = new RootInfoResponse(),
+        };
         var micro = new Mock<IMicroserviceInfoService>();
-        micro.Setup(m => m.GetInfoByUrlAsync("https://host", It.IsAny<CancellationToken>())).ReturnsAsync(response);
+        micro.Setup(m => m.GetInfoByUrlAsync("https://host", null, It.IsAny<CancellationToken>())).ReturnsAsync(response);
 
         var jsonOptions = new System.Text.Json.JsonSerializerOptions { PropertyNamingPolicy = System.Text.Json.JsonNamingPolicy.CamelCase, WriteIndented = false };
         var existingJson = System.Text.Json.JsonSerializer.Serialize(response, jsonOptions);
@@ -105,9 +120,18 @@ public class VpnServerConflogServiceTests
     [Fact]
     public async Task FetchAndSaveIfChangedAsync_WhenServerRecreated_WithOldConflogBySameUrl_StillSavesNewRecord()
     {
-        var response = new RootInfoResponse();
+        var response = new VpnMicroserviceDiagnosticsDto
+        {
+            ServerType = VpnServerType.OpenVpn,
+            OpenVpn = new RootInfoResponse(),
+        };
         var micro = new Mock<IMicroserviceInfoService>();
-        micro.Setup(m => m.GetInfoByUrlAsync("https://host", It.IsAny<CancellationToken>())).ReturnsAsync(response);
+        micro.Setup(m => m.GetInfoByUrlAsync("https://host", VpnServerType.OpenVpn, It.IsAny<CancellationToken>()))
+            .ReturnsAsync(response);
+
+        var serverQ = new Mock<IVpnServerQueryService>();
+        serverQ.Setup(q => q.GetById(10, It.IsAny<CancellationToken>()))
+            .ReturnsAsync(new VpnServer { Id = 10, ServerType = VpnServerType.OpenVpn, ApiUrl = "https://host" });
 
         var jsonOptions = new System.Text.Json.JsonSerializerOptions { PropertyNamingPolicy = System.Text.Json.JsonNamingPolicy.CamelCase, WriteIndented = false };
         var samePayloadJson = System.Text.Json.JsonSerializer.Serialize(response, jsonOptions);
@@ -123,7 +147,7 @@ public class VpnServerConflogServiceTests
             .Callback<VpnServerConflog, bool, CancellationToken>((e, _, _) => added = e)
             .ReturnsAsync((VpnServerConflog e, bool _, CancellationToken _) => { e.Id = 100; return e; });
 
-        var sut = new VpnServerConflogService(micro.Object, conflogQ.Object, command.Object, Mock.Of<IVpnServerQueryService>());
+        var sut = new VpnServerConflogService(micro.Object, conflogQ.Object, command.Object, serverQ.Object);
         var result = await sut.FetchAndSaveIfChangedAsync("https://host", 10, CancellationToken.None);
 
         Assert.NotNull(result);

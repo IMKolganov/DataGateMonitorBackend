@@ -1,6 +1,6 @@
-﻿namespace DataGateMonitor.Models.Helpers.Auth;
+namespace DataGateMonitor.SharedModels.DataGateMonitor.Auth.Requests;
 
-public class SetSecretRequest//todo: move to shared models nuget
+public class TokenRequest
 {
     public string ClientId { get; set; } = string.Empty;
     public string ClientSecret { get; set; } = string.Empty;
