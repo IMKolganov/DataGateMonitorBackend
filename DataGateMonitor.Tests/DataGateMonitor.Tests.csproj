@@ -11,9 +11,9 @@
         <TargetFramework>net10.0</TargetFramework>
         <Product>DataGateMonitor</Product>
         <AssemblyTitle>DataGateMonitor.Tests</AssemblyTitle>
-        <Version>1.0.3.17</Version>
-        <AssemblyVersion>1.0.3.17</AssemblyVersion>
-        <FileVersion>1.0.3.17</FileVersion>
+        <Version>1.0.3.16</Version>
+        <AssemblyVersion>1.0.3.16</AssemblyVersion>
+        <FileVersion>1.0.3.16</FileVersion>
     </PropertyGroup>
 
     <ItemGroup>
