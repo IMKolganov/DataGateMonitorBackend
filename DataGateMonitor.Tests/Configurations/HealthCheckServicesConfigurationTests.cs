@@ -18,14 +18,15 @@ public class HealthCheckServicesConfigurationTests
             })
             .Build();
 
-        var exception = Record.Exception(() => services.ConfigureHealthCheckServices(config));
+        var databaseRuntime = DatabaseRuntimeOptions.FromConfiguration(config);
+        var exception = Record.Exception(() => services.ConfigureHealthCheckServices(databaseRuntime));
 
         Assert.Null(exception);
         Assert.True(services.Count > 0, "Services should be registered.");
     }
 
     [Fact]
-    public void ConfigureHealthCheckServices_WhenNoConnectionString_Throws()
+    public void ConfigureHealthCheckServices_WhenNoConnectionString_DoesNotThrow()
     {
         var services = new ServiceCollection();
         var config = new ConfigurationBuilder().Build();
@@ -34,7 +35,9 @@ public class HealthCheckServicesConfigurationTests
         {
             Environment.SetEnvironmentVariable("DB_CONNECTION_STRING_DATAGATE", null);
 
-            Assert.Throws<InvalidOperationException>(() => services.ConfigureHealthCheckServices(config));
+            var databaseRuntime = DatabaseRuntimeOptions.FromConfiguration(config);
+            var exception = Record.Exception(() => services.ConfigureHealthCheckServices(databaseRuntime));
+            Assert.Null(exception);
         }
         finally
         {

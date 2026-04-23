@@ -2,6 +2,7 @@ using System.Text;
 using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Identity;
 using Microsoft.OpenApi;
+using DataGateMonitor.SharedModels.Responses;
 using DataGateMonitor.Controllers;
 using DataGateMonitor.Models;
 using DataGateMonitor.Models.Helpers;
@@ -75,7 +76,7 @@ public static class AuthServiceConfiguration
                     Version = "v1"
                 });
 
-                // SharedModels: avoid short-name collisions. FullName alone breaks OpenAPI 3.0.3 (keys must match /^[a-zA-Z0-9.\-_]+$/) because .NET generic FullName contains ` [ ] , = etc.
+                // Short schema ids: namespace tail strips; ApiResponse&lt;T&gt;/PagedResponse&lt;T&gt; → Api.{id(T)} / Paged.{id(T)} (avoids id collision with bare T).
                 options.CustomSchemaIds(ToOpenApiComponentSchemaId);
 
                 options.AddSecurityDefinition("Bearer", new OpenApiSecurityScheme
@@ -97,18 +98,47 @@ public static class AuthServiceConfiguration
 
     /// <summary>
     /// OpenAPI 3.0.3: <c>components.schemas</c> keys must match <c>/^[a-zA-Z0-9.\-_]+$/</c>.
-    /// .NET <see cref="Type.FullName"/> for generics uses backticks and brackets (e.g. <c>ApiResponse`1[[T,...]]</c>), which Orval rejects.
+    /// Short ids: strip <c>DataGateMonitor.SharedModels.</c> then <c>DataGateMonitor.</c> from namespace; no <see cref="Type.FullName"/>.
     /// </summary>
     private static string ToOpenApiComponentSchemaId(Type type)
     {
-        var raw = type.FullName ?? type.Name;
+        if (TryUnwrapPayloadWrapperForSchemaId(type, out var payload, out var envelopePrefix))
+            return SanitizeOpenApiSchemaKey($"{envelopePrefix}.{ToOpenApiComponentSchemaId(payload)}");
+
+        if (type.IsGenericType && !type.IsGenericTypeDefinition)
+        {
+            var defId = ToOpenApiComponentSchemaId(type.GetGenericTypeDefinition());
+            var args = string.Join("_", type.GetGenericArguments().Select(ToOpenApiComponentSchemaId));
+            return $"{defId}_{args}";
+        }
+
+        var name = type.Name;
+        var tick = name.IndexOf('`', StringComparison.Ordinal);
+        if (tick > 0)
+            name = name[..tick];
+
+        name = name.Replace('+', '.');
+
+        var ns = type.Namespace ?? string.Empty;
+        const string sharedModels = "DataGateMonitor.SharedModels.";
+        if (ns.StartsWith(sharedModels, StringComparison.Ordinal))
+            ns = ns[sharedModels.Length..];
+
+        const string dataGateMonitorRoot = "DataGateMonitor.";
+        if (ns.StartsWith(dataGateMonitorRoot, StringComparison.Ordinal))
+            ns = ns[dataGateMonitorRoot.Length..];
+
+        var logical = string.IsNullOrEmpty(ns) ? name : $"{ns}.{name}";
+        return SanitizeOpenApiSchemaKey(logical);
+    }
+
+    private static string SanitizeOpenApiSchemaKey(string raw)
+    {
         var sb = new StringBuilder(raw.Length);
         foreach (var ch in raw)
         {
             if (char.IsAsciiLetter(ch) || char.IsAsciiDigit(ch) || ch is '.' or '-' or '_')
                 sb.Append(ch);
-            else if (ch == '+')
-                sb.Append('.'); // nested type separator in CLR metadata
             else
                 sb.Append('_');
         }
@@ -119,6 +149,34 @@ public static class AuthServiceConfiguration
         while (id.Contains("..", StringComparison.Ordinal))
             id = id.Replace("..", ".", StringComparison.Ordinal);
         id = id.Trim('_', '.');
-        return id.Length > 0 ? id : type.Name;
+        return id.Length > 0 ? id : "Anonymous";
+    }
+
+    /// <summary>
+    /// Known envelope types: schema id is short <c>{prefix}.&lt;payload&gt;</c> so it does not collide with bare <c>T</c>.
+    /// </summary>
+    private static bool TryUnwrapPayloadWrapperForSchemaId(Type type, out Type payload, out string envelopePrefix)
+    {
+        payload = typeof(void);
+        envelopePrefix = string.Empty;
+        if (!type.IsGenericType || type.IsGenericTypeDefinition || type.GetGenericArguments().Length != 1)
+            return false;
+
+        var def = type.GetGenericTypeDefinition();
+        if (def == typeof(ApiResponse<>))
+        {
+            envelopePrefix = "Api";
+            payload = type.GetGenericArguments()[0];
+            return true;
+        }
+
+        if (def == typeof(PagedResponse<>))
+        {
+            envelopePrefix = "Paged";
+            payload = type.GetGenericArguments()[0];
+            return true;
+        }
+
+        return false;
     }
 }

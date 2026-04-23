@@ -1,3 +1,4 @@
+using Microsoft.Extensions.Configuration;
 using Microsoft.Extensions.DependencyInjection;
 using DataGateMonitor.Configurations;
 using DataGateMonitor.Services.GeoLite;
@@ -12,8 +13,15 @@ public class GeoLiteServiceConfigurationTests
     public void ConfigureGeoLiteServices_Registers_GeoLiteServices()
     {
         var services = new ServiceCollection();
+        var config = new ConfigurationBuilder()
+            .AddInMemoryCollection(new Dictionary<string, string?>
+            {
+                ["ConnectionStrings:DefaultConnection"] = "Host=localhost;Database=test;Username=u;Password=p"
+            })
+            .Build();
+        var databaseRuntime = DatabaseRuntimeOptions.FromConfiguration(config);
 
-        services.ConfigureGeoLiteServices();
+        services.ConfigureGeoLiteServices(databaseRuntime);
 
         AssertRegistered(services, typeof(IGeoLiteQueryService));
         AssertRegistered(services, typeof(IGeoLiteUpdaterService));
