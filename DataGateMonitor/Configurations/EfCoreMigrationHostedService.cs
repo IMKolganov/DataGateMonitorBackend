@@ -10,6 +10,7 @@ public sealed class EfCoreMigrationHostedService(
     IHostApplicationLifetime lifetime,
     IServiceScopeFactory scopeFactory,
     IConfiguration configuration,
+    ApplicationDatabaseState databaseState,
     ILogger<EfCoreMigrationHostedService> logger) : IHostedService
 {
     public Task StartAsync(CancellationToken cancellationToken)
@@ -17,15 +18,17 @@ public sealed class EfCoreMigrationHostedService(
         lifetime.ApplicationStarted.Register(
             () =>
             {
+                databaseState.SetWaitingOrMigrating();
                 try
                 {
                     DatabaseMigrationExtensions.ApplyMigrationsWithDetailedLogging<ApplicationDbContext>(
                         scopeFactory, configuration, logger);
+                    databaseState.SetReady();
                 }
                 catch (Exception ex)
                 {
-                    logger.LogCritical(ex, "Database migrations failed; stopping the application host.");
-                    lifetime.StopApplication();
+                    logger.LogCritical(ex, "Database migrations failed; API stays up (Swagger without DB). Fix PostgreSQL and restart.");
+                    databaseState.SetFailed(ex.GetBaseException().Message);
                 }
             });
 

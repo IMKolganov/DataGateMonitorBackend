@@ -74,6 +74,8 @@ public static class DataBaseConfigurations
         services.AddScoped<IQueryFactory, QueryFactory>();
         services.AddScoped<IUnitOfWork, UnitOfWork>();
 
+        services.AddSingleton<ApplicationDatabaseState>();
+        services.AddSingleton<IApplicationDatabaseState>(sp => sp.GetRequiredService<ApplicationDatabaseState>());
         services.AddHostedService<EfCoreMigrationHostedService>();
     }
 }

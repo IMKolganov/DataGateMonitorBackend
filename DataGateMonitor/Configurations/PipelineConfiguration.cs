@@ -115,8 +115,13 @@ public static class PipelineConfiguration
         var environmentName = app.Environment.EnvironmentName;
 
         app.MapGet("/",
-            () => Results.Text(statusCode: 200, 
-                content: $"DataGateMonitor Application version: {version}; Environment: {environmentName};"));
+            (IApplicationDatabaseState databaseState) =>
+            {
+                var db = databaseState.GetDatabaseStatusLine();
+                var body =
+                    $"DataGateMonitor Application version: {version}; Environment: {environmentName};\n{db}";
+                return Results.Text(body, "text/plain; charset=utf-8", statusCode: 200);
+            });
 
         app.Logger.LogInformation($"Application version: {version}; Environment: {environmentName};");
 
