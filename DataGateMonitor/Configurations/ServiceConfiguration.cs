@@ -25,7 +25,8 @@ namespace DataGateMonitor.Configurations;
 
 public static class ServiceConfiguration
 {
-    public static void ConfigureServices(this IServiceCollection services, IConfiguration configuration)
+    public static void ConfigureServices(this IServiceCollection services, IConfiguration configuration,
+        DatabaseRuntimeOptions databaseRuntime)
     {
         // var frontendSettings = configuration.GetSection("Frontend").Get<FrontendSettings>();
         services.AddCors(options =>
@@ -68,12 +69,15 @@ public static class ServiceConfiguration
 
         services.AddSingleton<OpenVpnBackgroundService>();
         services.AddSingleton<IOpenVpnBackgroundService>(provider => provider.GetRequiredService<OpenVpnBackgroundService>());
-        services.AddHostedService(provider => provider.GetRequiredService<OpenVpnBackgroundService>());
-        
+        if (databaseRuntime.IsConnectionConfigured)
+        {
+            services.AddHostedService(provider => provider.GetRequiredService<OpenVpnBackgroundService>());
+            services.AddHostedService<OpenVpnEventBackgroundService>();
+            services.AddHostedService<OpenVpnStatusStreamPublisher>();
+        }
+
         services.AddScoped<IVpnEventLogService, VpnEventLogService>();
         services.AddSingleton<IOpenVpnEventClientFactory, OpenVpnEventClientFactory>();
-        services.AddHostedService<OpenVpnEventBackgroundService>();
-        services.AddHostedService<OpenVpnStatusStreamPublisher>();
 
         services.AddScoped<IVpnServerOvpnFileConfigService, VpnServerOvpnFileConfigService>();
         services.AddScoped<ISettingsService, SettingsService>();

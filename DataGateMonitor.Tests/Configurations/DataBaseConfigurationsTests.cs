@@ -13,7 +13,7 @@ namespace DataGateMonitor.Tests.Configurations;
 public class DataBaseConfigurationsTests
 {
     [Fact]
-    public void DataBaseServices_WhenConnectionStringMissing_Throws()
+    public void DataBaseServices_WhenConnectionStringMissing_DoesNotThrow()
     {
         var services = new ServiceCollection();
         var config = new ConfigurationBuilder().Build();
@@ -23,8 +23,9 @@ public class DataBaseConfigurationsTests
         {
             Environment.SetEnvironmentVariable("DB_CONNECTION_STRING_DATAGATE", null);
 
-            Assert.Throws<InvalidOperationException>(() =>
-                services.DataBaseServices(config, logger));
+            var databaseRuntime = DatabaseRuntimeOptions.FromConfiguration(config);
+            var exception = Record.Exception(() => services.DataBaseServices(config, logger, databaseRuntime));
+            Assert.Null(exception);
         }
         finally
         {
@@ -44,7 +45,8 @@ public class DataBaseConfigurationsTests
             .Build();
         var logger = new Mock<Serilog.ILogger>().Object;
 
-        services.DataBaseServices(config, logger);
+        var databaseRuntime = DatabaseRuntimeOptions.FromConfiguration(config);
+        services.DataBaseServices(config, logger, databaseRuntime);
 
         AssertRegistered(services, typeof(ApplicationDbContext));
         AssertRegistered(services, typeof(IUnitOfWork));
