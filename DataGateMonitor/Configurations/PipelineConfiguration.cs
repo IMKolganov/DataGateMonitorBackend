@@ -4,7 +4,6 @@ using Microsoft.AspNetCore.Http.Connections;
 using Microsoft.AspNetCore.HttpOverrides;
 using Microsoft.Extensions.Diagnostics.HealthChecks;
 using Microsoft.OpenApi;
-using DataGateMonitor.DataBase.Contexts;
 using DataGateMonitor.Hubs;
 using Swashbuckle.AspNetCore.Swagger;
 
@@ -62,8 +61,7 @@ public static class PipelineConfiguration
         app.UseAuthentication();
         app.UseAuthorization();
 
-        // Apply EF Core migrations with detailed per-migration logging
-        app.ApplyMigrationsWithDetailedLogging<ApplicationDbContext>();
+        // EF migrations run in EfCoreMigrationHostedService after ApplicationStarted so Swagger/HTTP work while Postgres is down.
 
         app.MapControllers();
         app.MapHealthChecks("/health");
