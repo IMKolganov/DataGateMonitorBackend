@@ -72,6 +72,8 @@ public static class DataBaseConfigurations
         
         services.AddScoped<IRepositoryFactory, RepositoryFactory>();
         services.AddScoped<IQueryFactory, QueryFactory>();
-        services.AddScoped<IUnitOfWork, UnitOfWork>(); 
+        services.AddScoped<IUnitOfWork, UnitOfWork>();
+
+        services.AddHostedService<EfCoreMigrationHostedService>();
     }
 }

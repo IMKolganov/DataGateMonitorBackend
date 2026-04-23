@@ -1,8 +1,10 @@
 ﻿using System.Diagnostics;
 using System.Net.Sockets;
 using Microsoft.EntityFrameworkCore;
+using Microsoft.Extensions.Logging;
 using Microsoft.EntityFrameworkCore.Infrastructure;
 using Microsoft.EntityFrameworkCore.Migrations;
+using Microsoft.Extensions.DependencyInjection;
 using Npgsql;
 
 namespace DataGateMonitor.Configurations;
@@ -13,10 +15,13 @@ public static class DatabaseMigrationExtensions
     /// Blocks until <see cref="DbContext.Database.CanConnect"/> succeeds.
     /// Use when PostgreSQL starts after the API (e.g. docker-compose race). Set <c>DB_WAIT_FOR_STARTUP_SECONDS</c> to fail after N seconds (0 = unlimited).
     /// </summary>
-    public static void WaitUntilDatabaseCanConnect<TDbContext>(this WebApplication app, TDbContext dbContext)
+    public static void WaitUntilDatabaseCanConnect<TDbContext>(
+        IConfiguration configuration,
+        ILogger logger,
+        TDbContext dbContext)
         where TDbContext : DbContext
     {
-        var maxWaitSeconds = app.Configuration.GetValue("DB_WAIT_FOR_STARTUP_SECONDS", 0);
+        var maxWaitSeconds = configuration.GetValue("DB_WAIT_FOR_STARTUP_SECONDS", 0);
         var sw = Stopwatch.StartNew();
         var delayMs = 500;
         const int maxDelayMs = 15_000;
@@ -30,13 +35,13 @@ public static class DatabaseMigrationExtensions
                 if (dbContext.Database.CanConnect())
                 {
                     if (announced)
-                        app.Logger.LogInformation("PostgreSQL became reachable after {Elapsed}.", sw.Elapsed);
+                        logger.LogInformation("PostgreSQL became reachable after {Elapsed}.", sw.Elapsed);
                     return;
                 }
 
                 if (!announced)
                 {
-                    app.Logger.LogWarning(
+                    logger.LogWarning(
                         "PostgreSQL did not accept a connection yet (CanConnect returned false); retrying. " +
                         "Set DB_WAIT_FOR_STARTUP_SECONDS to cap wait (0 = unlimited).");
                     announced = true;
@@ -49,14 +54,14 @@ public static class DatabaseMigrationExtensions
 
                 if (!announced)
                 {
-                    app.Logger.LogWarning(ex,
+                    logger.LogWarning(ex,
                         "PostgreSQL is not reachable yet; retrying until it accepts connections. " +
                         "Set DB_WAIT_FOR_STARTUP_SECONDS to cap wait (0 = unlimited).");
                     announced = true;
                 }
                 else if (sw.Elapsed - lastSummaryLog >= TimeSpan.FromSeconds(15))
                 {
-                    app.Logger.LogInformation("Still waiting for PostgreSQL ({Elapsed})...", sw.Elapsed);
+                    logger.LogInformation("Still waiting for PostgreSQL ({Elapsed})...", sw.Elapsed);
                     lastSummaryLog = sw.Elapsed;
                 }
             }
@@ -72,26 +77,29 @@ public static class DatabaseMigrationExtensions
         }
     }
 
-    public static void ApplyMigrationsWithDetailedLogging<TDbContext>(this WebApplication app)
+    public static void ApplyMigrationsWithDetailedLogging<TDbContext>(
+        IServiceScopeFactory scopeFactory,
+        IConfiguration configuration,
+        ILogger logger)
         where TDbContext : DbContext
     {
-        using var scope = app.Services.CreateScope();
+        using var scope = scopeFactory.CreateScope();
         var dbContext = scope.ServiceProvider.GetRequiredService<TDbContext>();
 
         dbContext.Database.SetCommandTimeout(TimeSpan.FromMinutes(5));
 
-        app.WaitUntilDatabaseCanConnect(dbContext);
+        WaitUntilDatabaseCanConnect(configuration, logger, dbContext);
 
         try
         {
             var pending = dbContext.Database.GetPendingMigrations().ToList();
             if (!pending.Any())
             {
-                app.Logger.LogInformation("Database is up-to-date. No pending migrations.");
+                logger.LogInformation("Database is up-to-date. No pending migrations.");
                 return;
             }
 
-            app.Logger.LogInformation("Applying {Count} pending migrations: {List}",
+            logger.LogInformation("Applying {Count} pending migrations: {List}",
                 pending.Count, string.Join(", ", pending));
 
             var strategy = dbContext.Database.CreateExecutionStrategy();
@@ -102,15 +110,14 @@ public static class DatabaseMigrationExtensions
                 foreach (var migration in pending)
                 {
                     var sw = Stopwatch.StartNew();
-                    app.Logger.LogInformation("Applying migration: {Migration}", migration);
+                    logger.LogInformation("Applying migration: {Migration}", migration);
 
                     try
                     {
-                        // No explicit transaction here — EF handles it during migrations
                         migrator.Migrate(migration);
 
                         sw.Stop();
-                        app.Logger.LogInformation("Migration applied: {Migration} in {Elapsed} ms",
+                        logger.LogInformation("Migration applied: {Migration} in {Elapsed} ms",
                             migration, sw.ElapsedMilliseconds);
                     }
                     catch (Exception ex)
@@ -120,13 +127,13 @@ public static class DatabaseMigrationExtensions
                         var pg = FindPostgresException(ex);
                         if (pg is not null)
                         {
-                            app.Logger.LogError(ex,
+                            logger.LogError(ex,
                                 "Migration FAILED: {Migration}. PostgresSQL SqlState={SqlState}, Message={MessageText}, Severity={Severity}, Routine={Routine}",
                                 migration, pg.SqlState, pg.MessageText, pg.Severity, pg.Routine);
                         }
                         else
                         {
-                            app.Logger.LogError(ex, "Migration FAILED: {Migration}. {Message}",
+                            logger.LogError(ex, "Migration FAILED: {Migration}. {Message}",
                                 migration, ex.Message);
                         }
 
@@ -135,20 +142,20 @@ public static class DatabaseMigrationExtensions
                 }
             });
 
-            app.Logger.LogInformation("All pending migrations applied successfully.");
+            logger.LogInformation("All pending migrations applied successfully.");
         }
         catch (Exception ex)
         {
             var pg = FindPostgresException(ex);
             if (pg is not null)
             {
-                app.Logger.LogError(ex,
+                logger.LogError(ex,
                     "An error occurred while applying migrations. PostgresSQL SqlState={SqlState}, Message={MessageText}",
                     pg.SqlState, pg.MessageText);
             }
             else
             {
-                app.Logger.LogError(ex, "An error occurred while applying migrations: {Message}", ex.Message);
+                logger.LogError(ex, "An error occurred while applying migrations: {Message}", ex.Message);
             }
 
             throw;
@@ -160,10 +167,8 @@ public static class DatabaseMigrationExtensions
     {
         if (FindPostgresException(ex) is { SqlState: var sql })
         {
-            // invalid_password, invalid_authorization_specification — fix config, do not spin
             if (sql is "28P01" or "28000")
                 return false;
-            // invalid_catalog_name (database does not exist)
             if (sql is "3D000")
                 return false;
         }
@@ -175,7 +180,6 @@ public static class DatabaseMigrationExtensions
                 return true;
         }
 
-        // Npgsql "Failed to connect", broken pipe, etc.
         if (ex is NpgsqlException or TimeoutException or IOException)
             return true;
 
