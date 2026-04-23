@@ -6,9 +6,9 @@
         <DockerDefaultTargetOS>Linux</DockerDefaultTargetOS>
         <Product>DataGateMonitor</Product>
         <AssemblyTitle>DataGateMonitor</AssemblyTitle>
-        <Version>1.0.3.17</Version>
-        <AssemblyVersion>1.0.3.17</AssemblyVersion>
-        <FileVersion>1.0.3.17</FileVersion>
+        <Version>1.0.3.18</Version>
+        <AssemblyVersion>1.0.3.18</AssemblyVersion>
+        <FileVersion>1.0.3.18</FileVersion>
         <TargetFramework>net10.0</TargetFramework>
     </PropertyGroup>
 
@@ -30,7 +30,7 @@
         <PackageReference Include="Microsoft.IdentityModel.Tokens" Version="8.17.0" />
         <PackageReference Include="Newtonsoft.Json" Version="13.0.4" />
         <!-- SharedModels: NuGet only (never ProjectReference). After DTO changes in SharedModels, bump version and publish to nuget.org. -->
-        <PackageReference Include="DataGateMonitor.SharedModels" Version="1.0.4" />
+        <PackageReference Include="DataGateMonitor.SharedModels" Version="1.0.6" />
         <PackageReference Include="Npgsql.EntityFrameworkCore.PostgreSQL" Version="10.0.1" />
         <PackageReference Include="Serilog" Version="4.3.1" />
         <PackageReference Include="Serilog.Extensions.Hosting" Version="10.0.0" />
