@@ -1,9 +1,12 @@
 using System.Net.Http.Headers;
+using System.Text.Json;
 using DataGateMonitor.DataBase.Services.Query.VpnServerTable;
 using DataGateMonitor.Services.Api.Auth.Registers.Interfaces;
 using DataGateMonitor.Services.DataGateOpenVpnManager.Interfaces;
-using DataGateMonitor.SharedModels.DataGateOpenVpnManager.Info;
+using DataGateMonitor.SharedModels.DataGateMonitor.VpnServers.Dto;
 using DataGateMonitor.SharedModels.Enums;
+using OpenVpnRootInfo = DataGateMonitor.SharedModels.DataGateOpenVpnManager.Info.RootInfoResponse;
+using XrayRootInfo = DataGateMonitor.SharedModels.DataGateXRayManager.Info.RootInfoResponse;
 
 namespace DataGateMonitor.Services.DataGateOpenVpnManager;
 
@@ -17,10 +20,15 @@ public class MicroserviceInfoService(
     private const string AudienceOpenVpnManager = "DataGateOpenVpnManager";
     private const string AudienceXRayManager = "DataGateXRayManager";
 
-    public async Task<RootInfoResponse> GetInfoAsync(int vpnServerId, CancellationToken cancellationToken)
+    private static readonly JsonSerializerOptions InfoJsonOptions = new()
+    {
+        PropertyNameCaseInsensitive = true,
+    };
+
+    public async Task<VpnMicroserviceDiagnosticsDto> GetInfoAsync(int vpnServerId, CancellationToken cancellationToken)
     {
         var server = await openVpnServerQueryService.GetById(vpnServerId, cancellationToken)
-                     ?? throw new InvalidOperationException($"OpenVPN server not found: {vpnServerId}");
+                     ?? throw new InvalidOperationException($"VPN server not found: {vpnServerId}");
 
         if (string.IsNullOrWhiteSpace(server.ApiUrl))
             throw new InvalidOperationException("API URL is not set for the server");
@@ -32,19 +40,20 @@ public class MicroserviceInfoService(
         var jwt = tokenService.GenerateToken("vpn-cert-issuer", "cert-create", "backend", audience);
         client.DefaultRequestHeaders.Authorization = new AuthenticationHeaderValue("Bearer", jwt);
 
-        var response = await client.GetAsync(EndpointInfo, cancellationToken);
+        using var response = await client.GetAsync(EndpointInfo, cancellationToken);
         response.EnsureSuccessStatusCode();
 
-        var result = await response.Content.ReadFromJsonAsync<RootInfoResponse>(cancellationToken)
-                     ?? throw new InvalidOperationException("Microservice returned empty info response");
+        var json = await response.Content.ReadAsStringAsync(cancellationToken);
+        var dto = DeserializeDiagnostics(json, server.ServerType);
 
-        logger.LogDebug("Retrieved microservice info for VpnServerId={VpnServerId}, Version={Version}",
-            vpnServerId, result.Version);
+        logger.LogDebug("Retrieved microservice info for VpnServerId={VpnServerId}, Stack={Stack}",
+            vpnServerId, dto.ServerType);
 
-        return result;
+        return dto;
     }
 
-    public async Task<RootInfoResponse?> GetInfoByUrlAsync(string baseUrl, CancellationToken cancellationToken)
+    public async Task<VpnMicroserviceDiagnosticsDto?> GetInfoByUrlAsync(string baseUrl, VpnServerType? serverTypeHint,
+        CancellationToken cancellationToken)
     {
         if (string.IsNullOrWhiteSpace(baseUrl))
             throw new ArgumentException("Base URL is required.", nameof(baseUrl));
@@ -59,41 +68,91 @@ public class MicroserviceInfoService(
         using var client = httpClientFactory.CreateClient();
         client.BaseAddress = uri;
 
+        HttpResponseMessage response;
+        if (serverTypeHint == VpnServerType.Xray)
+        {
+            response = await SendInfoRequestAsync(client, AudienceXRayManager, cancellationToken);
+        }
+        else if (serverTypeHint == VpnServerType.OpenVpn)
+        {
+            response = await SendInfoRequestAsync(client, AudienceOpenVpnManager, cancellationToken);
+        }
+        else
+        {
+            response = await SendInfoRequestAsync(client, AudienceOpenVpnManager, cancellationToken);
+            if (response.StatusCode == System.Net.HttpStatusCode.Unauthorized)
+            {
+                response.Dispose();
+                response = await SendInfoRequestAsync(client, AudienceXRayManager, cancellationToken);
+            }
+        }
+
+        using (response)
+        {
+            if (!response.IsSuccessStatusCode)
+            {
+                if (response.StatusCode == System.Net.HttpStatusCode.NotFound)
+                {
+                    logger.LogDebug(
+                        "Microservice info endpoint not found (404) for {Host}. Server may not be updated yet. Conflog skipped.",
+                        uri.Host);
+                    return null;
+                }
+
+                response.EnsureSuccessStatusCode();
+            }
+
+            var json = await response.Content.ReadAsStringAsync(cancellationToken);
+            var effectiveStack = serverTypeHint ?? InferStackFromApplicationJson(json);
+            var dto = DeserializeDiagnostics(json, effectiveStack);
+
+            logger.LogDebug("Retrieved microservice info by URL for {Host}, Stack={Stack}",
+                uri.Host, dto.ServerType);
+
+            return dto;
+        }
+    }
+
+    private Task<HttpResponseMessage> SendInfoRequestAsync(HttpClient client, string audience,
+        CancellationToken cancellationToken)
+    {
         using var request = new HttpRequestMessage(HttpMethod.Get, EndpointInfo);
         request.Headers.Authorization =
             new AuthenticationHeaderValue("Bearer",
-                tokenService.GenerateToken("vpn-cert-issuer", "cert-create", "backend", AudienceOpenVpnManager));
+                tokenService.GenerateToken("vpn-cert-issuer", "cert-create", "backend", audience));
+        return client.SendAsync(request, cancellationToken);
+    }
 
-        var response = await client.SendAsync(request, cancellationToken);
-        if (response.StatusCode == System.Net.HttpStatusCode.Unauthorized)
+    private static VpnMicroserviceDiagnosticsDto DeserializeDiagnostics(string json, VpnServerType stack)
+    {
+        if (stack == VpnServerType.Xray)
         {
-            using var retry = new HttpRequestMessage(HttpMethod.Get, EndpointInfo);
-            retry.Headers.Authorization =
-                new AuthenticationHeaderValue("Bearer",
-                    tokenService.GenerateToken("vpn-cert-issuer", "cert-create", "backend", AudienceXRayManager));
-            response.Dispose();
-            response = await client.SendAsync(retry, cancellationToken);
+            var xray = JsonSerializer.Deserialize<XrayRootInfo>(json, InfoJsonOptions)
+                       ?? throw new InvalidOperationException("Microservice returned empty info response");
+            return new VpnMicroserviceDiagnosticsDto { ServerType = VpnServerType.Xray, Xray = xray };
         }
 
-        if (!response.IsSuccessStatusCode)
-        {
-            if (response.StatusCode == System.Net.HttpStatusCode.NotFound)
-            {
-                logger.LogDebug(
-                    "Microservice info endpoint not found (404) for {Host}. Server may not be updated yet. Conflog skipped.",
-                    uri.Host);
-                return (RootInfoResponse?)null;
-            }
+        var openVpn = JsonSerializer.Deserialize<OpenVpnRootInfo>(json, InfoJsonOptions)
+                      ?? throw new InvalidOperationException("Microservice returned empty info response");
+        return new VpnMicroserviceDiagnosticsDto { ServerType = VpnServerType.OpenVpn, OpenVpn = openVpn };
+    }
 
-            response.EnsureSuccessStatusCode();
+    private static VpnServerType InferStackFromApplicationJson(string json)
+    {
+        try
+        {
+            using var doc = JsonDocument.Parse(json);
+            if (!doc.RootElement.TryGetProperty("application", out var appEl))
+                return VpnServerType.OpenVpn;
+            var app = appEl.GetString();
+            if (string.Equals(app, "DataGateXRayManager", StringComparison.Ordinal))
+                return VpnServerType.Xray;
+        }
+        catch
+        {
+            // ignored
         }
 
-        var result = await response.Content.ReadFromJsonAsync<RootInfoResponse>(cancellationToken)
-                     ?? throw new InvalidOperationException("Microservice returned empty info response");
-
-        logger.LogDebug("Retrieved microservice info by URL for {Host}, Version={Version}",
-            uri.Host, result.Version);
-
-        return result;
+        return VpnServerType.OpenVpn;
     }
 }

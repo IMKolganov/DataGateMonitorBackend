@@ -4,7 +4,7 @@ using DataGateMonitor.DataBase.Services.Query.VpnServerConflogTable;
 using DataGateMonitor.DataBase.Services.Query.VpnServerTable;
 using DataGateMonitor.Models;
 using DataGateMonitor.Services.DataGateOpenVpnManager.Interfaces;
-using DataGateMonitor.SharedModels.DataGateOpenVpnManager.Info;
+using DataGateMonitor.SharedModels.DataGateMonitor.VpnServers.Dto;
 
 namespace DataGateMonitor.Services.DataGateOpenVpnManager;
 
@@ -22,7 +22,18 @@ public class VpnServerConflogService(
 
     public async Task<VpnServerConflog?> FetchAndSaveIfChangedAsync(string baseUrl, int? vpnServerId, CancellationToken ct = default)
     {
-        var response = await microserviceInfoService.GetInfoByUrlAsync(baseUrl, ct);
+        VpnMicroserviceDiagnosticsDto? response;
+        if (vpnServerId.HasValue)
+        {
+            var server = await openVpnServerQueryService.GetById(vpnServerId.Value, ct)
+                         ?? throw new InvalidOperationException($"VPN server not found: {vpnServerId.Value}");
+            response = await microserviceInfoService.GetInfoByUrlAsync(baseUrl, server.ServerType, ct);
+        }
+        else
+        {
+            response = await microserviceInfoService.GetInfoByUrlAsync(baseUrl, null, ct);
+        }
+
         if (response is null)
             return null;
         var payloadJson = JsonSerializer.Serialize(response, JsonOptions);
@@ -53,7 +64,7 @@ public class VpnServerConflogService(
     public async Task<VpnServerConflog?> FetchAndSaveIfChangedByServerIdAsync(int vpnServerId, CancellationToken ct = default)
     {
         var server = await openVpnServerQueryService.GetById(vpnServerId, ct)
-                     ?? throw new InvalidOperationException($"OpenVPN server not found: {vpnServerId}");
+                     ?? throw new InvalidOperationException($"VPN server not found: {vpnServerId}");
         if (string.IsNullOrWhiteSpace(server.ApiUrl))
             throw new InvalidOperationException("Server ApiUrl is not set.");
         return await FetchAndSaveIfChangedAsync(server.ApiUrl, vpnServerId, ct);
