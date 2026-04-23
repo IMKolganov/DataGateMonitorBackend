@@ -1,6 +1,6 @@
+using DataGateMonitor.SharedModels.DataGateOpenVpnManager.Info;
+using DataGateMonitor.SharedModels.DataGateXRayManager.Info;
 using DataGateMonitor.SharedModels.Enums;
-using OpenVpnRootInfo = DataGateMonitor.SharedModels.DataGateOpenVpnManager.Info.RootInfoResponse;
-using XrayRootInfo = DataGateMonitor.SharedModels.DataGateXRayManager.Info.RootInfoResponse;
 
 namespace DataGateMonitor.SharedModels.DataGateMonitor.VpnServers.Dto;
 
@@ -12,7 +12,7 @@ public sealed class VpnMicroserviceDiagnosticsDto
 {
     public VpnServerType ServerType { get; set; }
 
-    public OpenVpnRootInfo? OpenVpn { get; set; }
+    public RootOpenVpnInfoResponse? OpenVpn { get; set; }
 
-    public XrayRootInfo? Xray { get; set; }
+    public RootXrayInfoResponse? Xray { get; set; }
 }
