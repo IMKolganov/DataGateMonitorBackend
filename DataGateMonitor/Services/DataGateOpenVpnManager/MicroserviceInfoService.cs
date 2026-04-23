@@ -5,8 +5,8 @@ using DataGateMonitor.Services.Api.Auth.Registers.Interfaces;
 using DataGateMonitor.Services.DataGateOpenVpnManager.Interfaces;
 using DataGateMonitor.SharedModels.DataGateMonitor.VpnServers.Dto;
 using DataGateMonitor.SharedModels.Enums;
-using OpenVpnRootInfo = DataGateMonitor.SharedModels.DataGateOpenVpnManager.Info.RootInfoResponse;
-using XrayRootInfo = DataGateMonitor.SharedModels.DataGateXRayManager.Info.RootInfoResponse;
+using DataGateMonitor.SharedModels.DataGateOpenVpnManager.Info;
+using DataGateMonitor.SharedModels.DataGateXRayManager.Info;
 
 namespace DataGateMonitor.Services.DataGateOpenVpnManager;
 
@@ -127,12 +127,12 @@ public class MicroserviceInfoService(
     {
         if (stack == VpnServerType.Xray)
         {
-            var xray = JsonSerializer.Deserialize<XrayRootInfo>(json, InfoJsonOptions)
+            var xray = JsonSerializer.Deserialize<RootXrayInfoResponse>(json, InfoJsonOptions)
                        ?? throw new InvalidOperationException("Microservice returned empty info response");
             return new VpnMicroserviceDiagnosticsDto { ServerType = VpnServerType.Xray, Xray = xray };
         }
 
-        var openVpn = JsonSerializer.Deserialize<OpenVpnRootInfo>(json, InfoJsonOptions)
+        var openVpn = JsonSerializer.Deserialize<RootOpenVpnInfoResponse>(json, InfoJsonOptions)
                       ?? throw new InvalidOperationException("Microservice returned empty info response");
         return new VpnMicroserviceDiagnosticsDto { ServerType = VpnServerType.OpenVpn, OpenVpn = openVpn };
     }

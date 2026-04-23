@@ -55,13 +55,13 @@ public class DataGateOpenVpnManagerMapping : IRegister
             .Ignore(d => d.Id);
     }
 
-    private static RootInfoResponse? DeserializePayload(string? payloadJson)
+    private static RootOpenVpnInfoResponse? DeserializePayload(string? payloadJson)
     {
         if (string.IsNullOrWhiteSpace(payloadJson))
             return null;
         try
         {
-            return JsonSerializer.Deserialize<RootInfoResponse>(payloadJson, ConflogJsonOptions);
+            return JsonSerializer.Deserialize<RootOpenVpnInfoResponse>(payloadJson, ConflogJsonOptions);
         }
         catch (JsonException)
         {
