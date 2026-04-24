@@ -1,0 +1,7 @@
+namespace DataGateMonitor.SharedModels.DataGateMonitor.Auth.Requests;
+
+public class LoginRequest
+{
+    public string Login { get; set; } = null!;
+    public string Password { get; set; } = null!;
+}

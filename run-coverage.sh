@@ -5,7 +5,7 @@
 set -e
 cd "$(dirname "$0")"
 
-dotnet test OpenVPNGateMonitor.Tests/OpenVPNGateMonitor.Tests.csproj \
+dotnet test DataGateMonitor.Tests/DataGateMonitor.Tests.csproj \
   --collect:"XPlat Code Coverage" \
   --settings coverlet.runsettings \
   --results-directory TestResults/Coverlet
