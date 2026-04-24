@@ -1,6 +1,6 @@
 ﻿services:
-  openvpngatemonitor:
-    image: openvpngatemonitor
+  datagatemonitor-backend:
+    image: datagatemonitor-backend
     build:
       context: .
-      dockerfile: OpenVPNGateMonitor/Dockerfile
+      dockerfile: Dockerfile
