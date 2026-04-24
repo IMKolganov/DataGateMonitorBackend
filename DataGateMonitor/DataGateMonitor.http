@@ -1,0 +1,6 @@
+@DataGateMonitor_HostAddress = http://localhost:5056
+
+GET {{DataGateMonitor_HostAddress}}/weatherforecast/
+Accept: application/json
+
+###
