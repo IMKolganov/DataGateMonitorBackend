@@ -47,4 +47,22 @@ public class UserController(IUserService userService) : BaseController
         var telegramBotUsers = await userService.GetUserByExternalId(request, cancellationToken);
         return Ok(ApiResponse<UsersResponse>.SuccessResponse(telegramBotUsers.Adapt<UsersResponse>()));
     }
+
+    [HttpGet("email-confirmation-status/{id:int}")]
+    public async Task<ActionResult<ApiResponse<GetUserEmailConfirmationStatusResponse>>> GetEmailConfirmationStatus(
+        [FromRoute] GetUserEmailConfirmationStatusRequest request,
+        CancellationToken cancellationToken)
+    {
+        var response = await userService.GetEmailConfirmationStatus(request, cancellationToken);
+        return Ok(ApiResponse<GetUserEmailConfirmationStatusResponse>.SuccessResponse(response));
+    }
+
+    [HttpPost("confirm-email/{id:int}")]
+    public async Task<ActionResult<ApiResponse<ConfirmUserEmailResponse>>> ConfirmEmail(
+        [FromRoute] ConfirmUserEmailRequest request,
+        CancellationToken cancellationToken)
+    {
+        var response = await userService.ConfirmEmailManually(request, cancellationToken);
+        return Ok(ApiResponse<ConfirmUserEmailResponse>.SuccessResponse(response));
+    }
 }

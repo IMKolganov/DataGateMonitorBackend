@@ -259,6 +259,34 @@ public class UserService(
         return new UsersResponse { User = dto };
     }
 
+    public async Task<GetUserEmailConfirmationStatusResponse> GetEmailConfirmationStatus(
+        GetUserEmailConfirmationStatusRequest request,
+        CancellationToken cancellationToken)
+    {
+        var user = await userQueryService.GetById(request.Id, cancellationToken)
+                   ?? throw new KeyNotFoundException($"User {request.Id} not found");
+        return new GetUserEmailConfirmationStatusResponse { IsEmailConfirmed = user.IsEmailConfirmed };
+    }
+
+    public async Task<ConfirmUserEmailResponse> ConfirmEmailManually(
+        ConfirmUserEmailRequest request,
+        CancellationToken cancellationToken)
+    {
+        var user = await userQueryService.GetById(request.Id, cancellationToken)
+                   ?? throw new KeyNotFoundException($"User {request.Id} not found");
+
+        if (string.IsNullOrWhiteSpace(user.Email))
+            throw new InvalidOperationException("User has no email.");
+
+        if (user.IsEmailConfirmed)
+            return new ConfirmUserEmailResponse { IsEmailConfirmed = true };
+
+        user.IsEmailConfirmed = true;
+        user.LastUpdate = DateTimeOffset.UtcNow;
+        await userCommandService.Update(user, saveChanges: true, cancellationToken);
+        return new ConfirmUserEmailResponse { IsEmailConfirmed = true };
+    }
+
     // === Helpers ===
 
     private async Task<UserDto> BuildUserDtoAsync(User user, CancellationToken ct)
