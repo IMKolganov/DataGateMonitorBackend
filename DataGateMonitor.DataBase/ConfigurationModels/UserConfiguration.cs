@@ -19,6 +19,9 @@ public class UserConfiguration : BaseEntityConfiguration<User, int>
         entity.Property(e => e.Email)
             .HasMaxLength(256);
 
+        entity.Property(e => e.IsEmailConfirmed)
+            .IsRequired();
+
         entity.Property(e => e.IsAdmin)
             .IsRequired();
 

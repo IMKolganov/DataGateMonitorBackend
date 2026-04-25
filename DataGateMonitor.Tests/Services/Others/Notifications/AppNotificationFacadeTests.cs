@@ -92,7 +92,7 @@ public class AppNotificationFacadeTests
         var serverId = 3;
         var serverName = "vpn-prod";
         var env = new NotificationEnvelope(
-            new NotificationRequest { Type = "server.down", Title = "Server is DOWN", Message = $"OpenVPN server \"{serverName}\" (id={serverId}) is unreachable.", Severity = NotificationSeverity.Critical, ServerId = serverId },
+            new NotificationRequest { Type = "server.down", Title = "Server is DOWN", Message = $"VPN server \"{serverName}\" (id={serverId}) is unreachable.", Severity = NotificationSeverity.Critical, ServerId = serverId },
             new[] { "web", "telegram" });
         var ct = CancellationToken.None;
 
@@ -113,7 +113,7 @@ public class AppNotificationFacadeTests
         var serverId = 4;
         var serverName = "vpn-backup";
         var env = new NotificationEnvelope(
-            new NotificationRequest { Type = "server.up", Title = "Server is UP", Message = $"OpenVPN server \"{serverName}\" (id={serverId}) is reachable again.", Severity = NotificationSeverity.Info, ServerId = serverId },
+            new NotificationRequest { Type = "server.up", Title = "Server is UP", Message = $"VPN server \"{serverName}\" (id={serverId}) is reachable again.", Severity = NotificationSeverity.Info, ServerId = serverId },
             new[] { "web", "telegram" });
         var ct = CancellationToken.None;
 
