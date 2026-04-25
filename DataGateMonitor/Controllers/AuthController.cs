@@ -7,8 +7,11 @@ using Microsoft.AspNetCore.Authentication;
 using Microsoft.AspNetCore.Authorization;
 using DataGateMonitor.Services.Api.Auth.ForgotPassword;
 using DataGateMonitor.Services.Api.Auth.Login;
+using DataGateMonitor.Services.Api.Auth.EmailConfirmation;
+using DataGateMonitor.Services.Api.Auth.EmailConfirmation.Models;
 using DataGateMonitor.Services.Api.Auth.TelegramLogin;
 using DataGateMonitor.Services.Api.Auth.Registers.Interfaces;
+using DataGateMonitor.DataBase.Services.Query.UserTable;
 using DataGateMonitor.SharedModels.DataGateMonitor.Auth.Requests;
 using DataGateMonitor.SharedModels.DataGateMonitor.Auth.Responses;
 using DataGateMonitor.SharedModels.Responses;
@@ -23,6 +26,8 @@ public class AuthController(
     IMicroserviceTokenService microserviceTokenService,
     IUserRegistrationService userRegistrationService,
     IUserLoginService userLoginService,
+    IUserQueryService userQueryService,
+    IEmailConfirmationService emailConfirmationService,
     IGoogleAuthCodeExchangeService exchange,
     ITokenService tokenService,
     IAdminForgotPasswordService adminForgotPasswordService,
@@ -99,6 +104,42 @@ public class AuthController(
         var result = await userRegistrationService.RegisterAsync(request, ct);
 
         return Ok(ApiResponse<RegisterUserResponse>.SuccessResponse(result));
+    }
+
+    [AllowAnonymous]
+    [HttpPost("email/request-confirmation")]
+    [ProducesResponseType(typeof(ApiResponse<string>), StatusCodes.Status200OK)]
+    public async Task<ActionResult<ApiResponse<string>>> RequestEmailConfirmation(
+        [FromBody] RequestEmailConfirmationRequest request,
+        CancellationToken ct)
+    {
+        if (request is null || string.IsNullOrWhiteSpace(request.Email))
+            return BadRequest(ApiResponse<string>.ErrorResponse("Email is required."));
+
+        // Prevent account enumeration: always return success message.
+        try
+        {
+            var user = await userQueryService.GetByEmail(request.Email.Trim(), ct);
+            if (user is { IsEmailConfirmed: false } && !string.IsNullOrWhiteSpace(user.Email))
+                await emailConfirmationService.SendConfirmationAsync(user.Id, user.Email, ct);
+        }
+        catch
+        {
+            // Intentionally ignored to avoid leaking account existence.
+        }
+
+        return Ok(ApiResponse<string>.SuccessResponse("If this email exists, confirmation code has been sent."));
+    }
+
+    [AllowAnonymous]
+    [HttpPost("email/confirm")]
+    [ProducesResponseType(typeof(ApiResponse<ConfirmEmailResponse>), StatusCodes.Status200OK)]
+    public async Task<ActionResult<ApiResponse<ConfirmEmailResponse>>> ConfirmEmail(
+        [FromBody] ConfirmEmailRequest request,
+        CancellationToken ct)
+    {
+        var result = await emailConfirmationService.ConfirmAsync(request.Email, request.Code, ct);
+        return Ok(ApiResponse<ConfirmEmailResponse>.SuccessResponse(result));
     }
 
     [AllowAnonymous]

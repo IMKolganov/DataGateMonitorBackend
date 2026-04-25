@@ -3,8 +3,10 @@ using DataGateMonitor.DataBase.Services.Command.Interfaces;
 using DataGateMonitor.DataBase.Services.Query.UserCredentialTable;
 using DataGateMonitor.DataBase.Services.Query.UserTable;
 using DataGateMonitor.Models;
+using DataGateMonitor.Services.Api.Auth.EmailConfirmation;
 using DataGateMonitor.Services.Api.Auth.Registers.Interfaces;
 using DataGateMonitor.Services.Api.Auth.Users;
+using DataGateMonitor.Services.Others;
 using DataGateMonitor.SharedModels.DataGateMonitor.Auth.Requests;
 using DataGateMonitor.SharedModels.DataGateMonitor.Auth.Responses;
 
@@ -15,7 +17,9 @@ public sealed class UserRegistrationService(
     ICommandService<UserCredential, int> userCredentialCommandService,
     IUserCredentialQueryService userCredentialQueryService,
     IUserQueryService userQueryService,
-    IUserAccountService userAccountService
+    IUserAccountService userAccountService,
+    IEmailConfirmationService emailConfirmationService,
+    ISettingsService settingsService
 ) : IUserRegistrationService
 {
     public async Task<RegisterUserResponse> RegisterAsync(RegisterUserRequest request, CancellationToken ct)
@@ -55,7 +59,11 @@ public sealed class UserRegistrationService(
                 throw new InvalidOperationException("Email is already in use.");
         }
 
-        var user = UserFactory.CreateNew(displayName!, email);
+        var requireEmailConfirmation = await IsEmailConfirmationRequiredAsync(ct);
+        var user = UserFactory.CreateNew(
+            displayName!,
+            email,
+            isEmailConfirmed: string.IsNullOrWhiteSpace(email) || !requireEmailConfirmation);
 
         user = await userAccountService.CreateUserWithDefaultRoleAsync(user, ct);
 
@@ -75,6 +83,9 @@ public sealed class UserRegistrationService(
 
         await userCredentialCommandService.Add(credential, saveChanges: true, ct);
 
+        if (requireEmailConfirmation && !string.IsNullOrWhiteSpace(user.Email))
+            await emailConfirmationService.SendConfirmationAsync(user.Id, user.Email, ct);
+
         return new RegisterUserResponse
         {
             UserId = user.Id,
@@ -82,5 +93,16 @@ public sealed class UserRegistrationService(
             Email = user.Email,
             HasDashboardAccess = user.HasDashboardAccess
         };
+    }
+
+    private async Task<bool> IsEmailConfirmationRequiredAsync(CancellationToken ct)
+    {
+        var typeKey = $"{AuthEmailSettingsKeys.RequireEmailConfirmationOnRegister}_Type";
+        var type = await settingsService.GetValueAsync<string>(typeKey, ct);
+        if (!string.Equals(type, "bool", StringComparison.OrdinalIgnoreCase))
+            return true;
+
+        var value = await settingsService.GetValueAsync<bool>(AuthEmailSettingsKeys.RequireEmailConfirmationOnRegister, ct);
+        return value;
     }
 }
