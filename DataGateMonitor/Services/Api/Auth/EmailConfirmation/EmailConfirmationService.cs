@@ -5,6 +5,7 @@ using Microsoft.Extensions.Caching.Memory;
 using DataGateMonitor.DataBase.Services.Command.Interfaces;
 using DataGateMonitor.DataBase.Services.Query.UserTable;
 using DataGateMonitor.Models;
+using DataGateMonitor.Services.Others;
 using DataGateMonitor.Services.Api.Auth.EmailConfirmation.Models;
 
 namespace DataGateMonitor.Services.Api.Auth.EmailConfirmation;
@@ -13,10 +14,11 @@ public sealed class EmailConfirmationService(
     IMemoryCache cache,
     IUserQueryService userQueryService,
     ICommandService<User, int> userCommandService,
-    IEmailSenderService emailSenderService) : IEmailConfirmationService
+    IEmailSenderService emailSenderService,
+    ISettingsService settingsService) : IEmailConfirmationService
 {
     private const int CodeLength = 6;
-    private const int CodeTtlMinutes = 30;
+    private const int DefaultCodeTtlMinutes = 30;
     private const int RateLimitWindowMinutes = 10;
     private const int RateLimitMaxRequests = 3;
     private static readonly ConcurrentDictionary<string, object> RateLimitLocks = new();
@@ -33,17 +35,19 @@ public sealed class EmailConfirmationService(
 
         RecordRateLimit(rateLimitKey);
 
+        var codeTtlMinutes = await GetCodeTtlMinutesAsync(ct);
+
         var code = GenerateCode();
         cache.Set(
             key: GetCodeCacheKey(normalizedEmail),
             value: new EmailConfirmationCodePayload(userId, code),
             options: new MemoryCacheEntryOptions
             {
-                AbsoluteExpirationRelativeToNow = TimeSpan.FromMinutes(CodeTtlMinutes)
+                AbsoluteExpirationRelativeToNow = TimeSpan.FromMinutes(codeTtlMinutes)
             });
 
         var subject = "Confirm your DataGate email";
-        var body = BuildEmailConfirmationHtml(code);
+        var body = BuildEmailConfirmationHtml(code, codeTtlMinutes);
         await emailSenderService.SendAsync(email, subject, body, ct);
     }
 
@@ -130,7 +134,21 @@ public sealed class EmailConfirmationService(
     private sealed record EmailConfirmationCodePayload(int UserId, string Code);
     private sealed record RateLimitEntry(DateTimeOffset FirstRequestUtc, int Count);
 
-    private static string BuildEmailConfirmationHtml(string code)
+    private async Task<int> GetCodeTtlMinutesAsync(CancellationToken ct)
+    {
+        var typeKey = $"{AuthEmailSettingsKeys.ConfirmationCodeTtlMinutes}_Type";
+        var type = await settingsService.GetValueAsync<string>(typeKey, ct);
+        if (!string.Equals(type, "int", StringComparison.OrdinalIgnoreCase))
+            return DefaultCodeTtlMinutes;
+
+        var value = await settingsService.GetValueAsync<int>(AuthEmailSettingsKeys.ConfirmationCodeTtlMinutes, ct);
+        if (value is < 1 or > 1440)
+            return DefaultCodeTtlMinutes;
+
+        return value;
+    }
+
+    private static string BuildEmailConfirmationHtml(string code, int codeTtlMinutes)
     {
         var safeCode = WebUtility.HtmlEncode(code);
         return $"""
@@ -160,7 +178,7 @@ public sealed class EmailConfirmationService(
                               <div style="background:#161b22;border:1px solid #30363d;border-radius:12px;padding:18px;text-align:center;">
                                 <div style="font-size:12px;color:#8b949e;letter-spacing:.08em;text-transform:uppercase;margin-bottom:8px;">Confirmation code</div>
                                 <div style="font-size:34px;font-weight:700;letter-spacing:6px;color:#58a6ff;">{safeCode}</div>
-                                <div style="margin-top:10px;font-size:13px;color:#8b949e;">Valid for {CodeTtlMinutes} minutes</div>
+                                <div style="margin-top:10px;font-size:13px;color:#8b949e;">Valid for {codeTtlMinutes} minutes</div>
                               </div>
                             </td>
                           </tr>
