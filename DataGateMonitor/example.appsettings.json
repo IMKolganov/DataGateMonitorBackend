@@ -16,6 +16,17 @@
     "Secret": "super-secret-key-should-be-at-least-16-characters",
     "RefreshPepper": "your-refresh-pepper"
   },
+  "EmailSender": {
+    "Provider": "smtp",
+    "FromEmail": "noreply@datagateapp.com",
+    "FromName": "DataGate",
+    "ResendApiKey": "",
+    "Host": "smtp.example.com",
+    "Port": 587,
+    "UseSsl": true,
+    "Username": "smtp_user",
+    "Password": "smtp_password"
+  },
   "Logging": {
     "LogLevel": {
       "Default": "Information",
