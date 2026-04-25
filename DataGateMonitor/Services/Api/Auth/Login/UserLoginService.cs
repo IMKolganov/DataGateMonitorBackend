@@ -18,6 +18,7 @@ public sealed class UserLoginService(
     IPasswordHasher<User> passwordHasher,
     IGoogleTokenValidator tokenValidator,
     ICommandService<UserIdentityLink, int> userIdentityLinkCommandService,
+    ICommandService<User, int> userCommandService,
     IUserIdentityLinkQueryService userIdentityLinkQueryService,
     IUserAccountService userAccountService,
     ITokenService tokenService,
@@ -46,6 +47,9 @@ public sealed class UserLoginService(
 
         if (user.IsBlocked)
             throw new UnauthorizedAccessException("User account is blocked.");
+
+        if (!string.IsNullOrWhiteSpace(user.Email) && !user.IsEmailConfirmed)
+            throw new UnauthorizedAccessException("Email is not confirmed.");
 
         var result = passwordHasher.VerifyHashedPassword(user, credential.PasswordHash, password);
         if (result == PasswordVerificationResult.Failed)
@@ -104,7 +108,7 @@ public sealed class UserLoginService(
             if (user is null)
             {
                 var displayName = googleUser.Name ?? googleUser.Email ?? "Google User";
-                var newUser = UserFactory.CreateNew(displayName, googleUser.Email);
+                var newUser = UserFactory.CreateNew(displayName, googleUser.Email, isEmailConfirmed: true);
                 user = await userAccountService.CreateUserWithDefaultRoleAsync(newUser, ct);
                 isNew = true;
             }
@@ -121,6 +125,14 @@ public sealed class UserLoginService(
 
         if (user.IsBlocked)
             throw new UnauthorizedAccessException("User account is blocked.");
+
+        if (!string.IsNullOrWhiteSpace(googleUser.Email)
+            && string.Equals(user.Email, googleUser.Email, StringComparison.OrdinalIgnoreCase)
+            && !user.IsEmailConfirmed)
+        {
+            user.IsEmailConfirmed = true;
+            await userCommandService.Update(user, saveChanges: true, ct);
+        }
 
         var (deviceId, userAgent) = GetClientInfo();
 
