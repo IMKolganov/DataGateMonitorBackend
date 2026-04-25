@@ -1,6 +1,7 @@
 using Mapster;
 using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Mvc;
+using Newtonsoft.Json;
 using DataGateMonitor.DataBase.Services.Query.VpnServerTable;
 using DataGateMonitor.DataBase.Services.Query.VpnServerTagTable;
 using DataGateMonitor.DataBase.Services.Query.UserQuotaPlanTable;
@@ -52,8 +53,13 @@ public class VpnServersController(IVpnDataService vpnDataService,
                     includeDeleted, requireQuotaPlanAssignment: false, restrictToQuotaPlanId: uqp.QuotaPlanId, ct);
         }
 
-        var response = result.Adapt<VpnServerWithStatusesResponse>();
+        VpnServerWithStatusesResponse response = result.Adapt<VpnServerWithStatusesResponse>();
+        response = new LegacyVpnServerWithStatusesResponse
+        {
+            VpnServerWithStatuses = response.VpnServerWithStatuses
+        };
         await FillTagsForOverviewResponse(response, ct);
+        ApplyLegacyOpenVpnAliases(response);
         return Ok(ApiResponse<VpnServerWithStatusesResponse>.SuccessResponse(response));
     }
 
@@ -221,5 +227,43 @@ public class VpnServersController(IVpnDataService vpnDataService,
             var id = item.VpnServerResponses.VpnServer.Id;
             item.VpnServerResponses.VpnServer.Tags = tagNamesByServer.GetValueOrDefault(id, []);
         }
+    }
+
+    // Keep old Windows clients working after DTO renames (OpenVpn* -> Vpn*).
+    private static void ApplyLegacyOpenVpnAliases(VpnServerWithStatusesResponse response)
+    {
+        response.VpnServerWithStatuses = response.VpnServerWithStatuses
+            .Select(item => new LegacyVpnServerWithStatusDto
+            {
+                VpnServerResponses = new LegacyVpnServerResponse
+                {
+                    VpnServer = item.VpnServerResponses.VpnServer
+                },
+                VpnServerStatusLogResponse = item.VpnServerStatusLogResponse,
+                CountConnectedClients = item.CountConnectedClients,
+                CountSessions = item.CountSessions,
+                TotalBytesIn = item.TotalBytesIn,
+                TotalBytesOut = item.TotalBytesOut
+            })
+            .Cast<VpnServerWithStatusDto>()
+            .ToList();
+    }
+
+    private sealed class LegacyVpnServerWithStatusDto : VpnServerWithStatusDto
+    {
+        [JsonProperty("OpenVpnServerResponses")]
+        public VpnServerResponse OpenVpnServerResponses => VpnServerResponses;
+    }
+
+    private sealed class LegacyVpnServerWithStatusesResponse : VpnServerWithStatusesResponse
+    {
+        [JsonProperty("OpenVpnServerWithStatuses")]
+        public List<VpnServerWithStatusDto> OpenVpnServerWithStatuses => VpnServerWithStatuses;
+    }
+
+    private sealed class LegacyVpnServerResponse : VpnServerResponse
+    {
+        [JsonProperty("OpenVpnServer")]
+        public VpnServerDto OpenVpnServer => VpnServer;
     }
 }
