@@ -3,6 +3,7 @@ using DataGateMonitor.DataBase.Services.Command.Interfaces;
 using DataGateMonitor.DataBase.Services.Query.UserCredentialTable;
 using DataGateMonitor.DataBase.Services.Query.UserTable;
 using DataGateMonitor.Models;
+using DataGateMonitor.Services.Api.Auth.EmailConfirmation;
 using DataGateMonitor.Services.Api.Auth.Registers.Interfaces;
 using DataGateMonitor.Services.Api.Auth.Users;
 using DataGateMonitor.SharedModels.DataGateMonitor.Auth.Requests;
@@ -15,7 +16,8 @@ public sealed class UserRegistrationService(
     ICommandService<UserCredential, int> userCredentialCommandService,
     IUserCredentialQueryService userCredentialQueryService,
     IUserQueryService userQueryService,
-    IUserAccountService userAccountService
+    IUserAccountService userAccountService,
+    IEmailConfirmationService emailConfirmationService
 ) : IUserRegistrationService
 {
     public async Task<RegisterUserResponse> RegisterAsync(RegisterUserRequest request, CancellationToken ct)
@@ -74,6 +76,9 @@ public sealed class UserRegistrationService(
         };
 
         await userCredentialCommandService.Add(credential, saveChanges: true, ct);
+
+        if (!string.IsNullOrWhiteSpace(user.Email))
+            await emailConfirmationService.SendConfirmationAsync(user.Id, user.Email, ct);
 
         return new RegisterUserResponse
         {
