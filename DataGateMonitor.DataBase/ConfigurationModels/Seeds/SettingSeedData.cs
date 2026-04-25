@@ -123,5 +123,19 @@ public static class SettingSeedData
             ValueType = "string",
             StringValue = "bool"
         },
+        new Setting
+        {
+            Id = 17,
+            Key = "Auth_Email_Confirmation_Code_Ttl_Minutes",
+            ValueType = "int",
+            IntValue = 30
+        },
+        new Setting
+        {
+            Id = 18,
+            Key = "Auth_Email_Confirmation_Code_Ttl_Minutes_Type",
+            ValueType = "string",
+            StringValue = "int"
+        },
     };
 }
