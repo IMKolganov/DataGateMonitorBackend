@@ -49,7 +49,8 @@ public sealed class UserLoginService(
             throw new UnauthorizedAccessException("User account is blocked.");
 
         if (!string.IsNullOrWhiteSpace(user.Email) && !user.IsEmailConfirmed)
-            throw new UnauthorizedAccessException("Email is not confirmed.");
+            throw new UnauthorizedAccessException(
+                "Email is not confirmed. Request a confirmation code and verify your email first.");
 
         var result = passwordHasher.VerifyHashedPassword(user, credential.PasswordHash, password);
         if (result == PasswordVerificationResult.Failed)
