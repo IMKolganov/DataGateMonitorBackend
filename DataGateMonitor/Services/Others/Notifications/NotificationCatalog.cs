@@ -60,7 +60,7 @@ public class NotificationCatalog : INotificationCatalog
         {
             Type = NotificationTypes.ServerDown,
             Title = "Server is DOWN",
-            Message = $"OpenVPN server \"{serverName}\" (id={serverId}) is unreachable.",
+            Message = $"VPN server \"{serverName}\" (id={serverId}) is unreachable.",
             Severity = NotificationSeverity.Critical,
             Source = "monitor",
             ServerId = serverId,
@@ -75,7 +75,7 @@ public class NotificationCatalog : INotificationCatalog
         {
             Type = NotificationTypes.ServerUp,
             Title = "Server is UP",
-            Message = $"OpenVPN server \"{serverName}\" (id={serverId}) is reachable again.",
+            Message = $"VPN server \"{serverName}\" (id={serverId}) is reachable again.",
             Severity = NotificationSeverity.Info,
             Source = "monitor",
             ServerId = serverId,

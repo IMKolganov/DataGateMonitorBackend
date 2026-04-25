@@ -14,6 +14,7 @@ public class UserLoginServiceTests
         var passwordHasher = new Mock<Microsoft.AspNetCore.Identity.IPasswordHasher<DataGateMonitor.Models.User>>();
         var tokenValidator = new Mock<DataGateMonitor.Services.Api.Auth.Registers.Interfaces.IGoogleTokenValidator>();
         var userIdentityLinkCommand = new Mock<DataGateMonitor.DataBase.Services.Command.Interfaces.ICommandService<DataGateMonitor.Models.UserIdentityLink, int>>();
+        var userCommand = new Mock<DataGateMonitor.DataBase.Services.Command.Interfaces.ICommandService<DataGateMonitor.Models.User, int>>();
         var userIdentityLinkQuery = new Mock<DataGateMonitor.DataBase.Services.Query.UserIdentityLinkTable.IUserIdentityLinkQueryService>();
         var userAccountService = new Mock<DataGateMonitor.Services.Api.Auth.Users.IUserAccountService>();
         var tokenService = new Mock<ITokenService>();
@@ -25,6 +26,7 @@ public class UserLoginServiceTests
             passwordHasher.Object,
             tokenValidator.Object,
             userIdentityLinkCommand.Object,
+            userCommand.Object,
             userIdentityLinkQuery.Object,
             userAccountService.Object,
             tokenService.Object,
@@ -51,6 +53,7 @@ public class UserLoginServiceTests
         var passwordHasher = new Mock<Microsoft.AspNetCore.Identity.IPasswordHasher<DataGateMonitor.Models.User>>();
         var tokenValidator = new Mock<DataGateMonitor.Services.Api.Auth.Registers.Interfaces.IGoogleTokenValidator>();
         var userIdentityLinkCommand = new Mock<DataGateMonitor.DataBase.Services.Command.Interfaces.ICommandService<DataGateMonitor.Models.UserIdentityLink, int>>();
+        var userCommand = new Mock<DataGateMonitor.DataBase.Services.Command.Interfaces.ICommandService<DataGateMonitor.Models.User, int>>();
         var userIdentityLinkQuery = new Mock<DataGateMonitor.DataBase.Services.Query.UserIdentityLinkTable.IUserIdentityLinkQueryService>();
         var userAccountService = new Mock<DataGateMonitor.Services.Api.Auth.Users.IUserAccountService>();
         var tokenService = new Mock<ITokenService>();
@@ -62,6 +65,7 @@ public class UserLoginServiceTests
             passwordHasher.Object,
             tokenValidator.Object,
             userIdentityLinkCommand.Object,
+            userCommand.Object,
             userIdentityLinkQuery.Object,
             userAccountService.Object,
             tokenService.Object,

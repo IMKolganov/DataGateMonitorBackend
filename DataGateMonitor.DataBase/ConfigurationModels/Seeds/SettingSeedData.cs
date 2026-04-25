@@ -109,5 +109,19 @@ public static class SettingSeedData
             ValueType = "string",
             StringValue = "int"
         },
+        new Setting
+        {
+            Id = 15,
+            Key = "Auth_Require_Email_Confirmation_On_Register",
+            ValueType = "bool",
+            BoolValue = true
+        },
+        new Setting
+        {
+            Id = 16,
+            Key = "Auth_Require_Email_Confirmation_On_Register_Type",
+            ValueType = "string",
+            StringValue = "bool"
+        },
     };
 }
