@@ -105,4 +105,39 @@ public class OpenVpnOverviewTotalsQueryTests
 
         await ctx.DisposeAsync();
     }
+
+    [Fact]
+    public async Task GetOverviewTotals_Uses_PreWindow_Baseline_For_First_Sample_In_Window()
+    {
+        var (uow, ctx) = CreateUow();
+        var now = DateTimeOffset.UtcNow;
+        var from = now.AddHours(-2);
+        var to = now.AddHours(1);
+
+        ctx.Clients.Add(new VpnServerClient
+        {
+            Id = 1,
+            VpnServerId = 7,
+            ExternalId = "xr-1",
+            ConnectedSince = now.AddHours(-1),
+        });
+
+        var s = Guid.NewGuid();
+        ctx.Traffic.AddRange(new[]
+        {
+            // Baseline before range start
+            new VpnServerClientTraffic { Id = 1, VpnServerId = 7, ExternalId = "xr-1", SessionId = s, BytesReceived = 1000, BytesSent = 300, MeasuredAt = now.AddHours(-3) },
+            // Only one sample in [from;to)
+            new VpnServerClientTraffic { Id = 2, VpnServerId = 7, ExternalId = "xr-1", SessionId = s, BytesReceived = 1400, BytesSent = 500, MeasuredAt = now.AddHours(-1) },
+        });
+        await ctx.SaveChangesAsync();
+
+        var sut = new OpenVpnOverviewTotalsQuery(uow.Object);
+        var res = await sut.GetOverviewTotalsAsync(from, to, vpnServerId: 7, externalId: null, CancellationToken.None);
+
+        Assert.Equal(400, res.Totals.TrafficInBytes);
+        Assert.Equal(200, res.Totals.TrafficOutBytes);
+
+        await ctx.DisposeAsync();
+    }
 }
