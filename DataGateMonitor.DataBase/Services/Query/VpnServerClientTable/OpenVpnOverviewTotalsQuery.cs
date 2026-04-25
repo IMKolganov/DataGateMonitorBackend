@@ -55,11 +55,11 @@ public sealed class OpenVpnOverviewTotalsQuery(IUnitOfWork uow) : IOpenVpnOvervi
         if (!string.IsNullOrWhiteSpace(externalId))
             trafficQ = trafficQ.Where(s => s.ExternalId == externalId!);
 
-        trafficQ = trafficQ
+        var trafficInWindowQ = trafficQ
             .Where(s => s.MeasuredAt >= fromUtc && s.MeasuredAt < toUtc)
             .AsNoTracking();
 
-        var samples = await trafficQ
+        var samples = await trafficInWindowQ
             .Select(s => new TrafficSampleRowDto
             {
                 SessionId  = s.SessionId,
@@ -74,6 +74,33 @@ public sealed class OpenVpnOverviewTotalsQuery(IUnitOfWork uow) : IOpenVpnOvervi
         long totalIn = 0;
         long totalOut = 0;
         var lastBySession = new Dictionary<Guid, (long inTot, long outTot)>();
+
+        // Seed per-session baselines from the latest sample strictly before window start.
+        // Without this, sessions that only have one sample inside [from;to) produce zero delta.
+        var baselineRows = await trafficQ
+            .Where(s => s.MeasuredAt < fromUtc)
+            .GroupBy(s => s.SessionId)
+            .Select(g => new
+            {
+                SessionId = g.Key,
+                LastAt = g.Max(x => x.MeasuredAt)
+            })
+            .Join(
+                trafficQ,
+                k => new { k.SessionId, MeasuredAt = k.LastAt },
+                s => new { s.SessionId, s.MeasuredAt },
+                (k, s) => new TrafficSampleRowDto
+                {
+                    SessionId = s.SessionId,
+                    MeasuredAt = s.MeasuredAt,
+                    BytesIn = s.BytesReceived,
+                    BytesOut = s.BytesSent
+                })
+            .AsNoTracking()
+            .ToListAsync(ct);
+
+        foreach (var b in baselineRows)
+            lastBySession[b.SessionId] = (b.BytesIn, b.BytesOut);
 
         foreach (var s in samples)
         {
