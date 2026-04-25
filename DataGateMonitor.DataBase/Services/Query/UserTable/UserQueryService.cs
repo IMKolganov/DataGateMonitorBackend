@@ -16,14 +16,26 @@ public class UserQueryService(
         => q.FindById(id, ct: ct);
 
     public async Task<User?> GetByEmail(string email, CancellationToken ct)
-        => await q.FirstOrDefault(
-            predicate: u => u.Email != null && u.Email == email,
+    {
+        if (string.IsNullOrWhiteSpace(email))
+            return null;
+
+        var normalizedEmail = email.Trim().ToUpperInvariant();
+        return await q.FirstOrDefault(
+            predicate: u => u.Email != null && u.Email.ToUpper() == normalizedEmail,
             asNoTracking: true,
             ct: ct
         );
+    }
 
     public Task<bool> AnyByEmail(string email, CancellationToken ct)
-        => q.Any(x => x.Email == email, ct: ct);
+    {
+        if (string.IsNullOrWhiteSpace(email))
+            return Task.FromResult(false);
+
+        var normalizedEmail = email.Trim().ToUpperInvariant();
+        return q.Any(x => x.Email != null && x.Email.ToUpper() == normalizedEmail, ct: ct);
+    }
 
     public async Task<User?> GetByExternalId(string externalId, CancellationToken ct)
     {
