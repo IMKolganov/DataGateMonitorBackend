@@ -4,8 +4,10 @@ using DataGateMonitor.DataBase.Services.Command.Interfaces;
 using DataGateMonitor.DataBase.Services.Query.UserCredentialTable;
 using DataGateMonitor.DataBase.Services.Query.UserTable;
 using DataGateMonitor.Models;
+using DataGateMonitor.Services.Api.Auth.EmailConfirmation;
 using DataGateMonitor.Services.Api.Auth.Registers;
 using DataGateMonitor.Services.Api.Auth.Users;
+using DataGateMonitor.Services.Others;
 using DataGateMonitor.SharedModels.DataGateMonitor.Auth.Requests;
 using Xunit;
 
@@ -18,6 +20,8 @@ public class UserRegistrationServiceTests
     private readonly Mock<IUserCredentialQueryService> _credentialQuery;
     private readonly Mock<IUserQueryService> _userQuery;
     private readonly Mock<IUserAccountService> _userAccountService;
+    private readonly Mock<IEmailConfirmationService> _emailConfirmationService;
+    private readonly Mock<ISettingsService> _settingsService;
     private readonly UserRegistrationService _sut;
 
     public UserRegistrationServiceTests()
@@ -27,12 +31,16 @@ public class UserRegistrationServiceTests
         _credentialQuery = new Mock<IUserCredentialQueryService>();
         _userQuery = new Mock<IUserQueryService>();
         _userAccountService = new Mock<IUserAccountService>();
+        _emailConfirmationService = new Mock<IEmailConfirmationService>();
+        _settingsService = new Mock<ISettingsService>();
         _sut = new UserRegistrationService(
             _passwordHasher.Object,
             _credentialCommand.Object,
             _credentialQuery.Object,
             _userQuery.Object,
-            _userAccountService.Object);
+            _userAccountService.Object,
+            _emailConfirmationService.Object,
+            _settingsService.Object);
     }
 
     [Fact]
@@ -51,6 +59,12 @@ public class UserRegistrationServiceTests
         _credentialQuery.Setup(q => q.GetByNormalizedLogin(normalizedLogin, It.IsAny<CancellationToken>()))
             .ReturnsAsync((UserCredential?)null);
         _userQuery.Setup(q => q.AnyByEmail(request.Email!, It.IsAny<CancellationToken>())).ReturnsAsync(false);
+        _settingsService
+            .Setup(s => s.GetValueAsync<string>($"{AuthEmailSettingsKeys.RequireEmailConfirmationOnRegister}_Type", It.IsAny<CancellationToken>()))
+            .ReturnsAsync("bool");
+        _settingsService
+            .Setup(s => s.GetValueAsync<bool>(AuthEmailSettingsKeys.RequireEmailConfirmationOnRegister, It.IsAny<CancellationToken>()))
+            .ReturnsAsync(true);
 
         User? capturedUser = null;
         _userAccountService
@@ -69,6 +83,9 @@ public class UserRegistrationServiceTests
             .Setup(c => c.Add(It.IsAny<UserCredential>(), true, It.IsAny<CancellationToken>()))
             .Callback<UserCredential, bool, CancellationToken>((c, _, _) => capturedCredential = c)
             .ReturnsAsync((UserCredential c, bool _, CancellationToken _) => c);
+        _emailConfirmationService
+            .Setup(s => s.SendConfirmationAsync(42, "test@example.com", It.IsAny<CancellationToken>()))
+            .Returns(Task.CompletedTask);
 
         var result = await _sut.RegisterAsync(request, CancellationToken.None);
 
@@ -89,6 +106,58 @@ public class UserRegistrationServiceTests
         Assert.Equal(normalizedLogin, capturedCredential.NormalizedLogin);
         Assert.Equal("HASHED_PASSWORD", capturedCredential.PasswordHash);
         Assert.Equal("AspNetCoreV3", capturedCredential.PasswordAlgo);
+        _emailConfirmationService.Verify(
+            s => s.SendConfirmationAsync(42, "test@example.com", It.IsAny<CancellationToken>()),
+            Times.Once);
+    }
+
+    [Fact]
+    public async Task RegisterAsync_WhenEmailConfirmationSettingDisabled_SkipsSendingAndMarksConfirmed()
+    {
+        var request = new RegisterUserRequest
+        {
+            DisplayName = "Test User",
+            Email = "test@example.com",
+            Login = "test-login",
+            Password = "StrongPass123!",
+            ConfirmPassword = "StrongPass123!"
+        };
+
+        _credentialQuery.Setup(q => q.GetByNormalizedLogin("TEST-LOGIN", It.IsAny<CancellationToken>()))
+            .ReturnsAsync((UserCredential?)null);
+        _userQuery.Setup(q => q.AnyByEmail(request.Email!, It.IsAny<CancellationToken>()))
+            .ReturnsAsync(false);
+        _settingsService
+            .Setup(s => s.GetValueAsync<string>($"{AuthEmailSettingsKeys.RequireEmailConfirmationOnRegister}_Type", It.IsAny<CancellationToken>()))
+            .ReturnsAsync("bool");
+        _settingsService
+            .Setup(s => s.GetValueAsync<bool>(AuthEmailSettingsKeys.RequireEmailConfirmationOnRegister, It.IsAny<CancellationToken>()))
+            .ReturnsAsync(false);
+        _passwordHasher.Setup(h => h.HashPassword(It.IsAny<User>(), request.Password)).Returns("HASHED_PASSWORD");
+
+        _userAccountService
+            .Setup(s => s.CreateUserWithDefaultRoleAsync(It.IsAny<User>(), It.IsAny<CancellationToken>()))
+            .ReturnsAsync((User u, CancellationToken _) =>
+            {
+                u.Id = 42;
+                return u;
+            });
+
+        _credentialCommand
+            .Setup(c => c.Add(It.IsAny<UserCredential>(), true, It.IsAny<CancellationToken>()))
+            .ReturnsAsync((UserCredential c, bool _, CancellationToken _) => c);
+
+        var result = await _sut.RegisterAsync(request, CancellationToken.None);
+
+        Assert.Equal(42, result.UserId);
+        _userAccountService.Verify(
+            s => s.CreateUserWithDefaultRoleAsync(
+                It.Is<User>(u => u.IsEmailConfirmed),
+                It.IsAny<CancellationToken>()),
+            Times.Once);
+        _emailConfirmationService.Verify(
+            s => s.SendConfirmationAsync(It.IsAny<int>(), It.IsAny<string>(), It.IsAny<CancellationToken>()),
+            Times.Never);
     }
 
     [Fact]
