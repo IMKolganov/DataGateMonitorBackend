@@ -5,6 +5,7 @@ using DataGateMonitor.DataBase.Services.Query.TagTable;
 using DataGateMonitor.DataBase.Services.Query.VpnServerConflogTable;
 using DataGateMonitor.DataBase.Services.Query.VpnServerTagTable;
 using DataGateMonitor.DataBase.Services.Query.QuotaPlanTable;
+using DataGateMonitor.DataBase.Services.Query.TelegramBotUserProfilePhotoTable;
 using DataGateMonitor.DataBase.Services.Query.VpnServerOvpnFileConfigTable;
 using DataGateMonitor.DataBase.Services.Command.Interfaces;
 using Xunit;
@@ -44,6 +45,7 @@ public class QueryCommandConfigurationTests
         AssertRegistered(services, typeof(IVpnServerTagQueryService));
         AssertRegistered(services, typeof(IVpnServerConflogQueryService));
         AssertRegistered(services, typeof(IQuotaPlanQueryService));
+        AssertRegistered(services, typeof(ITelegramBotUserProfilePhotoQueryService));
     }
 
     private static void AssertRegistered(IServiceCollection services, Type serviceType)
