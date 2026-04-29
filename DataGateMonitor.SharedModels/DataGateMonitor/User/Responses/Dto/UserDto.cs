@@ -4,6 +4,8 @@ public class UserDto
 {
     public int Id { get; set; }
     public string DisplayName { get; set; } = null!;
+    /// <summary>Profile image URL when known (e.g. Google OAuth <c>picture</c> stored on the user row).</summary>
+    public string? AvatarUrl { get; set; }
     public string? Email { get; set; }
     public bool IsAdmin { get; set; } = false;
     public bool IsBlocked { get; set; } = false;
