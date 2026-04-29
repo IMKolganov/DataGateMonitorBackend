@@ -6,6 +6,9 @@ public class VpnClientInfoDto
     public int VpnServerId { get; set; }
     public string ExternalId { get; set; } = string.Empty;
     public string DisplayName { get; set; } = string.Empty;
+
+    /// <summary>Dashboard user profile image URL when the session is linked to a user that stores an avatar URL.</summary>
+    public string? AvatarUrl { get; set; }
     public Guid SessionId { get; set; }
     public string CommonName { get; set; } = string.Empty;
     public string RemoteIp { get; set; } = string.Empty;
