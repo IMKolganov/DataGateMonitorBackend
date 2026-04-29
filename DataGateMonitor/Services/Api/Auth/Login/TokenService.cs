@@ -170,6 +170,9 @@ public sealed class TokenService(
             new("email", user.Email ?? string.Empty),
         };
 
+        if (!string.IsNullOrWhiteSpace(user.AvatarUrl))
+            claims.Add(new Claim("avatarUrl", user.AvatarUrl));
+
         var tokenDescriptor = new JwtSecurityToken(
             issuer: issuer,
             audience: audience,

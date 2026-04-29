@@ -135,6 +135,14 @@ public sealed class UserLoginService(
             await userCommandService.Update(user, saveChanges: true, ct);
         }
 
+        var normalizedPicture = NormalizeGoogleProfilePictureUrl(googleUser.Picture);
+        if (!string.IsNullOrEmpty(normalizedPicture)
+            && !string.Equals(user.AvatarUrl ?? "", normalizedPicture, StringComparison.Ordinal))
+        {
+            user.AvatarUrl = normalizedPicture;
+            await userCommandService.Update(user, saveChanges: true, ct);
+        }
+
         var (deviceId, userAgent) = GetClientInfo();
 
         var tokenPair = await tokenService.IssueAsync(
@@ -153,8 +161,25 @@ public sealed class UserLoginService(
             UserId = user.Id,
             DisplayName = user.DisplayName,
             Email = user.Email,
-            IsNewUser = isNew
+            IsNewUser = isNew,
+            AvatarUrl = user.AvatarUrl
         };
+    }
+
+    /// <summary>Google profile images are HTTPS URLs; reject anything else.</summary>
+    private static string? NormalizeGoogleProfilePictureUrl(string? picture)
+    {
+        if (string.IsNullOrWhiteSpace(picture))
+            return null;
+
+        var t = picture.Trim();
+        if (t.Length > 2048)
+            t = t[..2048];
+
+        if (!t.StartsWith("https://", StringComparison.OrdinalIgnoreCase))
+            return null;
+
+        return t;
     }
 
     private (string? DeviceId, string? UserAgent) GetClientInfo()
