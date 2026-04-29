@@ -48,6 +48,7 @@ builder.Services.ConfigureAuthServices(builder.Configuration);
 builder.Services.DataBaseServices(builder.Configuration, logger, databaseRuntime);
 builder.Services.ConfigureJwt(builder.Configuration);
 builder.Services.ConfigureMapster();
+builder.Services.ConfigureAdminEmailBroadcast();
 builder.Services.ConfigureNotificationServices();
 builder.Services.ConfigureHealthCheckServices(databaseRuntime);
 
