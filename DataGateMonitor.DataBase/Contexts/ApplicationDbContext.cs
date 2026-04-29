@@ -53,6 +53,8 @@ public class ApplicationDbContext(DbContextOptions<ApplicationDbContext> options
     public DbSet<Tag> Tags { get; set; } = null!;
     public DbSet<VpnServerTag> VpnServerTags { get; set; } = null!;
     public DbSet<VpnServerConflog> VpnServerConflogs { get; set; } = null!;
+    public DbSet<SentEmailLog> SentEmailLogs { get; set; } = null!;
+    public DbSet<EmailBroadcastTemplate> EmailBroadcastTemplates { get; set; } = null!;
 
     protected override void OnModelCreating(ModelBuilder modelBuilder)
     {
@@ -88,6 +90,8 @@ public class ApplicationDbContext(DbContextOptions<ApplicationDbContext> options
         modelBuilder.ApplyConfiguration(new TagConfiguration());
         modelBuilder.ApplyConfiguration(new VpnServerTagConfiguration());
         modelBuilder.ApplyConfiguration(new VpnServerConflogConfiguration());
+        modelBuilder.ApplyConfiguration(new SentEmailLogConfiguration());
+        modelBuilder.ApplyConfiguration(new EmailBroadcastTemplateConfiguration());
         modelBuilder.ApplyConfiguration(new RoleConfiguration());
         modelBuilder.ApplyConfiguration(new UserRoleConfiguration());
         modelBuilder.ApplyConfiguration(new DeviceConfiguration());
