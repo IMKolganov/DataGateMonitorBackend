@@ -66,4 +66,11 @@ public class UserQueryService(
         Expression<Func<User, bool>> predicate,
         CancellationToken ct)
         => q.Where(predicate, ct: ct);
+
+    public Task<List<User>> GetUsersWithNonEmptyEmailAsync(CancellationToken ct) =>
+        q.Where(
+            predicate: u => u.Email != null && u.Email != "",
+            orderBy: x => x.OrderBy(u => u.Id),
+            asNoTracking: true,
+            ct: ct);
 }
