@@ -4,10 +4,13 @@ using Microsoft.Extensions.Logging;
 using Moq;
 using DataGateMonitor.DataBase.Services.Command.Interfaces;
 using DataGateMonitor.DataBase.Services.Query.UserCredentialTable;
-using DataGateMonitor.DataBase.Services.Query.UserRoleTable;
 using DataGateMonitor.DataBase.Services.Query.UserTable;
 using DataGateMonitor.Models;
+using DataGateMonitor.Services.AdminEmail;
+using DataGateMonitor.Services.Api.Auth.EmailConfirmation;
 using DataGateMonitor.Services.Api.Auth.ForgotPassword;
+using DataGateMonitor.Services.EmailTemplates;
+using DataGateMonitor.Services.Others.Notifications;
 using DataGateMonitor.SharedModels.DataGateMonitor.Auth.Requests;
 using Xunit;
 
@@ -20,19 +23,25 @@ public class AdminForgotPasswordServiceTests
     {
         var credentialQuery = new Mock<IUserCredentialQueryService>();
         var userQuery = new Mock<IUserQueryService>();
-        var userRoleQuery = new Mock<IUserRoleQueryService>();
         var credentialCommand = new Mock<ICommandService<UserCredential, int>>();
         var passwordHasher = new Mock<IPasswordHasher<User>>();
         var cache = new MemoryCache(new MemoryCacheOptions());
+        var emailSender = new Mock<IEmailSenderService>();
+        var sentEmailLog = new Mock<ISentEmailLogService>();
+        var systemTransactionalEmail = new Mock<ISystemTransactionalEmailService>();
+        var appNotifications = new Mock<IAppNotificationFacade>();
         var logger = new Mock<ILogger<AdminForgotPasswordService>>();
 
         var sut = new AdminForgotPasswordService(
             credentialQuery.Object,
             userQuery.Object,
-            userRoleQuery.Object,
             credentialCommand.Object,
             passwordHasher.Object,
             cache,
+            emailSender.Object,
+            sentEmailLog.Object,
+            systemTransactionalEmail.Object,
+            appNotifications.Object,
             logger.Object);
 
         var request = new AdminForgotPasswordRequest { LoginOrEmail = "   " };

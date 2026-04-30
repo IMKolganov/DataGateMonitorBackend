@@ -5,7 +5,6 @@ using Microsoft.Extensions.Caching.Memory;
 using Microsoft.Extensions.Logging;
 using DataGateMonitor.DataBase.Services.Command.Interfaces;
 using DataGateMonitor.DataBase.Services.Query.UserCredentialTable;
-using DataGateMonitor.DataBase.Services.Query.UserRoleTable;
 using DataGateMonitor.DataBase.Services.Query.UserTable;
 using DataGateMonitor.Models;
 using DataGateMonitor.Services.AdminEmail;
@@ -21,7 +20,6 @@ namespace DataGateMonitor.Services.Api.Auth.ForgotPassword;
 public sealed class AdminForgotPasswordService(
     IUserCredentialQueryService credentialQueryService,
     IUserQueryService userQueryService,
-    IUserRoleQueryService userRoleQueryService,
     ICommandService<UserCredential, int> credentialCommandService,
     IPasswordHasher<User> passwordHasher,
     IMemoryCache cache,
@@ -39,7 +37,7 @@ public sealed class AdminForgotPasswordService(
     private static readonly ConcurrentDictionary<string, object> RateLimitLocks = new();
 
     public const string SameMessageForAll =
-        "If an admin account with this login exists and uses password sign-in, a reset code has been sent to the account email (when configured) and written to the server console. Otherwise, no such user was found.";
+        "If an account with this login or email exists and uses password sign-in, a reset code has been sent to the account email (when configured) and written to the server console. Otherwise, no such user was found.";
 
     public const string RateLimitMessage = "Too many requests. Try again later.";
 
@@ -78,10 +76,6 @@ public sealed class AdminForgotPasswordService(
         if (user is null)
             return new AdminForgotPasswordResponse { Message = SameMessageForAll };
 
-        var role = await userRoleQueryService.GetByUserId(user.Id, ct);
-        if (role is null || role.RoleId != SystemRoles.AdminId)
-            return new AdminForgotPasswordResponse { Message = SameMessageForAll };
-
         var code = GenerateCode();
         var expiry = TimeSpan.FromMinutes(CodeExpirationMinutes);
         cache.Set($"forgotpwd:code:{code}", credential.UserId, new MemoryCacheEntryOptions { AbsoluteExpirationRelativeToNow = expiry });
@@ -112,7 +106,7 @@ public sealed class AdminForgotPasswordService(
         }
 
         logger.LogInformation(
-            "Admin password reset code for login '{Login}' (userId={UserId}): {Code}. Valid for {Minutes} minutes. Check email (if sent) or server console.",
+            "Password reset code for login '{Login}' (userId={UserId}): {Code}. Valid for {Minutes} minutes. Check email (if sent) or server console.",
             credential.Login,
             credential.UserId,
             code,
