@@ -33,4 +33,16 @@ public class AppNotificationFacade(
         var env = catalog.ServerUp(serverId, serverName);
         return notificationService.NotifyAdmins(env.Request, env.Channels, ct);
     }
+
+    public Task UserRegistered(int userId, string displayName, string? login, string? email, CancellationToken ct)
+    {
+        var env = catalog.UserRegistered(userId, displayName, login, email);
+        return notificationService.NotifyAdmins(env.Request, env.Channels, ct);
+    }
+
+    public Task UserPasswordChanged(int userId, string displayName, string login, string reason, CancellationToken ct)
+    {
+        var env = catalog.UserPasswordChanged(userId, displayName, login, reason);
+        return notificationService.NotifyAdmins(env.Request, env.Channels, ct);
+    }
 }
