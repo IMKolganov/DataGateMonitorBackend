@@ -10,4 +10,7 @@ public static class NotificationTypes
 
     public const string GeoLiteAutoUpdateSucceeded = "geolite.auto-update.succeeded";
     public const string GeoLiteAutoUpdateFailed     = "geolite.auto-update.failed";
+
+    public const string UserRegistered       = "user.registered";
+    public const string UserPasswordChanged  = "user.password_changed";
 }

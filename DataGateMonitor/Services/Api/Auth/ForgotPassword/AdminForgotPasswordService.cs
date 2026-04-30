@@ -8,6 +8,10 @@ using DataGateMonitor.DataBase.Services.Query.UserCredentialTable;
 using DataGateMonitor.DataBase.Services.Query.UserRoleTable;
 using DataGateMonitor.DataBase.Services.Query.UserTable;
 using DataGateMonitor.Models;
+using DataGateMonitor.Services.AdminEmail;
+using DataGateMonitor.Services.Api.Auth.EmailConfirmation;
+using DataGateMonitor.Services.EmailTemplates;
+using DataGateMonitor.Services.Others.Notifications;
 using DataGateMonitor.SharedModels.Auth;
 using DataGateMonitor.SharedModels.DataGateMonitor.Auth.Requests;
 using DataGateMonitor.SharedModels.DataGateMonitor.Auth.Responses;
@@ -21,6 +25,10 @@ public sealed class AdminForgotPasswordService(
     ICommandService<UserCredential, int> credentialCommandService,
     IPasswordHasher<User> passwordHasher,
     IMemoryCache cache,
+    IEmailSenderService emailSender,
+    ISentEmailLogService sentEmailLogService,
+    ISystemTransactionalEmailService systemTransactionalEmail,
+    IAppNotificationFacade appNotificationFacade,
     ILogger<AdminForgotPasswordService> logger) : IAdminForgotPasswordService
 {
     private const int RateLimitWindowMinutes = 15;
@@ -31,7 +39,7 @@ public sealed class AdminForgotPasswordService(
     private static readonly ConcurrentDictionary<string, object> RateLimitLocks = new();
 
     public const string SameMessageForAll =
-        "If an admin account with this login exists and uses password sign-in, a reset code has been written to the server console. Otherwise, no such user was found.";
+        "If an admin account with this login exists and uses password sign-in, a reset code has been sent to the account email (when configured) and written to the server console. Otherwise, no such user was found.";
 
     public const string RateLimitMessage = "Too many requests. Try again later.";
 
@@ -78,8 +86,33 @@ public sealed class AdminForgotPasswordService(
         var expiry = TimeSpan.FromMinutes(CodeExpirationMinutes);
         cache.Set($"forgotpwd:code:{code}", credential.UserId, new MemoryCacheEntryOptions { AbsoluteExpirationRelativeToNow = expiry });
 
+        var (subject, body) = await systemTransactionalEmail.GetAdminPasswordResetAsync(code, CodeExpirationMinutes, ct);
+
+        if (!string.IsNullOrWhiteSpace(user.Email))
+        {
+            var to = user.Email.Trim();
+            try
+            {
+                await emailSender.SendAsync(to, subject, body, ct);
+                await sentEmailLogService.LogAsync(user.Id, to, subject, body, true, null, null, ct);
+            }
+            catch (Exception ex)
+            {
+                logger.LogWarning(ex, "Failed to send admin reset email to {Email}", to);
+                try
+                {
+                    var msg = ex.Message.Length > 4000 ? ex.Message[..4000] : ex.Message;
+                    await sentEmailLogService.LogAsync(user.Id, to, subject, body, false, msg, null, ct);
+                }
+                catch
+                {
+                    // ignore secondary logging failures
+                }
+            }
+        }
+
         logger.LogInformation(
-            "Admin password reset code for login '{Login}' (userId={UserId}): {Code}. Valid for {Minutes} minutes. Get it from the server console.",
+            "Admin password reset code for login '{Login}' (userId={UserId}): {Code}. Valid for {Minutes} minutes. Check email (if sent) or server console.",
             credential.Login,
             credential.UserId,
             code,
@@ -121,6 +154,20 @@ public sealed class AdminForgotPasswordService(
         credential.FailedCount = 0;
         credential.LockoutUntilUtc = null;
         await credentialCommandService.Update(credential, saveChanges: true, ct);
+
+        try
+        {
+            await appNotificationFacade.UserPasswordChanged(
+                user.Id,
+                user.DisplayName ?? user.Email ?? "",
+                credential.Login,
+                "reset-password (one-time code)",
+                ct);
+        }
+        catch (Exception ex)
+        {
+            logger.LogWarning(ex, "Failed to notify admins about password reset for user {UserId}", user.Id);
+        }
 
         return new AdminResetPasswordResponse { Success = true, Message = "Password has been reset." };
     }

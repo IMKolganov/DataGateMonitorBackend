@@ -7,4 +7,8 @@ public interface IAppNotificationFacade
     Task CertIssued(int actorUserId, string commonName, int? serverId, CancellationToken ct);
     Task ServerDown(int serverId, string serverName, CancellationToken ct);
     Task ServerUp(int serverId, string serverName, CancellationToken ct);
+
+    Task UserRegistered(int userId, string displayName, string? login, string? email, CancellationToken ct);
+
+    Task UserPasswordChanged(int userId, string displayName, string login, string reason, CancellationToken ct);
 }
