@@ -52,6 +52,7 @@ builder.Services.ConfigureMapster();
 builder.Services.ConfigureNotificationServices();
 builder.Services.ConfigureHealthCheckServices(databaseRuntime);
 builder.Services.Configure<CrashIngestOptions>(builder.Configuration.GetSection(CrashIngestOptions.SectionName));
+builder.Services.PostConfigure<CrashIngestOptions>(options => options.ApplyDefaults());
 
 builder.ConfigureWebHost();
 builder.ConfigureExternalIpServices();
