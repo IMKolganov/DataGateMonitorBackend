@@ -266,7 +266,7 @@ public class XrayClientLinksController(
             return files;
         var uqp = await userQuotaPlanQueryService.GetActiveByUserId(userId, ct);
         if (uqp is null)
-            return [];
+            return files;
         var allowed = await quotaPlanAllowedServerQueryService.GetVpnServerIdsByQuotaPlanId(uqp.QuotaPlanId, ct);
         return files.Where(f => allowed.Contains(f.VpnServerId)).ToList();
     }

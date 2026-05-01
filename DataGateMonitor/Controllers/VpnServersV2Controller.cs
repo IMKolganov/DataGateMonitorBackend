@@ -114,7 +114,7 @@ public class VpnServersV2Controller(
             return (null, false);
         var uqp = await userQuotaPlanQueryService.GetActiveByUserId(userId, ct);
         if (uqp is null)
-            return (new HashSet<int>(), true);
+            return (null, true);
         var set = await quotaPlanAllowedServerQueryService.GetVpnServerIdsByQuotaPlanId(uqp.QuotaPlanId, ct);
         return (set, true);
     }
