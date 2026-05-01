@@ -45,4 +45,10 @@ public enum ApplicationNotificationKind
     AppCertificateIssued = 24,
     AppServerMonitorDown = 25,
     AppServerMonitorUp = 26,
+
+    /// <summary>New dashboard user registered (self-service).</summary>
+    AppUserRegistered = 27,
+
+    /// <summary>Password hash changed (forgot/reset flow or future profile password change). Not used for successful login.</summary>
+    AppUserPasswordChanged = 28,
 }

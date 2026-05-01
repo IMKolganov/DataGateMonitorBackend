@@ -2,6 +2,7 @@ using Mapster;
 using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Mvc;
 using Newtonsoft.Json;
+using Newtonsoft.Json.Serialization;
 using DataGateMonitor.DataBase.Services.Query.VpnServerTable;
 using DataGateMonitor.DataBase.Services.Query.VpnServerTagTable;
 using DataGateMonitor.DataBase.Services.Query.UserQuotaPlanTable;
@@ -31,7 +32,7 @@ public class VpnServersController(IVpnDataService vpnDataService,
     IVpnServerAccessQueryService vpnServerAccessQueryService) : BaseController
 {
     [HttpGet("get-all-with-status")]
-    public async Task<ActionResult<ApiResponse<VpnServerWithStatusesResponse>>> GetAllServersWithStatus(
+    public async Task<ActionResult> GetAllServersWithStatus(
         [FromQuery] bool includeDeleted = false,
         CancellationToken ct = default)
     {
@@ -47,20 +48,52 @@ public class VpnServersController(IVpnDataService vpnDataService,
                 return Unauthorized(ApiResponse<VpnServerWithStatusesResponse>.ErrorResponse("User id missing from token."));
             var uqp = await userQuotaPlanQueryService.GetActiveByUserId(userId, ct);
             if (uqp is null)
-                result = [];
+                result = await openVpnServerOverviewQuery.GetAllVpnServersWithStatusAsync(
+                    includeDeleted, requireQuotaPlanAssignment: false, restrictToQuotaPlanId: null, ct);
             else
                 result = await openVpnServerOverviewQuery.GetAllVpnServersWithStatusAsync(
                     includeDeleted, requireQuotaPlanAssignment: false, restrictToQuotaPlanId: uqp.QuotaPlanId, ct);
         }
 
-        VpnServerWithStatusesResponse response = result.Adapt<VpnServerWithStatusesResponse>();
-        response = new LegacyVpnServerWithStatusesResponse
+        var baseResponse = new VpnServerWithStatusesResponse
         {
-            VpnServerWithStatuses = response.VpnServerWithStatuses
+            VpnServerWithStatuses = result
         };
-        await FillTagsForOverviewResponse(response, ct);
-        ApplyLegacyOpenVpnAliases(response);
-        return Ok(ApiResponse<VpnServerWithStatusesResponse>.SuccessResponse(response));
+        await FillTagsForOverviewResponse(baseResponse, ct);
+
+        // Legacy mobile clients parse strict camelCase + openVpn* keys.
+        var legacyItems = baseResponse.VpnServerWithStatuses.Select(item => new
+        {
+            openVpnServerResponses = new
+            {
+                openVpnServer = item.VpnServerResponses.VpnServer
+            },
+            openVpnServerStatusLogResponse = item.VpnServerStatusLogResponse,
+            countConnectedClients = item.CountConnectedClients,
+            countSessions = item.CountSessions,
+            totalBytesIn = item.TotalBytesIn,
+            totalBytesOut = item.TotalBytesOut
+        }).ToList();
+
+        var envelope = new
+        {
+            success = true,
+            message = "Success",
+            data = new
+            {
+                openVpnServerWithStatuses = legacyItems
+            }
+        };
+
+        var json = JsonConvert.SerializeObject(
+            envelope,
+            new JsonSerializerSettings
+            {
+                ContractResolver = new CamelCasePropertyNamesContractResolver(),
+                NullValueHandling = NullValueHandling.Ignore
+            });
+
+        return Content(json, "application/json");
     }
 
     [HttpGet("get-server-with-status/{VpnServerId:int}")]
@@ -120,7 +153,8 @@ public class VpnServersController(IVpnDataService vpnDataService,
                 return Unauthorized(ApiResponse<VpnServersResponse>.ErrorResponse("User id missing from token."));
             var uqp = await userQuotaPlanQueryService.GetActiveByUserId(userId, ct);
             if (uqp is null)
-                serversList = [];
+                serversList = await openVpnServerQueryService.GetAll(includeDeleted, requireQuotaPlanAssignment: false,
+                    restrictToQuotaPlanId: null, ct);
             else
                 serversList = await openVpnServerQueryService.GetAll(includeDeleted, requireQuotaPlanAssignment: false,
                     restrictToQuotaPlanId: uqp.QuotaPlanId, ct);
@@ -229,41 +263,4 @@ public class VpnServersController(IVpnDataService vpnDataService,
         }
     }
 
-    // Keep old Windows clients working after DTO renames (OpenVpn* -> Vpn*).
-    private static void ApplyLegacyOpenVpnAliases(VpnServerWithStatusesResponse response)
-    {
-        response.VpnServerWithStatuses = response.VpnServerWithStatuses
-            .Select(item => new LegacyVpnServerWithStatusDto
-            {
-                VpnServerResponses = new LegacyVpnServerResponse
-                {
-                    VpnServer = item.VpnServerResponses.VpnServer
-                },
-                VpnServerStatusLogResponse = item.VpnServerStatusLogResponse,
-                CountConnectedClients = item.CountConnectedClients,
-                CountSessions = item.CountSessions,
-                TotalBytesIn = item.TotalBytesIn,
-                TotalBytesOut = item.TotalBytesOut
-            })
-            .Cast<VpnServerWithStatusDto>()
-            .ToList();
-    }
-
-    private sealed class LegacyVpnServerWithStatusDto : VpnServerWithStatusDto
-    {
-        [JsonProperty("OpenVpnServerResponses")]
-        public VpnServerResponse OpenVpnServerResponses => VpnServerResponses;
-    }
-
-    private sealed class LegacyVpnServerWithStatusesResponse : VpnServerWithStatusesResponse
-    {
-        [JsonProperty("OpenVpnServerWithStatuses")]
-        public List<VpnServerWithStatusDto> OpenVpnServerWithStatuses => VpnServerWithStatuses;
-    }
-
-    private sealed class LegacyVpnServerResponse : VpnServerResponse
-    {
-        [JsonProperty("OpenVpnServer")]
-        public VpnServerDto OpenVpnServer => VpnServer;
-    }
 }

@@ -1,10 +1,11 @@
 using System.Collections.Concurrent;
-using System.Net;
 using System.Security.Cryptography;
 using Microsoft.Extensions.Caching.Memory;
 using DataGateMonitor.DataBase.Services.Command.Interfaces;
 using DataGateMonitor.DataBase.Services.Query.UserTable;
 using DataGateMonitor.Models;
+using DataGateMonitor.Services.AdminEmail;
+using DataGateMonitor.Services.EmailTemplates;
 using DataGateMonitor.Services.Others;
 using DataGateMonitor.Services.Api.Auth.EmailConfirmation.Models;
 
@@ -15,7 +16,9 @@ public sealed class EmailConfirmationService(
     IUserQueryService userQueryService,
     ICommandService<User, int> userCommandService,
     IEmailSenderService emailSenderService,
-    ISettingsService settingsService) : IEmailConfirmationService
+    ISettingsService settingsService,
+    ISentEmailLogService sentEmailLogService,
+    ISystemTransactionalEmailService systemTransactionalEmail) : IEmailConfirmationService
 {
     private const int CodeLength = 6;
     private const int DefaultCodeTtlMinutes = 30;
@@ -46,9 +49,28 @@ public sealed class EmailConfirmationService(
                 AbsoluteExpirationRelativeToNow = TimeSpan.FromMinutes(codeTtlMinutes)
             });
 
-        var subject = "Confirm your DataGate email";
-        var body = BuildEmailConfirmationHtml(code, codeTtlMinutes);
-        await emailSenderService.SendAsync(email, subject, body, ct);
+        var (subject, body) = await systemTransactionalEmail.GetEmailConfirmationAsync(code, codeTtlMinutes, ct);
+        try
+        {
+            await emailSenderService.SendAsync(email, subject, body, ct);
+            await sentEmailLogService.LogAsync(userId, email, subject, body, true, null, null, ct);
+        }
+        catch (Exception ex)
+        {
+            var msg = ex.Message;
+            if (msg.Length > 4000)
+                msg = msg[..4000];
+            try
+            {
+                await sentEmailLogService.LogAsync(userId, email, subject, body, false, msg, null, ct);
+            }
+            catch
+            {
+                // ignore secondary logging failures
+            }
+
+            throw;
+        }
     }
 
     public async Task<ConfirmEmailResponse> ConfirmAsync(string email, string code, CancellationToken ct)
@@ -148,71 +170,4 @@ public sealed class EmailConfirmationService(
         return value;
     }
 
-    private static string BuildEmailConfirmationHtml(string code, int codeTtlMinutes)
-    {
-        var safeCode = WebUtility.HtmlEncode(code);
-        return $"""
-                <!doctype html>
-                <html lang="en">
-                <head>
-                  <meta charset="UTF-8">
-                  <meta name="viewport" content="width=device-width, initial-scale=1.0">
-                  <title>DataGate Email Confirmation</title>
-                </head>
-                <body style="margin:0;padding:0;background:#0d1117;color:#c9d1d9;font-family:-apple-system,BlinkMacSystemFont,'Segoe UI',Arial,sans-serif;">
-                  <table role="presentation" width="100%" cellpadding="0" cellspacing="0" style="background:#0d1117;padding:24px 12px;">
-                    <tr>
-                      <td align="center">
-                        <table role="presentation" width="100%" cellpadding="0" cellspacing="0" style="max-width:640px;background:linear-gradient(180deg,rgba(18,23,30,0.96),rgba(13,17,23,0.99));border:1px solid #30363d;border-radius:14px;overflow:hidden;">
-                          <tr>
-                            <td style="padding:28px 28px 12px 28px;">
-                              <div style="display:inline-block;padding:6px 12px;border-radius:999px;background:rgba(56,139,253,0.14);border:1px solid rgba(88,166,255,0.24);color:#9ecbff;font-size:12px;font-weight:700;letter-spacing:.08em;text-transform:uppercase;">DataGate</div>
-                              <h1 style="margin:16px 0 8px 0;font-size:28px;line-height:1.2;color:#ffffff;">Confirm your email</h1>
-                              <p style="margin:0;color:#8b949e;font-size:15px;line-height:1.6;">
-                                Use the confirmation code below to finish registration in DataGate.
-                              </p>
-                            </td>
-                          </tr>
-                          <tr>
-                            <td style="padding:8px 28px 22px 28px;">
-                              <div style="background:#161b22;border:1px solid #30363d;border-radius:12px;padding:18px;text-align:center;">
-                                <div style="font-size:12px;color:#8b949e;letter-spacing:.08em;text-transform:uppercase;margin-bottom:8px;">Confirmation code</div>
-                                <div style="font-size:34px;font-weight:700;letter-spacing:6px;color:#58a6ff;">{safeCode}</div>
-                                <div style="margin-top:10px;font-size:13px;color:#8b949e;">Valid for {codeTtlMinutes} minutes</div>
-                              </div>
-                            </td>
-                          </tr>
-                          <tr>
-                            <td style="padding:0 28px 18px 28px;">
-                              <div style="background:#161b22;border:1px solid #30363d;border-radius:12px;padding:16px;">
-                                <p style="margin:0 0 8px 0;color:#c9d1d9;font-size:14px;font-weight:600;">Get DataGate clients</p>
-                                <p style="margin:0 0 10px 0;color:#8b949e;font-size:14px;">Download all available clients here:</p>
-                                <a href="https://datagateapp.com/download" style="color:#58a6ff;text-decoration:none;">https://datagateapp.com/download</a>
-                              </div>
-                            </td>
-                          </tr>
-                          <tr>
-                            <td style="padding:0 28px 28px 28px;">
-                              <div style="background:#161b22;border:1px solid #30363d;border-radius:12px;padding:16px;">
-                                <p style="margin:0 0 8px 0;color:#c9d1d9;font-size:14px;font-weight:600;">Follow our Telegram channel</p>
-                                <a href="https://t.me/datagateapp" style="color:#58a6ff;text-decoration:none;">https://t.me/datagateapp</a>
-                              </div>
-                            </td>
-                          </tr>
-                          <tr>
-                            <td style="padding:0 28px 28px 28px;">
-                              <p style="margin:0;color:#6e7681;font-size:12px;line-height:1.6;">
-                                If you did not request this email, you can safely ignore it.<br>
-                                DataGate Team
-                              </p>
-                            </td>
-                          </tr>
-                        </table>
-                      </td>
-                    </tr>
-                  </table>
-                </body>
-                </html>
-                """;
-    }
 }

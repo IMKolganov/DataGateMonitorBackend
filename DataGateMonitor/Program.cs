@@ -44,12 +44,15 @@ builder.Services.ConfigureServices(builder.Configuration, databaseRuntime);
 builder.Services.ConfigureQueryCommand();
 builder.Services.ConfigureTelegramServices();
 builder.Services.ConfigureGeoLiteServices(databaseRuntime);
+builder.Services.ConfigureAdminEmailBroadcast();
 builder.Services.ConfigureAuthServices(builder.Configuration);
 builder.Services.DataBaseServices(builder.Configuration, logger, databaseRuntime);
 builder.Services.ConfigureJwt(builder.Configuration);
 builder.Services.ConfigureMapster();
 builder.Services.ConfigureNotificationServices();
 builder.Services.ConfigureHealthCheckServices(databaseRuntime);
+builder.Services.Configure<CrashIngestOptions>(builder.Configuration.GetSection(CrashIngestOptions.SectionName));
+builder.Services.PostConfigure<CrashIngestOptions>(options => options.ApplyDefaults());
 
 builder.ConfigureWebHost();
 builder.ConfigureExternalIpServices();

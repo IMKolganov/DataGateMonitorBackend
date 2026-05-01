@@ -75,8 +75,13 @@ public class OpenVpnBackgroundService : BackgroundService, IOpenVpnBackgroundSer
             var openVpnServers = await openVpnServerQueryService.GetAll(ct: cancellationToken);
             _statusManager.ClearAllStatuses();
 
-            openVpnServers = openVpnServers.Where(x => x.IsDisable != true).ToList();
-            await Parallel.ForEachAsync(openVpnServers, cancellationToken, async (server, ct) =>
+            // Disabled rows are never polled — still publish Idle so the status stream is not empty and
+            // clients do not treat "missing server" as Pending for the whole fleet.
+            foreach (var skipped in openVpnServers.Where(s => s.IsDisable))
+                _statusManager.UpdateStatus(skipped.Id, ServiceStatus.Idle, nextRunSeconds);
+
+            var serversToPoll = openVpnServers.Where(x => x.IsDisable != true).ToList();
+            await Parallel.ForEachAsync(serversToPoll, cancellationToken, async (server, ct) =>
             {
                 _logger.LogInformation(
                     $"VpnServerId: {server.Id}. VpnServerName: {server.ServerName} Processing server: {server.ApiUrl}");

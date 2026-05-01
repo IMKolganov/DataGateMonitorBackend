@@ -34,6 +34,7 @@ public class VpnServerClientOverviewQuery(
             Longitude = x.Longitude,
             IsConnected = x.IsConnected,
             DisplayName = string.Empty,
+            AvatarUrl = null,
         };
 
     // Connected clients page
@@ -121,7 +122,10 @@ public class VpnServerClientOverviewQuery(
                 continue;
 
             if (users.TryGetValue(client.ExternalId, out var user) && user is not null)
+            {
                 client.DisplayName = user.DisplayName;
+                client.AvatarUrl = string.IsNullOrWhiteSpace(user.AvatarUrl) ? null : user.AvatarUrl;
+            }
         }
     }
 }

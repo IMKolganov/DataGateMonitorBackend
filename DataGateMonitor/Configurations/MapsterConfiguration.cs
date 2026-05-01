@@ -10,6 +10,7 @@ using DataGateMonitor.Mapping.VpnServerEvent.Mappings;
 using DataGateMonitor.Mapping.VpnServerOvpnFileConfig.Mappings;
 using DataGateMonitor.Mapping.VpnServers.Mappings;
 using DataGateMonitor.Mapping.QuotaPlans.Mappings;
+using DataGateMonitor.Mapping.EmailBroadcast.Mappings;
 using DataGateMonitor.Mapping.TelegramBotIncomingMessageLog.Mappings;
 using DataGateMonitor.Mapping.TelegramBotUser.Mappings;
 
@@ -33,7 +34,8 @@ public static class MapsterConfiguration
             typeof(VpnServerClientMapping).Assembly,
             typeof(DataGateOpenVpnManagerMapping).Assembly,
             typeof(VpnServerEventMapping).Assembly,
-            typeof(QuotaPlanMapping).Assembly
+            typeof(QuotaPlanMapping).Assembly,
+            typeof(EmailBroadcastMapping).Assembly
         );
         // TypeAdapterConfig.GlobalSettings.Apply(config);
         

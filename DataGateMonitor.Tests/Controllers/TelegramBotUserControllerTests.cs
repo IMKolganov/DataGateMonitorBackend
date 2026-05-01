@@ -15,13 +15,17 @@ namespace DataGateMonitor.Tests.Controllers;
 public class TelegramBotUserControllerTests
 {
     private readonly Mock<ITelegramUserService> _telegramUserServiceMock;
+    private readonly Mock<ITelegramBotUserProfilePhotoService> _profilePhotoServiceMock;
     private readonly TelegramBotUserController _controller;
 
     public TelegramBotUserControllerTests()
     {
         TypeAdapterConfig.GlobalSettings.Scan(typeof(TelegramBotUserMapping).Assembly);
         _telegramUserServiceMock = new Mock<ITelegramUserService>();
-        _controller = new TelegramBotUserController(_telegramUserServiceMock.Object);
+        _profilePhotoServiceMock = new Mock<ITelegramBotUserProfilePhotoService>();
+        _controller = new TelegramBotUserController(
+            _telegramUserServiceMock.Object,
+            _profilePhotoServiceMock.Object);
     }
 
     [Fact]

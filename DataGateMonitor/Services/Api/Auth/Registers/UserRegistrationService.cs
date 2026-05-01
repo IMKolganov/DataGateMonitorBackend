@@ -1,4 +1,5 @@
 using Microsoft.AspNetCore.Identity;
+using Microsoft.Extensions.Logging;
 using DataGateMonitor.DataBase.Services.Command.Interfaces;
 using DataGateMonitor.DataBase.Services.Query.UserCredentialTable;
 using DataGateMonitor.DataBase.Services.Query.UserTable;
@@ -7,6 +8,7 @@ using DataGateMonitor.Services.Api.Auth.EmailConfirmation;
 using DataGateMonitor.Services.Api.Auth.Registers.Interfaces;
 using DataGateMonitor.Services.Api.Auth.Users;
 using DataGateMonitor.Services.Others;
+using DataGateMonitor.Services.Others.Notifications;
 using DataGateMonitor.SharedModels.DataGateMonitor.Auth.Requests;
 using DataGateMonitor.SharedModels.DataGateMonitor.Auth.Responses;
 
@@ -19,7 +21,9 @@ public sealed class UserRegistrationService(
     IUserQueryService userQueryService,
     IUserAccountService userAccountService,
     IEmailConfirmationService emailConfirmationService,
-    ISettingsService settingsService
+    ISettingsService settingsService,
+    IAppNotificationFacade appNotificationFacade,
+    ILogger<UserRegistrationService> logger
 ) : IUserRegistrationService
 {
     public async Task<RegisterUserResponse> RegisterAsync(RegisterUserRequest request, CancellationToken ct)
@@ -86,10 +90,19 @@ public sealed class UserRegistrationService(
         if (requireEmailConfirmation && !string.IsNullOrWhiteSpace(user.Email))
             await emailConfirmationService.SendConfirmationAsync(user.Id, user.Email, ct);
 
+        try
+        {
+            await appNotificationFacade.UserRegistered(user.Id, user.DisplayName ?? "", login, user.Email, ct);
+        }
+        catch (Exception ex)
+        {
+            logger.LogWarning(ex, "Failed to notify admins about new user {UserId}", user.Id);
+        }
+
         return new RegisterUserResponse
         {
             UserId = user.Id,
-            DisplayName = user.DisplayName,
+            DisplayName = user.DisplayName ?? "",
             Email = user.Email,
             HasDashboardAccess = user.HasDashboardAccess
         };

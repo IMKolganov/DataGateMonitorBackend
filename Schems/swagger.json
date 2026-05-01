@@ -10536,6 +10536,10 @@
           "isNewUser": {
             "type": "boolean"
           },
+          "avatarUrl": {
+            "type": "string",
+            "nullable": true
+          },
           "token": {
             "type": "string",
             "nullable": true
@@ -13076,6 +13080,10 @@
           },
           "isConnected": {
             "type": "boolean"
+          },
+          "avatarUrl": {
+            "type": "string",
+            "nullable": true
           }
         },
         "additionalProperties": false
