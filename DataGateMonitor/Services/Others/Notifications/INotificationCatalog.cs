@@ -7,4 +7,8 @@ public interface INotificationCatalog
     NotificationEnvelope CertIssued(int actorUserId, string commonName, int? serverId = null);
     NotificationEnvelope ServerDown(int serverId, string serverName);
     NotificationEnvelope ServerUp(int serverId, string serverName);
+
+    NotificationEnvelope UserRegistered(int userId, string displayName, string? login, string? email);
+
+    NotificationEnvelope UserPasswordChanged(int userId, string displayName, string login, string reason);
 }

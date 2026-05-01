@@ -6,16 +6,16 @@
         <DockerDefaultTargetOS>Linux</DockerDefaultTargetOS>
         <Product>DataGateMonitor</Product>
         <AssemblyTitle>DataGateMonitor</AssemblyTitle>
-        <Version>1.0.3.20</Version>
-        <AssemblyVersion>1.0.3.20</AssemblyVersion>
-        <FileVersion>1.0.3.20</FileVersion>
+        <Version>1.0.3.28</Version>
+        <AssemblyVersion>1.0.3.28</AssemblyVersion>
+        <FileVersion>1.0.3.28</FileVersion>
         <TargetFramework>net10.0</TargetFramework>
     </PropertyGroup>
 
     <ItemGroup>
         <PackageReference Include="AspNetCore.HealthChecks.NpgSql" Version="9.0.0" />
         <PackageReference Include="BCrypt.Net-Next" Version="4.1.0" />
-        <PackageReference Include="Elastic.Clients.Elasticsearch" Version="9.3.5" />
+        <PackageReference Include="Elastic.Clients.Elasticsearch" Version="9.3.6" />
         <PackageReference Include="Google.Apis.Auth" Version="1.73.0" />
         <PackageReference Include="Mapster" Version="10.0.7" />
         <PackageReference Include="Mapster.DependencyInjection" Version="10.0.7" />
@@ -34,7 +34,7 @@
         <PackageReference Include="Microsoft.IdentityModel.Tokens" Version="8.17.0" />
         <PackageReference Include="Newtonsoft.Json" Version="13.0.4" />
         <!-- SharedModels: NuGet only (never ProjectReference). After DTO changes in SharedModels, bump version and publish to nuget.org. -->
-        <PackageReference Include="DataGateMonitor.SharedModels" Version="1.0.8" />
+        <PackageReference Include="DataGateMonitor.SharedModels" Version="1.0.14" />
         <PackageReference Include="Npgsql.EntityFrameworkCore.PostgreSQL" Version="10.0.1" />
         <PackageReference Include="Serilog" Version="4.3.1" />
         <PackageReference Include="Serilog.Extensions.Hosting" Version="10.0.0" />

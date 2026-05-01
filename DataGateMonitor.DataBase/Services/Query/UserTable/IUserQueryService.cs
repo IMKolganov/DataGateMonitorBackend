@@ -15,4 +15,7 @@ public interface IUserQueryService
     public Task<List<User>> Search(
         Expression<Func<User, bool>> predicate,
         CancellationToken ct);
+
+    /// <summary>Dashboard users with a non-empty <see cref="User.Email"/> (for admin broadcast).</summary>
+    Task<List<User>> GetUsersWithNonEmptyEmailAsync(CancellationToken ct);
 }

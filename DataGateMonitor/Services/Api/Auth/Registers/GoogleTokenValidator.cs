@@ -45,7 +45,8 @@ public sealed class GoogleTokenValidator(IConfiguration configuration) : IGoogle
             Subject = payload.Subject,
             Email = payload.Email,
             EmailVerified = payload.EmailVerified,
-            Name = payload.Name
+            Name = payload.Name,
+            Picture = string.IsNullOrWhiteSpace(payload.Picture) ? null : payload.Picture.Trim()
         };
     }
 }
