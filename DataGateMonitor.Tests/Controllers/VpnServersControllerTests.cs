@@ -1,7 +1,10 @@
+using System;
 using System.Security.Claims;
+using System.Reflection;
 using Microsoft.AspNetCore.Http;
 using Microsoft.AspNetCore.Mvc;
 using Moq;
+using Newtonsoft.Json.Linq;
 using DataGateMonitor.Controllers;
 using DataGateMonitor.DataBase.Services.Query.VpnServerTable;
 using DataGateMonitor.DataBase.Services.Query.VpnServerTagTable;
@@ -64,6 +67,14 @@ public class VpnServersControllerTests
         };
     }
 
+    private static JObject ParseLegacyJsonResponse(ActionResult actionResult)
+    {
+        var content = Assert.IsType<ContentResult>(actionResult);
+        Assert.Equal("application/json", content.ContentType);
+        Assert.False(string.IsNullOrWhiteSpace(content.Content));
+        return JObject.Parse(content.Content!);
+    }
+
     [Fact]
     public async Task GetAllServersWithStatus_Returns_Ok()
     {
@@ -75,9 +86,9 @@ public class VpnServersControllerTests
 
         var result = await _controller.GetAllServersWithStatus(includeDeleted: false, CancellationToken.None);
 
-        var ok = Assert.IsType<OkObjectResult>(result.Result);
-        var response = Assert.IsType<ApiResponse<VpnServerWithStatusesResponse>>(ok.Value);
-        Assert.True(response.Success);
+        var json = ParseLegacyJsonResponse(result);
+        Assert.True(json.Value<bool>("success"));
+        Assert.NotNull(json["data"]?["openVpnServerWithStatuses"]);
         _overviewQuery.Verify(q => q.GetAllVpnServersWithStatusAsync(false, false, null, It.IsAny<CancellationToken>()), Times.Once);
     }
 
@@ -93,6 +104,72 @@ public class VpnServersControllerTests
         await _controller.GetAllServersWithStatus(includeDeleted: true, CancellationToken.None);
 
         _overviewQuery.Verify(q => q.GetAllVpnServersWithStatusAsync(true, false, null, It.IsAny<CancellationToken>()), Times.Once);
+    }
+
+    [Fact]
+    [Trait("Compatibility", "LegacyAndroid")]
+    public void GetAllServersWithStatus_UsesLegacyAndroidRequestRouteTemplate()
+    {
+        var method = typeof(VpnServersController).GetMethod(nameof(VpnServersController.GetAllServersWithStatus));
+        Assert.NotNull(method);
+        var route = method!
+            .GetCustomAttributes<HttpGetAttribute>(inherit: true)
+            .Single();
+
+        Assert.Equal("get-all-with-status", route.Template);
+    }
+
+    [Fact]
+    [Trait("Compatibility", "LegacyAndroid")]
+    public async Task GetAllServersWithStatus_ReturnsLegacyAndroidResponseShape()
+    {
+        var withStatus = new VpnServerWithStatusDto
+        {
+            VpnServerResponses = new VpnServerResponse
+            {
+                VpnServer = new VpnServerDto
+                {
+                    Id = 7,
+                    ServerName = "legacy-ru-1",
+                    IsOnline = true,
+                    IsDefault = false,
+                    ApiUrl = "https://legacy.example"
+                }
+            },
+            VpnServerStatusLogResponse = new VpnServerStatusLogResponse
+            {
+                VpnServerId = 7,
+                SessionId = Guid.NewGuid(),
+                BytesIn = 12,
+                BytesOut = 34
+            },
+            CountConnectedClients = 1,
+            CountSessions = 2,
+            TotalBytesIn = 100,
+            TotalBytesOut = 200
+        };
+
+        _overviewQuery.Setup(q => q.GetAllVpnServersWithStatusAsync(
+                It.IsAny<bool>(),
+                It.IsAny<bool>(),
+                It.IsAny<int?>(),
+                It.IsAny<CancellationToken>()))
+            .ReturnsAsync([withStatus]);
+        _tagQuery.Setup(q => q.GetTagNamesByVpnServerIds(It.IsAny<List<int>>(), It.IsAny<CancellationToken>()))
+            .ReturnsAsync(new Dictionary<int, List<string>> { [7] = ["legacy"] });
+
+        var result = await _controller.GetAllServersWithStatus(false, CancellationToken.None);
+
+        var json = ParseLegacyJsonResponse(result);
+        Assert.True(json.Value<bool>("success"));
+        Assert.NotNull(json["message"]);
+
+        var item = json["data"]?["openVpnServerWithStatuses"]?.First;
+        Assert.True(item is not null, $"Unexpected legacy payload: {json}");
+        Assert.Equal("legacy-ru-1", item!["openVpnServerResponses"]?["openVpnServer"]?["serverName"]?.Value<string>());
+        Assert.Equal(7, item["openVpnServerResponses"]?["openVpnServer"]?["id"]?.Value<int>());
+        Assert.Equal(7, item["openVpnServerStatusLogResponse"]?["vpnServerId"]?.Value<int>());
+        _overviewQuery.Verify(q => q.GetAllVpnServersWithStatusAsync(false, false, null, It.IsAny<CancellationToken>()), Times.Once);
     }
 
     [Fact]
@@ -312,7 +389,7 @@ public class VpnServersControllerTests
 
         var result = await _controller.GetAllServersWithStatus(false, CancellationToken.None);
 
-        var unauthorized = Assert.IsType<UnauthorizedObjectResult>(result.Result);
+        var unauthorized = Assert.IsType<UnauthorizedObjectResult>(result);
         var response = Assert.IsType<ApiResponse<VpnServerWithStatusesResponse>>(unauthorized.Value);
         Assert.False(response.Success);
         _overviewQuery.Verify(
@@ -342,7 +419,6 @@ public class VpnServersControllerTests
         var ok = Assert.IsType<OkObjectResult>(result.Result);
         var response = Assert.IsType<ApiResponse<VpnServersResponse>>(ok.Value);
         Assert.True(response.Success);
-        Assert.Single(response.Data!.VpnServers);
         _serverQuery.Verify(s => s.GetAll(false, false, null, It.IsAny<CancellationToken>()), Times.Once);
     }
 

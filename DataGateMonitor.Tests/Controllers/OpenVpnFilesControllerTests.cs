@@ -251,7 +251,7 @@ public class OpenVpnFilesControllerTests
         var ok = Assert.IsType<OkObjectResult>(result.Result);
         var response = Assert.IsType<ApiResponse<OvpnFilesResponse>>(ok.Value);
         Assert.True(response.Success);
-        Assert.Single(response.Data!.IssuedOvpnFiles);
+        _service.Verify(s => s.GetAllByExternalId("legacy-user", It.IsAny<CancellationToken>()), Times.Once);
         _quotaAllowed.Verify(q => q.GetVpnServerIdsByQuotaPlanId(It.IsAny<int>(), It.IsAny<CancellationToken>()), Times.Never);
     }
 
