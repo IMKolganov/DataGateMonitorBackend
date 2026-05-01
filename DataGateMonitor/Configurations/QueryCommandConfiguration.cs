@@ -21,6 +21,7 @@ using DataGateMonitor.DataBase.Services.Query.QuotaPlanAllowedServerTable;
 using DataGateMonitor.DataBase.Services.Query.QuotaPlanTable;
 using DataGateMonitor.DataBase.Services.Query.TagTable;
 using DataGateMonitor.DataBase.Services.Query.RoleTable;
+using DataGateMonitor.DataBase.Services.Query.TelegramBotUserProfilePhotoTable;
 using DataGateMonitor.DataBase.Services.Query.TelegramBotUserTable;
 using DataGateMonitor.DataBase.Services.Query.TelegramUserLanguagePreferenceTable;
 using DataGateMonitor.DataBase.Services.Query.UserCredentialTable;
@@ -60,6 +61,7 @@ public static class QueryCommandConfiguration
         services.AddScoped<IVpnServerStatusLogQueryService, VpnServerStatusLogQueryService>();
         services.AddScoped<IVpnServerQueryService, VpnServerQueryService>();
         services.AddScoped<ITelegramBotUserQueryService, TelegramBotUserQueryService>();
+        services.AddScoped<ITelegramBotUserProfilePhotoQueryService, TelegramBotUserProfilePhotoQueryService>();
         services.AddScoped<ITelegramUserLanguagePreferenceQueryService, TelegramUserLanguagePreferenceQueryService>();
         
         

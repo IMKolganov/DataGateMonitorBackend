@@ -6,4 +6,6 @@ public sealed class GoogleLoginResponse : AuthTokensResponse
     public string DisplayName { get; set; } = string.Empty;
     public string? Email { get; set; }
     public bool IsNewUser { get; set; }
+    /// <summary>Same URL persisted on the user record from Google <c>picture</c> (HTTPS).</summary>
+    public string? AvatarUrl { get; set; }
 }

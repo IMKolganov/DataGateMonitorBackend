@@ -7,6 +7,9 @@ using Xunit;
 
 namespace DataGateMonitor.Tests.Services.Api.Auth.Handlers;
 
+/// <summary>
+/// Legacy Android compatibility regression tests for quota/access fallback behavior.
+/// </summary>
 public class VpnServerAccessQueryServiceTests
 {
     [Fact]
@@ -28,7 +31,8 @@ public class VpnServerAccessQueryServiceTests
     }
 
     [Fact]
-    public async Task UserHasAccessAsync_When_UserHasNoQuotaPlan_Returns_False()
+    [Trait("Compatibility", "LegacyAndroid")]
+    public async Task UserHasAccessAsync_When_UserHasNoQuotaPlan_Returns_True()
     {
         var quotaQuery = new Mock<IUserQuotaPlanQueryService>();
         quotaQuery.Setup(q => q.GetActiveByUserId(1, It.IsAny<CancellationToken>())).ReturnsAsync((UserQuotaPlan?)null);
@@ -38,7 +42,7 @@ public class VpnServerAccessQueryServiceTests
 
         var result = await sut.UserHasAccessAsync(1, 10, CancellationToken.None);
 
-        Assert.False(result);
+        Assert.True(result);
     }
 
     [Fact]

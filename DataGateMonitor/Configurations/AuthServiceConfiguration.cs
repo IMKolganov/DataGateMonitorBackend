@@ -47,11 +47,11 @@ public static class AuthServiceConfiguration
         services.AddScoped<IUserQuotaPlanService, UserQuotaPlanService>();
 
         services.AddMemoryCache();
-        services.AddScoped<IAdminForgotPasswordService, AdminForgotPasswordService>();
         services.Configure<EmailSenderSettings>(configuration.GetSection("EmailSender"));
         services.AddScoped<SmtpEmailSenderService>();
         services.AddScoped<ResendEmailSenderService>();
         services.AddScoped<IEmailSenderService, ConfigurableEmailSenderService>();
+        services.AddScoped<IAdminForgotPasswordService, AdminForgotPasswordService>();
         services.AddScoped<IEmailConfirmationService, EmailConfirmationService>();
         services.AddScoped<ITelegramLoginCodeService, TelegramLoginCodeService>();
 

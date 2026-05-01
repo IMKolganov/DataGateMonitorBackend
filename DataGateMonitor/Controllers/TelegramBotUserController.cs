@@ -12,7 +12,9 @@ namespace DataGateMonitor.Controllers;
 [Route("api/tgbot-users")]
 [Authorize(Roles = "Admin,App")]
 [Authorize]
-public class TelegramBotUserController(ITelegramUserService telegramUserService) : BaseController
+public class TelegramBotUserController(
+    ITelegramUserService telegramUserService,
+    ITelegramBotUserProfilePhotoService telegramBotUserProfilePhotoService) : BaseController
 {
     [HttpGet("check-exists/{telegramId}")]
     public async Task<ActionResult<ApiResponse<bool>>> UserExists([FromRoute] TelegramUserActionRequest request, 
@@ -46,7 +48,37 @@ public class TelegramBotUserController(ITelegramUserService telegramUserService)
         return Ok(ApiResponse<GetAllTelegramUsersResponse>.SuccessResponse(
             telegramBotUsers.Adapt<GetAllTelegramUsersResponse>()));
     }
-    
+
+    [HttpPost("profile-photo")]
+    public async Task<ActionResult<ApiResponse<UpsertTelegramBotUserProfilePhotoResponse>>> UpsertProfilePhoto(
+        [FromBody] UpsertTelegramBotUserProfilePhotoRequest request,
+        CancellationToken cancellationToken)
+    {
+        var result = await telegramBotUserProfilePhotoService.UpsertAsync(request, cancellationToken);
+        return Ok(ApiResponse<UpsertTelegramBotUserProfilePhotoResponse>.SuccessResponse(result));
+    }
+
+    [HttpGet("profile-photo-meta/{telegramId:long}")]
+    public async Task<ActionResult<ApiResponse<TelegramBotUserProfilePhotoMetaResponse>>> GetProfilePhotoMeta(
+        [FromRoute] long telegramId,
+        CancellationToken cancellationToken)
+    {
+        var meta = await telegramBotUserProfilePhotoService.GetMetaByTelegramIdAsync(telegramId, cancellationToken);
+        if (meta is null)
+            return NotFound(ApiResponse<TelegramBotUserProfilePhotoMetaResponse>.ErrorResponse("Telegram user not found."));
+        return Ok(ApiResponse<TelegramBotUserProfilePhotoMetaResponse>.SuccessResponse(meta));
+    }
+
+    [HttpGet("profile-photo-file/{telegramId:long}")]
+    public async Task<IActionResult> GetProfilePhotoFile([FromRoute] long telegramId,
+        CancellationToken cancellationToken)
+    {
+        var image = await telegramBotUserProfilePhotoService.GetImageByTelegramIdAsync(telegramId, cancellationToken);
+        if (image is null)
+            return NotFound();
+        return File(image.Value.Bytes, image.Value.MimeType);
+    }
+
     [HttpPost("block")]
     public async Task<ActionResult<ApiResponse<bool>>> BlockUser([FromBody] TelegramUserActionRequest request,
         CancellationToken cancellationToken)

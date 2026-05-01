@@ -83,4 +83,37 @@ public class NotificationCatalog : INotificationCatalog
         };
         return new NotificationEnvelope(req, WebAndTelegram);
     }
+
+    public NotificationEnvelope UserRegistered(int userId, string displayName, string? login, string? email)
+    {
+        var loginPart = string.IsNullOrWhiteSpace(login) ? "" : $" Login: {login}.";
+        var emailPart = string.IsNullOrWhiteSpace(email) ? "" : $" Email: {email}.";
+        var req = new NotificationRequest
+        {
+            Type = NotificationTypes.UserRegistered,
+            Title = "New user registered",
+            Message = $"User #{userId} ({displayName}) registered.{loginPart}{emailPart}",
+            Severity = NotificationSeverity.Info,
+            Source = "auth",
+            ActorUserId = userId,
+            PreferenceKind = ApplicationNotificationKind.AppUserRegistered
+        };
+        return new NotificationEnvelope(req, WebAndTelegram);
+    }
+
+    public NotificationEnvelope UserPasswordChanged(int userId, string displayName, string login, string reason)
+    {
+        var req = new NotificationRequest
+        {
+            Type = NotificationTypes.UserPasswordChanged,
+            Title = "User password changed",
+            Message =
+                $"User #{userId} ({displayName}), login \"{login}\", changed password. Source: {reason}.",
+            Severity = NotificationSeverity.Warning,
+            Source = "auth",
+            ActorUserId = userId,
+            PreferenceKind = ApplicationNotificationKind.AppUserPasswordChanged
+        };
+        return new NotificationEnvelope(req, WebAndTelegram);
+    }
 }

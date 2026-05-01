@@ -17,4 +17,8 @@ public interface IUserService
     Task<GetAllUsersResponse> GetUsersPage(GetAllUsersRequest request, CancellationToken cancellationToken);
     Task<UsersResponse> GetUserById(GetUserByIdRequest request, CancellationToken cancellationToken);
     Task<UsersResponse> GetUserByExternalId(GetUserByExternalIdRequest request, CancellationToken cancellationToken);
+    Task<GetUserEmailConfirmationStatusResponse> GetEmailConfirmationStatus(
+        GetUserEmailConfirmationStatusRequest request,
+        CancellationToken cancellationToken);
+    Task<ConfirmUserEmailResponse> ConfirmEmailManually(ConfirmUserEmailRequest request, CancellationToken cancellationToken);
 }
