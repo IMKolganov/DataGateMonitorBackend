@@ -14,6 +14,10 @@ using DataGateMonitor.SharedModels.Responses;
 
 namespace DataGateMonitor.Tests.Controllers;
 
+/// <summary>
+/// Legacy Android compatibility regression tests for VPN server listing.
+/// Keep these expectations aligned with old Android client behavior.
+/// </summary>
 public class VpnServersV2ControllerTests
 {
     private readonly Mock<IVpnServerOverviewQuery> _overviewQuery = new();
@@ -100,6 +104,41 @@ public class VpnServersV2ControllerTests
         var s2 = api.Data.VpnServers.Single(x => x.Id == 2);
         Assert.True(s1.IsAccessibleForUserQuotaPlan);
         Assert.False(s2.IsAccessibleForUserQuotaPlan);
+    }
+
+    [Fact]
+    [Trait("Compatibility", "LegacyAndroid")]
+    public async Task GetAllServers_WithVpnUserAndNoQuotaPlan_StillMarksServersAccessible_ForLegacyAndroidCompatibility()
+    {
+        var user = new ClaimsPrincipal(new ClaimsIdentity(
+            [
+                new Claim(ClaimTypes.Role, "VpnUser"),
+                new Claim(ClaimTypes.NameIdentifier, "101")
+            ],
+            "mock"));
+        var controller = CreateController(user);
+
+        _userQuotaPlan.Setup(u => u.GetActiveByUserId(101, It.IsAny<CancellationToken>()))
+            .ReturnsAsync((UserQuotaPlan?)null);
+
+        _serverQuery.Setup(s => s.GetAll(false, false, null, It.IsAny<CancellationToken>()))
+            .ReturnsAsync([
+                new VpnServer { Id = 1, ServerName = "legacy-a" },
+                new VpnServer { Id = 2, ServerName = "legacy-b" }
+            ]);
+        _quotaGroups.Setup(g => g.GetGroupsByVpnServerIdsAsync(It.IsAny<IReadOnlyCollection<int>>(), It.IsAny<CancellationToken>()))
+            .ReturnsAsync(new Dictionary<int, List<QuotaPlanGroupDto>>());
+        _tagQuery.Setup(t => t.GetTagNamesByVpnServerIds(It.IsAny<List<int>>(), It.IsAny<CancellationToken>()))
+            .ReturnsAsync(new Dictionary<int, List<string>>());
+
+        var result = await controller.GetAllServers(false, CancellationToken.None);
+
+        var ok = Assert.IsType<OkObjectResult>(result.Result);
+        var api = Assert.IsType<ApiResponse<VpnServersV2Response>>(ok.Value);
+        Assert.True(api.Success);
+        Assert.NotNull(api.Data);
+        Assert.Equal(2, api.Data!.VpnServers.Count);
+        Assert.All(api.Data.VpnServers, s => Assert.True(s.IsAccessibleForUserQuotaPlan));
     }
 
     [Fact]

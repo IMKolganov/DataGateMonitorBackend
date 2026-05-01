@@ -1,4 +1,5 @@
 using Microsoft.AspNetCore.Identity;
+using Microsoft.Extensions.Logging;
 using Moq;
 using DataGateMonitor.DataBase.Services.Command.Interfaces;
 using DataGateMonitor.DataBase.Services.Query.UserCredentialTable;
@@ -8,6 +9,7 @@ using DataGateMonitor.Services.Api.Auth.EmailConfirmation;
 using DataGateMonitor.Services.Api.Auth.Registers;
 using DataGateMonitor.Services.Api.Auth.Users;
 using DataGateMonitor.Services.Others;
+using DataGateMonitor.Services.Others.Notifications;
 using DataGateMonitor.SharedModels.DataGateMonitor.Auth.Requests;
 using Xunit;
 
@@ -22,6 +24,8 @@ public class UserRegistrationServiceTests
     private readonly Mock<IUserAccountService> _userAccountService;
     private readonly Mock<IEmailConfirmationService> _emailConfirmationService;
     private readonly Mock<ISettingsService> _settingsService;
+    private readonly Mock<IAppNotificationFacade> _appNotificationFacade;
+    private readonly Mock<ILogger<UserRegistrationService>> _logger;
     private readonly UserRegistrationService _sut;
 
     public UserRegistrationServiceTests()
@@ -33,6 +37,8 @@ public class UserRegistrationServiceTests
         _userAccountService = new Mock<IUserAccountService>();
         _emailConfirmationService = new Mock<IEmailConfirmationService>();
         _settingsService = new Mock<ISettingsService>();
+        _appNotificationFacade = new Mock<IAppNotificationFacade>();
+        _logger = new Mock<ILogger<UserRegistrationService>>();
         _sut = new UserRegistrationService(
             _passwordHasher.Object,
             _credentialCommand.Object,
@@ -40,7 +46,9 @@ public class UserRegistrationServiceTests
             _userQuery.Object,
             _userAccountService.Object,
             _emailConfirmationService.Object,
-            _settingsService.Object);
+            _settingsService.Object,
+            _appNotificationFacade.Object,
+            _logger.Object);
     }
 
     [Fact]

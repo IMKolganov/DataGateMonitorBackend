@@ -20,6 +20,10 @@ using Xunit;
 
 namespace DataGateMonitor.Tests.Controllers;
 
+/// <summary>
+/// Legacy Android compatibility regression tests.
+/// These checks protect behavior required by already-installed old Android app versions.
+/// </summary>
 public class VpnServersControllerTests
 {
     private readonly Mock<IVpnDataService> _vpnDataService = new();
@@ -317,7 +321,8 @@ public class VpnServersControllerTests
     }
 
     [Fact]
-    public async Task GetAllServers_WhenVpnUserAndNoQuotaPlan_Returns_EmptyList()
+    [Trait("Compatibility", "LegacyAndroid")]
+    public async Task GetAllServers_WhenVpnUserAndNoQuotaPlan_Returns_AllServers_ForLegacyAndroidCompatibility()
     {
         SetUser(_controller, new ClaimsPrincipal(new ClaimsIdentity(
             [
@@ -327,14 +332,18 @@ public class VpnServersControllerTests
             "mock")));
         _userQuotaPlan.Setup(u => u.GetActiveByUserId(50, It.IsAny<CancellationToken>()))
             .ReturnsAsync((UserQuotaPlan?)null);
+        _serverQuery.Setup(s => s.GetAll(false, false, null, It.IsAny<CancellationToken>()))
+            .ReturnsAsync([new VpnServer { Id = 1, ServerName = "legacy-visible" }]);
+        _tagQuery.Setup(q => q.GetTagNamesByVpnServerIds(It.IsAny<List<int>>(), It.IsAny<CancellationToken>()))
+            .ReturnsAsync(new Dictionary<int, List<string>>());
 
         var result = await _controller.GetAllServers(false, CancellationToken.None);
 
         var ok = Assert.IsType<OkObjectResult>(result.Result);
         var response = Assert.IsType<ApiResponse<VpnServersResponse>>(ok.Value);
         Assert.True(response.Success);
-        Assert.Empty(response.Data!.VpnServers);
-        _serverQuery.Verify(s => s.GetAll(It.IsAny<bool>(), It.IsAny<bool>(), It.IsAny<int?>(), It.IsAny<CancellationToken>()), Times.Never);
+        Assert.Single(response.Data!.VpnServers);
+        _serverQuery.Verify(s => s.GetAll(false, false, null, It.IsAny<CancellationToken>()), Times.Once);
     }
 
     [Fact]

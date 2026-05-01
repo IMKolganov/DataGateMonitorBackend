@@ -13,7 +13,7 @@ public sealed class VpnServerAccessQueryService(
     {
         var userQuotaPlan = await userQuotaPlanQueryService.GetActiveByUserId(userId, ct);
         if (userQuotaPlan is null)
-            return false;
+            return true;
 
         var quotaPlanId = userQuotaPlan.QuotaPlanId;
 
