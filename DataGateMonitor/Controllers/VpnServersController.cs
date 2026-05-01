@@ -55,16 +55,36 @@ public class VpnServersController(IVpnDataService vpnDataService,
                     includeDeleted, requireQuotaPlanAssignment: false, restrictToQuotaPlanId: uqp.QuotaPlanId, ct);
         }
 
-        var baseResponse = result.Adapt<VpnServerWithStatusesResponse>();
-        var response = new LegacyVpnServerWithStatusesResponse
+        var baseResponse = new VpnServerWithStatusesResponse
         {
-            VpnServerWithStatuses = baseResponse.VpnServerWithStatuses
+            VpnServerWithStatuses = result
         };
-        await FillTagsForOverviewResponse(response, ct);
-        ApplyLegacyOpenVpnAliases(response);
+        await FillTagsForOverviewResponse(baseResponse, ct);
 
-        // Legacy mobile clients parse strict camelCase + OpenVpn* keys.
-        var envelope = LegacyApiResponse<LegacyVpnServerWithStatusesResponse>.SuccessResponse(response);
+        // Legacy mobile clients parse strict camelCase + openVpn* keys.
+        var legacyItems = baseResponse.VpnServerWithStatuses.Select(item => new
+        {
+            openVpnServerResponses = new
+            {
+                openVpnServer = item.VpnServerResponses.VpnServer
+            },
+            openVpnServerStatusLogResponse = item.VpnServerStatusLogResponse,
+            countConnectedClients = item.CountConnectedClients,
+            countSessions = item.CountSessions,
+            totalBytesIn = item.TotalBytesIn,
+            totalBytesOut = item.TotalBytesOut
+        }).ToList();
+
+        var envelope = new
+        {
+            success = true,
+            message = "Success",
+            data = new
+            {
+                openVpnServerWithStatuses = legacyItems
+            }
+        };
+
         var json = JsonConvert.SerializeObject(
             envelope,
             new JsonSerializerSettings
@@ -243,54 +263,4 @@ public class VpnServersController(IVpnDataService vpnDataService,
         }
     }
 
-    // Keep old Windows clients working after DTO renames (OpenVpn* -> Vpn*).
-    private static void ApplyLegacyOpenVpnAliases(VpnServerWithStatusesResponse response)
-    {
-        response.VpnServerWithStatuses = response.VpnServerWithStatuses
-            .Select(item => new LegacyVpnServerWithStatusDto
-            {
-                VpnServerResponses = new LegacyVpnServerResponse
-                {
-                    VpnServer = item.VpnServerResponses.VpnServer
-                },
-                VpnServerStatusLogResponse = item.VpnServerStatusLogResponse,
-                CountConnectedClients = item.CountConnectedClients,
-                CountSessions = item.CountSessions,
-                TotalBytesIn = item.TotalBytesIn,
-                TotalBytesOut = item.TotalBytesOut
-            })
-            .Cast<VpnServerWithStatusDto>()
-            .ToList();
-    }
-
-    private sealed class LegacyVpnServerWithStatusDto : VpnServerWithStatusDto
-    {
-        [JsonProperty("OpenVpnServerResponses")]
-        public VpnServerResponse OpenVpnServerResponses => VpnServerResponses;
-
-        [JsonProperty("OpenVpnServerStatusLogResponse")]
-        public VpnServerStatusLogResponse? OpenVpnServerStatusLogResponse => VpnServerStatusLogResponse;
-    }
-
-    private sealed class LegacyVpnServerWithStatusesResponse : VpnServerWithStatusesResponse
-    {
-        [JsonProperty("OpenVpnServerWithStatuses")]
-        public List<VpnServerWithStatusDto> OpenVpnServerWithStatuses => VpnServerWithStatuses;
-    }
-
-    private sealed class LegacyVpnServerResponse : VpnServerResponse
-    {
-        [JsonProperty("OpenVpnServer")]
-        public VpnServerDto OpenVpnServer => VpnServer;
-    }
-
-    private sealed class LegacyApiResponse<T>
-    {
-        public bool Success { get; set; }
-        public string Message { get; set; } = string.Empty;
-        public T? Data { get; set; }
-
-        public static LegacyApiResponse<T> SuccessResponse(T data, string message = "Success") =>
-            new() { Success = true, Message = message, Data = data };
-    }
 }
