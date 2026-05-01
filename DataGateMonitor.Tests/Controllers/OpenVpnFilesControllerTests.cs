@@ -14,6 +14,10 @@ using DataGateMonitor.SharedModels.Responses;
 
 namespace DataGateMonitor.Tests.Controllers;
 
+/// <summary>
+/// Legacy Android compatibility regression tests for profile/file APIs.
+/// These expectations must stay compatible with old Android app installs.
+/// </summary>
 public class OpenVpnFilesControllerTests
 {
     private readonly Mock<IOvpnFileApiService> _service = new();
@@ -222,6 +226,33 @@ public class OpenVpnFilesControllerTests
         var bad = Assert.IsType<BadRequestObjectResult>(result.Result);
         var response = Assert.IsType<ApiResponse<string>>(bad.Value);
         Assert.False(response.Success);
+    }
+
+    [Fact]
+    [Trait("Compatibility", "LegacyAndroid")]
+    public async Task GetFiles_WhenVpnUserAndNoQuotaPlan_DoesNotFilterOutFiles_ForLegacyAndroidCompatibility()
+    {
+        SetUser(_controller, new ClaimsPrincipal(new ClaimsIdentity(
+            [
+                new Claim(ClaimTypes.Role, "VpnUser"),
+                new Claim(ClaimTypes.NameIdentifier, "777")
+            ],
+            "mock")));
+
+        _userQuotaPlan.Setup(u => u.GetActiveByUserId(777, It.IsAny<CancellationToken>()))
+            .ReturnsAsync((DataGateMonitor.Models.UserQuotaPlan?)null);
+        _service.Setup(s => s.GetAllByExternalId("legacy-user", It.IsAny<CancellationToken>()))
+            .ReturnsAsync([
+                new DataGateMonitor.Models.IssuedOvpnFile { VpnServerId = 10, CommonName = "legacy-cn" }
+            ]);
+
+        var result = await _controller.GetFiles(new ByExternalIdRequest { ExternalId = "legacy-user" }, CancellationToken.None);
+
+        var ok = Assert.IsType<OkObjectResult>(result.Result);
+        var response = Assert.IsType<ApiResponse<OvpnFilesResponse>>(ok.Value);
+        Assert.True(response.Success);
+        Assert.Single(response.Data!.IssuedOvpnFiles);
+        _quotaAllowed.Verify(q => q.GetVpnServerIdsByQuotaPlanId(It.IsAny<int>(), It.IsAny<CancellationToken>()), Times.Never);
     }
 
     [Fact]
