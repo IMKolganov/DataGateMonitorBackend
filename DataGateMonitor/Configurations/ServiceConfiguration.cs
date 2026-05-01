@@ -19,6 +19,7 @@ using DataGateMonitor.Services.UserRoles;
 using DataGateMonitor.Services.Users;
 using DataGateMonitor.Services.Users.Interfaces;
 using DataGateMonitor.Services.DataGateXRayManager.ClientLinks;
+using DataGateMonitor.Services.Api.MobileCrashIngest;
 using DataGateMonitor.Services.XrayNode;
 
 namespace DataGateMonitor.Configurations;
@@ -92,6 +93,10 @@ public static class ServiceConfiguration
         services.AddScoped<ITagService, TagService>();
         
         services.AddScoped<IUserCredentialQueryService, UserCredentialQueryService>();
+        services.AddScoped<ICrashReportParser, CrashReportParser>();
+        services.AddScoped<IMobileCrashIngestService, MobileCrashIngestService>();
+        services.AddSingleton<ICrashIngestRateLimiter, MemoryCrashIngestRateLimiter>();
+        services.AddSingleton<ICrashIngestMetrics, CrashIngestMetrics>();
         
         #region DataGateOpenVpnManager
 
