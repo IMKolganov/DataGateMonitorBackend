@@ -27,14 +27,6 @@
     "Username": "smtp_user",
     "Password": "smtp_password"
   },
-  "CrashIngest": {
-    "MaxPayloadBytes": 1048576,
-    "RateLimitMaxRequests": 20,
-    "RateLimitWindowSeconds": 60,
-    "RequireHttps": true,
-    "RecentMaxLimit": 200,
-    "AuthToken": ""
-  },
   "Logging": {
     "LogLevel": {
       "Default": "Information",
