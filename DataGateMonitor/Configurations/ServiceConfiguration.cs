@@ -20,6 +20,7 @@ using DataGateMonitor.Services.Users;
 using DataGateMonitor.Services.Users.Interfaces;
 using DataGateMonitor.Services.DataGateXRayManager.ClientLinks;
 using DataGateMonitor.Services.Api.MobileCrashIngest;
+using DataGateMonitor.Services.Api.WindowsCrashIngest;
 using DataGateMonitor.Services.XrayNode;
 
 namespace DataGateMonitor.Configurations;
@@ -95,6 +96,7 @@ public static class ServiceConfiguration
         services.AddScoped<IUserCredentialQueryService, UserCredentialQueryService>();
         services.AddScoped<ICrashReportParser, CrashReportParser>();
         services.AddScoped<IMobileCrashIngestService, MobileCrashIngestService>();
+        services.AddScoped<IWindowsCrashIngestService, WindowsCrashIngestService>();
         services.AddSingleton<ICrashIngestRateLimiter, MemoryCrashIngestRateLimiter>();
         services.AddSingleton<ICrashIngestMetrics, CrashIngestMetrics>();
         
