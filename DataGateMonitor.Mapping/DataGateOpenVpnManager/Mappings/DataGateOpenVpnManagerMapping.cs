@@ -61,6 +61,22 @@ public class DataGateOpenVpnManagerMapping : IRegister
             return null;
         try
         {
+            using var doc = JsonDocument.Parse(payloadJson);
+            var root = doc.RootElement;
+
+            // Backward compatibility:
+            // - old conflog rows: payload is plain RootOpenVpnInfoResponse
+            // - new rows (after Xray support): payload is VpnMicroserviceDiagnosticsDto
+            //   with nested { openVpn: { ... } }.
+            if (root.ValueKind == JsonValueKind.Object &&
+                root.TryGetProperty("openVpn", out var openVpnElement) &&
+                openVpnElement.ValueKind == JsonValueKind.Object)
+            {
+                return JsonSerializer.Deserialize<RootOpenVpnInfoResponse>(
+                    openVpnElement.GetRawText(),
+                    ConflogJsonOptions);
+            }
+
             return JsonSerializer.Deserialize<RootOpenVpnInfoResponse>(payloadJson, ConflogJsonOptions);
         }
         catch (JsonException)
