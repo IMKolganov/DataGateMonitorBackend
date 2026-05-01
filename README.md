@@ -112,6 +112,55 @@ curl -X POST http://localhost:5581/api/certificates -d '{"clientName": "GateMoni
 curl -X DELETE http://localhost:5581/api/certificates/GateMonitor1
 ```
 
+### Mobile Crash Ingest
+`POST /api/v1/mobile/crash-ingest`
+
+Request requirements:
+- Content-Type: `text/plain; charset=utf-8`
+- Headers:
+  - `X-Crash-Filename`
+  - `X-Crash-Process`
+  - `X-Crash-Token` (optional, when configured)
+
+Response codes:
+- `204` success
+- `400` invalid/empty body or invalid headers/content-type
+- `413` payload too large
+- `429` rate-limited
+- `500` server error
+
+Backend crash-ingest settings (env-compatible):
+- `CrashIngest__MaxPayloadBytes` (default `1048576`)
+- `CrashIngest__RateLimitMaxRequests` (default `20`)
+- `CrashIngest__RateLimitWindowSeconds` (default `60`)
+- `CrashIngest__RequireHttps` (default `true`)
+- `CrashIngest__RecentMaxLimit` (default `200`)
+- `CrashIngest__AuthToken` (optional)
+- `X_CRASH_TOKEN` (optional env override for token)
+
+Android client:
+- `CRASH_REPORT_URL=https://<host>/api/v1/mobile/crash-ingest`
+- If token mode enabled, send `X-Crash-Token` with the same secret.
+
+Example:
+```bash
+curl -X POST "https://<host>/api/v1/mobile/crash-ingest" \
+  -H "Content-Type: text/plain; charset=utf-8" \
+  -H "X-Crash-Filename: fatal_2026-05-01T00-00-00.000Z.txt" \
+  -H "X-Crash-Process: com.imkolganov.datagate.dev" \
+  --data-binary @sample_crash.txt
+```
+
+With token:
+```bash
+curl -X POST "https://<host>/api/v1/mobile/crash-ingest" \
+  -H "Content-Type: text/plain; charset=utf-8" \
+  -H "X-Crash-Filename: fatal_2026-05-01T00-00-00.000Z.txt" \
+  -H "X-Crash-Process: com.imkolganov.datagate.dev" \
+  -H "X-Crash-Token: <your-token>" \
+  --data-binary @sample_crash.txt
+```
+
 ## Debugging
 
 ### Attach to a Running Container

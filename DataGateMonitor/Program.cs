@@ -51,6 +51,7 @@ builder.Services.ConfigureJwt(builder.Configuration);
 builder.Services.ConfigureMapster();
 builder.Services.ConfigureNotificationServices();
 builder.Services.ConfigureHealthCheckServices(databaseRuntime);
+builder.Services.Configure<CrashIngestOptions>(builder.Configuration.GetSection(CrashIngestOptions.SectionName));
 
 builder.ConfigureWebHost();
 builder.ConfigureExternalIpServices();
