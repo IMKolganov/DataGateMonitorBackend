@@ -48,6 +48,7 @@ public class ServiceConfigurationTests
         AssertRegistered(services, typeof(IMicroserviceInfoService));
         AssertRegistered(services, typeof(IVpnServerConflogService));
         AssertRegistered(services, typeof(IOpenVpnMicroserviceClientFactory));
+        AssertRegistered(services, typeof(IOpenVpnProxyTrafficFlowClientFactory));
     }
 
     private static void AssertRegistered(IServiceCollection services, Type serviceType)

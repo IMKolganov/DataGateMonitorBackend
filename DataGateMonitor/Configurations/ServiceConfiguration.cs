@@ -76,6 +76,7 @@ public static class ServiceConfiguration
             services.AddHostedService(provider => provider.GetRequiredService<OpenVpnBackgroundService>());
             services.AddHostedService<OpenVpnEventBackgroundService>();
             services.AddHostedService<OpenVpnStatusStreamPublisher>();
+            services.AddHostedService<OpenVpnProxyTrafficFlowBackgroundService>();
         }
 
         services.AddScoped<IVpnEventLogService, VpnEventLogService>();
@@ -113,6 +114,7 @@ public static class ServiceConfiguration
         services.AddScoped<IVpnServerConflogService, VpnServerConflogService>();
 
         services.AddSingleton<IOpenVpnMicroserviceClientFactory, OpenVpnMicroserviceClientFactory>();
+        services.AddSingleton<IOpenVpnProxyTrafficFlowClientFactory, OpenVpnProxyTrafficFlowClientFactory>();
 
         #endregion
     }

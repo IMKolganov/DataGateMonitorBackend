@@ -101,6 +101,7 @@ public static class PipelineConfiguration
         app.MapHub<GeoLiteHub>("/api/hubs/geoLite");
         app.MapHub<OpenVpnFrontendHub>("/api/hubs/frontend");
         app.MapHub<AdminNotificationHub>("/api/hubs/admin-notify");
+        app.MapHub<OpenVpnProxyTrafficFlowHub>("/api/hubs/proxy-traffic-flow");
         app.MapHub<OpenVpnStatusHub>("/api/hubs/status-stream", options =>
         {
             // Default: WebSockets only — publisher sends ~every 700ms; long polling is heavy at scale.
