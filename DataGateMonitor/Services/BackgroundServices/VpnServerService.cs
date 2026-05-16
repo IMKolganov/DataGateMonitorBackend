@@ -174,8 +174,21 @@ public class VpnServerService(
             serverInfo.OpenVpnState = await openVpnStateService.GetStateAsync(openVpnServer, ct);
             if (serverInfo.OpenVpnState.UpSince <= DateTimeOffset.MinValue)
             {
-                throw new Exception($"VpnServerId: {openVpnServer.Id}. UpSince is not set. " +
-                                    $"Check your configuration or server.");
+                var state = serverInfo.OpenVpnState;
+                var stateDiagnostics =
+                    $"Connected={state.Connected}; " +
+                    $"Success={state.Success}; " +
+                    $"UpSince={state.UpSince:O}; " +
+                    $"ServerLocalIp={state.ServerLocalIp ?? "<null>"}; " +
+                    $"ServerRemoteIp={state.ServerRemoteIp ?? "<null>"}";
+
+                throw new Exception(
+                    $"VpnServerId: {openVpnServer.Id}. " +
+                    $"UpSince is not set (<= MinValue) after state parsing. " +
+                    $"ServerName={openVpnServer.ServerName}; " +
+                    $"ApiUrl={openVpnServer.ApiUrl}; " +
+                    $"OpenVpnState: {stateDiagnostics}. " +
+                    $"Check the OpenVPN management 'state' payload format or server configuration.");
             }
 
             serverInfo.OpenVpnState.ServerRemoteIp = await externalIpAddressService.GetRemoteIpAddress(ct);
