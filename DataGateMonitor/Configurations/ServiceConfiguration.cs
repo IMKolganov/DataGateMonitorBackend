@@ -21,6 +21,7 @@ using DataGateMonitor.Services.Users.Interfaces;
 using DataGateMonitor.Services.DataGateXRayManager.ClientLinks;
 using DataGateMonitor.Services.Api.MobileCrashIngest;
 using DataGateMonitor.Services.Api.WindowsCrashIngest;
+using DataGateMonitor.Services.Cache;
 using DataGateMonitor.Services.XrayNode;
 
 namespace DataGateMonitor.Configurations;
@@ -46,6 +47,9 @@ public static class ServiceConfiguration
         {
             options.EnableDetailedErrors = true;
         });
+        services.AddMemoryCache();
+        services.AddSingleton<IApiMemoryCacheService, ApiMemoryCacheService>();
+        services.AddSingleton<IConnectedClientsCounterStore, RedisConnectedClientsCounterStore>();
         
         services.AddScoped<IOpenVpnClientService, OpenVpnClientService>();
         services.AddScoped<IOpenVpnStateService, OpenVpnStateService>();

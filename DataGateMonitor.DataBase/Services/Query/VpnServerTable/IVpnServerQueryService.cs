@@ -25,4 +25,14 @@ public interface IVpnServerQueryService
     Task<bool> AnyByServerName(string serverName, CancellationToken ct = default);
 
     Task<bool> AnyByServerNameExceptId(string serverName, int id, CancellationToken ct = default);
+
+    /// <summary>
+    /// Returns the latest <see cref="VpnServer.LastUpdate"/> for the filtered server set.
+    /// Useful for lightweight cache invalidation checks.
+    /// </summary>
+    Task<DateTimeOffset?> GetLastUpdateStamp(
+        bool includeDeleted = false,
+        bool requireQuotaPlanAssignment = false,
+        int? restrictToQuotaPlanId = null,
+        CancellationToken ct = default);
 }
