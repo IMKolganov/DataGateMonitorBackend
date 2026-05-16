@@ -3,6 +3,7 @@ using System.Security.Claims;
 using System.Reflection;
 using Microsoft.AspNetCore.Http;
 using Microsoft.AspNetCore.Mvc;
+using Microsoft.Extensions.Caching.Memory;
 using Moq;
 using Newtonsoft.Json.Linq;
 using DataGateMonitor.Controllers;
@@ -13,6 +14,7 @@ using DataGateMonitor.Models;
 using DataGateMonitor.Services.Api.Auth.Handlers.Interfaces;
 using DataGateMonitor.Services.Api.Interfaces;
 using DataGateMonitor.Services.BackgroundServices.Interfaces;
+using DataGateMonitor.Services.Cache;
 using DataGateMonitor.Services.DataGateOpenVpnManager.Interfaces;
 using DataGateMonitor.SharedModels.DataGateMonitor.VpnServers.Dto;
 using DataGateMonitor.SharedModels.DataGateMonitor.VpnServers.Requests;
@@ -37,6 +39,7 @@ public class VpnServersControllerTests
     private readonly Mock<IMicroserviceInfoService> _microserviceInfo = new();
     private readonly Mock<IUserQuotaPlanQueryService> _userQuotaPlan = new();
     private readonly Mock<IVpnServerAccessQueryService> _vpnAccess = new();
+    private readonly IApiMemoryCacheService _cache = new ApiMemoryCacheService(new MemoryCache(new MemoryCacheOptions()));
 
     private readonly VpnServersController _controller;
 
@@ -50,7 +53,8 @@ public class VpnServersControllerTests
             _backgroundService.Object,
             _microserviceInfo.Object,
             _userQuotaPlan.Object,
-            _vpnAccess.Object);
+            _vpnAccess.Object,
+            _cache);
         SetUserAsAdmin(_controller);
     }
 

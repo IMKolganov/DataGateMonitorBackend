@@ -6,9 +6,9 @@
         <DockerDefaultTargetOS>Linux</DockerDefaultTargetOS>
         <Product>DataGateMonitor</Product>
         <AssemblyTitle>DataGateMonitor</AssemblyTitle>
-        <Version>1.0.3.30</Version>
-        <AssemblyVersion>1.0.3.30</AssemblyVersion>
-        <FileVersion>1.0.3.30</FileVersion>
+        <Version>1.0.3.31</Version>
+        <AssemblyVersion>1.0.3.31</AssemblyVersion>
+        <FileVersion>1.0.3.31</FileVersion>
         <TargetFramework>net10.0</TargetFramework>
     </PropertyGroup>
 
@@ -42,6 +42,7 @@
         <PackageReference Include="Serilog.Sinks.Console" Version="6.1.1" />
         <PackageReference Include="Serilog.Sinks.Elasticsearch" Version="10.0.0" />
         <PackageReference Include="Resend" Version="0.5.0" />
+        <PackageReference Include="StackExchange.Redis" Version="2.13.1" />
         <PackageReference Include="Swashbuckle.AspNetCore" Version="10.1.7" />
         <PackageReference Include="Swashbuckle.AspNetCore.Newtonsoft" Version="10.1.7" />
         <PackageReference Include="System.IdentityModel.Tokens.Jwt" Version="8.17.0" />
