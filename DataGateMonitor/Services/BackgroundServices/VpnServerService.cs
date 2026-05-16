@@ -9,6 +9,7 @@ using DataGateMonitor.Models.Helpers.Services;
 using DataGateMonitor.Services.BackgroundServices.Interfaces;
 using DataGateMonitor.Services.Helpers;
 using DataGateMonitor.Services.Helpers.Interfaces;
+using DataGateMonitor.Services.Cache;
 using DataGateMonitor.Services.OpenVpnManagementInterfaces.Interfaces;
 
 namespace DataGateMonitor.Services.BackgroundServices;
@@ -27,7 +28,8 @@ public class VpnServerService(
     ICommandService<VpnServer, int> openVpnServerCommandService,
     ICommandService<VpnServerClient, int> openVpnServerClientCommandService,
     ICommandService<VpnServerStatusLog, int> openVpnServerStatusLogCommandService,
-    ICommandService<VpnServerClientTraffic, int> openVpnClientTrafficCommandService) : IVpnServerService
+    ICommandService<VpnServerClientTraffic, int> openVpnClientTrafficCommandService,
+    IConnectedClientsCounterStore connectedClientsCounterStore) : IVpnServerService
 {
     public async Task SaveConnectedClientsAsync(VpnServer openVpnServer, CancellationToken ct)
     {
@@ -157,6 +159,7 @@ public class VpnServerService(
             // Persist both sets (clients + traffic)
             await openVpnServerClientCommandService.SaveChanges(ct);
             await openVpnClientTrafficCommandService.SaveChanges(ct);
+            await connectedClientsCounterStore.SetAsync(openVpnServer.Id, openVpnClientsFromMng.Count, ct);
 
             logger.LogInformation("VpnServerId: {Id}. SaveConnectedClientsAsync completed successfully.",
                 openVpnServer.Id);
