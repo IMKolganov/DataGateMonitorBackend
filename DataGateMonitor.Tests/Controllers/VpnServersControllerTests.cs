@@ -40,6 +40,7 @@ public class VpnServersControllerTests
     private readonly Mock<IMicroserviceInfoService> _microserviceInfo = new();
     private readonly Mock<IUserQuotaPlanQueryService> _userQuotaPlan = new();
     private readonly Mock<IVpnServerAccessQueryService> _vpnAccess = new();
+    private readonly Mock<IStatusCacheGenerationService> _statusCacheGeneration = new();
     private readonly Mock<IStatusStreamLogStore> _statusStreamLogStore = new();
     private readonly IApiMemoryCacheService _cache = new ApiMemoryCacheService(new MemoryCache(new MemoryCacheOptions()));
 
@@ -57,6 +58,7 @@ public class VpnServersControllerTests
             _userQuotaPlan.Object,
             _vpnAccess.Object,
             _cache,
+            _statusCacheGeneration.Object,
             _statusStreamLogStore.Object);
         SetUserAsAdmin(_controller);
     }

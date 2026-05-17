@@ -5,6 +5,7 @@ using Moq;
 using DataGateMonitor.Controllers;
 using DataGateMonitor.Models;
 using DataGateMonitor.Services.Api.Interfaces;
+using DataGateMonitor.Services.Cache;
 using DataGateMonitor.SharedModels.DataGateMonitor.VpnServerOvpnFileConfig.Requests;
 using DataGateMonitor.SharedModels.DataGateMonitor.VpnServerOvpnFileConfig.Responses;
 using DataGateMonitor.SharedModels.Responses;
@@ -14,12 +15,14 @@ namespace DataGateMonitor.Tests.Controllers;
 public class VpnServerOvpnFileConfigControllerTests
 {
     private readonly Mock<IVpnServerOvpnFileConfigService> _serviceMock;
+    private readonly Mock<IStatusCacheGenerationService> _statusCacheGenerationServiceMock;
     private readonly VpnServerOvpnFileConfigController _controller;
 
     public VpnServerOvpnFileConfigControllerTests()
     {
         _serviceMock = new Mock<IVpnServerOvpnFileConfigService>();
-        _controller = new VpnServerOvpnFileConfigController(_serviceMock.Object);
+        _statusCacheGenerationServiceMock = new Mock<IStatusCacheGenerationService>();
+        _controller = new VpnServerOvpnFileConfigController(_serviceMock.Object, _statusCacheGenerationServiceMock.Object);
     }
 
     [Fact]

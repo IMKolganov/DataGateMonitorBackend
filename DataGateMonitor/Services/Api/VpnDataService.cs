@@ -10,6 +10,7 @@ using DataGateMonitor.Services.DataGateOpenVpnManager.Interfaces;
 using DataGateMonitor.Services.DataGateOpenVpnManager.OpenVpnProxy;
 using DataGateMonitor.Services.Helpers.Interfaces;
 using DataGateMonitor.Services.Others.Notifications.ServerOpenVpnApiClient;
+using DataGateMonitor.Services.Cache;
 using System.Text.Json;
 using System.Text.RegularExpressions;
 
@@ -27,6 +28,7 @@ public class VpnDataService(
     ICommandService<QuotaPlanAllowedServer, int> quotaPlanAllowedServerCommandService,
     ICommandService<VpnServerTag, int> openVpnServerTagCommandService,
     IServerOpenVpnNotificationService serverOpenVpnNotificationService,
+    IStatusCacheGenerationService statusCacheGenerationService,
     IMicroserviceInfoService microserviceInfoService,
     IOpenVpnMicroserviceClientFactory microserviceClientFactory,
     IOpenVpnEventClientFactory eventClientFactory) : IVpnDataService
@@ -77,6 +79,7 @@ public class VpnDataService(
         }, ct);
 
         await serverOpenVpnNotificationService.NotifyAdded(result.Id, result.ServerName, ct);
+        statusCacheGenerationService.Bump();
         return result;
     }
 
@@ -120,6 +123,7 @@ public class VpnDataService(
         }, ct);
 
         await serverOpenVpnNotificationService.NotifyUpdated(result.Id, result.ServerName, ct);
+        statusCacheGenerationService.Bump();
         microserviceClientFactory.Invalidate(result.Id);
         eventClientFactory.Remove(result.Id);
         return result;
@@ -136,6 +140,7 @@ public class VpnDataService(
             u => u.SetProperty(x => x.IsDeleted, true).SetProperty(x => x.LastUpdate, now),
             ct);
         await serverOpenVpnNotificationService.NotifyDeleted(openVpnServer.Id, openVpnServer.ServerName, ct);
+        statusCacheGenerationService.Bump();
         microserviceClientFactory.Invalidate(openVpnServer.Id);
         eventClientFactory.Remove(openVpnServer.Id);
         return true;
