@@ -24,6 +24,8 @@ using DataGateMonitor.Services.Api.WindowsCrashIngest;
 using DataGateMonitor.Services.Cache;
 using DataGateMonitor.Services.StatusStreamLogs;
 using DataGateMonitor.Services.XrayNode;
+using System.Net;
+using System.Net.Http;
 
 namespace DataGateMonitor.Configurations;
 
@@ -47,6 +49,19 @@ public static class ServiceConfiguration
         services.AddSignalR(options =>
         {
             options.EnableDetailedErrors = true;
+        });
+        services.ConfigureHttpClientDefaults(builder =>
+        {
+            builder.ConfigurePrimaryHttpMessageHandler(() => new SocketsHttpHandler
+            {
+                // Keep TCP/TLS connections hot and reuse them between polling cycles.
+                PooledConnectionIdleTimeout = TimeSpan.FromMinutes(2),
+                // Periodically rotate pooled connections to honor DNS updates.
+                PooledConnectionLifetime = TimeSpan.FromMinutes(5),
+                MaxConnectionsPerServer = 64,
+                AutomaticDecompression = DecompressionMethods.GZip | DecompressionMethods.Deflate
+            });
+            builder.SetHandlerLifetime(TimeSpan.FromMinutes(10));
         });
         services.AddMemoryCache();
         services.AddSingleton<IApiMemoryCacheService, ApiMemoryCacheService>();
