@@ -16,6 +16,7 @@ using DataGateMonitor.Services.Api.Interfaces;
 using DataGateMonitor.Services.BackgroundServices.Interfaces;
 using DataGateMonitor.Services.Cache;
 using DataGateMonitor.Services.DataGateOpenVpnManager.Interfaces;
+using DataGateMonitor.Services.StatusStreamLogs;
 using DataGateMonitor.SharedModels.DataGateMonitor.VpnServers.Dto;
 using DataGateMonitor.SharedModels.DataGateMonitor.VpnServers.Requests;
 using DataGateMonitor.SharedModels.DataGateMonitor.VpnServers.Responses;
@@ -39,6 +40,7 @@ public class VpnServersControllerTests
     private readonly Mock<IMicroserviceInfoService> _microserviceInfo = new();
     private readonly Mock<IUserQuotaPlanQueryService> _userQuotaPlan = new();
     private readonly Mock<IVpnServerAccessQueryService> _vpnAccess = new();
+    private readonly Mock<IStatusStreamLogStore> _statusStreamLogStore = new();
     private readonly IApiMemoryCacheService _cache = new ApiMemoryCacheService(new MemoryCache(new MemoryCacheOptions()));
 
     private readonly VpnServersController _controller;
@@ -54,7 +56,8 @@ public class VpnServersControllerTests
             _microserviceInfo.Object,
             _userQuotaPlan.Object,
             _vpnAccess.Object,
-            _cache);
+            _cache,
+            _statusStreamLogStore.Object);
         SetUserAsAdmin(_controller);
     }
 
@@ -382,6 +385,29 @@ public class VpnServersControllerTests
         var response = Assert.IsType<ApiResponse<string>>(ok.Value);
         Assert.True(response.Success);
         _backgroundService.Verify(b => b.RunNow(It.IsAny<CancellationToken>()), Times.Never);
+    }
+
+    [Fact]
+    public async Task GetStatusStreamLogs_Returns_Ok_WithEntries()
+    {
+        _statusStreamLogStore.Setup(s => s.GetLatestAsync(300, It.IsAny<CancellationToken>()))
+            .ReturnsAsync([
+                new StatusStreamLogEntry
+                {
+                    TimestampUtc = DateTimeOffset.UtcNow,
+                    PayloadJson = "{\"statuses\":[]}",
+                    Source = "memory"
+                }
+            ]);
+
+        var result = await _controller.GetStatusStreamLogs(300, CancellationToken.None);
+
+        var ok = Assert.IsType<OkObjectResult>(result.Result);
+        var response = Assert.IsType<ApiResponse<StatusStreamLogsResponse>>(ok.Value);
+        Assert.True(response.Success);
+        Assert.NotNull(response.Data);
+        Assert.Single(response.Data.Logs);
+        _statusStreamLogStore.Verify(s => s.GetLatestAsync(300, It.IsAny<CancellationToken>()), Times.Once);
     }
 
     [Fact]
