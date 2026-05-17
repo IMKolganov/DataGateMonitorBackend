@@ -3,6 +3,7 @@ using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Mvc;
 using DataGateMonitor.Models;
 using DataGateMonitor.Services.Api.Interfaces;
+using DataGateMonitor.Services.Cache;
 using DataGateMonitor.SharedModels.DataGateMonitor.VpnServerOvpnFileConfig.Requests;
 using DataGateMonitor.SharedModels.DataGateMonitor.VpnServerOvpnFileConfig.Responses;
 using DataGateMonitor.SharedModels.Responses;
@@ -14,7 +15,8 @@ namespace DataGateMonitor.Controllers;
 [Authorize]
 [Authorize(Roles = "Admin,App")]
 public class VpnServerOvpnFileConfigController(
-    IVpnServerOvpnFileConfigService openVpnServerOvpnFileConfigService) : BaseController
+    IVpnServerOvpnFileConfigService openVpnServerOvpnFileConfigService,
+    IStatusCacheGenerationService statusCacheGenerationService) : BaseController
 {
     [HttpGet("get/{vpnServerId:int}")]
     public async Task<ActionResult<ApiResponse<OvpnFileConfigResponse>>> GetOvpnFileConfig(
@@ -39,6 +41,7 @@ public class VpnServerOvpnFileConfigController(
                 request.Adapt<VpnServerOvpnFileConfig>(),
                 request.AutoDetectServerSettings,
                 ct);
+        statusCacheGenerationService.Bump();
 
         return Ok(ApiResponse<OvpnFileConfigResponse>.SuccessResponse(config.Adapt<OvpnFileConfigResponse>()));
     }

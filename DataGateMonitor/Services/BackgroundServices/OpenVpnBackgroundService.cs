@@ -3,6 +3,7 @@ using Microsoft.EntityFrameworkCore;
 using Npgsql;
 using DataGateMonitor.DataBase.Services.Query.VpnServerTable;
 using DataGateMonitor.Services.BackgroundServices.Interfaces;
+using DataGateMonitor.Services.Cache;
 using DataGateMonitor.Services.Others;
 using DataGateMonitor.Services.Others.Notifications.ServerOpenVpnApiClient;
 using DataGateMonitor.SharedModels.DataGateMonitor.VpnServers.Dto;
@@ -21,6 +22,7 @@ public class OpenVpnBackgroundService : BackgroundService, IOpenVpnBackgroundSer
     private readonly ILogger<OpenVpnBackgroundService> _logger;
     private readonly VpnServerProcessorFactory _processorFactory;
     private readonly VpnServerStatusManager _statusManager;
+    private readonly IStatusCacheGenerationService _statusCacheGenerationService;
     private readonly IServiceProvider _serviceProvider;
     private CancellationTokenSource _delayTokenSource = new();
     private readonly ConcurrentDictionary<int, ServiceStatus> _previousStatusByServer = new();
@@ -29,11 +31,13 @@ public class OpenVpnBackgroundService : BackgroundService, IOpenVpnBackgroundSer
         ILogger<OpenVpnBackgroundService> logger,
         IServiceProvider serviceProvider,
         VpnServerProcessorFactory processorFactory,
-        VpnServerStatusManager statusManager)
+        VpnServerStatusManager statusManager,
+        IStatusCacheGenerationService statusCacheGenerationService)
     {
         _logger = logger;
         _processorFactory = processorFactory;
         _statusManager = statusManager;
+        _statusCacheGenerationService = statusCacheGenerationService;
         _serviceProvider = serviceProvider;
 
         var newInstanceCount = Interlocked.Increment(ref _instanceCount);
@@ -149,6 +153,7 @@ public class OpenVpnBackgroundService : BackgroundService, IOpenVpnBackgroundSer
             {
                 _previousStatusByServer.AddOrUpdate(serverId, dto.Status, (_, _) => dto.Status);
             }
+            _statusCacheGenerationService.Bump();
 
             _logger.LogInformation("VPN servers polling task completed.");
         }

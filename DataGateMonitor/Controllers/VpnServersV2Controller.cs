@@ -27,10 +27,10 @@ public class VpnServersV2Controller(
     IVpnServerTagQueryService openVpnServerTagQueryService,
     IUserQuotaPlanQueryService userQuotaPlanQueryService,
     IQuotaPlanAllowedServerQueryService quotaPlanAllowedServerQueryService,
-    IApiMemoryCacheService apiMemoryCacheService) : BaseController
+    IApiMemoryCacheService apiMemoryCacheService,
+    IStatusCacheGenerationService statusCacheGenerationService) : BaseController
 {
     private static readonly TimeSpan ServersListCacheTtl = TimeSpan.FromHours(1);
-    private static readonly TimeSpan ServersWithStatusCacheTtl = TimeSpan.FromSeconds(10);
 
     [HttpGet("get-all")]
     public async Task<ActionResult<ApiResponse<VpnServersV2Response>>> GetAllServers(
@@ -110,6 +110,13 @@ public class VpnServersV2Controller(
 
         var scopeKey = restrictToQuotaPlanId is int quotaPlanId ? $"plan:{quotaPlanId}" : "all";
         var cacheKey = $"v2:open-vpn-servers:get-all-with-status:includeDeleted={includeDeleted}:scope={scopeKey}";
+        var stamp = await openVpnServerQueryService.GetLastUpdateStamp(
+            includeDeleted,
+            requireQuotaPlanAssignment: false,
+            restrictToQuotaPlanId,
+            ct);
+        var dataStamp = stamp?.ToUnixTimeMilliseconds().ToString() ?? "empty";
+        var stampKey = $"{dataStamp}:status:{statusCacheGenerationService.CurrentStamp}";
         async Task<ApiResponse<VpnServerWithStatusesV2Response>> BuildResponse(CancellationToken token)
         {
             var result = await openVpnServerOverviewQuery.GetAllVpnServersWithStatusAsync(
@@ -154,14 +161,15 @@ public class VpnServersV2Controller(
         if (withoutCache)
         {
             cached = await BuildResponse(ct);
-            apiMemoryCacheService.Set(cacheKey, cached, ServersWithStatusCacheTtl);
+            apiMemoryCacheService.Set(cacheKey, cached, ServersListCacheTtl, stampKey);
         }
         else
         {
-            cached = await apiMemoryCacheService.GetOrCreateAsync(
+            cached = await apiMemoryCacheService.GetOrCreateByStampAsync(
                 cacheKey,
+                stampKey,
                 BuildResponse,
-                ServersWithStatusCacheTtl,
+                ServersListCacheTtl,
                 ct);
         }
 
