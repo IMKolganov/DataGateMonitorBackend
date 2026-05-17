@@ -327,6 +327,14 @@ public class VpnServersController(IVpnDataService vpnDataService,
         return Ok(ApiResponse<StatusStreamLogsResponse>.SuccessResponse(response));
     }
 
+    [Authorize(Roles = "Admin,App")]
+    [HttpDelete("status-stream-logs")]
+    public async Task<ActionResult<ApiResponse<string>>> ClearStatusStreamLogs(CancellationToken ct = default)
+    {
+        await statusStreamLogStore.ClearAsync(ct);
+        return Ok(ApiResponse<string>.SuccessResponse("Status stream logs cleared."));
+    }
+
     private async Task FillTagsForOverviewResponse(VpnServerWithStatusesResponse response, CancellationToken ct)
     {
         if (response.VpnServerWithStatuses.Count == 0) return;
