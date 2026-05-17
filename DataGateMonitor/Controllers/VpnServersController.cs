@@ -33,10 +33,10 @@ public class VpnServersController(IVpnDataService vpnDataService,
     IUserQuotaPlanQueryService userQuotaPlanQueryService,
     IVpnServerAccessQueryService vpnServerAccessQueryService,
     IApiMemoryCacheService apiMemoryCacheService,
+    IStatusCacheGenerationService statusCacheGenerationService,
     IStatusStreamLogStore statusStreamLogStore) : BaseController
 {
     private static readonly TimeSpan ServersListCacheTtl = TimeSpan.FromHours(1);
-    private static readonly TimeSpan ServersWithStatusCacheTtl = TimeSpan.FromSeconds(10);
 
     [HttpGet("get-all-with-status")]
     public async Task<ActionResult> GetAllServersWithStatus(
@@ -59,6 +59,13 @@ public class VpnServersController(IVpnDataService vpnDataService,
 
         var scopeKey = restrictToQuotaPlanId is int planId ? $"plan:{planId}" : "all";
         var cacheKey = $"v1:open-vpn-servers:get-all-with-status:includeDeleted={includeDeleted}:scope={scopeKey}";
+        var stamp = await openVpnServerQueryService.GetLastUpdateStamp(
+            includeDeleted,
+            requireQuotaPlanAssignment: false,
+            restrictToQuotaPlanId,
+            ct);
+        var dataStamp = stamp?.ToUnixTimeMilliseconds().ToString() ?? "empty";
+        var stampKey = $"{dataStamp}:status:{statusCacheGenerationService.CurrentStamp}";
         async Task<string> BuildPayload(CancellationToken token)
         {
             var result = await openVpnServerOverviewQuery.GetAllVpnServersWithStatusAsync(
@@ -107,11 +114,11 @@ public class VpnServersController(IVpnDataService vpnDataService,
         if (withoutCache)
         {
             json = await BuildPayload(ct);
-            apiMemoryCacheService.Set(cacheKey, json, ServersWithStatusCacheTtl);
+            apiMemoryCacheService.Set(cacheKey, json, ServersListCacheTtl, stampKey);
         }
         else
         {
-            json = await apiMemoryCacheService.GetOrCreateAsync(cacheKey, BuildPayload, ServersWithStatusCacheTtl, ct);
+            json = await apiMemoryCacheService.GetOrCreateByStampAsync(cacheKey, stampKey, BuildPayload, ServersListCacheTtl, ct);
         }
 
         return Content(json, "application/json");
