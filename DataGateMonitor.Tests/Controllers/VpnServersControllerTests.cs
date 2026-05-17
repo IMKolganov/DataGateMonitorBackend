@@ -413,6 +413,21 @@ public class VpnServersControllerTests
     }
 
     [Fact]
+    public async Task ClearStatusStreamLogs_Returns_Ok_AndClearsStore()
+    {
+        _statusStreamLogStore
+            .Setup(s => s.ClearAsync(It.IsAny<CancellationToken>()))
+            .Returns(Task.CompletedTask);
+
+        var result = await _controller.ClearStatusStreamLogs(CancellationToken.None);
+
+        var ok = Assert.IsType<OkObjectResult>(result.Result);
+        var response = Assert.IsType<ApiResponse<string>>(ok.Value);
+        Assert.True(response.Success);
+        _statusStreamLogStore.Verify(s => s.ClearAsync(It.IsAny<CancellationToken>()), Times.Once);
+    }
+
+    [Fact]
     public async Task GetAllServersWithStatus_WhenVpnUserAndNoUserIdClaim_Returns_Unauthorized()
     {
         SetUser(_controller, new ClaimsPrincipal(new ClaimsIdentity(
