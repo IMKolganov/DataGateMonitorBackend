@@ -13,6 +13,7 @@ using DataGateMonitor.Services.Api.Interfaces;
 using DataGateMonitor.Services.BackgroundServices.Interfaces;
 using DataGateMonitor.Services.Cache;
 using DataGateMonitor.Services.DataGateOpenVpnManager.Interfaces;
+using DataGateMonitor.Services.StatusStreamLogs;
 using DataGateMonitor.SharedModels.DataGateMonitor.VpnServers.Dto;
 using DataGateMonitor.SharedModels.DataGateMonitor.VpnServers.Requests;
 using DataGateMonitor.SharedModels.DataGateMonitor.VpnServers.Responses;
@@ -31,9 +32,11 @@ public class VpnServersController(IVpnDataService vpnDataService,
     IMicroserviceInfoService microserviceInfoService,
     IUserQuotaPlanQueryService userQuotaPlanQueryService,
     IVpnServerAccessQueryService vpnServerAccessQueryService,
-    IApiMemoryCacheService apiMemoryCacheService) : BaseController
+    IApiMemoryCacheService apiMemoryCacheService,
+    IStatusStreamLogStore statusStreamLogStore) : BaseController
 {
     private static readonly TimeSpan ServersListCacheTtl = TimeSpan.FromHours(1);
+    private static readonly TimeSpan ServersWithStatusCacheTtl = TimeSpan.FromSeconds(10);
 
     [HttpGet("get-all-with-status")]
     public async Task<ActionResult> GetAllServersWithStatus(
@@ -56,7 +59,6 @@ public class VpnServersController(IVpnDataService vpnDataService,
 
         var scopeKey = restrictToQuotaPlanId is int planId ? $"plan:{planId}" : "all";
         var cacheKey = $"v1:open-vpn-servers:get-all-with-status:includeDeleted={includeDeleted}:scope={scopeKey}";
-
         async Task<string> BuildPayload(CancellationToken token)
         {
             var result = await openVpnServerOverviewQuery.GetAllVpnServersWithStatusAsync(
@@ -105,11 +107,11 @@ public class VpnServersController(IVpnDataService vpnDataService,
         if (withoutCache)
         {
             json = await BuildPayload(ct);
-            apiMemoryCacheService.Set(cacheKey, json, ServersListCacheTtl);
+            apiMemoryCacheService.Set(cacheKey, json, ServersWithStatusCacheTtl);
         }
         else
         {
-            json = await apiMemoryCacheService.GetOrCreateAsync(cacheKey, BuildPayload, ServersListCacheTtl, ct);
+            json = await apiMemoryCacheService.GetOrCreateAsync(cacheKey, BuildPayload, ServersWithStatusCacheTtl, ct);
         }
 
         return Content(json, "application/json");
@@ -297,6 +299,25 @@ public class VpnServersController(IVpnDataService vpnDataService,
         }
 
         return Ok(ApiResponse<string>.SuccessResponse("OpenVPN background task executed immediately."));
+    }
+
+    [HttpGet("status-stream-logs")]
+    public async Task<ActionResult<ApiResponse<StatusStreamLogsResponse>>> GetStatusStreamLogs(
+        [FromQuery] int limit = 300,
+        CancellationToken ct = default)
+    {
+        var logs = await statusStreamLogStore.GetLatestAsync(limit, ct);
+        var response = new StatusStreamLogsResponse
+        {
+            Logs = logs.Select(x => new StatusStreamLogEntryResponse
+            {
+                TimestampUtc = x.TimestampUtc,
+                PayloadJson = x.PayloadJson,
+                Source = x.Source
+            }).ToList()
+        };
+
+        return Ok(ApiResponse<StatusStreamLogsResponse>.SuccessResponse(response));
     }
 
     private async Task FillTagsForOverviewResponse(VpnServerWithStatusesResponse response, CancellationToken ct)

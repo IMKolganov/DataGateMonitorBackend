@@ -7,6 +7,7 @@ using DataGateMonitor.DataBase.Services.Command.Interfaces;
 using DataGateMonitor.DataBase.Services.Query.VpnServerOvpnFileConfigTable;
 using DataGateMonitor.Models;
 using DataGateMonitor.Services.Api;
+using DataGateMonitor.Services.DataGateOpenVpnManager.Interfaces;
 
 namespace DataGateMonitor.Tests.Services.Api;
 
@@ -15,20 +16,22 @@ public class VpnServerOvpnFileConfigServiceTests
     private static (VpnServerOvpnFileConfigService svc,
         Mock<ILogger<VpnServerOvpnFileConfigService>> log,
         Mock<IVpnServerOvpnFileConfigQueryService> q,
-        Mock<ICommandService<VpnServerOvpnFileConfig, int>> cmd)
+        Mock<ICommandService<VpnServerOvpnFileConfig, int>> cmd,
+        Mock<IMicroserviceInfoService> microserviceInfo)
         CreateService()
     {
         var logger = new Mock<ILogger<VpnServerOvpnFileConfigService>>();
         var q = new Mock<IVpnServerOvpnFileConfigQueryService>(MockBehavior.Strict);
         var cmd = new Mock<ICommandService<VpnServerOvpnFileConfig, int>>(MockBehavior.Strict);
-        var svc = new VpnServerOvpnFileConfigService(logger.Object, q.Object, cmd.Object);
-        return (svc, logger, q, cmd);
+        var microserviceInfo = new Mock<IMicroserviceInfoService>(MockBehavior.Loose);
+        var svc = new VpnServerOvpnFileConfigService(logger.Object, q.Object, cmd.Object, microserviceInfo.Object);
+        return (svc, logger, q, cmd, microserviceInfo);
     }
 
     [Fact]
     public async Task GetByServerId_Returns_Entity_When_Found()
     {
-        var (svc, _, q, _) = CreateService();
+        var (svc, _, q, _, _) = CreateService();
         var entity = new VpnServerOvpnFileConfig { Id = 1, VpnServerId = 77, VpnServerIp = "1.2.3.4", VpnServerPort = 1194 };
         q.Setup(x => x.GetByVpnServerIdId(77, It.IsAny<CancellationToken>()))
             .ReturnsAsync(entity);
@@ -42,7 +45,7 @@ public class VpnServerOvpnFileConfigServiceTests
     [Fact]
     public async Task GetByServerId_Throws_When_NotFound()
     {
-        var (svc, _, q, _) = CreateService();
+        var (svc, _, q, _, _) = CreateService();
         q.Setup(x => x.GetByVpnServerIdId(42, It.IsAny<CancellationToken>()))
             .ReturnsAsync((VpnServerOvpnFileConfig?)null);
 
@@ -56,7 +59,7 @@ public class VpnServerOvpnFileConfigServiceTests
     [Fact]
     public async Task AddOrUpdate_Updates_Existing_Config()
     {
-        var (svc, _, q, cmd) = CreateService();
+        var (svc, _, q, cmd, _) = CreateService();
         var nowBefore = DateTimeOffset.UtcNow;
         var existing = new VpnServerOvpnFileConfig
         {
@@ -86,7 +89,7 @@ public class VpnServerOvpnFileConfigServiceTests
             ConfigTemplate = "new"
         };
 
-        var result = await svc.AddOrUpdateVpnServerOvpnFileConfigByServerId(incoming, CancellationToken.None);
+        var result = await svc.AddOrUpdateVpnServerOvpnFileConfigByServerId(incoming, false, CancellationToken.None);
 
         Assert.Same(existing, result);
         Assert.Equal("20.0.0.2", existing.VpnServerIp);
@@ -100,7 +103,7 @@ public class VpnServerOvpnFileConfigServiceTests
     [Fact]
     public async Task AddOrUpdate_Creates_New_When_Not_Exists()
     {
-        var (svc, _, q, cmd) = CreateService();
+        var (svc, _, q, cmd, _) = CreateService();
         var serverId = 200;
 
         // Will capture the entity passed to AddAsync
@@ -123,7 +126,7 @@ public class VpnServerOvpnFileConfigServiceTests
         };
 
         var before = DateTimeOffset.UtcNow;
-        var result = await svc.AddOrUpdateVpnServerOvpnFileConfigByServerId(incoming, CancellationToken.None);
+        var result = await svc.AddOrUpdateVpnServerOvpnFileConfigByServerId(incoming, false, CancellationToken.None);
         var after = DateTimeOffset.UtcNow;
 
         Assert.NotNull(added);
@@ -143,7 +146,7 @@ public class VpnServerOvpnFileConfigServiceTests
     [Fact]
     public async Task AddOrUpdate_Throws_When_ReFetch_Returns_Null()
     {
-        var (svc, _, q, cmd) = CreateService();
+        var (svc, _, q, cmd, _) = CreateService();
         var serverId = 300;
 
         q.SetupSequence(x => x.GetByVpnServerIdId(serverId, It.IsAny<CancellationToken>()))
@@ -162,7 +165,7 @@ public class VpnServerOvpnFileConfigServiceTests
         };
 
         var ex = await Assert.ThrowsAsync<InvalidOperationException>(() =>
-            svc.AddOrUpdateVpnServerOvpnFileConfigByServerId(incoming, CancellationToken.None));
+            svc.AddOrUpdateVpnServerOvpnFileConfigByServerId(incoming, false, CancellationToken.None));
 
         Assert.Contains(serverId.ToString(), ex.Message);
         q.VerifyAll();

@@ -29,8 +29,16 @@ public class VpnServerOvpnFileConfigController(
     public async Task<ActionResult<ApiResponse<OvpnFileConfigResponse>>> AddOrUpdateOvpnFileConfig(
         [FromBody] AddOrUpdateOvpnFileConfigRequest request, CancellationToken ct)
     {
+        if (request.VpnServerId <= 0)
+            return BadRequest(ApiResponse<OvpnFileConfigResponse>.ErrorResponse("VpnServerId must be greater than 0."));
+        if (string.IsNullOrWhiteSpace(request.VpnServerIp))
+            return BadRequest(ApiResponse<OvpnFileConfigResponse>.ErrorResponse("VpnServerIp is required."));
+
         var config = await openVpnServerOvpnFileConfigService
-            .AddOrUpdateVpnServerOvpnFileConfigByServerId(request.Adapt<VpnServerOvpnFileConfig>(), ct);
+            .AddOrUpdateVpnServerOvpnFileConfigByServerId(
+                request.Adapt<VpnServerOvpnFileConfig>(),
+                request.AutoDetectServerSettings,
+                ct);
 
         return Ok(ApiResponse<OvpnFileConfigResponse>.SuccessResponse(config.Adapt<OvpnFileConfigResponse>()));
     }
