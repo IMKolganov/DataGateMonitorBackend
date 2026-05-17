@@ -62,13 +62,14 @@ public class VpnServerOvpnFileConfigControllerTests
             VpnServerId = 1,
             VpnServerIp = "5.6.7.8",
             VpnServerPort = 443,
-            ConfigTemplate = "custom-template"
+            ConfigTemplate = "custom-template",
+            AutoDetectServerSettings = true
         };
 
         var expectedConfig = request.Adapt<VpnServerOvpnFileConfig>();
 
         _serviceMock.Setup(s => s.AddOrUpdateVpnServerOvpnFileConfigByServerId(
-                It.Is<VpnServerOvpnFileConfig>(c => c.VpnServerId == request.VpnServerId), It.IsAny<CancellationToken>()))
+                It.Is<VpnServerOvpnFileConfig>(c => c.VpnServerId == request.VpnServerId), true, It.IsAny<CancellationToken>()))
             .ReturnsAsync(expectedConfig);
 
         // Act

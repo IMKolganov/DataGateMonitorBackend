@@ -6,9 +6,12 @@ using DataGateMonitor.Models;
 using DataGateMonitor.Services.Api.Interfaces;
 using DataGateMonitor.SharedModels.Enums;
 using DataGateMonitor.Services.DataGateOpenVpnManager.Events;
+using DataGateMonitor.Services.DataGateOpenVpnManager.Interfaces;
 using DataGateMonitor.Services.DataGateOpenVpnManager.OpenVpnProxy;
 using DataGateMonitor.Services.Helpers.Interfaces;
 using DataGateMonitor.Services.Others.Notifications.ServerOpenVpnApiClient;
+using System.Text.Json;
+using System.Text.RegularExpressions;
 
 namespace DataGateMonitor.Services.Api;
 
@@ -24,6 +27,7 @@ public class VpnDataService(
     ICommandService<QuotaPlanAllowedServer, int> quotaPlanAllowedServerCommandService,
     ICommandService<VpnServerTag, int> openVpnServerTagCommandService,
     IServerOpenVpnNotificationService serverOpenVpnNotificationService,
+    IMicroserviceInfoService microserviceInfoService,
     IOpenVpnMicroserviceClientFactory microserviceClientFactory,
     IOpenVpnEventClientFactory eventClientFactory) : IVpnDataService
 {
@@ -156,11 +160,14 @@ public class VpnDataService(
         if (await openVpnServerOvpnFileConfigQueryService.AnyByVpnServerId(server.Id, ct))
             return false;
 
-        await openVpnServerOvpnFileConfigCommandService.Add(new VpnServerOvpnFileConfig
+        var config = new VpnServerOvpnFileConfig
         {
             VpnServerId = server.Id,
             VpnServerIp = await externalIpAddressService.GetRemoteIpAddress(ct),
-        }, true, ct);
+        };
+
+        await TryApplyDetectedOpenVpnSettingsAsync(server.Id, config, ct);
+        await openVpnServerOvpnFileConfigCommandService.Add(config, true, ct);
         return true;
     }
 
@@ -228,5 +235,78 @@ public class VpnDataService(
             .ToList();
 
         await openVpnServerTagCommandService.AddRange(links, saveChanges: true, ct);
+    }
+
+    private async Task TryApplyDetectedOpenVpnSettingsAsync(int vpnServerId, VpnServerOvpnFileConfig config, CancellationToken ct)
+    {
+        try
+        {
+            var diagnostics = await microserviceInfoService.GetInfoAsync(vpnServerId, ct);
+            if (diagnostics is null || diagnostics.ServerType != VpnServerType.OpenVpn || diagnostics.OpenVpn is null)
+                return;
+
+            if (!TryExtractPortProto(diagnostics.OpenVpn, out var port, out var proto))
+                return;
+
+            if (port is > 0 and <= 65535)
+                config.VpnServerPort = port.Value;
+
+            if (!string.IsNullOrWhiteSpace(proto))
+                config.ConfigTemplate = ReplaceProtoDirective(config.ConfigTemplate, proto);
+        }
+        catch (Exception ex)
+        {
+            logger.LogDebug(ex,
+                "Failed to auto-detect default OpenVPN export config for VpnServerId={VpnServerId}.",
+                vpnServerId);
+        }
+    }
+
+    private static bool TryExtractPortProto(object openVpnInfo, out int? port, out string? proto)
+    {
+        port = null;
+        proto = null;
+
+        using var doc = JsonDocument.Parse(JsonSerializer.Serialize(openVpnInfo));
+        if (!TryGetPropertyIgnoreCase(doc.RootElement, "config", out var cfg) || cfg.ValueKind != JsonValueKind.Object)
+            return false;
+
+        if (TryGetPropertyIgnoreCase(cfg, "port", out var portEl) && portEl.TryGetInt32(out var parsedPort))
+            port = parsedPort;
+
+        if (TryGetPropertyIgnoreCase(cfg, "proto", out var protoEl) && protoEl.ValueKind == JsonValueKind.String)
+        {
+            var p = protoEl.GetString()?.Trim().ToLowerInvariant();
+            if (p is "tcp" or "udp")
+                proto = p;
+        }
+
+        return port.HasValue || !string.IsNullOrWhiteSpace(proto);
+    }
+
+    private static bool TryGetPropertyIgnoreCase(JsonElement obj, string propertyName, out JsonElement value)
+    {
+        foreach (var prop in obj.EnumerateObject())
+        {
+            if (string.Equals(prop.Name, propertyName, StringComparison.OrdinalIgnoreCase))
+            {
+                value = prop.Value;
+                return true;
+            }
+        }
+
+        value = default;
+        return false;
+    }
+
+    private static string ReplaceProtoDirective(string template, string proto)
+    {
+        if (string.IsNullOrWhiteSpace(template))
+            return template;
+
+        if (Regex.IsMatch(template, @"^\s*proto\s+\S+", RegexOptions.IgnoreCase | RegexOptions.Multiline))
+            return Regex.Replace(template, @"^\s*proto\s+\S+", $"proto {proto}", RegexOptions.IgnoreCase | RegexOptions.Multiline);
+
+        return $"proto {proto}\n{template}";
     }
 }
