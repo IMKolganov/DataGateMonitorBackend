@@ -1,5 +1,6 @@
 using System.Reflection;
 using System.Text.Json;
+using Microsoft.Extensions.Configuration;
 using Microsoft.Extensions.DependencyInjection;
 using Microsoft.Extensions.Logging;
 using Moq;
@@ -58,7 +59,8 @@ public class OpenVpnBackgroundServiceTests
             factory,
             new VpnServerStatusManager(),
             cacheGeneration.Object,
-            logStore.Object);
+            logStore.Object,
+            CreateConfiguration());
 
         await InvokeRunOpenVpnTaskAsync(sut, 60, CancellationToken.None);
 
@@ -126,7 +128,8 @@ public class OpenVpnBackgroundServiceTests
             new VpnServerProcessorFactory(serviceProvider),
             new VpnServerStatusManager(),
             new Mock<IStatusCacheGenerationService>().Object,
-            logStore.Object);
+            logStore.Object,
+            CreateConfiguration());
 
         await InvokeRunOpenVpnTaskAsync(sut, 30, CancellationToken.None);
 
@@ -153,6 +156,14 @@ public class OpenVpnBackgroundServiceTests
         services.AddScoped(_ => notificationService);
         return services.BuildServiceProvider();
     }
+
+    private static IConfiguration CreateConfiguration() =>
+        new ConfigurationBuilder()
+            .AddInMemoryCollection(new Dictionary<string, string?>
+            {
+                ["OpenVpnPolling:MaxDegreeOfParallelism"] = "8"
+            })
+            .Build();
 
     private static async Task InvokeRunOpenVpnTaskAsync(
         OpenVpnBackgroundService sut,
