@@ -102,6 +102,24 @@ public sealed class StatusStreamLogStore(
         return GetMemorySnapshot(normalizedLimit);
     }
 
+    public async Task ClearAsync(CancellationToken ct = default)
+    {
+        _memoryQueue.Clear();
+
+        var db = await GetDatabaseOrNullAsync(ct);
+        if (db is null)
+            return;
+
+        try
+        {
+            await db.KeyDeleteAsync(RedisListKey);
+        }
+        catch (Exception ex)
+        {
+            logger.LogDebug(ex, "Redis delete failed for status-stream logs");
+        }
+    }
+
     private void EnqueueMemory(StatusStreamLogEntry entry)
     {
         _memoryQueue.Enqueue(new StatusStreamLogEntry
