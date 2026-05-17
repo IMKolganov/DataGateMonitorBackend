@@ -29,6 +29,7 @@ public class OpenVpnBackgroundService : BackgroundService, IOpenVpnBackgroundSer
     private readonly IStatusCacheGenerationService _statusCacheGenerationService;
     private readonly IStatusStreamLogStore _statusStreamLogStore;
     private readonly IServiceProvider _serviceProvider;
+    private readonly int _maxPollingDegreeOfParallelism;
     private CancellationTokenSource _delayTokenSource = new();
     private readonly ConcurrentDictionary<int, ServiceStatus> _previousStatusByServer = new();
     private readonly JsonSerializerOptions _logJsonOptions = new(JsonSerializerDefaults.Web)
@@ -42,7 +43,8 @@ public class OpenVpnBackgroundService : BackgroundService, IOpenVpnBackgroundSer
         VpnServerProcessorFactory processorFactory,
         VpnServerStatusManager statusManager,
         IStatusCacheGenerationService statusCacheGenerationService,
-        IStatusStreamLogStore statusStreamLogStore)
+        IStatusStreamLogStore statusStreamLogStore,
+        IConfiguration configuration)
     {
         _logger = logger;
         _processorFactory = processorFactory;
@@ -50,6 +52,12 @@ public class OpenVpnBackgroundService : BackgroundService, IOpenVpnBackgroundSer
         _statusCacheGenerationService = statusCacheGenerationService;
         _statusStreamLogStore = statusStreamLogStore;
         _serviceProvider = serviceProvider;
+        var configuredDegree =
+            configuration.GetValue<int?>("OpenVpnPolling:MaxDegreeOfParallelism")
+            ?? configuration.GetValue<int?>("OPENVPN_POLLING_MAX_DEGREE_OF_PARALLELISM");
+        _maxPollingDegreeOfParallelism = configuredDegree is > 0
+            ? configuredDegree.Value
+            : Math.Max(1, Environment.ProcessorCount);
 
         var newInstanceCount = Interlocked.Increment(ref _instanceCount);
         if (newInstanceCount > 1)
@@ -101,6 +109,9 @@ public class OpenVpnBackgroundService : BackgroundService, IOpenVpnBackgroundSer
             var successServers = 0;
             var timeoutServers = 0;
             var failedServers = 0;
+            var currentInFlight = 0;
+            var maxObservedInFlight = 0;
+            var serverDurations = new ConcurrentBag<long>();
 
             // Disabled rows are never polled — still publish Idle so the status stream is not empty and
             // clients do not treat "missing server" as Pending for the whole fleet.
@@ -122,12 +133,22 @@ public class OpenVpnBackgroundService : BackgroundService, IOpenVpnBackgroundSer
                 {
                     totalServers,
                     disabledServers,
-                    toPollServers = serversToPoll.Count
+                    toPollServers = serversToPoll.Count,
+                    configuredMaxParallelism = _maxPollingDegreeOfParallelism,
+                    processorCount = Environment.ProcessorCount
                 });
 
-            await Parallel.ForEachAsync(serversToPoll, cancellationToken, async (server, ct) =>
+            var parallelOptions = new ParallelOptions
+            {
+                CancellationToken = cancellationToken,
+                MaxDegreeOfParallelism = _maxPollingDegreeOfParallelism
+            };
+
+            await Parallel.ForEachAsync(serversToPoll, parallelOptions, async (server, ct) =>
             {
                 Interlocked.Increment(ref processedServers);
+                var inFlight = Interlocked.Increment(ref currentInFlight);
+                UpdateMaxValue(ref maxObservedInFlight, inFlight);
                 var serverStopwatch = Stopwatch.StartNew();
                 _logger.LogInformation(
                     $"VpnServerId: {server.Id}. VpnServerName: {server.ServerName} Processing server: {server.ApiUrl}");
@@ -138,7 +159,12 @@ public class OpenVpnBackgroundService : BackgroundService, IOpenVpnBackgroundSer
                     ct: ct,
                     serverId: server.Id,
                     serverName: server.ServerName,
-                    apiUrl: server.ApiUrl);
+                    apiUrl: server.ApiUrl,
+                    metrics: new
+                    {
+                        inFlight,
+                        managedThreadId = Environment.CurrentManagedThreadId
+                    });
 
                 try
                 {
@@ -163,6 +189,7 @@ public class OpenVpnBackgroundService : BackgroundService, IOpenVpnBackgroundSer
                         $"VpnServerId: {server.Id}. VpnServerName: {server.ServerName} " +
                         $"Completed processing for server Id: {server.Id} Name: {server.ServerName}. " +
                         $"Duration: {serverStopwatch.ElapsedMilliseconds} ms");
+                    serverDurations.Add(serverStopwatch.ElapsedMilliseconds);
                     await AppendOperationalLogAsync(
                         eventType: "server-success",
                         level: "info",
@@ -232,6 +259,10 @@ public class OpenVpnBackgroundService : BackgroundService, IOpenVpnBackgroundSer
                         server.Id,
                         server.ServerName);
                 }
+                finally
+                {
+                    Interlocked.Decrement(ref currentInFlight);
+                }
             });
 
             foreach (var (serverId, dto) in _statusManager.GetAllStatuses())
@@ -248,6 +279,12 @@ public class OpenVpnBackgroundService : BackgroundService, IOpenVpnBackgroundSer
                 timeoutServers,
                 failedServers,
                 disabledServers);
+            var avgServerDurationMs = serverDurations.Count > 0
+                ? (long)Math.Round(serverDurations.Average())
+                : 0;
+            var maxServerDurationMs = serverDurations.Count > 0
+                ? serverDurations.Max()
+                : 0;
             await AppendOperationalLogAsync(
                 eventType: "cycle-completed",
                 level: "info",
@@ -261,7 +298,12 @@ public class OpenVpnBackgroundService : BackgroundService, IOpenVpnBackgroundSer
                     processedServers,
                     successServers,
                     timeoutServers,
-                    failedServers
+                    failedServers,
+                    configuredMaxParallelism = _maxPollingDegreeOfParallelism,
+                    observedMaxParallelism = maxObservedInFlight,
+                    processorCount = Environment.ProcessorCount,
+                    avgServerDurationMs,
+                    maxServerDurationMs
                 });
         }
         catch (Exception ex)
@@ -468,6 +510,18 @@ public class OpenVpnBackgroundService : BackgroundService, IOpenVpnBackgroundSer
         catch (Exception ex)
         {
             _logger.LogWarning(ex, "Failed to append operational polling log entry.");
+        }
+    }
+
+    private static void UpdateMaxValue(ref int target, int candidate)
+    {
+        while (true)
+        {
+            var snapshot = Volatile.Read(ref target);
+            if (candidate <= snapshot)
+                return;
+            if (Interlocked.CompareExchange(ref target, candidate, snapshot) == snapshot)
+                return;
         }
     }
 
