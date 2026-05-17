@@ -83,7 +83,6 @@ public static class ServiceConfiguration
             services.AddHostedService(provider => provider.GetRequiredService<OpenVpnBackgroundService>());
             services.AddHostedService<OpenVpnEventBackgroundService>();
             services.AddHostedService<OpenVpnStatusStreamPublisher>();
-            services.AddHostedService<StatusStreamLogCollectorBackgroundService>();
             services.AddHostedService<OpenVpnProxyTrafficFlowBackgroundService>();
         }
 
