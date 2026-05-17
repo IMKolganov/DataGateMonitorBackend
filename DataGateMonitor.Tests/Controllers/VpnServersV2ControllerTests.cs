@@ -28,6 +28,7 @@ public class VpnServersV2ControllerTests
     private readonly Mock<IVpnServerTagQueryService> _tagQuery = new();
     private readonly Mock<IUserQuotaPlanQueryService> _userQuotaPlan = new();
     private readonly Mock<IQuotaPlanAllowedServerQueryService> _quotaAllowed = new();
+    private readonly Mock<IStatusCacheGenerationService> _statusCacheGeneration = new();
     private readonly IApiMemoryCacheService _cache = new ApiMemoryCacheService(new MemoryCache(new MemoryCacheOptions()));
 
     private VpnServersV2Controller CreateController(ClaimsPrincipal user)
@@ -39,7 +40,8 @@ public class VpnServersV2ControllerTests
             _tagQuery.Object,
             _userQuotaPlan.Object,
             _quotaAllowed.Object,
-            _cache)
+            _cache,
+            _statusCacheGeneration.Object)
         {
             ControllerContext = new ControllerContext
             {

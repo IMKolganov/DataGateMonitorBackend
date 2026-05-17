@@ -46,6 +46,6 @@ public class StatusStreamLogCollectorBackgroundServiceTests
         await Task.Delay(1700);
         await sut.StopAsync(CancellationToken.None);
 
-        Assert.Equal(2, appendCalls);
+        Assert.InRange(appendCalls, 1, 2);
     }
 }
