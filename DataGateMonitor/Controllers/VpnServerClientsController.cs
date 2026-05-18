@@ -2,6 +2,7 @@ using Mapster;
 using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Mvc;
 using DataGateMonitor.DataBase.Services.Query.VpnServerClientTable;
+using DataGateMonitor.Services.Api.Privacy;
 using DataGateMonitor.SharedModels.DataGateMonitor.VpnServerClients.Requests;
 using DataGateMonitor.SharedModels.DataGateMonitor.VpnServerClients.Responses;
 using DataGateMonitor.SharedModels.Responses;
@@ -24,8 +25,9 @@ public class VpnServerClientsController(IVpnServerClientOverviewQuery openVpnSer
             await openVpnServerClientOverviewQuery.GetAllConnectedVpnServerClientsAsync(
             request.VpnServerId, request.Page, request.PageSize, cancellationToken);
 
-        return Ok(ApiResponse<ConnectedClientsResponse>.SuccessResponse(
-            result.Adapt<ConnectedClientsResponse>()));
+        var response = result.Adapt<ConnectedClientsResponse>();
+        ClientStatisticsResponseSanitizer.ApplyIfNeeded(User, response);
+        return Ok(ApiResponse<ConnectedClientsResponse>.SuccessResponse(response));
     }
 
     [HttpGet("get-all-history")]
@@ -36,8 +38,9 @@ public class VpnServerClientsController(IVpnServerClientOverviewQuery openVpnSer
             await openVpnServerClientOverviewQuery.GetAllHistoryVpnServerClientsAsync(
             request.VpnServerId, request.Page, request.PageSize, ct);
 
-        return Ok(ApiResponse<ConnectedClientsResponse>.SuccessResponse(
-            result.Adapt<ConnectedClientsResponse>()));
+        var response = result.Adapt<ConnectedClientsResponse>();
+        ClientStatisticsResponseSanitizer.ApplyIfNeeded(User, response);
+        return Ok(ApiResponse<ConnectedClientsResponse>.SuccessResponse(response));
     }
     
     [HttpGet("overview/series")]
@@ -99,6 +102,7 @@ public class VpnServerClientsController(IVpnServerClientOverviewQuery openVpnSer
             request.ExternalId,
             ct);
 
+        ClientStatisticsResponseSanitizer.ApplyIfNeeded(User, users);
         return Ok(ApiResponse<OverviewUsersResponse>.SuccessResponse(users));
     }
 
