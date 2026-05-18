@@ -81,6 +81,7 @@ public static class ServiceConfiguration
         services.AddScoped<IXrayVpnServerStatusLogService, XrayVpnServerStatusLogService>();
         
         services.AddScoped<IVpnDataService, VpnDataService>();
+        services.AddSingleton<IVpnServerPostSetupService, VpnServerPostSetupService>();
         services.AddScoped<IVpnServerStatisticsService, VpnServerStatisticsService>();
 
         services.AddSingleton<VpnServerStatusManager>();

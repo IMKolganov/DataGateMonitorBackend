@@ -11,6 +11,7 @@ using DataGateMonitor.Services.DataGateOpenVpnManager.OpenVpnProxy;
 using DataGateMonitor.Services.Helpers.Interfaces;
 using DataGateMonitor.Services.Others.Notifications.ServerOpenVpnApiClient;
 using DataGateMonitor.Services.Cache;
+using DataGateMonitor.Services.Api.PostSetup;
 using System.Text.Json;
 using System.Text.RegularExpressions;
 
@@ -33,6 +34,9 @@ public class VpnDataService(
     IOpenVpnMicroserviceClientFactory microserviceClientFactory,
     IOpenVpnEventClientFactory eventClientFactory) : IVpnDataService
 {
+    private static readonly TimeSpan ExternalIpResolveTimeout = TimeSpan.FromSeconds(5);
+    private static readonly TimeSpan OpenVpnAutoDetectTimeout = TimeSpan.FromSeconds(5);
+
     public async Task<VpnServer> AddVpnServer(VpnServer server, List<int> quotaPlanIds, List<int> tagIds, CancellationToken ct)
     {
         var result = await transactionRunner.RunAsync(async _ =>
@@ -68,10 +72,6 @@ public class VpnDataService(
 
             await SyncQuotaPlanLinksAsync(server.Id, effectiveQuotaPlanIds, ct);
             await SyncTagLinksAsync(server.Id, tagIds, ct);
-
-            // Additionally, writes that must be part of the same transaction
-            if (!await CheckAndPutDefaultExpiredSettings(server, ct))
-                logger.LogWarning("Failed to add default settings for OpenVPN server.");
 
             // Return a fresh snapshot
             return await openVpnServerQueryService.GetById(server.Id, ct)
@@ -146,6 +146,20 @@ public class VpnDataService(
         return true;
     }
 
+    public async Task<VpnServerPostSetupExecutionResult> RunPostAddSetupAsync(int vpnServerId, CancellationToken ct)
+    {
+        var server = await openVpnServerQueryService.GetById(vpnServerId, ct)
+                     ?? throw new InvalidOperationException("VpnServer not found");
+
+        var createdDefaultConfig = await CheckAndPutDefaultExpiredSettings(server, ct);
+        return new VpnServerPostSetupExecutionResult
+        {
+            VpnServerId = vpnServerId,
+            ServerType = server.ServerType,
+            CreatedDefaultConfig = createdDefaultConfig
+        };
+    }
+
     private const string DefaultXrayClientLinkTemplate =
         "{{vless_uri}}\r\n# {{friendly_name}}\r\nUUID: {{uuid}}\r\nEndpoint: {{server_ip}}:{{server_port}}\r\n";
 
@@ -168,7 +182,7 @@ public class VpnDataService(
         var config = new VpnServerOvpnFileConfig
         {
             VpnServerId = server.Id,
-            VpnServerIp = await externalIpAddressService.GetRemoteIpAddress(ct),
+            VpnServerIp = await GetExternalIpSafelyAsync(ct),
         };
 
         await TryApplyDetectedOpenVpnSettingsAsync(server.Id, config, ct);
@@ -181,7 +195,7 @@ public class VpnDataService(
         if (await openVpnServerOvpnFileConfigQueryService.AnyByVpnServerId(server.Id, ct))
             return false;
 
-        var ip = await externalIpAddressService.GetRemoteIpAddress(ct);
+        var ip = await GetExternalIpSafelyAsync(ct);
         await openVpnServerOvpnFileConfigCommandService.Add(new VpnServerOvpnFileConfig
         {
             VpnServerId = server.Id,
@@ -246,7 +260,9 @@ public class VpnDataService(
     {
         try
         {
-            var diagnostics = await microserviceInfoService.GetInfoAsync(vpnServerId, ct);
+            using var timeoutCts = CancellationTokenSource.CreateLinkedTokenSource(ct);
+            timeoutCts.CancelAfter(OpenVpnAutoDetectTimeout);
+            var diagnostics = await microserviceInfoService.GetInfoAsync(vpnServerId, timeoutCts.Token);
             if (diagnostics is null || diagnostics.ServerType != VpnServerType.OpenVpn || diagnostics.OpenVpn is null)
                 return;
 
@@ -264,6 +280,21 @@ public class VpnDataService(
             logger.LogDebug(ex,
                 "Failed to auto-detect default OpenVPN export config for VpnServerId={VpnServerId}.",
                 vpnServerId);
+        }
+    }
+
+    private async Task<string> GetExternalIpSafelyAsync(CancellationToken ct)
+    {
+        try
+        {
+            using var timeoutCts = CancellationTokenSource.CreateLinkedTokenSource(ct);
+            timeoutCts.CancelAfter(ExternalIpResolveTimeout);
+            return await externalIpAddressService.GetRemoteIpAddress(timeoutCts.Token);
+        }
+        catch (Exception ex)
+        {
+            logger.LogWarning(ex, "Failed to resolve external IP quickly; fallback to loopback value.");
+            return "127.0.0.1";
         }
     }
 
