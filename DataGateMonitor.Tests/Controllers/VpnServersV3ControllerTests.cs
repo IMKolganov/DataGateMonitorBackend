@@ -11,8 +11,8 @@ using DataGateMonitor.DataBase.Services.Query.QuotaPlanTable;
 using DataGateMonitor.DataBase.Services.Query.UserQuotaPlanTable;
 using DataGateMonitor.Models;
 using DataGateMonitor.Services.Cache;
-using DataGateMonitor.ApiContracts.VpnServers;
 using DataGateMonitor.SharedModels.DataGateMonitor.VpnServers.Dto;
+using DataGateMonitor.SharedModels.DataGateMonitor.VpnServers.Responses;
 using DataGateMonitor.SharedModels.Responses;
 
 namespace DataGateMonitor.Tests.Controllers;
