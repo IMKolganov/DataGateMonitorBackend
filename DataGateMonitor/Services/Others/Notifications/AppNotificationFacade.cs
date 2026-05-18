@@ -34,9 +34,9 @@ public class AppNotificationFacade(
         return notificationService.NotifyAdmins(env.Request, env.Channels, ct);
     }
 
-    public Task UserRegistered(int userId, string displayName, string? login, string? email, CancellationToken ct)
+    public Task UserRegistered(int userId, string displayName, string? login, string? email, string? registrationSource, CancellationToken ct)
     {
-        var env = catalog.UserRegistered(userId, displayName, login, email);
+        var env = catalog.UserRegistered(userId, displayName, login, email, registrationSource);
         return notificationService.NotifyAdmins(env.Request, env.Channels, ct);
     }
 

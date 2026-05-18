@@ -8,7 +8,7 @@ public interface INotificationCatalog
     NotificationEnvelope ServerDown(int serverId, string serverName);
     NotificationEnvelope ServerUp(int serverId, string serverName);
 
-    NotificationEnvelope UserRegistered(int userId, string displayName, string? login, string? email);
+    NotificationEnvelope UserRegistered(int userId, string displayName, string? login, string? email, string? registrationSource = null);
 
     NotificationEnvelope UserPasswordChanged(int userId, string displayName, string login, string reason);
 }

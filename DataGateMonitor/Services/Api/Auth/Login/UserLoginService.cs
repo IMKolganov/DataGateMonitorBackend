@@ -1,5 +1,6 @@
 using Microsoft.AspNetCore.Http;
 using Microsoft.AspNetCore.Identity;
+using Microsoft.Extensions.Logging;
 using DataGateMonitor.DataBase.Services.Command.Interfaces;
 using DataGateMonitor.DataBase.Services.Query.UserCredentialTable;
 using DataGateMonitor.DataBase.Services.Query.UserIdentityLinkTable;
@@ -7,6 +8,7 @@ using DataGateMonitor.DataBase.Services.Query.UserTable;
 using DataGateMonitor.Models;
 using DataGateMonitor.Services.Api.Auth.Registers.Interfaces;
 using DataGateMonitor.Services.Api.Auth.Users;
+using DataGateMonitor.Services.Others.Notifications;
 using DataGateMonitor.SharedModels.DataGateMonitor.Auth.Requests;
 using DataGateMonitor.SharedModels.DataGateMonitor.Auth.Responses;
 
@@ -22,6 +24,8 @@ public sealed class UserLoginService(
     IUserIdentityLinkQueryService userIdentityLinkQueryService,
     IUserAccountService userAccountService,
     ITokenService tokenService,
+    IAppNotificationFacade appNotificationFacade,
+    ILogger<UserLoginService> logger,
     IHttpContextAccessor httpContextAccessor
 ) : IUserLoginService
 {
@@ -141,6 +145,24 @@ public sealed class UserLoginService(
         {
             user.AvatarUrl = normalizedPicture;
             await userCommandService.Update(user, saveChanges: true, ct);
+        }
+
+        if (isNew)
+        {
+            try
+            {
+                await appNotificationFacade.UserRegistered(
+                    user.Id,
+                    user.DisplayName ?? "",
+                    login: null,
+                    email: user.Email,
+                    registrationSource: "Google",
+                    ct);
+            }
+            catch (Exception ex)
+            {
+                logger.LogWarning(ex, "Failed to notify admins about new Google user {UserId}", user.Id);
+            }
         }
 
         var (deviceId, userAgent) = GetClientInfo();

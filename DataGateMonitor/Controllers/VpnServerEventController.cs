@@ -11,9 +11,10 @@ namespace DataGateMonitor.Controllers;
 
 [ApiController]
 [Route("api/open-vpn-events")]
-[Authorize]
-public class VpnServerEventController(IVpnServerEventLogQueryService openVpnServerEventLogQueryService,
-    IOpenVpnEventClientFactory eventClientFactory, IAuthorizationService authorizationService) : BaseController
+[Authorize(Roles = "Admin,App")]
+public class VpnServerEventController(
+    IVpnServerEventLogQueryService openVpnServerEventLogQueryService,
+    IOpenVpnEventClientFactory eventClientFactory) : BaseController
 {
     /// <summary>
     /// Paged events by VPN server id.
@@ -23,14 +24,6 @@ public class VpnServerEventController(IVpnServerEventLogQueryService openVpnServ
         [FromQuery] GetVpnServerEventRequest request,
         CancellationToken cancellationToken)
     {
-        var authResult = await authorizationService.AuthorizeAsync(
-            User,
-            resource: request.VpnServerId,
-            policyName: "AdminOrOwnServer");
-
-        if (!authResult.Succeeded)
-            return Forbid();
-
         var page = await openVpnServerEventLogQueryService.GetByVpnServerId(
             request.VpnServerId,
             request.Page,
