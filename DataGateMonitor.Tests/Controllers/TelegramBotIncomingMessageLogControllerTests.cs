@@ -182,8 +182,7 @@ public class TelegramBotIncomingMessageLogControllerTests
             .Setup(s => s.GetByIdAsync(55, It.IsAny<CancellationToken>()))
             .ReturnsAsync(dto);
 
-        var req = new GetByIdMessageRequest { Id = 55 };
-        var result = await _controller.GetById(req, CancellationToken.None);
+        var result = await _controller.GetById(55, CancellationToken.None);
 
         var ok = Assert.IsType<OkObjectResult>(result.Result);
         var response = Assert.IsType<ApiResponse<GetByIdMessageResponse>>(ok.Value);
