@@ -1,6 +1,7 @@
 ﻿using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Mvc;
 using DataGateMonitor.Services.Api.Interfaces;
+using DataGateMonitor.Services.Api.Privacy;
 using DataGateMonitor.SharedModels.DataGateMonitor.VpnServerStatistics.Request;
 using DataGateMonitor.SharedModels.DataGateMonitor.VpnServerStatistics.Responses;
 using DataGateMonitor.SharedModels.Responses;
@@ -16,8 +17,9 @@ public class VpnServerStatisticsController(IVpnServerStatisticsService vpnServer
     public async Task<ActionResult<ApiResponse<TrafficByClientsResponse>>> GetClientTrafficStats(
         [FromRoute] VpnServerStatisticRequest request, CancellationToken ct)
     {
-        var result = 
+        var result =
             await vpnServerStatisticsService.GetTrafficGroupedByClientAsync(request.VpnServerId, ct);
+        ClientStatisticsResponseSanitizer.ApplyIfNeeded(User, result);
         return Ok(ApiResponse<TrafficByClientsResponse>.SuccessResponse(result));
     }
     [HttpGet("get-connections-by-location/{vpnServerId:int}")]
