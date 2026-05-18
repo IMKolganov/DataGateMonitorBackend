@@ -29,6 +29,14 @@ public class SensitiveDataMaskerTests
     }
 
     [Fact]
+    public void MaskIpAddress_HidesRawValue()
+    {
+        var masked = SensitiveDataMasker.MaskIpAddress("203.0.113.45:51820");
+        Assert.Matches(@"^\*{5,10}$", masked);
+        Assert.DoesNotContain("203.0.113", masked);
+    }
+
+    [Fact]
     public void MaskCommonName_MasksCnAndEmail()
     {
         var cn = SensitiveDataMasker.MaskCommonName("tg-5767006971-3");
@@ -66,6 +74,9 @@ public class ClientStatisticsResponseSanitizerTests
                     CommonName = "tg-5767006971-3",
                     Username = "alice@example.com",
                     DisplayName = "Alice",
+                    RemoteIp = "198.51.100.10:1194",
+                    LocalIp = "10.8.0.42:51234",
+                    ProxyRealIp = "203.0.113.1",
                     AvatarUrl = "https://cdn.example/avatar.png",
                 },
             ],
@@ -78,6 +89,9 @@ public class ClientStatisticsResponseSanitizerTests
         Assert.StartsWith("cn-", client.CommonName);
         Assert.Equal("***@***", client.Username);
         Assert.Matches(@"^\*{5,10}$", client.DisplayName);
+        Assert.Matches(@"^\*{5,10}$", client.RemoteIp);
+        Assert.Matches(@"^\*{5,10}$", client.LocalIp);
+        Assert.Matches(@"^\*{5,10}$", client.ProxyRealIp);
         Assert.Null(client.AvatarUrl);
     }
 

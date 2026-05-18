@@ -43,6 +43,9 @@ public static class ClientStatisticsResponseSanitizer
         client.CommonName = SensitiveDataMasker.MaskCommonName(client.CommonName);
         client.Username = SensitiveDataMasker.MaskFreeText(client.Username);
         client.DisplayName = SensitiveDataMasker.MaskDisplayName(client.DisplayName);
+        client.RemoteIp = SensitiveDataMasker.MaskIpAddress(client.RemoteIp);
+        client.LocalIp = SensitiveDataMasker.MaskIpAddress(client.LocalIp);
+        client.ProxyRealIp = SensitiveDataMasker.MaskOptionalIpAddress(client.ProxyRealIp);
         client.AvatarUrl = null;
     }
 

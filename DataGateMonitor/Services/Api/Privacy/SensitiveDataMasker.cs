@@ -72,6 +72,22 @@ public static partial class SensitiveDataMasker
     public static string MaskEmailsInText(string text) =>
         EmailRegex().Replace(text, _ => MaskedEmailPlaceholder);
 
+    public static string MaskIpAddress(string? value)
+    {
+        if (string.IsNullOrWhiteSpace(value))
+            return string.Empty;
+
+        return MaskAsterisks(value.Trim());
+    }
+
+    public static string? MaskOptionalIpAddress(string? value)
+    {
+        if (string.IsNullOrWhiteSpace(value))
+            return value;
+
+        return MaskIpAddress(value);
+    }
+
     private static bool LooksLikeEmail(string value) =>
         value.Contains('@', StringComparison.Ordinal) && EmailRegex().IsMatch(value);
 

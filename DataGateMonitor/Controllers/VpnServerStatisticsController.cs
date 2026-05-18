@@ -1,5 +1,6 @@
 ﻿using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Mvc;
+using DataGateMonitor.Services.Api.Auth.Handlers.Interfaces;
 using DataGateMonitor.Services.Api.Interfaces;
 using DataGateMonitor.Services.Api.Privacy;
 using DataGateMonitor.SharedModels.DataGateMonitor.VpnServerStatistics.Request;
@@ -11,29 +12,45 @@ namespace DataGateMonitor.Controllers;
 [ApiController]
 [Route("api/open-vpn-statistics")]
 [Authorize]
-public class VpnServerStatisticsController(IVpnServerStatisticsService vpnServerStatisticsService) : BaseController
+public class VpnServerStatisticsController(
+    IVpnServerStatisticsService vpnServerStatisticsService,
+    IVpnServerAccessQueryService vpnServerAccessQueryService) : BaseController
 {
     [HttpGet("get/{vpnServerId:int}")]
     public async Task<ActionResult<ApiResponse<TrafficByClientsResponse>>> GetClientTrafficStats(
         [FromRoute] VpnServerStatisticRequest request, CancellationToken ct)
     {
+        if (await VpnServerAuthorizationHelper.RequireVpnServerAccessOrForbidAsync<TrafficByClientsResponse>(
+                User, vpnServerAccessQueryService, request.VpnServerId, ct) is { } deny)
+            return deny;
+
         var result =
             await vpnServerStatisticsService.GetTrafficGroupedByClientAsync(request.VpnServerId, ct);
         ClientStatisticsResponseSanitizer.ApplyIfNeeded(User, result);
         return Ok(ApiResponse<TrafficByClientsResponse>.SuccessResponse(result));
     }
+
     [HttpGet("get-connections-by-location/{vpnServerId:int}")]
     public async Task<ActionResult<ApiResponse<GeoConnectionsResponse>>> GetGroupedConnectionsByLocation(
         [FromRoute] VpnServerStatisticRequest request, CancellationToken ct)
     {
+        if (await VpnServerAuthorizationHelper.RequireVpnServerAccessOrForbidAsync<GeoConnectionsResponse>(
+                User, vpnServerAccessQueryService, request.VpnServerId, ct) is { } deny)
+            return deny;
+
         var result = 
             await vpnServerStatisticsService.GetGroupedConnectionsByLocationAsync(request.VpnServerId, ct);
         return Ok(ApiResponse<GeoConnectionsResponse>.SuccessResponse(result));
     }
+
     [HttpGet("get-average-session-duration/{vpnServerId:int}")]
     public async Task<ActionResult<ApiResponse<AverageSessionDurationsResponse>>> GetAverageSessionDuration(
         [FromRoute] VpnServerStatisticRequest request, CancellationToken ct)
     {
+        if (await VpnServerAuthorizationHelper.RequireVpnServerAccessOrForbidAsync<AverageSessionDurationsResponse>(
+                User, vpnServerAccessQueryService, request.VpnServerId, ct) is { } deny)
+            return deny;
+
         var result =
             await vpnServerStatisticsService.GetAverageSessionDurationAsync(request.VpnServerId, ct);
         return Ok(ApiResponse<AverageSessionDurationsResponse>.SuccessResponse(result));
