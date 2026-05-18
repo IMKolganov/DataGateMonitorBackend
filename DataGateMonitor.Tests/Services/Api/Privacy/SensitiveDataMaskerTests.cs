@@ -13,12 +13,19 @@ namespace DataGateMonitor.Tests.Services.Api.Privacy;
 public class SensitiveDataMaskerTests
 {
     [Fact]
-    public void MaskIdentifier_IsStableAndHidesRawValue()
+    public void MaskIdentifier_IsStableAsterisksAndHidesRawValue()
     {
         var masked = SensitiveDataMasker.MaskIdentifier("5767006971");
-        Assert.StartsWith("user-", masked);
+        Assert.Matches(@"^\*{5,10}$", masked);
         Assert.DoesNotContain("5767006971", masked);
         Assert.Equal(masked, SensitiveDataMasker.MaskIdentifier("5767006971"));
+    }
+
+    [Fact]
+    public void MaskDisplayName_UsesAsterisksForPlainNames()
+    {
+        var masked = SensitiveDataMasker.MaskDisplayName("Alice");
+        Assert.Matches(@"^\*{5,10}$", masked);
     }
 
     [Fact]
@@ -67,10 +74,10 @@ public class ClientStatisticsResponseSanitizerTests
         ClientStatisticsResponseSanitizer.ApplyIfNeeded(RegularUser, response);
 
         var client = response.VpnClients![0];
-        Assert.StartsWith("user-", client.ExternalId);
+        Assert.Matches(@"^\*{5,10}$", client.ExternalId);
         Assert.StartsWith("cn-", client.CommonName);
         Assert.Equal("***@***", client.Username);
-        Assert.StartsWith("User ", client.DisplayName);
+        Assert.Matches(@"^\*{5,10}$", client.DisplayName);
         Assert.Null(client.AvatarUrl);
     }
 
@@ -119,10 +126,10 @@ public class ClientStatisticsResponseSanitizerTests
         ClientStatisticsResponseSanitizer.ApplyIfNeeded(RegularUser, response);
 
         var item = response.ClientTraffics![0];
-        Assert.StartsWith("user-", item.ExternalId);
+        Assert.Matches(@"^\*{5,10}$", item.ExternalId);
         Assert.Equal("***@***", item.CommonName);
         Assert.StartsWith("@", item.TgUsername);
-        Assert.StartsWith("User ", item.TgFirstName);
+        Assert.Matches(@"^\*{5,10}$", item.TgFirstName);
     }
 
     [Fact]
@@ -143,8 +150,8 @@ public class ClientStatisticsResponseSanitizerTests
         ClientStatisticsResponseSanitizer.ApplyIfNeeded(RegularUser, response);
 
         var user = response.OverviewUserItems![0];
-        Assert.StartsWith("user-", user.ExternalId);
-        Assert.StartsWith("User ", user.DisplayName);
+        Assert.Matches(@"^\*{5,10}$", user.ExternalId);
+        Assert.Matches(@"^\*{5,10}$", user.DisplayName);
         Assert.DoesNotContain("google-oauth2", user.DisplayName);
     }
 }
