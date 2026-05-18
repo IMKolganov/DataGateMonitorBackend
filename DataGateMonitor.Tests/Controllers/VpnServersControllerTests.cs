@@ -13,7 +13,8 @@ using DataGateMonitor.DataBase.Services.Query.UserQuotaPlanTable;
 using DataGateMonitor.Models;
 using DataGateMonitor.Services.Api.Auth.Handlers.Interfaces;
 using DataGateMonitor.Services.Api.Interfaces;
-using DataGateMonitor.Services.Api.PostSetup;
+using PostSetupStatus = DataGateMonitor.Services.Api.PostSetup.VpnServerPostSetupStatus;
+using PostSetupState = DataGateMonitor.Services.Api.PostSetup.VpnServerPostSetupState;
 using DataGateMonitor.Services.BackgroundServices.Interfaces;
 using DataGateMonitor.Services.Cache;
 using DataGateMonitor.Services.DataGateOpenVpnManager.Interfaces;
@@ -294,11 +295,11 @@ public class VpnServersControllerTests
     {
         _vpnServerPostSetupService
             .Setup(s => s.StartAsync(42, It.IsAny<CancellationToken>()))
-            .ReturnsAsync(new VpnServerPostSetupStatus
+            .ReturnsAsync(new PostSetupStatus
             {
                 OperationId = "op-1",
                 VpnServerId = 42,
-                State = VpnServerPostSetupState.Queued,
+                State = PostSetupState.Queued,
                 CurrentStep = "queued",
                 Message = "queued",
                 StartedAtUtc = DateTimeOffset.UtcNow
@@ -307,7 +308,7 @@ public class VpnServersControllerTests
         var result = await _controller.StartPostSetup(42, CancellationToken.None);
 
         var ok = Assert.IsType<OkObjectResult>(result.Result);
-        var response = Assert.IsType<ApiResponse<VpnServerPostSetupStatus>>(ok.Value);
+        var response = Assert.IsType<ApiResponse<VpnServerPostSetupStatusResponse>>(ok.Value);
         Assert.True(response.Success);
         Assert.NotNull(response.Data);
         Assert.Equal(42, response.Data!.VpnServerId);
@@ -319,11 +320,11 @@ public class VpnServersControllerTests
     {
         _vpnServerPostSetupService
             .Setup(s => s.GetStatusAsync(42, "op-2", It.IsAny<CancellationToken>()))
-            .ReturnsAsync(new VpnServerPostSetupStatus
+            .ReturnsAsync(new PostSetupStatus
             {
                 OperationId = "op-2",
                 VpnServerId = 42,
-                State = VpnServerPostSetupState.Running,
+                State = PostSetupState.Running,
                 CurrentStep = "running",
                 Message = "running",
                 StartedAtUtc = DateTimeOffset.UtcNow
@@ -332,7 +333,7 @@ public class VpnServersControllerTests
         var result = await _controller.GetPostSetupStatus(42, "op-2", CancellationToken.None);
 
         var ok = Assert.IsType<OkObjectResult>(result.Result);
-        var response = Assert.IsType<ApiResponse<VpnServerPostSetupStatus>>(ok.Value);
+        var response = Assert.IsType<ApiResponse<VpnServerPostSetupStatusResponse>>(ok.Value);
         Assert.True(response.Success);
         Assert.NotNull(response.Data);
         Assert.Equal("op-2", response.Data!.OperationId);
@@ -343,12 +344,12 @@ public class VpnServersControllerTests
     {
         _vpnServerPostSetupService
             .Setup(s => s.GetStatusAsync(42, null, It.IsAny<CancellationToken>()))
-            .ReturnsAsync((VpnServerPostSetupStatus?)null);
+            .ReturnsAsync((PostSetupStatus?)null);
 
         var result = await _controller.GetPostSetupStatus(42, null, CancellationToken.None);
 
         var notFound = Assert.IsType<NotFoundObjectResult>(result.Result);
-        var response = Assert.IsType<ApiResponse<VpnServerPostSetupStatus>>(notFound.Value);
+        var response = Assert.IsType<ApiResponse<VpnServerPostSetupStatusResponse>>(notFound.Value);
         Assert.False(response.Success);
     }
 
