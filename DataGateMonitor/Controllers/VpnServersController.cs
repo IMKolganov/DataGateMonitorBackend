@@ -10,7 +10,7 @@ using DataGateMonitor.Models;
 using DataGateMonitor.Services.Api;
 using DataGateMonitor.Services.Api.Auth.Handlers.Interfaces;
 using DataGateMonitor.Services.Api.Interfaces;
-using DataGateMonitor.Services.Api.PostSetup;
+using PostSetupStatus = DataGateMonitor.Services.Api.PostSetup.VpnServerPostSetupStatus;
 using DataGateMonitor.Services.BackgroundServices.Interfaces;
 using DataGateMonitor.Services.Cache;
 using DataGateMonitor.Services.DataGateOpenVpnManager.Interfaces;
@@ -260,25 +260,25 @@ public class VpnServersController(IVpnDataService vpnDataService,
 
     [Authorize(Roles = "Admin,App")]
     [HttpPost("post-setup/{vpnServerId:int}/start")]
-    public async Task<ActionResult<ApiResponse<VpnServerPostSetupStatus>>> StartPostSetup(
+    public async Task<ActionResult<ApiResponse<VpnServerPostSetupStatusResponse>>> StartPostSetup(
         [FromRoute] int vpnServerId,
         CancellationToken ct)
     {
         var status = await vpnServerPostSetupService.StartAsync(vpnServerId, ct);
-        return Ok(ApiResponse<VpnServerPostSetupStatus>.SuccessResponse(status));
+        return Ok(ApiResponse<VpnServerPostSetupStatusResponse>.SuccessResponse(ToPostSetupStatusResponse(status)));
     }
 
     [Authorize(Roles = "Admin,App")]
     [HttpGet("post-setup/{vpnServerId:int}/status")]
-    public async Task<ActionResult<ApiResponse<VpnServerPostSetupStatus>>> GetPostSetupStatus(
+    public async Task<ActionResult<ApiResponse<VpnServerPostSetupStatusResponse>>> GetPostSetupStatus(
         [FromRoute] int vpnServerId,
         [FromQuery] string? operationId,
         CancellationToken ct)
     {
         var status = await vpnServerPostSetupService.GetStatusAsync(vpnServerId, operationId, ct);
         if (status is null)
-            return NotFound(ApiResponse<VpnServerPostSetupStatus>.ErrorResponse("Post-create setup status not found."));
-        return Ok(ApiResponse<VpnServerPostSetupStatus>.SuccessResponse(status));
+            return NotFound(ApiResponse<VpnServerPostSetupStatusResponse>.ErrorResponse("Post-create setup status not found."));
+        return Ok(ApiResponse<VpnServerPostSetupStatusResponse>.SuccessResponse(ToPostSetupStatusResponse(status)));
     }
 
     [Authorize(Roles = "Admin,App")]
@@ -359,6 +359,19 @@ public class VpnServersController(IVpnDataService vpnDataService,
         await statusStreamLogStore.ClearAsync(ct);
         return Ok(ApiResponse<string>.SuccessResponse("Status stream logs cleared."));
     }
+
+    private static VpnServerPostSetupStatusResponse ToPostSetupStatusResponse(PostSetupStatus status) =>
+        new()
+        {
+            OperationId = status.OperationId,
+            VpnServerId = status.VpnServerId,
+            State = (VpnServerPostSetupState)status.State,
+            Message = status.Message,
+            CurrentStep = status.CurrentStep,
+            StartedAtUtc = status.StartedAtUtc,
+            FinishedAtUtc = status.FinishedAtUtc,
+            Details = status.Details.ToDictionary(x => x.Key, x => x.Value)
+        };
 
     private async Task FillTagsForOverviewResponse(VpnServerWithStatusesResponse response, CancellationToken ct)
     {
