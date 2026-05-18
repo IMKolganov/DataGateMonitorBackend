@@ -6,7 +6,6 @@ using DataGateMonitor.DataBase.Services.Query.VpnServerTagTable;
 using DataGateMonitor.DataBase.Services.Query.QuotaPlanAllowedServerTable;
 using DataGateMonitor.DataBase.Services.Query.QuotaPlanTable;
 using DataGateMonitor.DataBase.Services.Query.UserQuotaPlanTable;
-using DataGateMonitor.ApiContracts.VpnServers;
 using DataGateMonitor.Services.Api;
 using DataGateMonitor.Services.Cache;
 using DataGateMonitor.SharedModels.DataGateMonitor.VpnServers.Dto;
