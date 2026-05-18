@@ -1,7 +1,9 @@
+using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.SignalR;
 
 namespace DataGateMonitor.Hubs;
 
+[Authorize]
 public class OpenVpnProxyTrafficFlowHub(ILogger<OpenVpnProxyTrafficFlowHub> logger) : Hub
 {
     public override async Task OnConnectedAsync()

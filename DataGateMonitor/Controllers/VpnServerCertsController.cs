@@ -13,7 +13,7 @@ namespace DataGateMonitor.Controllers;
 [ApiController]
 [Route("api/open-vpn-certs")]
 [Authorize]
-[Authorize(Roles = "Admin,VpnUser,App")]
+[Authorize(Roles = "Admin,App")]
 public class VpnServerCertsController(ICertApiClient certApiClient,
     ILogger<VpnServerCertsController> logger,
     IVpnServerAccessQueryService vpnServerAccessQueryService) : BaseController
