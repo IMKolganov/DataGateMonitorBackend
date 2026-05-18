@@ -13,6 +13,7 @@ using DataGateMonitor.DataBase.Services.Query.UserQuotaPlanTable;
 using DataGateMonitor.Models;
 using DataGateMonitor.Services.Api.Auth.Handlers.Interfaces;
 using DataGateMonitor.Services.Api.Interfaces;
+using DataGateMonitor.Services.Api.PostSetup;
 using DataGateMonitor.Services.BackgroundServices.Interfaces;
 using DataGateMonitor.Services.Cache;
 using DataGateMonitor.Services.DataGateOpenVpnManager.Interfaces;
@@ -42,6 +43,7 @@ public class VpnServersControllerTests
     private readonly Mock<IVpnServerAccessQueryService> _vpnAccess = new();
     private readonly Mock<IStatusCacheGenerationService> _statusCacheGeneration = new();
     private readonly Mock<IStatusStreamLogStore> _statusStreamLogStore = new();
+    private readonly Mock<IVpnServerPostSetupService> _vpnServerPostSetupService = new();
     private readonly IApiMemoryCacheService _cache = new ApiMemoryCacheService(new MemoryCache(new MemoryCacheOptions()));
 
     private readonly VpnServersController _controller;
@@ -59,7 +61,8 @@ public class VpnServersControllerTests
             _vpnAccess.Object,
             _cache,
             _statusCacheGeneration.Object,
-            _statusStreamLogStore.Object);
+            _statusStreamLogStore.Object,
+            _vpnServerPostSetupService.Object);
         SetUserAsAdmin(_controller);
     }
 
@@ -284,6 +287,69 @@ public class VpnServersControllerTests
         _vpnDataService.Verify(
             s => s.AddVpnServer(It.IsAny<VpnServer>(), It.IsAny<List<int>>(), It.IsAny<List<int>>(), It.IsAny<CancellationToken>()),
             Times.Once);
+    }
+
+    [Fact]
+    public async Task StartPostSetup_Returns_Ok_WithStatus()
+    {
+        _vpnServerPostSetupService
+            .Setup(s => s.StartAsync(42, It.IsAny<CancellationToken>()))
+            .ReturnsAsync(new VpnServerPostSetupStatus
+            {
+                OperationId = "op-1",
+                VpnServerId = 42,
+                State = VpnServerPostSetupState.Queued,
+                CurrentStep = "queued",
+                Message = "queued",
+                StartedAtUtc = DateTimeOffset.UtcNow
+            });
+
+        var result = await _controller.StartPostSetup(42, CancellationToken.None);
+
+        var ok = Assert.IsType<OkObjectResult>(result.Result);
+        var response = Assert.IsType<ApiResponse<VpnServerPostSetupStatus>>(ok.Value);
+        Assert.True(response.Success);
+        Assert.NotNull(response.Data);
+        Assert.Equal(42, response.Data!.VpnServerId);
+        _vpnServerPostSetupService.Verify(s => s.StartAsync(42, It.IsAny<CancellationToken>()), Times.Once);
+    }
+
+    [Fact]
+    public async Task GetPostSetupStatus_WhenFound_Returns_Ok()
+    {
+        _vpnServerPostSetupService
+            .Setup(s => s.GetStatusAsync(42, "op-2", It.IsAny<CancellationToken>()))
+            .ReturnsAsync(new VpnServerPostSetupStatus
+            {
+                OperationId = "op-2",
+                VpnServerId = 42,
+                State = VpnServerPostSetupState.Running,
+                CurrentStep = "running",
+                Message = "running",
+                StartedAtUtc = DateTimeOffset.UtcNow
+            });
+
+        var result = await _controller.GetPostSetupStatus(42, "op-2", CancellationToken.None);
+
+        var ok = Assert.IsType<OkObjectResult>(result.Result);
+        var response = Assert.IsType<ApiResponse<VpnServerPostSetupStatus>>(ok.Value);
+        Assert.True(response.Success);
+        Assert.NotNull(response.Data);
+        Assert.Equal("op-2", response.Data!.OperationId);
+    }
+
+    [Fact]
+    public async Task GetPostSetupStatus_WhenMissing_Returns_NotFound()
+    {
+        _vpnServerPostSetupService
+            .Setup(s => s.GetStatusAsync(42, null, It.IsAny<CancellationToken>()))
+            .ReturnsAsync((VpnServerPostSetupStatus?)null);
+
+        var result = await _controller.GetPostSetupStatus(42, null, CancellationToken.None);
+
+        var notFound = Assert.IsType<NotFoundObjectResult>(result.Result);
+        var response = Assert.IsType<ApiResponse<VpnServerPostSetupStatus>>(notFound.Value);
+        Assert.False(response.Success);
     }
 
     [Fact]
