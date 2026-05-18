@@ -19,7 +19,7 @@ public static partial class SensitiveDataMasker
         if (string.IsNullOrWhiteSpace(value))
             return string.Empty;
 
-        return $"user-{Hash8(value)}";
+        return MaskAsterisks(value);
     }
 
     public static string MaskCommonName(string? value)
@@ -58,7 +58,7 @@ public static partial class SensitiveDataMasker
         if (EmailRegex().IsMatch(trimmed))
             return MaskEmailsInText(trimmed);
 
-        return $"User {Hash8(trimmed)}";
+        return MaskAsterisks(trimmed);
     }
 
     public static string? MaskTelegramHandle(string? value)
@@ -74,6 +74,14 @@ public static partial class SensitiveDataMasker
 
     private static bool LooksLikeEmail(string value) =>
         value.Contains('@', StringComparison.Ordinal) && EmailRegex().IsMatch(value);
+
+    /// <summary>Stable pseudonym: 5–10 asterisks derived from the source value.</summary>
+    public static string MaskAsterisks(string value)
+    {
+        var hash = SHA256.HashData(Encoding.UTF8.GetBytes(value));
+        var length = 5 + (hash[0] % 6);
+        return new string('*', length);
+    }
 
     private static string Hash8(string value)
     {
