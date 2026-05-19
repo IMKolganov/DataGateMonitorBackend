@@ -18,6 +18,7 @@ public class UserLoginServiceTests
         var userIdentityLinkQuery = new Mock<DataGateMonitor.DataBase.Services.Query.UserIdentityLinkTable.IUserIdentityLinkQueryService>();
         var userAccountService = new Mock<DataGateMonitor.Services.Api.Auth.Users.IUserAccountService>();
         var tokenService = new Mock<ITokenService>();
+        var adminTotpService = new Mock<DataGateMonitor.Services.Api.Auth.Totp.IAdminTotpService>();
         var appNotificationFacade = new Mock<DataGateMonitor.Services.Others.Notifications.IAppNotificationFacade>();
         var logger = new Mock<Microsoft.Extensions.Logging.ILogger<UserLoginService>>();
         var httpContextAccessor = new Mock<Microsoft.AspNetCore.Http.IHttpContextAccessor>();
@@ -32,6 +33,7 @@ public class UserLoginServiceTests
             userIdentityLinkQuery.Object,
             userAccountService.Object,
             tokenService.Object,
+            adminTotpService.Object,
             appNotificationFacade.Object,
             logger.Object,
             httpContextAccessor.Object);
@@ -61,6 +63,7 @@ public class UserLoginServiceTests
         var userIdentityLinkQuery = new Mock<DataGateMonitor.DataBase.Services.Query.UserIdentityLinkTable.IUserIdentityLinkQueryService>();
         var userAccountService = new Mock<DataGateMonitor.Services.Api.Auth.Users.IUserAccountService>();
         var tokenService = new Mock<ITokenService>();
+        var adminTotpService = new Mock<DataGateMonitor.Services.Api.Auth.Totp.IAdminTotpService>();
         var appNotificationFacade = new Mock<DataGateMonitor.Services.Others.Notifications.IAppNotificationFacade>();
         var logger = new Mock<Microsoft.Extensions.Logging.ILogger<UserLoginService>>();
         var httpContextAccessor = new Mock<Microsoft.AspNetCore.Http.IHttpContextAccessor>();
@@ -75,6 +78,7 @@ public class UserLoginServiceTests
             userIdentityLinkQuery.Object,
             userAccountService.Object,
             tokenService.Object,
+            adminTotpService.Object,
             appNotificationFacade.Object,
             logger.Object,
             httpContextAccessor.Object);

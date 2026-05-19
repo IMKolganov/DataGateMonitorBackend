@@ -24,6 +24,7 @@ public class TokenServiceTests
         var refreshTokenQuery = new Mock<IUserRefreshTokenQueryService>();
         var refreshTokenCommand = new Mock<ICommandService<UserRefreshToken, int>>();
         var userIdentityLinkQuery = new Mock<IUserIdentityLinkQueryService>();
+        var adminIdleTracker = new Mock<IAdminIdleSessionTracker>();
 
         var sut = new TokenService(
             config.Object,
@@ -31,7 +32,8 @@ public class TokenServiceTests
             userRoleService.Object,
             refreshTokenQuery.Object,
             refreshTokenCommand.Object,
-            userIdentityLinkQuery.Object);
+            userIdentityLinkQuery.Object,
+            adminIdleTracker.Object);
 
         var ex = await Assert.ThrowsAsync<InvalidOperationException>(
             () => sut.IssueAsync(999, null, null, null, CancellationToken.None));
@@ -54,6 +56,7 @@ public class TokenServiceTests
         var refreshTokenQuery = new Mock<IUserRefreshTokenQueryService>();
         var refreshTokenCommand = new Mock<ICommandService<UserRefreshToken, int>>();
         var userIdentityLinkQuery = new Mock<IUserIdentityLinkQueryService>();
+        var adminIdleTracker = new Mock<IAdminIdleSessionTracker>();
 
         var sut = new TokenService(
             config.Object,
@@ -61,7 +64,8 @@ public class TokenServiceTests
             userRoleService.Object,
             refreshTokenQuery.Object,
             refreshTokenCommand.Object,
-            userIdentityLinkQuery.Object);
+            userIdentityLinkQuery.Object,
+            adminIdleTracker.Object);
 
         var ex = await Assert.ThrowsAsync<UnauthorizedAccessException>(
             () => sut.IssueAsync(1, null, null, null, CancellationToken.None));
