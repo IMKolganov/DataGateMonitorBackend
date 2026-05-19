@@ -18,7 +18,8 @@ public sealed class TokenService(
     IUserRoleService userRoleService,
     IUserRefreshTokenQueryService refreshTokenQueryService,
     ICommandService<UserRefreshToken, int> refreshTokenCommandService,
-    IUserIdentityLinkQueryService userIdentityLinkQueryService
+    IUserIdentityLinkQueryService userIdentityLinkQueryService,
+    IAdminIdleSessionTracker adminIdleSessionTracker
 ) : ITokenService
 {
     public async Task<TokenPair> IssueAsync(
@@ -60,6 +61,10 @@ public sealed class TokenService(
         };
 
         await refreshTokenCommandService.Add(userRefreshToken, saveChanges: true, ct);
+
+        var roleOnIssue = await userRoleService.GetUserRoleNameAsync(user.Id, ct);
+        if (AdminIdleSessionTracker.IsAdminRole(roleOnIssue))
+            adminIdleSessionTracker.Touch(user.Id);
 
         return new TokenPair(accessToken, accessExpiresAt, refreshToken, refreshExpiresAt);
     }
@@ -122,6 +127,15 @@ public sealed class TokenService(
         if (user.IsBlocked)
             throw new UnauthorizedAccessException("User account is blocked.");
 
+        var roleOnRefresh = await userRoleService.GetUserRoleNameAsync(user.Id, ct);
+        if (AdminIdleSessionTracker.IsAdminRole(roleOnRefresh))
+        {
+            if (adminIdleSessionTracker.IsExpired(user.Id))
+                throw new UnauthorizedAccessException("Administrator session expired due to inactivity.");
+
+            adminIdleSessionTracker.Touch(user.Id);
+        }
+
         var resolvedExternalId = await ResolveExternalIdAsync(user, externalId: null, ct);
 
         var (accessToken, accessExpiresAt) = await CreateAccessTokenAsync(user, resolvedExternalId, ct);
@@ -172,6 +186,14 @@ public sealed class TokenService(
 
         if (!string.IsNullOrWhiteSpace(user.AvatarUrl))
             claims.Add(new Claim("avatarUrl", user.AvatarUrl));
+
+        if (AdminIdleSessionTracker.IsAdminRole(role))
+        {
+            var idleMinutes = configuration.GetValue<int?>("Jwt:AdminIdleTimeoutMinutes") ?? 15;
+            if (idleMinutes <= 0)
+                idleMinutes = 15;
+            claims.Add(new Claim("adminIdleTimeoutMinutes", idleMinutes.ToString()));
+        }
 
         var tokenDescriptor = new JwtSecurityToken(
             issuer: issuer,

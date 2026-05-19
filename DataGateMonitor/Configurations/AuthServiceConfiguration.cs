@@ -48,6 +48,7 @@ public static class AuthServiceConfiguration
         services.AddScoped<IUserQuotaPlanService, UserQuotaPlanService>();
 
         services.AddMemoryCache();
+        services.AddSingleton<IAdminIdleSessionTracker, AdminIdleSessionTracker>();
         services.Configure<EmailSenderSettings>(configuration.GetSection("EmailSender"));
         services.AddScoped<SmtpEmailSenderService>();
         services.AddScoped<ResendEmailSenderService>();
