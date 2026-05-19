@@ -141,7 +141,7 @@ public class VpnServersController(IVpnDataService vpnDataService,
         return Ok(ApiResponse<VpnServerWithStatusResponse>.SuccessResponse(response));
     }
 
-    [HttpGet("get-microservice-info/{VpnServerId:int}")]
+    [HttpGet("get-microservice-info/{vpnServerId:int}")]
     public async Task<ActionResult<ApiResponse<VpnMicroserviceDiagnosticsDto>>> GetMicroserviceInfo(
         [FromRoute] int vpnServerId, CancellationToken ct)
     {

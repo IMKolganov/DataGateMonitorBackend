@@ -16,6 +16,7 @@ using DataGateMonitor.Services.Api.Auth.Registers.Interfaces;
 using DataGateMonitor.DataBase.Services.Query.UserTable;
 using DataGateMonitor.SharedModels.DataGateMonitor.Auth.Requests;
 using DataGateMonitor.SharedModels.DataGateMonitor.Auth.Responses;
+using DataGateMonitor.Models.Auth;
 using DataGateMonitor.SharedModels.Responses;
 
 namespace DataGateMonitor.Controllers;
@@ -35,8 +36,33 @@ public class AuthController(
     IAdminForgotPasswordService adminForgotPasswordService,
     ITelegramLoginCodeService telegramLoginCodeService,
     IAdminTotpService adminTotpService,
-    ICurrentUserService currentUserService) : BaseController
+    ICurrentUserService currentUserService,
+    IAdminIdleSessionTracker adminIdleSessionTracker) : BaseController
 {
+    [AllowAnonymous]
+    [HttpGet("session-policy")]
+    [ProducesResponseType(typeof(ApiResponse<AuthSessionPolicyResponse>), StatusCodes.Status200OK)]
+    public ActionResult<ApiResponse<AuthSessionPolicyResponse>> GetSessionPolicy()
+    {
+        var minutes = config.GetValue<int?>("Jwt:AdminIdleTimeoutMinutes") ?? 15;
+        if (minutes <= 0)
+            minutes = 15;
+
+        return Ok(ApiResponse<AuthSessionPolicyResponse>.SuccessResponse(new AuthSessionPolicyResponse
+        {
+            AdminIdleTimeoutMinutes = minutes,
+        }));
+    }
+
+    [Authorize(Roles = "Admin")]
+    [HttpPost("activity")]
+    [ProducesResponseType(StatusCodes.Status204NoContent)]
+    public IActionResult RecordAdminActivity()
+    {
+        adminIdleSessionTracker.Touch(currentUserService.UserId);
+        return NoContent();
+    }
+
     [HttpPost("token")]
     public async Task<ActionResult<ApiResponse<TokenResponse>>> GenerateToken([FromBody] TokenRequest request,
         CancellationToken cancellationToken)

@@ -16,6 +16,8 @@ public class TelegramLoginCodeServiceTests
         var telegramUserQuery = new Mock<DataGateMonitor.DataBase.Services.Query.TelegramBotUserTable.ITelegramBotUserQueryService>();
         var userService = new Mock<IUserService>();
         var tokenService = new Mock<ITokenService>();
+        var adminTotpService = new Mock<DataGateMonitor.Services.Api.Auth.Totp.IAdminTotpService>();
+        var credentialQuery = new Mock<DataGateMonitor.DataBase.Services.Query.UserCredentialTable.IUserCredentialQueryService>();
         var cache = new MemoryCache(new MemoryCacheOptions());
         var httpContextAccessor = new Mock<Microsoft.AspNetCore.Http.IHttpContextAccessor>();
 
@@ -23,6 +25,8 @@ public class TelegramLoginCodeServiceTests
             telegramUserQuery.Object,
             userService.Object,
             tokenService.Object,
+            adminTotpService.Object,
+            credentialQuery.Object,
             cache,
             httpContextAccessor.Object);
 
