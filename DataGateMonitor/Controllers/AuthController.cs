@@ -10,6 +10,8 @@ using DataGateMonitor.Services.Api.Auth.Login;
 using DataGateMonitor.Services.Api.Auth.EmailConfirmation;
 using DataGateMonitor.Services.Api.Auth.EmailConfirmation.Models;
 using DataGateMonitor.Services.Api.Auth.TelegramLogin;
+using DataGateMonitor.Services.Api.Auth.Totp;
+using DataGateMonitor.Services.Api.CurrentUser.Interfaces;
 using DataGateMonitor.Services.Api.Auth.Registers.Interfaces;
 using DataGateMonitor.DataBase.Services.Query.UserTable;
 using DataGateMonitor.SharedModels.DataGateMonitor.Auth.Requests;
@@ -31,7 +33,9 @@ public class AuthController(
     IGoogleAuthCodeExchangeService exchange,
     ITokenService tokenService,
     IAdminForgotPasswordService adminForgotPasswordService,
-    ITelegramLoginCodeService telegramLoginCodeService) : BaseController
+    ITelegramLoginCodeService telegramLoginCodeService,
+    IAdminTotpService adminTotpService,
+    ICurrentUserService currentUserService) : BaseController
 {
     [HttpPost("token")]
     public async Task<ActionResult<ApiResponse<TokenResponse>>> GenerateToken([FromBody] TokenRequest request,
@@ -250,6 +254,57 @@ public class AuthController(
     {
         await HttpContext.SignOutAsync("UserCookie");
         return Ok();
+    }
+
+    [AllowAnonymous]
+    [HttpPost("totp/verify-login")]
+    [ProducesResponseType(typeof(ApiResponse<LoginResponse>), StatusCodes.Status200OK)]
+    public async Task<ActionResult<ApiResponse<LoginResponse>>> VerifyTotpLogin(
+        [FromBody] TotpVerifyLoginRequest request,
+        CancellationToken ct)
+    {
+        var result = await adminTotpService.VerifyLoginChallengeAsync(request, ct);
+        return Ok(ApiResponse<LoginResponse>.SuccessResponse(result));
+    }
+
+    [Authorize(Roles = "Admin")]
+    [HttpGet("totp/status")]
+    [ProducesResponseType(typeof(ApiResponse<TotpStatusResponse>), StatusCodes.Status200OK)]
+    public async Task<ActionResult<ApiResponse<TotpStatusResponse>>> GetTotpStatus(CancellationToken ct)
+    {
+        var status = await adminTotpService.GetStatusAsync(currentUserService.UserId, ct);
+        return Ok(ApiResponse<TotpStatusResponse>.SuccessResponse(status));
+    }
+
+    [Authorize(Roles = "Admin")]
+    [HttpPost("totp/setup")]
+    [ProducesResponseType(typeof(ApiResponse<TotpSetupResponse>), StatusCodes.Status200OK)]
+    public async Task<ActionResult<ApiResponse<TotpSetupResponse>>> BeginTotpSetup(CancellationToken ct)
+    {
+        var setup = await adminTotpService.BeginSetupAsync(currentUserService.UserId, ct);
+        return Ok(ApiResponse<TotpSetupResponse>.SuccessResponse(setup));
+    }
+
+    [Authorize(Roles = "Admin")]
+    [HttpPost("totp/confirm")]
+    [ProducesResponseType(typeof(ApiResponse<string>), StatusCodes.Status200OK)]
+    public async Task<ActionResult<ApiResponse<string>>> ConfirmTotpSetup(
+        [FromBody] TotpConfirmRequest request,
+        CancellationToken ct)
+    {
+        await adminTotpService.ConfirmSetupAsync(currentUserService.UserId, request, ct);
+        return Ok(ApiResponse<string>.SuccessResponse("Two-factor authentication enabled."));
+    }
+
+    [Authorize(Roles = "Admin")]
+    [HttpPost("totp/disable")]
+    [ProducesResponseType(typeof(ApiResponse<string>), StatusCodes.Status200OK)]
+    public async Task<ActionResult<ApiResponse<string>>> DisableTotp(
+        [FromBody] TotpDisableRequest request,
+        CancellationToken ct)
+    {
+        await adminTotpService.DisableAsync(currentUserService.UserId, request, ct);
+        return Ok(ApiResponse<string>.SuccessResponse("Two-factor authentication disabled."));
     }
 
     [AllowAnonymous]
