@@ -30,6 +30,7 @@ public class UserLoginServiceGoogleTests
         var userIdentityLinkQuery = new Mock<IUserIdentityLinkQueryService>();
         var userAccountService = new Mock<IUserAccountService>();
         var tokenService = new Mock<ITokenService>();
+        var adminTotpService = new Mock<DataGateMonitor.Services.Api.Auth.Totp.IAdminTotpService>();
         var appNotificationFacade = new Mock<IAppNotificationFacade>();
         var logger = new Mock<ILogger<UserLoginService>>();
         var httpContextAccessor = new Mock<IHttpContextAccessor>();
@@ -79,6 +80,7 @@ public class UserLoginServiceGoogleTests
             userIdentityLinkQuery.Object,
             userAccountService.Object,
             tokenService.Object,
+            adminTotpService.Object,
             appNotificationFacade.Object,
             logger.Object,
             httpContextAccessor.Object);
@@ -103,6 +105,7 @@ public class UserLoginServiceGoogleTests
         var userIdentityLinkQuery = new Mock<IUserIdentityLinkQueryService>();
         var userAccountService = new Mock<IUserAccountService>();
         var tokenService = new Mock<ITokenService>();
+        var adminTotpService = new Mock<DataGateMonitor.Services.Api.Auth.Totp.IAdminTotpService>();
         var appNotificationFacade = new Mock<IAppNotificationFacade>();
         var logger = new Mock<ILogger<UserLoginService>>();
         var httpContextAccessor = new Mock<IHttpContextAccessor>();
@@ -133,6 +136,7 @@ public class UserLoginServiceGoogleTests
             userIdentityLinkQuery.Object,
             userAccountService.Object,
             tokenService.Object,
+            adminTotpService.Object,
             appNotificationFacade.Object,
             logger.Object,
             httpContextAccessor.Object);
