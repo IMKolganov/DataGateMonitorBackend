@@ -160,6 +160,7 @@ public class OpenVpnBackgroundService : BackgroundService, IOpenVpnBackgroundSer
                     serverId: server.Id,
                     serverName: server.ServerName,
                     apiUrl: server.ApiUrl,
+                    serverType: server.ServerType,
                     metrics: new
                     {
                         inFlight,
@@ -198,6 +199,7 @@ public class OpenVpnBackgroundService : BackgroundService, IOpenVpnBackgroundSer
                         serverId: server.Id,
                         serverName: server.ServerName,
                         apiUrl: server.ApiUrl,
+                        serverType: server.ServerType,
                         durationMs: serverStopwatch.ElapsedMilliseconds);
                 }
                 catch (TimeoutException ex)
@@ -218,6 +220,7 @@ public class OpenVpnBackgroundService : BackgroundService, IOpenVpnBackgroundSer
                         serverId: server.Id,
                         serverName: server.ServerName,
                         apiUrl: server.ApiUrl,
+                        serverType: server.ServerType,
                         durationMs: serverStopwatch.ElapsedMilliseconds,
                         details: ex.Message);
 
@@ -247,6 +250,7 @@ public class OpenVpnBackgroundService : BackgroundService, IOpenVpnBackgroundSer
                         serverId: server.Id,
                         serverName: server.ServerName,
                         apiUrl: server.ApiUrl,
+                        serverType: server.ServerType,
                         durationMs: serverStopwatch.ElapsedMilliseconds,
                         details: errorDetails);
 
@@ -474,6 +478,7 @@ public class OpenVpnBackgroundService : BackgroundService, IOpenVpnBackgroundSer
         int? serverId = null,
         string? serverName = null,
         string? apiUrl = null,
+        VpnServerType? serverType = null,
         long? durationMs = null,
         string? details = null,
         object? metrics = null)
@@ -489,6 +494,7 @@ public class OpenVpnBackgroundService : BackgroundService, IOpenVpnBackgroundSer
                 serverId,
                 serverName,
                 apiUrl,
+                serverType = serverType.HasValue ? (int)serverType.Value : (int?)null,
                 durationMs,
                 details,
                 metrics
