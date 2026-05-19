@@ -90,6 +90,23 @@ public class GlobalExceptionMiddlewareTests
     }
 
     [Fact]
+    public async Task InvokeAsync_WhenNextThrowsDuplicateVpnServerName_Returns409_AndMessageInBody()
+    {
+        var context = CreateContext();
+        RequestDelegate next = _ => throw new InvalidOperationException("A VPN server with the same name already exists.");
+        var (middleware, facade) = CreateMiddleware(next);
+
+        await middleware.InvokeAsync(context);
+
+        Assert.Equal(StatusCodes.Status409Conflict, context.Response.StatusCode);
+        var body = await ReadResponseBodyAsync(context.Response);
+        var json = JObject.Parse(body);
+        Assert.Equal(409, json["statusCode"]?.Value<int>());
+        Assert.Equal("A VPN server with the same name already exists.", json["message"]?.Value<string>());
+        Assert.Equal("A VPN server with the same name already exists.", json["detail"]?.Value<string>());
+    }
+
+    [Fact]
     public async Task InvokeAsync_WhenNextThrowsGenericException_Returns500_AndGenericMessage()
     {
         var context = CreateContext();

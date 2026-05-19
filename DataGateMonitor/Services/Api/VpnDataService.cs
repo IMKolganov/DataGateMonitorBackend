@@ -45,8 +45,8 @@ public class VpnDataService(
 
             if (await openVpnServerQueryService.AnyByServerName(server.ServerName, ct))
             {
-                logger.LogWarning("OpenVPN server with name '{ServerName}' already exists", server.ServerName);
-                throw new InvalidOperationException("OpenVPN server with the same name already exists");
+                logger.LogWarning("VPN server with name '{ServerName}' already exists", server.ServerName);
+                throw new InvalidOperationException("A VPN server with the same name already exists.");
             }
             
             if (server.IsDefault)
@@ -92,8 +92,8 @@ public class VpnDataService(
 
             if (await openVpnServerQueryService.AnyByServerNameExceptId(server.ServerName, server.Id, ct))
             {
-                logger.LogWarning("OpenVPN server with name '{ServerName}' already exists", server.ServerName);
-                throw new InvalidOperationException("OpenVPN server with the same name already exists");
+                logger.LogWarning("VPN server with name '{ServerName}' already exists", server.ServerName);
+                throw new InvalidOperationException("A VPN server with the same name already exists.");
             }
 
             if (server.IsDefault)
@@ -163,6 +163,35 @@ public class VpnDataService(
     private const string DefaultXrayClientLinkTemplate =
         "{{vless_uri}}\r\n# {{friendly_name}}\r\nUUID: {{uuid}}\r\nEndpoint: {{server_ip}}:{{server_port}}\r\n";
 
+    private const string DefaultOpenVpnClientConfigTemplate =
+        """
+        setenv FRIENDLY_NAME "{{friendly_name}}"
+        client
+        dev tun
+        proto tcp
+        remote {{server_ip}} {{server_port}}
+        resolv-retry infinite
+        nobind
+        remote-cert-tls server
+        tls-version-min 1.2
+        cipher AES-256-CBC
+        auth SHA256
+        auth-nocache
+        verb 3
+        <ca>
+        {{ca_cert}}
+        </ca>
+        <cert>
+        {{client_cert}}
+        </cert>
+        <key>
+        {{client_key}}
+        </key>
+        <tls-crypt>
+        {{tls_auth_key}}
+        </tls-crypt>
+        """;
+
     private async Task<bool> CheckAndPutDefaultExpiredSettings(VpnServer openVpnServer, CancellationToken ct)
     {
         if (openVpnServer.ServerType == VpnServerType.OpenVpn)
@@ -183,6 +212,7 @@ public class VpnDataService(
         {
             VpnServerId = server.Id,
             VpnServerIp = await GetExternalIpSafelyAsync(ct),
+            ConfigTemplate = DefaultOpenVpnClientConfigTemplate,
         };
 
         await TryApplyDetectedOpenVpnSettingsAsync(server.Id, config, ct);

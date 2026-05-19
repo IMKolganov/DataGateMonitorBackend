@@ -1,7 +1,9 @@
 using System.Security.Cryptography;
 using Microsoft.Extensions.Caching.Memory;
 using DataGateMonitor.DataBase.Services.Query.TelegramBotUserTable;
+using DataGateMonitor.DataBase.Services.Query.UserCredentialTable;
 using DataGateMonitor.Services.Api.Auth.Login;
+using DataGateMonitor.Services.Api.Auth.Totp;
 using DataGateMonitor.Services.Users.Interfaces;
 using DataGateMonitor.SharedModels.DataGateMonitor.Auth.Requests;
 using DataGateMonitor.SharedModels.DataGateMonitor.Auth.Responses;
@@ -12,6 +14,8 @@ public sealed class TelegramLoginCodeService(
     ITelegramBotUserQueryService telegramBotUserQueryService,
     IUserService userService,
     ITokenService tokenService,
+    IAdminTotpService adminTotpService,
+    IUserCredentialQueryService credentialQueryService,
     IMemoryCache cache,
     IHttpContextAccessor httpContextAccessor) : ITelegramLoginCodeService
 {
@@ -63,24 +67,35 @@ public sealed class TelegramLoginCodeService(
             throw new UnauthorizedAccessException("User account is blocked.");
 
         var (deviceId, userAgent) = GetClientInfo();
+        var credential = await credentialQueryService.GetByUserId(user.Id, ct);
 
-        var tokenPair = await tokenService.IssueAsync(
-            userId: user.Id,
-            externalId: telegramId.ToString(),
-            deviceId: deviceId,
-            userAgent: userAgent,
-            ct: ct);
+        return await adminTotpService.ApplyAdminTotpGateAsync(
+            user,
+            credential,
+            telegramId.ToString(),
+            deviceId,
+            userAgent,
+            async cancel =>
+            {
+                var tokenPair = await tokenService.IssueAsync(
+                    userId: user.Id,
+                    externalId: telegramId.ToString(),
+                    deviceId: deviceId,
+                    userAgent: userAgent,
+                    ct: cancel);
 
-        return new LoginResponse
-        {
-            Token = tokenPair.AccessToken,
-            Expiration = tokenPair.AccessExpiresAt,
-            RefreshToken = tokenPair.RefreshToken,
-            RefreshExpiration = tokenPair.RefreshExpiresAt,
-            UserId = user.Id,
-            DisplayName = user.DisplayName,
-            Email = user.Email,
-        };
+                return new LoginResponse
+                {
+                    Token = tokenPair.AccessToken,
+                    Expiration = tokenPair.AccessExpiresAt,
+                    RefreshToken = tokenPair.RefreshToken,
+                    RefreshExpiration = tokenPair.RefreshExpiresAt,
+                    UserId = user.Id,
+                    DisplayName = user.DisplayName,
+                    Email = user.Email,
+                };
+            },
+            ct);
     }
 
     private static string TelegramCodeCacheKey(string code) => $"telegram_login:{code.ToUpperInvariant()}";
