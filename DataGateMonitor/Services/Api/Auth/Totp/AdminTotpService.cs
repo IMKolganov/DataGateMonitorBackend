@@ -26,6 +26,8 @@ public sealed class AdminTotpService(
 {
     private const string AdminRole = "Admin";
     private const string Issuer = "DataGate Monitor";
+    /// <summary>Placeholder credential for admins who sign in via Google/OAuth (no password login).</summary>
+    private const string ExternalAuthOnlyPasswordAlgo = "ExternalAuthOnly";
     private static readonly TimeSpan ChallengeLifetime = TimeSpan.FromMinutes(5);
     private static readonly TimeSpan SetupSecretLifetime = TimeSpan.FromMinutes(10);
 
@@ -184,8 +186,7 @@ public sealed class AdminTotpService(
         if (!VerifyCode(pendingEncrypted, request.Code))
             throw new UnauthorizedAccessException("Invalid verification code.");
 
-        var credential = await credentialQueryService.GetByUserId(userId, ct)
-                         ?? throw new InvalidOperationException("Password credentials not found for this user.");
+        var credential = await GetOrCreateCredentialForTotpAsync(userId, ct);
 
         credential.TotpSecretEncrypted = pendingEncrypted;
         credential.TotpEnabledAt = DateTimeOffset.UtcNow;
@@ -202,14 +203,17 @@ public sealed class AdminTotpService(
                    ?? throw new InvalidOperationException("User not found.");
 
         var credential = await credentialQueryService.GetByUserId(userId, ct)
-                         ?? throw new InvalidOperationException("Password credentials not found.");
+                         ?? throw new InvalidOperationException("Two-factor is not configured.");
 
-        if (string.IsNullOrWhiteSpace(request.Password))
-            throw new ArgumentException("Password is required.");
+        if (!IsExternalAuthOnly(credential))
+        {
+            if (string.IsNullOrWhiteSpace(request.Password))
+                throw new ArgumentException("Password is required.");
 
-        var verify = passwordHasher.VerifyHashedPassword(user, credential.PasswordHash, request.Password);
-        if (verify == PasswordVerificationResult.Failed)
-            throw new UnauthorizedAccessException("Invalid password.");
+            var verify = passwordHasher.VerifyHashedPassword(user, credential.PasswordHash, request.Password);
+            if (verify == PasswordVerificationResult.Failed)
+                throw new UnauthorizedAccessException("Invalid password.");
+        }
 
         if (!IsTotpEnabled(credential))
             return;
@@ -220,6 +224,51 @@ public sealed class AdminTotpService(
         credential.TotpSecretEncrypted = null;
         credential.TotpEnabledAt = null;
         await credentialCommandService.Update(credential, saveChanges: true, ct);
+    }
+
+    private static bool IsExternalAuthOnly(UserCredential credential) =>
+        string.Equals(credential.PasswordAlgo, ExternalAuthOnlyPasswordAlgo, StringComparison.Ordinal);
+
+    private async Task<UserCredential> GetOrCreateCredentialForTotpAsync(int userId, CancellationToken ct)
+    {
+        var credential = await credentialQueryService.GetByUserId(userId, ct);
+        if (credential is not null)
+            return credential;
+
+        var user = await userQueryService.GetById(userId, ct)
+                   ?? throw new InvalidOperationException("User not found.");
+
+        var login = await ResolveUniqueCredentialLoginAsync(user, ct);
+        credential = new UserCredential
+        {
+            UserId = userId,
+            Login = login,
+            NormalizedLogin = login.ToUpperInvariant(),
+            PasswordHash = passwordHasher.HashPassword(user, Guid.NewGuid().ToString("N")),
+            PasswordAlgo = ExternalAuthOnlyPasswordAlgo,
+            PasswordUpdatedAt = DateTime.UtcNow,
+            FailedCount = 0,
+            LockoutUntilUtc = null,
+        };
+
+        await credentialCommandService.Add(credential, saveChanges: true, ct);
+        return credential;
+    }
+
+    private async Task<string> ResolveUniqueCredentialLoginAsync(User user, CancellationToken ct)
+    {
+        if (!string.IsNullOrWhiteSpace(user.Email))
+        {
+            var email = user.Email.Trim();
+            if (email.Length <= 128)
+            {
+                var taken = await credentialQueryService.GetByNormalizedLogin(email.ToUpperInvariant(), ct);
+                if (taken is null)
+                    return email;
+            }
+        }
+
+        return $"admin-{user.Id}@totp.local";
     }
 
     private string CreateLoginChallenge(int userId, string? externalId, string? deviceId, string? userAgent)
