@@ -16,7 +16,6 @@ using DataGateMonitor.Services.Api.Auth.Registers.Interfaces;
 using DataGateMonitor.DataBase.Services.Query.UserTable;
 using DataGateMonitor.SharedModels.DataGateMonitor.Auth.Requests;
 using DataGateMonitor.SharedModels.DataGateMonitor.Auth.Responses;
-using DataGateMonitor.Models.Auth;
 using DataGateMonitor.SharedModels.Responses;
 
 namespace DataGateMonitor.Controllers;
@@ -37,7 +36,8 @@ public class AuthController(
     ITelegramLoginCodeService telegramLoginCodeService,
     IAdminTotpService adminTotpService,
     ICurrentUserService currentUserService,
-    IAdminIdleSessionTracker adminIdleSessionTracker) : BaseController
+    IAdminIdleSessionTracker adminIdleSessionTracker,
+    IUserSessionService userSessionService) : BaseController
 {
     [AllowAnonymous]
     [HttpGet("session-policy")]
@@ -274,10 +274,69 @@ public class AuthController(
         return Ok(ApiResponse<AdminResetPasswordResponse>.SuccessResponse(result));
     }
 
-    [Authorize(Policy = "UserOnly")]
-    [HttpPost("logout")]
-    public async Task<IActionResult> Logout()
+    [Authorize(Roles = "Admin")]
+    [HttpGet("sessions")]
+    [ProducesResponseType(typeof(ApiResponse<GetUserSessionsResponse>), StatusCodes.Status200OK)]
+    public async Task<ActionResult<ApiResponse<GetUserSessionsResponse>>> GetSessions(CancellationToken ct)
     {
+        var refreshToken = Request.Headers["X-Refresh-Token"].ToString();
+        if (string.IsNullOrWhiteSpace(refreshToken))
+            refreshToken = null;
+
+        var sessions = await userSessionService.GetActiveSessionsAsync(
+            currentUserService.UserId,
+            refreshToken,
+            ct);
+
+        return Ok(ApiResponse<GetUserSessionsResponse>.SuccessResponse(sessions));
+    }
+
+    [Authorize(Roles = "Admin")]
+    [HttpDelete("sessions/{sessionId:int}")]
+    [ProducesResponseType(StatusCodes.Status204NoContent)]
+    public async Task<IActionResult> RevokeSession([FromRoute] int sessionId, CancellationToken ct)
+    {
+        await userSessionService.RevokeSessionAsync(currentUserService.UserId, sessionId, ct);
+        return NoContent();
+    }
+
+    [Authorize(Roles = "Admin")]
+    [HttpPost("sessions/revoke-all")]
+    [ProducesResponseType(typeof(ApiResponse<int>), StatusCodes.Status200OK)]
+    public async Task<ActionResult<ApiResponse<int>>> RevokeAllSessions(
+        [FromBody] RevokeUserSessionsRequest? request,
+        CancellationToken ct)
+    {
+        var count = await userSessionService.RevokeSessionsAsync(
+            currentUserService.UserId,
+            keepRefreshToken: null,
+            ct);
+
+        return Ok(ApiResponse<int>.SuccessResponse(count));
+    }
+
+    [Authorize(Roles = "Admin")]
+    [HttpPost("sessions/revoke-others")]
+    [ProducesResponseType(typeof(ApiResponse<int>), StatusCodes.Status200OK)]
+    public async Task<ActionResult<ApiResponse<int>>> RevokeOtherSessions(
+        [FromBody] RevokeUserSessionsRequest request,
+        CancellationToken ct)
+    {
+        var count = await userSessionService.RevokeSessionsAsync(
+            currentUserService.UserId,
+            request.KeepRefreshToken,
+            ct);
+
+        return Ok(ApiResponse<int>.SuccessResponse(count));
+    }
+
+    [Authorize]
+    [HttpPost("logout")]
+    public async Task<IActionResult> Logout([FromBody] RefreshRequest? request, CancellationToken ct)
+    {
+        if (!string.IsNullOrWhiteSpace(request?.RefreshToken))
+            await userSessionService.RevokeByRefreshTokenAsync(request.RefreshToken, ct);
+
         await HttpContext.SignOutAsync("UserCookie");
         return Ok();
     }
