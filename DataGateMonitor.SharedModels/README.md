@@ -19,7 +19,11 @@ After changing DTOs in this project:
 2. `dotnet pack` and publish to nuget.org.
 3. Bump `PackageReference` `Version="…"` in all consuming projects (backend, tests, telegrambot, etc.).
 
-**1.0.18** adds admin TOTP fields on `LoginResponse` / `GoogleLoginResponse` and TOTP auth request/response types.
+**1.0.18** (on nuget.org) adds admin TOTP fields on `LoginResponse` / `GoogleLoginResponse` and TOTP auth request/response types.
+
+**1.0.19** (publish to nuget.org before bumping consumers): `AuthSessionPolicyResponse`, admin session list/revoke DTOs (`UserSessionDto`, `GetUserSessionsResponse`, `RevokeUserSessionsRequest`).
+
+Do **not** use a local NuGet feed or `ProjectReference` to SharedModels — only published versions from nuget.org in `PackageReference`.
 
 ## Usage
 
