@@ -1,12 +1,15 @@
 using Microsoft.AspNetCore.Http;
 using Microsoft.AspNetCore.Identity;
+using Microsoft.Extensions.Logging;
 using DataGateMonitor.DataBase.Services.Command.Interfaces;
 using DataGateMonitor.DataBase.Services.Query.UserCredentialTable;
 using DataGateMonitor.DataBase.Services.Query.UserIdentityLinkTable;
 using DataGateMonitor.DataBase.Services.Query.UserTable;
 using DataGateMonitor.Models;
 using DataGateMonitor.Services.Api.Auth.Registers.Interfaces;
+using DataGateMonitor.Services.Api.Auth.Totp;
 using DataGateMonitor.Services.Api.Auth.Users;
+using DataGateMonitor.Services.Others.Notifications;
 using DataGateMonitor.SharedModels.DataGateMonitor.Auth.Requests;
 using DataGateMonitor.SharedModels.DataGateMonitor.Auth.Responses;
 
@@ -22,6 +25,9 @@ public sealed class UserLoginService(
     IUserIdentityLinkQueryService userIdentityLinkQueryService,
     IUserAccountService userAccountService,
     ITokenService tokenService,
+    IAdminTotpService adminTotpService,
+    IAppNotificationFacade appNotificationFacade,
+    ILogger<UserLoginService> logger,
     IHttpContextAccessor httpContextAccessor
 ) : IUserLoginService
 {
@@ -58,23 +64,33 @@ public sealed class UserLoginService(
 
         var (deviceId, userAgent) = GetClientInfo();
 
-        var tokenPair = await tokenService.IssueAsync(
-            userId: user.Id,
+        return await adminTotpService.ApplyAdminTotpGateAsync(
+            user,
+            credential,
             externalId: null,
-            deviceId: deviceId,
-            userAgent: userAgent,
-            ct: ct);
+            deviceId,
+            userAgent,
+            async cancel =>
+            {
+                var tokenPair = await tokenService.IssueAsync(
+                    userId: user.Id,
+                    externalId: null,
+                    deviceId: deviceId,
+                    userAgent: userAgent,
+                    ct: cancel);
 
-        return new LoginResponse
-        {
-            Token = tokenPair.AccessToken,
-            Expiration = tokenPair.AccessExpiresAt,
-            RefreshToken = tokenPair.RefreshToken,
-            RefreshExpiration = tokenPair.RefreshExpiresAt,
-            UserId = user.Id,
-            DisplayName = user.DisplayName,
-            Email = user.Email,
-        };
+                return new LoginResponse
+                {
+                    Token = tokenPair.AccessToken,
+                    Expiration = tokenPair.AccessExpiresAt,
+                    RefreshToken = tokenPair.RefreshToken,
+                    RefreshExpiration = tokenPair.RefreshExpiresAt,
+                    UserId = user.Id,
+                    DisplayName = user.DisplayName,
+                    Email = user.Email,
+                };
+            },
+            ct);
     }
 
     public async Task<GoogleLoginResponse> LoginWithGoogleAsync(string idToken, CancellationToken ct)
@@ -143,26 +159,69 @@ public sealed class UserLoginService(
             await userCommandService.Update(user, saveChanges: true, ct);
         }
 
-        var (deviceId, userAgent) = GetClientInfo();
+        if (isNew)
+        {
+            try
+            {
+                await appNotificationFacade.UserRegistered(
+                    user.Id,
+                    user.DisplayName ?? "",
+                    login: null,
+                    email: user.Email,
+                    registrationSource: "Google",
+                    ct);
+            }
+            catch (Exception ex)
+            {
+                logger.LogWarning(ex, "Failed to notify admins about new Google user {UserId}", user.Id);
+            }
+        }
 
-        var tokenPair = await tokenService.IssueAsync(
-            userId: user.Id,
-            externalId: externalId,
-            deviceId: deviceId,
-            userAgent: userAgent,
-            ct: ct);
+        var (deviceId, userAgent) = GetClientInfo();
+        var credential = await credentialQueryService.GetByUserId(user.Id, ct);
+
+        var loginResult = await adminTotpService.ApplyAdminTotpGateAsync(
+            user,
+            credential,
+            externalId,
+            deviceId,
+            userAgent,
+            async cancel =>
+            {
+                var tokenPair = await tokenService.IssueAsync(
+                    userId: user.Id,
+                    externalId: externalId,
+                    deviceId: deviceId,
+                    userAgent: userAgent,
+                    ct: cancel);
+
+                return new LoginResponse
+                {
+                    Token = tokenPair.AccessToken,
+                    Expiration = tokenPair.AccessExpiresAt,
+                    RefreshToken = tokenPair.RefreshToken,
+                    RefreshExpiration = tokenPair.RefreshExpiresAt,
+                    UserId = user.Id,
+                    DisplayName = user.DisplayName,
+                    Email = user.Email,
+                };
+            },
+            ct);
 
         return new GoogleLoginResponse
         {
-            Token = tokenPair.AccessToken,
-            Expiration = tokenPair.AccessExpiresAt,
-            RefreshToken = tokenPair.RefreshToken,
-            RefreshExpiration = tokenPair.RefreshExpiresAt,
-            UserId = user.Id,
-            DisplayName = user.DisplayName,
-            Email = user.Email,
+            Token = loginResult.Token,
+            Expiration = loginResult.Expiration,
+            RefreshToken = loginResult.RefreshToken,
+            RefreshExpiration = loginResult.RefreshExpiration,
+            UserId = loginResult.UserId,
+            DisplayName = loginResult.DisplayName,
+            Email = loginResult.Email,
+            RequiresTotp = loginResult.RequiresTotp,
+            LoginChallengeId = loginResult.LoginChallengeId,
+            RequiresTotpSetup = loginResult.RequiresTotpSetup,
             IsNewUser = isNew,
-            AvatarUrl = user.AvatarUrl
+            AvatarUrl = user.AvatarUrl,
         };
     }
 

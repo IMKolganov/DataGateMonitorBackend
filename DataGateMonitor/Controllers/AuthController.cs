@@ -10,6 +10,8 @@ using DataGateMonitor.Services.Api.Auth.Login;
 using DataGateMonitor.Services.Api.Auth.EmailConfirmation;
 using DataGateMonitor.Services.Api.Auth.EmailConfirmation.Models;
 using DataGateMonitor.Services.Api.Auth.TelegramLogin;
+using DataGateMonitor.Services.Api.Auth.Totp;
+using DataGateMonitor.Services.Api.CurrentUser.Interfaces;
 using DataGateMonitor.Services.Api.Auth.Registers.Interfaces;
 using DataGateMonitor.DataBase.Services.Query.UserTable;
 using DataGateMonitor.SharedModels.DataGateMonitor.Auth.Requests;
@@ -31,8 +33,36 @@ public class AuthController(
     IGoogleAuthCodeExchangeService exchange,
     ITokenService tokenService,
     IAdminForgotPasswordService adminForgotPasswordService,
-    ITelegramLoginCodeService telegramLoginCodeService) : BaseController
+    ITelegramLoginCodeService telegramLoginCodeService,
+    IAdminTotpService adminTotpService,
+    ICurrentUserService currentUserService,
+    IAdminIdleSessionTracker adminIdleSessionTracker,
+    IUserSessionService userSessionService) : BaseController
 {
+    [AllowAnonymous]
+    [HttpGet("session-policy")]
+    [ProducesResponseType(typeof(ApiResponse<AuthSessionPolicyResponse>), StatusCodes.Status200OK)]
+    public ActionResult<ApiResponse<AuthSessionPolicyResponse>> GetSessionPolicy()
+    {
+        var minutes = config.GetValue<int?>("Jwt:AdminIdleTimeoutMinutes") ?? 15;
+        if (minutes <= 0)
+            minutes = 15;
+
+        return Ok(ApiResponse<AuthSessionPolicyResponse>.SuccessResponse(new AuthSessionPolicyResponse
+        {
+            AdminIdleTimeoutMinutes = minutes,
+        }));
+    }
+
+    [Authorize(Roles = "Admin")]
+    [HttpPost("activity")]
+    [ProducesResponseType(StatusCodes.Status204NoContent)]
+    public IActionResult RecordAdminActivity()
+    {
+        adminIdleSessionTracker.Touch(currentUserService.UserId);
+        return NoContent();
+    }
+
     [HttpPost("token")]
     public async Task<ActionResult<ApiResponse<TokenResponse>>> GenerateToken([FromBody] TokenRequest request,
         CancellationToken cancellationToken)
@@ -244,12 +274,122 @@ public class AuthController(
         return Ok(ApiResponse<AdminResetPasswordResponse>.SuccessResponse(result));
     }
 
-    [Authorize(Policy = "UserOnly")]
-    [HttpPost("logout")]
-    public async Task<IActionResult> Logout()
+    [Authorize(Roles = "Admin")]
+    [HttpGet("sessions")]
+    [ProducesResponseType(typeof(ApiResponse<GetUserSessionsResponse>), StatusCodes.Status200OK)]
+    public async Task<ActionResult<ApiResponse<GetUserSessionsResponse>>> GetSessions(CancellationToken ct)
     {
+        var refreshToken = Request.Headers["X-Refresh-Token"].ToString();
+        if (string.IsNullOrWhiteSpace(refreshToken))
+            refreshToken = null;
+
+        var sessions = await userSessionService.GetActiveSessionsAsync(
+            currentUserService.UserId,
+            refreshToken,
+            ct);
+
+        return Ok(ApiResponse<GetUserSessionsResponse>.SuccessResponse(sessions));
+    }
+
+    [Authorize(Roles = "Admin")]
+    [HttpDelete("sessions/{sessionId:int}")]
+    [ProducesResponseType(StatusCodes.Status204NoContent)]
+    public async Task<IActionResult> RevokeSession([FromRoute] int sessionId, CancellationToken ct)
+    {
+        await userSessionService.RevokeSessionAsync(currentUserService.UserId, sessionId, ct);
+        return NoContent();
+    }
+
+    [Authorize(Roles = "Admin")]
+    [HttpPost("sessions/revoke-all")]
+    [ProducesResponseType(typeof(ApiResponse<int>), StatusCodes.Status200OK)]
+    public async Task<ActionResult<ApiResponse<int>>> RevokeAllSessions(
+        [FromBody] RevokeUserSessionsRequest? request,
+        CancellationToken ct)
+    {
+        var count = await userSessionService.RevokeSessionsAsync(
+            currentUserService.UserId,
+            keepRefreshToken: null,
+            ct);
+
+        return Ok(ApiResponse<int>.SuccessResponse(count));
+    }
+
+    [Authorize(Roles = "Admin")]
+    [HttpPost("sessions/revoke-others")]
+    [ProducesResponseType(typeof(ApiResponse<int>), StatusCodes.Status200OK)]
+    public async Task<ActionResult<ApiResponse<int>>> RevokeOtherSessions(
+        [FromBody] RevokeUserSessionsRequest request,
+        CancellationToken ct)
+    {
+        var count = await userSessionService.RevokeSessionsAsync(
+            currentUserService.UserId,
+            request.KeepRefreshToken,
+            ct);
+
+        return Ok(ApiResponse<int>.SuccessResponse(count));
+    }
+
+    [Authorize]
+    [HttpPost("logout")]
+    public async Task<IActionResult> Logout([FromBody] RefreshRequest? request, CancellationToken ct)
+    {
+        if (!string.IsNullOrWhiteSpace(request?.RefreshToken))
+            await userSessionService.RevokeByRefreshTokenAsync(request.RefreshToken, ct);
+
         await HttpContext.SignOutAsync("UserCookie");
         return Ok();
+    }
+
+    [AllowAnonymous]
+    [HttpPost("totp/verify-login")]
+    [ProducesResponseType(typeof(ApiResponse<LoginResponse>), StatusCodes.Status200OK)]
+    public async Task<ActionResult<ApiResponse<LoginResponse>>> VerifyTotpLogin(
+        [FromBody] TotpVerifyLoginRequest request,
+        CancellationToken ct)
+    {
+        var result = await adminTotpService.VerifyLoginChallengeAsync(request, ct);
+        return Ok(ApiResponse<LoginResponse>.SuccessResponse(result));
+    }
+
+    [Authorize(Roles = "Admin")]
+    [HttpGet("totp/status")]
+    [ProducesResponseType(typeof(ApiResponse<TotpStatusResponse>), StatusCodes.Status200OK)]
+    public async Task<ActionResult<ApiResponse<TotpStatusResponse>>> GetTotpStatus(CancellationToken ct)
+    {
+        var status = await adminTotpService.GetStatusAsync(currentUserService.UserId, ct);
+        return Ok(ApiResponse<TotpStatusResponse>.SuccessResponse(status));
+    }
+
+    [Authorize(Roles = "Admin")]
+    [HttpPost("totp/setup")]
+    [ProducesResponseType(typeof(ApiResponse<TotpSetupResponse>), StatusCodes.Status200OK)]
+    public async Task<ActionResult<ApiResponse<TotpSetupResponse>>> BeginTotpSetup(CancellationToken ct)
+    {
+        var setup = await adminTotpService.BeginSetupAsync(currentUserService.UserId, ct);
+        return Ok(ApiResponse<TotpSetupResponse>.SuccessResponse(setup));
+    }
+
+    [Authorize(Roles = "Admin")]
+    [HttpPost("totp/confirm")]
+    [ProducesResponseType(typeof(ApiResponse<string>), StatusCodes.Status200OK)]
+    public async Task<ActionResult<ApiResponse<string>>> ConfirmTotpSetup(
+        [FromBody] TotpConfirmRequest request,
+        CancellationToken ct)
+    {
+        await adminTotpService.ConfirmSetupAsync(currentUserService.UserId, request, ct);
+        return Ok(ApiResponse<string>.SuccessResponse("Two-factor authentication enabled."));
+    }
+
+    [Authorize(Roles = "Admin")]
+    [HttpPost("totp/disable")]
+    [ProducesResponseType(typeof(ApiResponse<string>), StatusCodes.Status200OK)]
+    public async Task<ActionResult<ApiResponse<string>>> DisableTotp(
+        [FromBody] TotpDisableRequest request,
+        CancellationToken ct)
+    {
+        await adminTotpService.DisableAsync(currentUserService.UserId, request, ct);
+        return Ok(ApiResponse<string>.SuccessResponse("Two-factor authentication disabled."));
     }
 
     [AllowAnonymous]

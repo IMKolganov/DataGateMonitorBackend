@@ -2,6 +2,8 @@ using Mapster;
 using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Mvc;
 using DataGateMonitor.DataBase.Services.Query.VpnServerClientTable;
+using DataGateMonitor.Services.Api.Auth.Handlers.Interfaces;
+using DataGateMonitor.Services.Api.Privacy;
 using DataGateMonitor.SharedModels.DataGateMonitor.VpnServerClients.Requests;
 using DataGateMonitor.SharedModels.DataGateMonitor.VpnServerClients.Responses;
 using DataGateMonitor.SharedModels.Responses;
@@ -12,32 +14,45 @@ namespace DataGateMonitor.Controllers;
 [Route("api/open-vpn-clients")]
 [Route("api/v2/vpn-sessions")]
 [Authorize]
-public class VpnServerClientsController(IVpnServerClientOverviewQuery openVpnServerClientOverviewQuery,
-    IOpenVpnGeoQueryService openVpnGeoQueryService, IOpenVpnOverviewTotalsQuery openVpnOverviewTotalsQuery,
-    IOpenVpnOverviewSeriesQuery openVpnOverviewSeriesQuery) : BaseController
+public class VpnServerClientsController(
+    IVpnServerClientOverviewQuery openVpnServerClientOverviewQuery,
+    IOpenVpnGeoQueryService openVpnGeoQueryService,
+    IOpenVpnOverviewTotalsQuery openVpnOverviewTotalsQuery,
+    IOpenVpnOverviewSeriesQuery openVpnOverviewSeriesQuery,
+    IVpnServerAccessQueryService vpnServerAccessQueryService) : BaseController
 {
     [HttpGet("get-all-connected")]
     public async Task<ActionResult<ApiResponse<ConnectedClientsResponse>>> GetAllConnectedClients(
         [FromQuery] GetConnectedClientsRequest request, CancellationToken cancellationToken)
     {
+        if (await VpnServerAuthorizationHelper.RequireVpnServerAccessOrForbidAsync<ConnectedClientsResponse>(
+                User, vpnServerAccessQueryService, request.VpnServerId, cancellationToken) is { } deny)
+            return deny;
+
         var result =
             await openVpnServerClientOverviewQuery.GetAllConnectedVpnServerClientsAsync(
             request.VpnServerId, request.Page, request.PageSize, cancellationToken);
 
-        return Ok(ApiResponse<ConnectedClientsResponse>.SuccessResponse(
-            result.Adapt<ConnectedClientsResponse>()));
+        var response = result.Adapt<ConnectedClientsResponse>();
+        ClientStatisticsResponseSanitizer.ApplyIfNeeded(User, response);
+        return Ok(ApiResponse<ConnectedClientsResponse>.SuccessResponse(response));
     }
 
     [HttpGet("get-all-history")]
     public async Task<ActionResult<ApiResponse<ConnectedClientsResponse>>> GetAllHistoryClients(
         [FromQuery] GetHistoryClientsRequest request, CancellationToken ct)
     {
+        if (await VpnServerAuthorizationHelper.RequireVpnServerAccessOrForbidAsync<ConnectedClientsResponse>(
+                User, vpnServerAccessQueryService, request.VpnServerId, ct) is { } deny)
+            return deny;
+
         var result = 
             await openVpnServerClientOverviewQuery.GetAllHistoryVpnServerClientsAsync(
             request.VpnServerId, request.Page, request.PageSize, ct);
 
-        return Ok(ApiResponse<ConnectedClientsResponse>.SuccessResponse(
-            result.Adapt<ConnectedClientsResponse>()));
+        var response = result.Adapt<ConnectedClientsResponse>();
+        ClientStatisticsResponseSanitizer.ApplyIfNeeded(User, response);
+        return Ok(ApiResponse<ConnectedClientsResponse>.SuccessResponse(response));
     }
     
     [HttpGet("overview/series")]
@@ -45,6 +60,9 @@ public class VpnServerClientsController(IVpnServerClientOverviewQuery openVpnSer
         [FromQuery] GetOverviewSeriesRequest request,
         CancellationToken ct = default)
     {
+        if (await RequireOverviewServerAccessAsync<OverviewSeriesResponse>(request.VpnServerId, ct) is { } deny)
+            return deny;
+
         var result = await openVpnOverviewSeriesQuery.GetOverviewSeriesFromSessionsAsync(
             request.From,
             request.To,
@@ -61,6 +79,9 @@ public class VpnServerClientsController(IVpnServerClientOverviewQuery openVpnSer
         [FromQuery] GetOverviewSummaryRequest request,
         CancellationToken ct = default)
     {
+        if (await RequireOverviewServerAccessAsync<OverviewTotalsResponse>(request.VpnServerId, ct) is { } deny)
+            return deny;
+
         var result = await openVpnOverviewTotalsQuery.GetOverviewTotalsAsync(
             request.From,
             request.To,
@@ -76,6 +97,9 @@ public class VpnServerClientsController(IVpnServerClientOverviewQuery openVpnSer
         [FromQuery] GetOverviewPointsRequest request,
         CancellationToken ct = default)
     {
+        if (await RequireOverviewServerAccessAsync<OverviewPointsResponse>(request.VpnServerId, ct) is { } deny)
+            return deny;
+
         var points = await openVpnGeoQueryService.GetGeoPointsAsync(
             request.From,
             request.To,
@@ -92,6 +116,9 @@ public class VpnServerClientsController(IVpnServerClientOverviewQuery openVpnSer
         [FromQuery] GetOverviewUsersRequest request,
         CancellationToken ct = default)
     {
+        if (await RequireOverviewServerAccessAsync<OverviewUsersResponse>(request.VpnServerId, ct) is { } deny)
+            return deny;
+
         var users = await openVpnOverviewSeriesQuery.GetOverviewUsersFromSessionsAsync(
             request.From,
             request.To,
@@ -99,6 +126,7 @@ public class VpnServerClientsController(IVpnServerClientOverviewQuery openVpnSer
             request.ExternalId,
             ct);
 
+        ClientStatisticsResponseSanitizer.ApplyIfNeeded(User, users);
         return Ok(ApiResponse<OverviewUsersResponse>.SuccessResponse(users));
     }
 
@@ -110,6 +138,9 @@ public class VpnServerClientsController(IVpnServerClientOverviewQuery openVpnSer
         [FromQuery] GetOverviewSeriesRequest request,
         CancellationToken ct = default)
     {
+        if (await RequireOverviewServerAccessAsync<OverviewUsersSeriesResponse>(request.VpnServerId, ct) is { } deny)
+            return deny;
+
         var result = await openVpnOverviewSeriesQuery.GetOverviewUsersSeriesFromSessionsAsync(
             request.From,
             request.To,
@@ -119,5 +150,14 @@ public class VpnServerClientsController(IVpnServerClientOverviewQuery openVpnSer
             ct);
 
         return Ok(ApiResponse<OverviewUsersSeriesResponse>.SuccessResponse(result));
+    }
+
+    private Task<ActionResult<ApiResponse<T>>?> RequireOverviewServerAccessAsync<T>(int? vpnServerId, CancellationToken ct)
+    {
+        if (!vpnServerId.HasValue)
+            return Task.FromResult<ActionResult<ApiResponse<T>>?>(null);
+
+        return VpnServerAuthorizationHelper.RequireVpnServerAccessOrForbidAsync<T>(
+            User, vpnServerAccessQueryService, vpnServerId.Value, ct);
     }
 }

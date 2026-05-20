@@ -53,6 +53,8 @@ builder.Services.ConfigureNotificationServices();
 builder.Services.ConfigureHealthCheckServices(databaseRuntime);
 builder.Services.Configure<CrashIngestOptions>(builder.Configuration.GetSection(CrashIngestOptions.SectionName));
 builder.Services.PostConfigure<CrashIngestOptions>(options => options.ApplyDefaults());
+builder.Services.Configure<WindowsCrashIngestOptions>(builder.Configuration.GetSection(WindowsCrashIngestOptions.SectionName));
+builder.Services.PostConfigure<WindowsCrashIngestOptions>(options => options.ApplyDefaults());
 
 builder.ConfigureWebHost();
 builder.ConfigureExternalIpServices();

@@ -13,4 +13,6 @@ public class AddOrUpdateOvpnFileConfigRequest
 
     public int VpnServerPort { get; set; }
     public string ConfigTemplate { get; set; } = string.Empty;
+
+    public bool AutoDetectServerSettings { get; set; } = true;
 }
