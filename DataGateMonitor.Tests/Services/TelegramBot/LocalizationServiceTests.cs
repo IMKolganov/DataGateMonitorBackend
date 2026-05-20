@@ -359,4 +359,25 @@ public class LocalizationServiceTests
             "[Translation missing for key: missing_key, language: English]",
             result);
     }
+
+    [Fact]
+    public async Task GetTextForTelegramUser_DashboardLoginCode_ReturnsTemplateFromQuery()
+    {
+        const string key = "DashboardLoginCode";
+        const string template =
+            "Code:\n\n<code>{code}</code>\n\nValid for {minutes} min.\nDo not share this code.";
+        long telegramId = 120;
+
+        _textQuery
+            .Setup(s => s.GetTextValueByKeyAndLanguage(key, Language.English, It.IsAny<CancellationToken>()))
+            .ReturnsAsync(template);
+
+        var result = await _service.GetTextForTelegramUser(
+            key,
+            telegramId,
+            CancellationToken.None,
+            Language.English);
+
+        Assert.Equal(template, result);
+    }
 }

@@ -8,5 +8,5 @@ public interface IVpnServerOvpnFileConfigService
         CancellationToken cancellationToken);
 
     Task<VpnServerOvpnFileConfig> AddOrUpdateVpnServerOvpnFileConfigByServerId(
-        VpnServerOvpnFileConfig openVpnServerOvpnFileConfig, CancellationToken cancellationToken);
+        VpnServerOvpnFileConfig openVpnServerOvpnFileConfig, bool autoDetectServerSettings, CancellationToken cancellationToken);
 }
