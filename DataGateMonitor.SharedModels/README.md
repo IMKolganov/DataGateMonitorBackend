@@ -21,7 +21,7 @@ After changing DTOs in this project:
 
 **1.0.18** (on nuget.org) adds admin TOTP fields on `LoginResponse` / `GoogleLoginResponse` and TOTP auth request/response types.
 
-**1.0.19** (publish to nuget.org before bumping consumers): `AuthSessionPolicyResponse`, admin session list/revoke DTOs (`UserSessionDto`, `GetUserSessionsResponse`, `RevokeUserSessionsRequest`).
+**1.0.19** adds `AuthSessionPolicyResponse`, admin session list/revoke DTOs (`UserSessionDto`, `GetUserSessionsResponse`, `RevokeUserSessionsRequest`).
 
 Do **not** use a local NuGet feed or `ProjectReference` to SharedModels — only published versions from nuget.org in `PackageReference`.
 
