@@ -7,6 +7,7 @@ using DataGateMonitor.DataBase.Services.Query.TelegramBotUserTable;
 using DataGateMonitor.DataBase.Services.Query.UserIdentityLinkTable;
 using DataGateMonitor.DataBase.Services.Query.UserTable;
 using DataGateMonitor.Models;
+using DataGateMonitor.Services.Others.Notifications;
 using DataGateMonitor.Services.Users;
 using DataGateMonitor.SharedModels.DataGateMonitor.User.Requests;
 using DataGateMonitor.SharedModels.DataGateMonitor.User.Responses;
@@ -26,6 +27,7 @@ public class UserServiceTests
     private readonly Mock<ICommandService<UserIdentityLink, int>> _userIdentityLinkCommand;
     private readonly Mock<ICommandService<UserQuotaPlan, int>> _userQuotaPlanCommand;
     private readonly Mock<ICommandService<TelegramBotUser, int>> _telegramBotUserCommand;
+    private readonly Mock<IAppNotificationFacade> _appNotificationFacade;
     private readonly Mock<ILogger<UserService>> _logger;
     private readonly UserService _sut;
 
@@ -39,6 +41,7 @@ public class UserServiceTests
         _userIdentityLinkCommand = new Mock<ICommandService<UserIdentityLink, int>>(MockBehavior.Strict);
         _userQuotaPlanCommand = new Mock<ICommandService<UserQuotaPlan, int>>(MockBehavior.Strict);
         _telegramBotUserCommand = new Mock<ICommandService<TelegramBotUser, int>>(MockBehavior.Strict);
+        _appNotificationFacade = new Mock<IAppNotificationFacade>(MockBehavior.Loose);
         _logger = new Mock<ILogger<UserService>>(MockBehavior.Loose);
 
         _sut = new UserService(
@@ -50,6 +53,7 @@ public class UserServiceTests
             _userIdentityLinkCommand.Object,
             _userQuotaPlanCommand.Object,
             _telegramBotUserCommand.Object,
+            _appNotificationFacade.Object,
             _logger.Object);
     }
 
@@ -244,6 +248,9 @@ public class UserServiceTests
         result.User.ProviderRowId.Should().Be(10);
         _telegramBotUserCommand.Verify(c => c.Update(It.IsAny<TelegramBotUser>(), true, ct), Times.Once);
         _userCommand.Verify(c => c.Add(It.IsAny<User>(), It.IsAny<bool>(), It.IsAny<CancellationToken>()), Times.Never);
+        _appNotificationFacade.Verify(
+            f => f.UserRegistered(It.IsAny<int>(), It.IsAny<string>(), It.IsAny<string?>(), It.IsAny<string?>(), It.IsAny<string?>(), It.IsAny<CancellationToken>()),
+            Times.Never);
     }
 
     [Fact]
@@ -296,6 +303,9 @@ public class UserServiceTests
         _userCommand.Verify(c => c.Add(It.IsAny<User>(), true, ct), Times.Once);
         _userIdentityLinkCommand.Verify(c => c.Add(It.IsAny<UserIdentityLink>(), true, ct), Times.Once);
         _userQuotaPlanCommand.Verify(c => c.Add(It.IsAny<UserQuotaPlan>(), true, ct), Times.Once);
+        _appNotificationFacade.Verify(
+            f => f.UserRegistered(50, "newbie", null, null, "Telegram bot", ct),
+            Times.Once);
     }
 
     [Fact]

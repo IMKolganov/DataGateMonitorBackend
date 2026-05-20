@@ -3,6 +3,7 @@ using System.Security.Claims;
 using System.Reflection;
 using Microsoft.AspNetCore.Http;
 using Microsoft.AspNetCore.Mvc;
+using Microsoft.Extensions.Caching.Memory;
 using Moq;
 using Newtonsoft.Json.Linq;
 using DataGateMonitor.Controllers;
@@ -12,8 +13,12 @@ using DataGateMonitor.DataBase.Services.Query.UserQuotaPlanTable;
 using DataGateMonitor.Models;
 using DataGateMonitor.Services.Api.Auth.Handlers.Interfaces;
 using DataGateMonitor.Services.Api.Interfaces;
+using PostSetupStatus = DataGateMonitor.Services.Api.PostSetup.VpnServerPostSetupStatus;
+using PostSetupState = DataGateMonitor.Services.Api.PostSetup.VpnServerPostSetupState;
 using DataGateMonitor.Services.BackgroundServices.Interfaces;
+using DataGateMonitor.Services.Cache;
 using DataGateMonitor.Services.DataGateOpenVpnManager.Interfaces;
+using DataGateMonitor.Services.StatusStreamLogs;
 using DataGateMonitor.SharedModels.DataGateMonitor.VpnServers.Dto;
 using DataGateMonitor.SharedModels.DataGateMonitor.VpnServers.Requests;
 using DataGateMonitor.SharedModels.DataGateMonitor.VpnServers.Responses;
@@ -37,6 +42,10 @@ public class VpnServersControllerTests
     private readonly Mock<IMicroserviceInfoService> _microserviceInfo = new();
     private readonly Mock<IUserQuotaPlanQueryService> _userQuotaPlan = new();
     private readonly Mock<IVpnServerAccessQueryService> _vpnAccess = new();
+    private readonly Mock<IStatusCacheGenerationService> _statusCacheGeneration = new();
+    private readonly Mock<IStatusStreamLogStore> _statusStreamLogStore = new();
+    private readonly Mock<IVpnServerPostSetupService> _vpnServerPostSetupService = new();
+    private readonly IApiMemoryCacheService _cache = new ApiMemoryCacheService(new MemoryCache(new MemoryCacheOptions()));
 
     private readonly VpnServersController _controller;
 
@@ -50,7 +59,11 @@ public class VpnServersControllerTests
             _backgroundService.Object,
             _microserviceInfo.Object,
             _userQuotaPlan.Object,
-            _vpnAccess.Object);
+            _vpnAccess.Object,
+            _cache,
+            _statusCacheGeneration.Object,
+            _statusStreamLogStore.Object,
+            _vpnServerPostSetupService.Object);
         SetUserAsAdmin(_controller);
     }
 
@@ -278,6 +291,69 @@ public class VpnServersControllerTests
     }
 
     [Fact]
+    public async Task StartPostSetup_Returns_Ok_WithStatus()
+    {
+        _vpnServerPostSetupService
+            .Setup(s => s.StartAsync(42, It.IsAny<CancellationToken>()))
+            .ReturnsAsync(new PostSetupStatus
+            {
+                OperationId = "op-1",
+                VpnServerId = 42,
+                State = PostSetupState.Queued,
+                CurrentStep = "queued",
+                Message = "queued",
+                StartedAtUtc = DateTimeOffset.UtcNow
+            });
+
+        var result = await _controller.StartPostSetup(42, CancellationToken.None);
+
+        var ok = Assert.IsType<OkObjectResult>(result.Result);
+        var response = Assert.IsType<ApiResponse<VpnServerPostSetupStatusResponse>>(ok.Value);
+        Assert.True(response.Success);
+        Assert.NotNull(response.Data);
+        Assert.Equal(42, response.Data!.VpnServerId);
+        _vpnServerPostSetupService.Verify(s => s.StartAsync(42, It.IsAny<CancellationToken>()), Times.Once);
+    }
+
+    [Fact]
+    public async Task GetPostSetupStatus_WhenFound_Returns_Ok()
+    {
+        _vpnServerPostSetupService
+            .Setup(s => s.GetStatusAsync(42, "op-2", It.IsAny<CancellationToken>()))
+            .ReturnsAsync(new PostSetupStatus
+            {
+                OperationId = "op-2",
+                VpnServerId = 42,
+                State = PostSetupState.Running,
+                CurrentStep = "running",
+                Message = "running",
+                StartedAtUtc = DateTimeOffset.UtcNow
+            });
+
+        var result = await _controller.GetPostSetupStatus(42, "op-2", CancellationToken.None);
+
+        var ok = Assert.IsType<OkObjectResult>(result.Result);
+        var response = Assert.IsType<ApiResponse<VpnServerPostSetupStatusResponse>>(ok.Value);
+        Assert.True(response.Success);
+        Assert.NotNull(response.Data);
+        Assert.Equal("op-2", response.Data!.OperationId);
+    }
+
+    [Fact]
+    public async Task GetPostSetupStatus_WhenMissing_Returns_NotFound()
+    {
+        _vpnServerPostSetupService
+            .Setup(s => s.GetStatusAsync(42, null, It.IsAny<CancellationToken>()))
+            .ReturnsAsync((PostSetupStatus?)null);
+
+        var result = await _controller.GetPostSetupStatus(42, null, CancellationToken.None);
+
+        var notFound = Assert.IsType<NotFoundObjectResult>(result.Result);
+        var response = Assert.IsType<ApiResponse<VpnServerPostSetupStatusResponse>>(notFound.Value);
+        Assert.False(response.Success);
+    }
+
+    [Fact]
     public async Task UpdateServer_Returns_Ok()
     {
         _vpnDataService
@@ -378,6 +454,44 @@ public class VpnServersControllerTests
         var response = Assert.IsType<ApiResponse<string>>(ok.Value);
         Assert.True(response.Success);
         _backgroundService.Verify(b => b.RunNow(It.IsAny<CancellationToken>()), Times.Never);
+    }
+
+    [Fact]
+    public async Task GetStatusStreamLogs_Returns_Ok_WithEntries()
+    {
+        _statusStreamLogStore.Setup(s => s.GetLatestAsync(300, It.IsAny<CancellationToken>()))
+            .ReturnsAsync([
+                new StatusStreamLogEntry
+                {
+                    TimestampUtc = DateTimeOffset.UtcNow,
+                    PayloadJson = "{\"statuses\":[]}",
+                    Source = "memory"
+                }
+            ]);
+
+        var result = await _controller.GetStatusStreamLogs(300, CancellationToken.None);
+
+        var ok = Assert.IsType<OkObjectResult>(result.Result);
+        var response = Assert.IsType<ApiResponse<StatusStreamLogsResponse>>(ok.Value);
+        Assert.True(response.Success);
+        Assert.NotNull(response.Data);
+        Assert.Single(response.Data.Logs);
+        _statusStreamLogStore.Verify(s => s.GetLatestAsync(300, It.IsAny<CancellationToken>()), Times.Once);
+    }
+
+    [Fact]
+    public async Task ClearStatusStreamLogs_Returns_Ok_AndClearsStore()
+    {
+        _statusStreamLogStore
+            .Setup(s => s.ClearAsync(It.IsAny<CancellationToken>()))
+            .Returns(Task.CompletedTask);
+
+        var result = await _controller.ClearStatusStreamLogs(CancellationToken.None);
+
+        var ok = Assert.IsType<OkObjectResult>(result.Result);
+        var response = Assert.IsType<ApiResponse<string>>(ok.Value);
+        Assert.True(response.Success);
+        _statusStreamLogStore.Verify(s => s.ClearAsync(It.IsAny<CancellationToken>()), Times.Once);
     }
 
     [Fact]

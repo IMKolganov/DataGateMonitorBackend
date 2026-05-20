@@ -23,4 +23,10 @@ public class UserCredential : BaseEntity<int>
     public DateTime PasswordUpdatedAt { get; set; } = DateTime.UtcNow;
     public int FailedCount { get; set; } = 0;
     public DateTime? LockoutUntilUtc { get; set; }
+
+    /// <summary>Encrypted TOTP secret (AES); null when 2FA is not enrolled.</summary>
+    [MaxLength(512)]
+    public string? TotpSecretEncrypted { get; set; }
+
+    public DateTimeOffset? TotpEnabledAt { get; set; }
 }

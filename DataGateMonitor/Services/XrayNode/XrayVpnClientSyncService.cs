@@ -7,6 +7,7 @@ using DataGateMonitor.Models.XrayNode;
 using DataGateMonitor.Services.GeoLite.Interfaces;
 using DataGateMonitor.Services.Helpers;
 using DataGateMonitor.Services.Helpers.Interfaces;
+using DataGateMonitor.Services.Cache;
 
 namespace DataGateMonitor.Services.XrayNode;
 
@@ -18,7 +19,8 @@ public sealed class XrayVpnClientSyncService(
     IGeoLiteQueryService geoLiteQueryService,
     ITransactionRunner transactionRunner,
     ICommandService<VpnServerClient, int> vpnServerClientCommandService,
-    ICommandService<VpnServerClientTraffic, int> vpnClientTrafficCommandService)
+    ICommandService<VpnServerClientTraffic, int> vpnClientTrafficCommandService,
+    IConnectedClientsCounterStore connectedClientsCounterStore)
     : IXrayVpnClientSyncService
 {
     private const string UnknownLocalIpPlaceholder = "-";
@@ -151,6 +153,7 @@ public sealed class XrayVpnClientSyncService(
 
             await vpnServerClientCommandService.SaveChanges(cancellationToken);
             await vpnClientTrafficCommandService.SaveChanges(cancellationToken);
+            await connectedClientsCounterStore.SetAsync(server.Id, clients.Count, cancellationToken);
 
             logger.LogInformation("VpnServerId: {Id}. Xray SyncConnectedClientsAsync completed.", server.Id);
         }, cancellationToken);

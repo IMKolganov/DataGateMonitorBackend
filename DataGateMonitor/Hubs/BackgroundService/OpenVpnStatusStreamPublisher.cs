@@ -3,6 +3,7 @@ using Microsoft.AspNetCore.SignalR;
 using DataGateMonitor.DataBase.Services.Query.VpnServerTable;
 using DataGateMonitor.Hubs.Models;
 using DataGateMonitor.Services.BackgroundServices.Interfaces;
+using DataGateMonitor.Services.Cache;
 using DataGateMonitor.SharedModels.DataGateMonitor.VpnServers.Responses;
 
 namespace DataGateMonitor.Hubs.BackgroundService;
@@ -11,6 +12,7 @@ public sealed class OpenVpnStatusStreamPublisher(
     IHubContext<OpenVpnStatusHub> hubContext,
     IOpenVpnBackgroundService openVpnBackgroundService,
     IServiceScopeFactory scopeFactory,
+    IConnectedClientsCounterStore connectedClientsCounterStore,
     ILogger<OpenVpnStatusStreamPublisher> logger)
     : Microsoft.Extensions.Hosting.BackgroundService
 {
@@ -28,6 +30,13 @@ public sealed class OpenVpnStatusStreamPublisher(
                     .Select(x => x.Adapt<ServiceStatusResponse>())
                     .ToList();
 
+                var serverIds = statuses
+                    .Select(s => s.ServiceStatus.VpnServerId)
+                    .Where(id => id > 0)
+                    .Distinct()
+                    .ToArray();
+                var connectedFromRedis = await connectedClientsCounterStore.GetManyAsync(serverIds, stoppingToken);
+
                 using var scope = scopeFactory.CreateScope();
                 var openVpnServerOverviewQuery = scope.ServiceProvider.GetRequiredService<IVpnServerOverviewQuery>();
 
@@ -38,7 +47,8 @@ public sealed class OpenVpnStatusStreamPublisher(
                     var (connectedClients, sessions) =
                         await openVpnServerOverviewQuery.GetClientCountersAsync(vpnServerId, stoppingToken);
 
-                    status.ServiceStatus.CountConnectedClients = connectedClients;
+                    status.ServiceStatus.CountConnectedClients =
+                        connectedFromRedis.GetValueOrDefault(vpnServerId, connectedClients);
                     status.ServiceStatus.CountSessions = sessions;
                 }
 

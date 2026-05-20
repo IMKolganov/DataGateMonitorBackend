@@ -60,12 +60,12 @@ public class TelegramBotIncomingMessageLogController(
         return Ok(ApiResponse<GetByTelegramIdMessagesResponse>.SuccessResponse(response));
     }
     [Authorize(Roles = "Admin,App")]
-    [HttpGet("get-by-id")]
+    [HttpGet("get-by-id/{id:int}")]
     public async Task<ActionResult<ApiResponse<GetByIdMessageResponse>>> GetById(
-        [FromRoute] GetByIdMessageRequest request,
+        [FromRoute] int id,
         CancellationToken cancellationToken)
     {
-        var message = await incomingMessageLogService.GetByIdAsync(request.Id, cancellationToken);
+        var message = await incomingMessageLogService.GetByIdAsync(id, cancellationToken);
         if (message is null)
             return NotFound(ApiResponse<GetByIdMessageResponse>.ErrorResponse("Message not found"));
 

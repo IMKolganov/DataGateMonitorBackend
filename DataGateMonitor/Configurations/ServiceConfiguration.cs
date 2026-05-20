@@ -20,7 +20,12 @@ using DataGateMonitor.Services.Users;
 using DataGateMonitor.Services.Users.Interfaces;
 using DataGateMonitor.Services.DataGateXRayManager.ClientLinks;
 using DataGateMonitor.Services.Api.MobileCrashIngest;
+using DataGateMonitor.Services.Api.WindowsCrashIngest;
+using DataGateMonitor.Services.Cache;
+using DataGateMonitor.Services.StatusStreamLogs;
 using DataGateMonitor.Services.XrayNode;
+using System.Net;
+using System.Net.Http;
 
 namespace DataGateMonitor.Configurations;
 
@@ -45,6 +50,24 @@ public static class ServiceConfiguration
         {
             options.EnableDetailedErrors = true;
         });
+        services.ConfigureHttpClientDefaults(builder =>
+        {
+            builder.ConfigurePrimaryHttpMessageHandler(() => new SocketsHttpHandler
+            {
+                // Keep TCP/TLS connections hot and reuse them between polling cycles.
+                PooledConnectionIdleTimeout = TimeSpan.FromMinutes(2),
+                // Periodically rotate pooled connections to honor DNS updates.
+                PooledConnectionLifetime = TimeSpan.FromMinutes(5),
+                MaxConnectionsPerServer = 64,
+                AutomaticDecompression = DecompressionMethods.GZip | DecompressionMethods.Deflate
+            });
+            builder.SetHandlerLifetime(TimeSpan.FromMinutes(10));
+        });
+        services.AddMemoryCache();
+        services.AddSingleton<IApiMemoryCacheService, ApiMemoryCacheService>();
+        services.AddSingleton<IStatusCacheGenerationService, StatusCacheGenerationService>();
+        services.AddSingleton<IConnectedClientsCounterStore, RedisConnectedClientsCounterStore>();
+        services.AddSingleton<IStatusStreamLogStore, StatusStreamLogStore>();
         
         services.AddScoped<IOpenVpnClientService, OpenVpnClientService>();
         services.AddScoped<IOpenVpnStateService, OpenVpnStateService>();
@@ -58,6 +81,7 @@ public static class ServiceConfiguration
         services.AddScoped<IXrayVpnServerStatusLogService, XrayVpnServerStatusLogService>();
         
         services.AddScoped<IVpnDataService, VpnDataService>();
+        services.AddSingleton<IVpnServerPostSetupService, VpnServerPostSetupService>();
         services.AddScoped<IVpnServerStatisticsService, VpnServerStatisticsService>();
 
         services.AddSingleton<VpnServerStatusManager>();
@@ -75,6 +99,7 @@ public static class ServiceConfiguration
             services.AddHostedService(provider => provider.GetRequiredService<OpenVpnBackgroundService>());
             services.AddHostedService<OpenVpnEventBackgroundService>();
             services.AddHostedService<OpenVpnStatusStreamPublisher>();
+            services.AddHostedService<OpenVpnProxyTrafficFlowBackgroundService>();
         }
 
         services.AddScoped<IVpnEventLogService, VpnEventLogService>();
@@ -95,6 +120,7 @@ public static class ServiceConfiguration
         services.AddScoped<IUserCredentialQueryService, UserCredentialQueryService>();
         services.AddScoped<ICrashReportParser, CrashReportParser>();
         services.AddScoped<IMobileCrashIngestService, MobileCrashIngestService>();
+        services.AddScoped<IWindowsCrashIngestService, WindowsCrashIngestService>();
         services.AddSingleton<ICrashIngestRateLimiter, MemoryCrashIngestRateLimiter>();
         services.AddSingleton<ICrashIngestMetrics, CrashIngestMetrics>();
         
@@ -111,6 +137,7 @@ public static class ServiceConfiguration
         services.AddScoped<IVpnServerConflogService, VpnServerConflogService>();
 
         services.AddSingleton<IOpenVpnMicroserviceClientFactory, OpenVpnMicroserviceClientFactory>();
+        services.AddSingleton<IOpenVpnProxyTrafficFlowClientFactory, OpenVpnProxyTrafficFlowClientFactory>();
 
         #endregion
     }

@@ -56,6 +56,7 @@ public class ApplicationDbContext(DbContextOptions<ApplicationDbContext> options
     public DbSet<SentEmailLog> SentEmailLogs { get; set; } = null!;
     public DbSet<EmailBroadcastTemplate> EmailBroadcastTemplates { get; set; } = null!;
     public DbSet<MobileCrashReport> MobileCrashReports { get; set; } = null!;
+    public DbSet<WindowsCrashReport> WindowsCrashReports { get; set; } = null!;
 
     protected override void OnModelCreating(ModelBuilder modelBuilder)
     {
@@ -94,6 +95,7 @@ public class ApplicationDbContext(DbContextOptions<ApplicationDbContext> options
         modelBuilder.ApplyConfiguration(new SentEmailLogConfiguration());
         modelBuilder.ApplyConfiguration(new EmailBroadcastTemplateConfiguration());
         modelBuilder.ApplyConfiguration(new MobileCrashReportConfiguration());
+        modelBuilder.ApplyConfiguration(new WindowsCrashReportConfiguration());
         modelBuilder.ApplyConfiguration(new RoleConfiguration());
         modelBuilder.ApplyConfiguration(new UserRoleConfiguration());
         modelBuilder.ApplyConfiguration(new DeviceConfiguration());
