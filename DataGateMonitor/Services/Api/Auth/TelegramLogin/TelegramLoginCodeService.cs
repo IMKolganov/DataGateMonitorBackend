@@ -17,9 +17,10 @@ public sealed class TelegramLoginCodeService(
     IAdminTotpService adminTotpService,
     IUserCredentialQueryService credentialQueryService,
     IMemoryCache cache,
-    IHttpContextAccessor httpContextAccessor) : ITelegramLoginCodeService
+    IHttpContextAccessor httpContextAccessor,
+    IConfiguration configuration) : ITelegramLoginCodeService
 {
-    private const int CodeExpirationMinutes = 10;
+    private const int DefaultCodeExpirationMinutes = 5;
     private const int CodeLength = 8;
 
     public async Task<TelegramRequestLoginCodeResponse?> RequestLoginCodeAsync(
@@ -34,7 +35,10 @@ public sealed class TelegramLoginCodeService(
             return null;
 
         var code = GenerateCode();
-        var expiry = TimeSpan.FromMinutes(CodeExpirationMinutes);
+        var minutes = configuration.GetValue<int?>("Auth:TelegramLoginCodeMinutes") ?? DefaultCodeExpirationMinutes;
+        if (minutes <= 0)
+            minutes = DefaultCodeExpirationMinutes;
+        var expiry = TimeSpan.FromMinutes(minutes);
         cache.Set(TelegramCodeCacheKey(code), request.TelegramId, new MemoryCacheEntryOptions
         {
             AbsoluteExpirationRelativeToNow = expiry
