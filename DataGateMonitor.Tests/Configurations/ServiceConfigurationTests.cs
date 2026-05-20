@@ -12,6 +12,8 @@ using DataGateMonitor.Services.UserRoles;
 using DataGateMonitor.Services.Users;
 using DataGateMonitor.Services.Users.Interfaces;
 using DataGateMonitor.Services.DataGateOpenVpnManager.OpenVpnProxy;
+using DataGateMonitor.Services.Cache;
+using DataGateMonitor.Services.StatusStreamLogs;
 using DataGateMonitor.Services.XrayNode;
 using Xunit;
 
@@ -48,6 +50,9 @@ public class ServiceConfigurationTests
         AssertRegistered(services, typeof(IMicroserviceInfoService));
         AssertRegistered(services, typeof(IVpnServerConflogService));
         AssertRegistered(services, typeof(IOpenVpnMicroserviceClientFactory));
+        AssertRegistered(services, typeof(IOpenVpnProxyTrafficFlowClientFactory));
+        AssertRegistered(services, typeof(IStatusCacheGenerationService));
+        AssertRegistered(services, typeof(IStatusStreamLogStore));
     }
 
     private static void AssertRegistered(IServiceCollection services, Type serviceType)

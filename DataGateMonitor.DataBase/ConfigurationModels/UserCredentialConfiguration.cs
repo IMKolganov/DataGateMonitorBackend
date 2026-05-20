@@ -40,6 +40,11 @@ public class UserCredentialConfiguration : BaseEntityConfiguration<UserCredentia
 
         entity.Property(e => e.LockoutUntilUtc);
 
+        entity.Property(e => e.TotpSecretEncrypted)
+            .HasMaxLength(512);
+
+        entity.Property(e => e.TotpEnabledAt);
+
         // Indexes
         entity.HasIndex(e => e.UserId);
         entity.HasIndex(e => e.Login).IsUnique();

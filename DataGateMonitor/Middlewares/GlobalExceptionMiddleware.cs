@@ -99,8 +99,10 @@ public class GlobalExceptionMiddleware(
         {
             UnauthorizedAccessException => ((int)HttpStatusCode.Unauthorized, exception.Message),
             ArgumentException => ((int)HttpStatusCode.BadRequest, exception.Message),
-            InvalidOperationException when exception.Message.Contains("already has", StringComparison.OrdinalIgnoreCase)
-                => ((int)HttpStatusCode.Conflict, exception.Message),
+            InvalidOperationException ioe when IsDuplicateOrConflictMessage(ioe.Message)
+                => ((int)HttpStatusCode.Conflict, ioe.Message),
+            InvalidOperationException ioe when IsClientFacingInvalidOperation(ioe.Message)
+                => ((int)HttpStatusCode.BadRequest, ioe.Message),
             DbUpdateException when exception.InnerException is PostgresException pg && pg.SqlState == "23505"
                 => ((int)HttpStatusCode.Conflict, "A resource already exists with the same key."),
             _ => ((int)HttpStatusCode.InternalServerError, "An unexpected error occurred. Please try again later.")
@@ -121,6 +123,16 @@ public class GlobalExceptionMiddleware(
         var json = JsonConvert.SerializeObject(payload);
         await context.Response.WriteAsync(json);
     }
+
+    private static bool IsDuplicateOrConflictMessage(string message) =>
+        message.Contains("already exists", StringComparison.OrdinalIgnoreCase)
+        || message.Contains("already in use", StringComparison.OrdinalIgnoreCase)
+        || message.Contains("already has", StringComparison.OrdinalIgnoreCase);
+
+    private static bool IsClientFacingInvalidOperation(string message) =>
+        message.Contains("only supported for", StringComparison.OrdinalIgnoreCase)
+        || message.Contains("is missing", StringComparison.OrdinalIgnoreCase)
+        || message.Contains("not found", StringComparison.OrdinalIgnoreCase);
 
     private static string GetExceptionDetails(Exception ex)
     {

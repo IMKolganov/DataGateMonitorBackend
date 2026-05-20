@@ -92,7 +92,7 @@ public sealed class UserRegistrationService(
 
         try
         {
-            await appNotificationFacade.UserRegistered(user.Id, user.DisplayName ?? "", login, user.Email, ct);
+            await appNotificationFacade.UserRegistered(user.Id, user.DisplayName ?? "", login, user.Email, "password", ct);
         }
         catch (Exception ex)
         {

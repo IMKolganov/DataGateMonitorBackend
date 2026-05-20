@@ -1,4 +1,5 @@
 using System.Linq.Expressions;
+using Microsoft.EntityFrameworkCore;
 using DataGateMonitor.DataBase.Services.Query.QuotaPlanAllowedServerTable;
 using DataGateMonitor.Models;
 using DataGateMonitor.SharedModels.Responses;
@@ -101,4 +102,40 @@ public class VpnServerQueryService(
 
     public Task<bool> AnyByServerNameExceptId(string serverName, int id, CancellationToken ct = default)
         => q.Any(x => x.ServerName == serverName && x.Id != id && !x.IsDeleted, ct: ct);
+
+    public async Task<DateTimeOffset?> GetLastUpdateStamp(bool includeDeleted = false,
+        bool requireQuotaPlanAssignment = false, int? restrictToQuotaPlanId = null, CancellationToken ct = default)
+    {
+        if (restrictToQuotaPlanId is int planId)
+        {
+            var ids = await quotaPlanAllowedServerQueryService.GetVpnServerIdsByQuotaPlanId(planId, ct);
+            if (ids.Count == 0)
+                return null;
+
+            var scoped = q.Query().Where(x => ids.Contains(x.Id));
+            if (!includeDeleted)
+                scoped = scoped.Where(x => !x.IsDeleted);
+
+            return await scoped.MaxAsync(x => (DateTimeOffset?)x.LastUpdate, ct);
+        }
+
+        if (!requireQuotaPlanAssignment)
+        {
+            var all = q.Query();
+            if (!includeDeleted)
+                all = all.Where(x => !x.IsDeleted);
+
+            return await all.MaxAsync(x => (DateTimeOffset?)x.LastUpdate, ct);
+        }
+
+        var allowedIds = await quotaPlanAllowedServerQueryService.GetDistinctVpnServerIds(ct);
+        if (allowedIds.Count == 0)
+            return null;
+
+        var filtered = q.Query().Where(x => allowedIds.Contains(x.Id));
+        if (!includeDeleted)
+            filtered = filtered.Where(x => !x.IsDeleted);
+
+        return await filtered.MaxAsync(x => (DateTimeOffset?)x.LastUpdate, ct);
+    }
 }

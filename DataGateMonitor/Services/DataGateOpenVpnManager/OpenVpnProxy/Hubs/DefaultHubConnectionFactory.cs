@@ -12,8 +12,7 @@ internal sealed class DefaultHubConnectionFactory : IHubConnectionFactory
             .WithAutomaticReconnect()
             .ConfigureLogging(logging =>
             {
-                logging.SetMinimumLevel(LogLevel.Debug);
-                logging.AddConsole();
+                logging.SetMinimumLevel(LogLevel.Warning);
             })
             .Build();
         return new HubConnectionProxy(connection);

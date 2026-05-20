@@ -1,6 +1,7 @@
 using System.Security.Claims;
 using Microsoft.AspNetCore.Http;
 using Microsoft.AspNetCore.Mvc;
+using Microsoft.Extensions.Caching.Memory;
 using Moq;
 using DataGateMonitor.Controllers;
 using DataGateMonitor.DataBase.Services.Query.VpnServerTable;
@@ -8,6 +9,7 @@ using DataGateMonitor.DataBase.Services.Query.VpnServerTagTable;
 using DataGateMonitor.DataBase.Services.Query.QuotaPlanAllowedServerTable;
 using DataGateMonitor.DataBase.Services.Query.UserQuotaPlanTable;
 using DataGateMonitor.Models;
+using DataGateMonitor.Services.Cache;
 using DataGateMonitor.SharedModels.DataGateMonitor.VpnServers.Dto;
 using DataGateMonitor.SharedModels.DataGateMonitor.VpnServers.Responses;
 using DataGateMonitor.SharedModels.Responses;
@@ -26,6 +28,8 @@ public class VpnServersV2ControllerTests
     private readonly Mock<IVpnServerTagQueryService> _tagQuery = new();
     private readonly Mock<IUserQuotaPlanQueryService> _userQuotaPlan = new();
     private readonly Mock<IQuotaPlanAllowedServerQueryService> _quotaAllowed = new();
+    private readonly Mock<IStatusCacheGenerationService> _statusCacheGeneration = new();
+    private readonly IApiMemoryCacheService _cache = new ApiMemoryCacheService(new MemoryCache(new MemoryCacheOptions()));
 
     private VpnServersV2Controller CreateController(ClaimsPrincipal user)
     {
@@ -35,7 +39,9 @@ public class VpnServersV2ControllerTests
             _quotaGroups.Object,
             _tagQuery.Object,
             _userQuotaPlan.Object,
-            _quotaAllowed.Object)
+            _quotaAllowed.Object,
+            _cache,
+            _statusCacheGeneration.Object)
         {
             ControllerContext = new ControllerContext
             {
@@ -83,7 +89,7 @@ public class VpnServersV2ControllerTests
         _quotaAllowed.Setup(q => q.GetVpnServerIdsByQuotaPlanId(7, It.IsAny<CancellationToken>()))
             .ReturnsAsync(new HashSet<int> { 1 });
 
-        _serverQuery.Setup(s => s.GetAll(false, false, null, It.IsAny<CancellationToken>()))
+        _serverQuery.Setup(s => s.GetAll(false, false, 7, It.IsAny<CancellationToken>()))
             .ReturnsAsync([
                 new VpnServer { Id = 1, ServerName = "allowed" },
                 new VpnServer { Id = 2, ServerName = "other" }
