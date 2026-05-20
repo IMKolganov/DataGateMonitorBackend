@@ -8,7 +8,7 @@ public interface IAppNotificationFacade
     Task ServerDown(int serverId, string serverName, CancellationToken ct);
     Task ServerUp(int serverId, string serverName, CancellationToken ct);
 
-    Task UserRegistered(int userId, string displayName, string? login, string? email, CancellationToken ct);
+    Task UserRegistered(int userId, string displayName, string? login, string? email, string? registrationSource, CancellationToken ct);
 
     Task UserPasswordChanged(int userId, string displayName, string login, string reason, CancellationToken ct);
 }

@@ -6,6 +6,7 @@ using DataGateMonitor.DataBase.Services.Query.TelegramBotUserTable;
 using DataGateMonitor.DataBase.Services.Query.UserIdentityLinkTable;
 using DataGateMonitor.DataBase.Services.Query.UserTable;
 using DataGateMonitor.Models;
+using DataGateMonitor.Services.Others.Notifications;
 using DataGateMonitor.Services.Users.Interfaces;
 using DataGateMonitor.SharedModels.DataGateMonitor.User.Requests;
 using DataGateMonitor.SharedModels.DataGateMonitor.User.Responses;
@@ -22,6 +23,7 @@ public class UserService(
     ICommandService<UserIdentityLink, int> userIdentityLinkCommandService,
     ICommandService<UserQuotaPlan, int> userQuotaPlanCommandService,
     ICommandService<TelegramBotUser, int> telegramBotUserCommandService,
+    IAppNotificationFacade appNotificationFacade,
     ILogger<UserService> logger
 ) : IUserService
 {
@@ -90,6 +92,8 @@ public class UserService(
                 LastUpdate = now
             }, saveChanges: true, cancellationToken);
         }
+
+        await TryNotifyAdminsNewUserAsync(userNew, login: null, "Telegram login code", cancellationToken);
 
         return userNew;
     }
@@ -187,6 +191,8 @@ public class UserService(
                 await userQuotaPlanCommandService.Add(quotaPlan, saveChanges: true, cancellationToken);
                 logger.LogInformation("Default quota plan {PlanId} assigned to user {UserId}", defaultPlan.Id, user.Id);
             }
+
+            await TryNotifyAdminsNewUserAsync(user, login: null, "Telegram bot", cancellationToken);
         }
         else
         {
@@ -288,6 +294,24 @@ public class UserService(
     }
 
     // === Helpers ===
+
+    private async Task TryNotifyAdminsNewUserAsync(User user, string? login, string registrationSource, CancellationToken ct)
+    {
+        try
+        {
+            await appNotificationFacade.UserRegistered(
+                user.Id,
+                user.DisplayName ?? "",
+                login,
+                user.Email,
+                registrationSource,
+                ct);
+        }
+        catch (Exception ex)
+        {
+            logger.LogWarning(ex, "Failed to notify admins about new user {UserId}", user.Id);
+        }
+    }
 
     private async Task<UserDto> BuildUserDtoAsync(User user, CancellationToken ct)
     {
