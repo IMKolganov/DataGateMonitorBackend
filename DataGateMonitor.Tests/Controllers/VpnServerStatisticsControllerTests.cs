@@ -1,6 +1,9 @@
+using System.Security.Claims;
+using Microsoft.AspNetCore.Http;
 using Microsoft.AspNetCore.Mvc;
 using Moq;
 using DataGateMonitor.Controllers;
+using DataGateMonitor.Services.Api.Auth.Handlers.Interfaces;
 using DataGateMonitor.Services.Api.Interfaces;
 using DataGateMonitor.SharedModels.DataGateMonitor.VpnServerStatistics.Request;
 using DataGateMonitor.SharedModels.DataGateMonitor.VpnServerStatistics.Responses;
@@ -11,11 +14,25 @@ namespace DataGateMonitor.Tests.Controllers;
 public class VpnServerStatisticsControllerTests
 {
     private readonly Mock<IVpnServerStatisticsService> _svc = new();
+    private readonly Mock<IVpnServerAccessQueryService> _vpnAccess = new();
     private readonly VpnServerStatisticsController _controller;
 
     public VpnServerStatisticsControllerTests()
     {
-        _controller = new VpnServerStatisticsController(_svc.Object);
+        _vpnAccess
+            .Setup(a => a.UserHasAccessAsync(It.IsAny<int>(), It.IsAny<int>(), It.IsAny<CancellationToken>()))
+            .ReturnsAsync(true);
+
+        _controller = new VpnServerStatisticsController(_svc.Object, _vpnAccess.Object);
+        _controller.ControllerContext = new ControllerContext
+        {
+            HttpContext = new DefaultHttpContext
+            {
+                User = new ClaimsPrincipal(new ClaimsIdentity(
+                    [new Claim(ClaimTypes.Role, "Admin")],
+                    "mock")),
+            },
+        };
     }
 
     [Fact]

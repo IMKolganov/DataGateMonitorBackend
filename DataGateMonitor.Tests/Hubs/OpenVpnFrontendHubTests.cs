@@ -1,4 +1,6 @@
+using System.Reflection;
 using System.Security.Claims;
+using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Http;
 using Microsoft.AspNetCore.Http.Connections.Features;
 using Microsoft.AspNetCore.Http.Features;
@@ -13,6 +15,16 @@ namespace DataGateMonitor.Tests.Hubs;
 
 public class OpenVpnFrontendHubTests
 {
+    [Fact]
+    public void Hub_IsDecoratedWithAdminAppAuthorize()
+    {
+        var authorize = typeof(OpenVpnFrontendHub).GetCustomAttribute<AuthorizeAttribute>();
+        Assert.NotNull(authorize);
+        Assert.Contains("Admin", authorize!.Roles ?? string.Empty);
+        Assert.Contains("App", authorize.Roles ?? string.Empty);
+        Assert.DoesNotContain("VpnUser", authorize.Roles ?? string.Empty);
+    }
+
     private sealed class TestHttpContextFeature : IHttpContextFeature
     {
         public HttpContext? HttpContext { get; set; }

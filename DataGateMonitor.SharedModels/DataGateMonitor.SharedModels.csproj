@@ -22,9 +22,9 @@
         <PackageLicenseExpression>MIT</PackageLicenseExpression>
         <PackageReadmeFile>README.md</PackageReadmeFile>
         <!-- Backend consumes this library via NuGet (PackageReference) only. Bump <Version>, publish, then bump PackageReference in consuming projects. -->
-        <Version>1.0.14</Version>
-        <AssemblyVersion>1.0.14.0</AssemblyVersion>
-        <FileVersion>1.0.14.0</FileVersion>
+        <Version>1.0.19</Version>
+        <AssemblyVersion>1.0.19.0</AssemblyVersion>
+        <FileVersion>1.0.19.0</FileVersion>
         <PackageIcon>favicon.png</PackageIcon>
 
         <Deterministic>true</Deterministic>
@@ -49,8 +49,8 @@
     </ItemGroup>
 
     <ItemGroup>
-      <PackageReference Include="Microsoft.AspNetCore.Mvc.Core" Version="2.3.9" />
-      <PackageReference Include="Microsoft.Extensions.Configuration.Abstractions" Version="10.0.7" />
+      <PackageReference Include="Microsoft.AspNetCore.Mvc.Core" Version="2.3.10" />
+      <PackageReference Include="Microsoft.Extensions.Configuration.Abstractions" Version="10.0.8" />
       <PackageReference Include="Newtonsoft.Json" Version="13.0.4" />
     </ItemGroup>
 

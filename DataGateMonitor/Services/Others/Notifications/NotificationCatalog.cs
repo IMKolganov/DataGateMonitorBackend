@@ -84,15 +84,16 @@ public class NotificationCatalog : INotificationCatalog
         return new NotificationEnvelope(req, WebAndTelegram);
     }
 
-    public NotificationEnvelope UserRegistered(int userId, string displayName, string? login, string? email)
+    public NotificationEnvelope UserRegistered(int userId, string displayName, string? login, string? email, string? registrationSource = null)
     {
         var loginPart = string.IsNullOrWhiteSpace(login) ? "" : $" Login: {login}.";
         var emailPart = string.IsNullOrWhiteSpace(email) ? "" : $" Email: {email}.";
+        var sourcePart = string.IsNullOrWhiteSpace(registrationSource) ? "" : $" Via {registrationSource.Trim()}.";
         var req = new NotificationRequest
         {
             Type = NotificationTypes.UserRegistered,
             Title = "New user registered",
-            Message = $"User #{userId} ({displayName}) registered.{loginPart}{emailPart}",
+            Message = $"User #{userId} ({displayName}) registered.{loginPart}{emailPart}{sourcePart}",
             Severity = NotificationSeverity.Info,
             Source = "auth",
             ActorUserId = userId,

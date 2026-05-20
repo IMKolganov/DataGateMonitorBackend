@@ -1,7 +1,10 @@
+using System.Security.Claims;
+using Microsoft.AspNetCore.Http;
 using Microsoft.AspNetCore.Mvc;
 using Moq;
 using DataGateMonitor.Controllers;
 using DataGateMonitor.DataBase.Services.Query.VpnServerClientTable;
+using DataGateMonitor.Services.Api.Auth.Handlers.Interfaces;
 using DataGateMonitor.SharedModels.DataGateMonitor.VpnServerClients.Requests;
 using DataGateMonitor.SharedModels.DataGateMonitor.VpnServerClients.Responses;
 using DataGateMonitor.SharedModels.Responses;
@@ -14,16 +17,32 @@ public class VpnServerClientsControllerTests
     private readonly Mock<IOpenVpnGeoQueryService> _geoQuery = new();
     private readonly Mock<IOpenVpnOverviewTotalsQuery> _totalsQuery = new();
     private readonly Mock<IOpenVpnOverviewSeriesQuery> _seriesQuery = new();
+    private readonly Mock<IVpnServerAccessQueryService> _vpnAccess = new();
 
     private readonly VpnServerClientsController _controller;
 
     public VpnServerClientsControllerTests()
     {
+        _vpnAccess
+            .Setup(a => a.UserHasAccessAsync(It.IsAny<int>(), It.IsAny<int>(), It.IsAny<CancellationToken>()))
+            .ReturnsAsync(true);
+
         _controller = new VpnServerClientsController(
             _overviewQuery.Object,
             _geoQuery.Object,
             _totalsQuery.Object,
-            _seriesQuery.Object);
+            _seriesQuery.Object,
+            _vpnAccess.Object);
+
+        _controller.ControllerContext = new ControllerContext
+        {
+            HttpContext = new DefaultHttpContext
+            {
+                User = new ClaimsPrincipal(new ClaimsIdentity(
+                    [new Claim(ClaimTypes.Role, "Admin")],
+                    "mock")),
+            },
+        };
     }
 
     [Fact]

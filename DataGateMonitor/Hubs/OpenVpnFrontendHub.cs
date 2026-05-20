@@ -1,8 +1,10 @@
+using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.SignalR;
 using DataGateMonitor.Services.DataGateOpenVpnManager.OpenVpnProxy;
 
 namespace DataGateMonitor.Hubs;
 
+[Authorize(Roles = "Admin,App")]
 public class OpenVpnFrontendHub(
     IOpenVpnMicroserviceClientFactory clientFactory,
     ILogger<OpenVpnFrontendHub> logger) : Hub

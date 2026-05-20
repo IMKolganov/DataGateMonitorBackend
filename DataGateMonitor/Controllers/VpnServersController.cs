@@ -10,8 +10,11 @@ using DataGateMonitor.Models;
 using DataGateMonitor.Services.Api;
 using DataGateMonitor.Services.Api.Auth.Handlers.Interfaces;
 using DataGateMonitor.Services.Api.Interfaces;
+using PostSetupStatus = DataGateMonitor.Services.Api.PostSetup.VpnServerPostSetupStatus;
 using DataGateMonitor.Services.BackgroundServices.Interfaces;
+using DataGateMonitor.Services.Cache;
 using DataGateMonitor.Services.DataGateOpenVpnManager.Interfaces;
+using DataGateMonitor.Services.StatusStreamLogs;
 using DataGateMonitor.SharedModels.DataGateMonitor.VpnServers.Dto;
 using DataGateMonitor.SharedModels.DataGateMonitor.VpnServers.Requests;
 using DataGateMonitor.SharedModels.DataGateMonitor.VpnServers.Responses;
@@ -29,69 +32,96 @@ public class VpnServersController(IVpnDataService vpnDataService,
     IOpenVpnBackgroundService openVpnBackgroundService,
     IMicroserviceInfoService microserviceInfoService,
     IUserQuotaPlanQueryService userQuotaPlanQueryService,
-    IVpnServerAccessQueryService vpnServerAccessQueryService) : BaseController
+    IVpnServerAccessQueryService vpnServerAccessQueryService,
+    IApiMemoryCacheService apiMemoryCacheService,
+    IStatusCacheGenerationService statusCacheGenerationService,
+    IStatusStreamLogStore statusStreamLogStore,
+    IVpnServerPostSetupService vpnServerPostSetupService) : BaseController
 {
+    private static readonly TimeSpan ServersListCacheTtl = TimeSpan.FromHours(1);
+
     [HttpGet("get-all-with-status")]
     public async Task<ActionResult> GetAllServersWithStatus(
         [FromQuery] bool includeDeleted = false,
-        CancellationToken ct = default)
+        CancellationToken ct = default,
+        [FromQuery] bool withoutCache = false)
     {
-        List<VpnServerWithStatusDto> result;
+        int? restrictToQuotaPlanId;
         if (HttpUserContext.IsPrivileged(User))
         {
-            result = await openVpnServerOverviewQuery.GetAllVpnServersWithStatusAsync(
-                includeDeleted, requireQuotaPlanAssignment: false, restrictToQuotaPlanId: null, ct);
+            restrictToQuotaPlanId = null;
         }
         else
         {
             if (!HttpUserContext.TryGetUserId(User, out var userId))
                 return Unauthorized(ApiResponse<VpnServerWithStatusesResponse>.ErrorResponse("User id missing from token."));
             var uqp = await userQuotaPlanQueryService.GetActiveByUserId(userId, ct);
-            if (uqp is null)
-                result = await openVpnServerOverviewQuery.GetAllVpnServersWithStatusAsync(
-                    includeDeleted, requireQuotaPlanAssignment: false, restrictToQuotaPlanId: null, ct);
-            else
-                result = await openVpnServerOverviewQuery.GetAllVpnServersWithStatusAsync(
-                    includeDeleted, requireQuotaPlanAssignment: false, restrictToQuotaPlanId: uqp.QuotaPlanId, ct);
+            restrictToQuotaPlanId = uqp?.QuotaPlanId;
         }
 
-        var baseResponse = new VpnServerWithStatusesResponse
+        var scopeKey = restrictToQuotaPlanId is int planId ? $"plan:{planId}" : "all";
+        var cacheKey = $"v1:open-vpn-servers:get-all-with-status:includeDeleted={includeDeleted}:scope={scopeKey}";
+        var stamp = await openVpnServerQueryService.GetLastUpdateStamp(
+            includeDeleted,
+            requireQuotaPlanAssignment: false,
+            restrictToQuotaPlanId,
+            ct);
+        var dataStamp = stamp?.ToUnixTimeMilliseconds().ToString() ?? "empty";
+        var stampKey = $"{dataStamp}:status:{statusCacheGenerationService.CurrentStamp}";
+        async Task<string> BuildPayload(CancellationToken token)
         {
-            VpnServerWithStatuses = result
-        };
-        await FillTagsForOverviewResponse(baseResponse, ct);
+            var result = await openVpnServerOverviewQuery.GetAllVpnServersWithStatusAsync(
+                includeDeleted, requireQuotaPlanAssignment: false, restrictToQuotaPlanId, token);
 
-        // Legacy mobile clients parse strict camelCase + openVpn* keys.
-        var legacyItems = baseResponse.VpnServerWithStatuses.Select(item => new
+            var baseResponse = new VpnServerWithStatusesResponse
+            {
+                VpnServerWithStatuses = result
+            };
+            await FillTagsForOverviewResponse(baseResponse, token);
+
+            // Legacy mobile clients parse strict camelCase + openVpn* keys.
+            var legacyItems = baseResponse.VpnServerWithStatuses.Select(item => new
+            {
+                openVpnServerResponses = new
+                {
+                    openVpnServer = item.VpnServerResponses.VpnServer
+                },
+                openVpnServerStatusLogResponse = item.VpnServerStatusLogResponse,
+                countConnectedClients = item.CountConnectedClients,
+                countSessions = item.CountSessions,
+                totalBytesIn = item.TotalBytesIn,
+                totalBytesOut = item.TotalBytesOut
+            }).ToList();
+
+            var envelope = new
+            {
+                success = true,
+                message = "Success",
+                data = new
+                {
+                    openVpnServerWithStatuses = legacyItems
+                }
+            };
+
+            return JsonConvert.SerializeObject(
+                envelope,
+                new JsonSerializerSettings
+                {
+                    ContractResolver = new CamelCasePropertyNamesContractResolver(),
+                    NullValueHandling = NullValueHandling.Ignore
+                });
+        }
+
+        string json;
+        if (withoutCache)
         {
-            openVpnServerResponses = new
-            {
-                openVpnServer = item.VpnServerResponses.VpnServer
-            },
-            openVpnServerStatusLogResponse = item.VpnServerStatusLogResponse,
-            countConnectedClients = item.CountConnectedClients,
-            countSessions = item.CountSessions,
-            totalBytesIn = item.TotalBytesIn,
-            totalBytesOut = item.TotalBytesOut
-        }).ToList();
-
-        var envelope = new
+            json = await BuildPayload(ct);
+            apiMemoryCacheService.Set(cacheKey, json, ServersListCacheTtl, stampKey);
+        }
+        else
         {
-            success = true,
-            message = "Success",
-            data = new
-            {
-                openVpnServerWithStatuses = legacyItems
-            }
-        };
-
-        var json = JsonConvert.SerializeObject(
-            envelope,
-            new JsonSerializerSettings
-            {
-                ContractResolver = new CamelCasePropertyNamesContractResolver(),
-                NullValueHandling = NullValueHandling.Ignore
-            });
+            json = await apiMemoryCacheService.GetOrCreateByStampAsync(cacheKey, stampKey, BuildPayload, ServersListCacheTtl, ct);
+        }
 
         return Content(json, "application/json");
     }
@@ -111,7 +141,7 @@ public class VpnServersController(IVpnDataService vpnDataService,
         return Ok(ApiResponse<VpnServerWithStatusResponse>.SuccessResponse(response));
     }
 
-    [HttpGet("get-microservice-info/{VpnServerId:int}")]
+    [HttpGet("get-microservice-info/{vpnServerId:int}")]
     public async Task<ActionResult<ApiResponse<VpnMicroserviceDiagnosticsDto>>> GetMicroserviceInfo(
         [FromRoute] int vpnServerId, CancellationToken ct)
     {
@@ -139,35 +169,66 @@ public class VpnServersController(IVpnDataService vpnDataService,
     [HttpGet("get-all")]
     public async Task<ActionResult<ApiResponse<VpnServersResponse>>> GetAllServers(
         [FromQuery] bool includeDeleted = false,
-        CancellationToken ct = default)
+        CancellationToken ct = default,
+        [FromQuery] bool withoutCache = false)
     {
-        List<VpnServer> serversList;
+        int? restrictToQuotaPlanId;
         if (HttpUserContext.IsPrivileged(User))
         {
-            serversList = await openVpnServerQueryService.GetAll(includeDeleted, requireQuotaPlanAssignment: false,
-                restrictToQuotaPlanId: null, ct);
+            restrictToQuotaPlanId = null;
         }
         else
         {
             if (!HttpUserContext.TryGetUserId(User, out var userId))
                 return Unauthorized(ApiResponse<VpnServersResponse>.ErrorResponse("User id missing from token."));
             var uqp = await userQuotaPlanQueryService.GetActiveByUserId(userId, ct);
-            if (uqp is null)
-                serversList = await openVpnServerQueryService.GetAll(includeDeleted, requireQuotaPlanAssignment: false,
-                    restrictToQuotaPlanId: null, ct);
-            else
-                serversList = await openVpnServerQueryService.GetAll(includeDeleted, requireQuotaPlanAssignment: false,
-                    restrictToQuotaPlanId: uqp.QuotaPlanId, ct);
+            restrictToQuotaPlanId = uqp?.QuotaPlanId;
         }
 
-        var response = serversList.Adapt<VpnServersResponse>();
-        if (serversList.Count > 0)
+        var scopeKey = restrictToQuotaPlanId is int planId ? $"plan:{planId}" : "all";
+        var cacheKey = $"v1:open-vpn-servers:get-all:includeDeleted={includeDeleted}:scope={scopeKey}";
+        var stamp = await openVpnServerQueryService.GetLastUpdateStamp(
+            includeDeleted,
+            requireQuotaPlanAssignment: false,
+            restrictToQuotaPlanId,
+            ct);
+        var stampKey = stamp?.ToUnixTimeMilliseconds().ToString() ?? "empty";
+
+        async Task<ApiResponse<VpnServersResponse>> BuildResponse(CancellationToken token)
         {
-            var tagNamesByServer = await openVpnServerTagQueryService.GetTagNamesByVpnServerIds(serversList.Select(s => s.Id).ToList(), ct);
-            for (var i = 0; i < response.VpnServers.Count; i++)
-                response.VpnServers[i].Tags = tagNamesByServer.GetValueOrDefault(serversList[i].Id, []);
+            var serversList = await openVpnServerQueryService.GetAll(
+                includeDeleted,
+                requireQuotaPlanAssignment: false,
+                restrictToQuotaPlanId,
+                token);
+
+            var response = serversList.Adapt<VpnServersResponse>();
+            if (serversList.Count > 0)
+            {
+                var tagNamesByServer = await openVpnServerTagQueryService.GetTagNamesByVpnServerIds(serversList.Select(s => s.Id).ToList(), token);
+                for (var i = 0; i < response.VpnServers.Count; i++)
+                    response.VpnServers[i].Tags = tagNamesByServer.GetValueOrDefault(serversList[i].Id, []);
+            }
+            return ApiResponse<VpnServersResponse>.SuccessResponse(response);
         }
-        return Ok(ApiResponse<VpnServersResponse>.SuccessResponse(response));
+
+        ApiResponse<VpnServersResponse> cached;
+        if (withoutCache)
+        {
+            cached = await BuildResponse(ct);
+            apiMemoryCacheService.Set(cacheKey, cached, ServersListCacheTtl, stampKey);
+        }
+        else
+        {
+            cached = await apiMemoryCacheService.GetOrCreateByStampAsync(
+                cacheKey,
+                stampKey,
+                BuildResponse,
+                ServersListCacheTtl,
+                ct);
+        }
+
+        return Ok(cached);
     }
 
     [HttpGet("get/{VpnServerId:int}")]
@@ -195,6 +256,29 @@ public class VpnServersController(IVpnDataService vpnDataService,
         var response = newServer.Adapt<VpnServerResponse>();
         response.VpnServer.Tags = await openVpnServerTagQueryService.GetTagNamesByVpnServerId(newServer.Id, ct);
         return Ok(ApiResponse<VpnServerResponse>.SuccessResponse(response));
+    }
+
+    [Authorize(Roles = "Admin,App")]
+    [HttpPost("post-setup/{vpnServerId:int}/start")]
+    public async Task<ActionResult<ApiResponse<VpnServerPostSetupStatusResponse>>> StartPostSetup(
+        [FromRoute] int vpnServerId,
+        CancellationToken ct)
+    {
+        var status = await vpnServerPostSetupService.StartAsync(vpnServerId, ct);
+        return Ok(ApiResponse<VpnServerPostSetupStatusResponse>.SuccessResponse(ToPostSetupStatusResponse(status)));
+    }
+
+    [Authorize(Roles = "Admin,App")]
+    [HttpGet("post-setup/{vpnServerId:int}/status")]
+    public async Task<ActionResult<ApiResponse<VpnServerPostSetupStatusResponse>>> GetPostSetupStatus(
+        [FromRoute] int vpnServerId,
+        [FromQuery] string? operationId,
+        CancellationToken ct)
+    {
+        var status = await vpnServerPostSetupService.GetStatusAsync(vpnServerId, operationId, ct);
+        if (status is null)
+            return NotFound(ApiResponse<VpnServerPostSetupStatusResponse>.ErrorResponse("Post-create setup status not found."));
+        return Ok(ApiResponse<VpnServerPostSetupStatusResponse>.SuccessResponse(ToPostSetupStatusResponse(status)));
     }
 
     [Authorize(Roles = "Admin,App")]
@@ -248,6 +332,46 @@ public class VpnServersController(IVpnDataService vpnDataService,
 
         return Ok(ApiResponse<string>.SuccessResponse("OpenVPN background task executed immediately."));
     }
+
+    [HttpGet("status-stream-logs")]
+    public async Task<ActionResult<ApiResponse<StatusStreamLogsResponse>>> GetStatusStreamLogs(
+        [FromQuery] int limit = 300,
+        CancellationToken ct = default)
+    {
+        var logs = await statusStreamLogStore.GetLatestAsync(limit, ct);
+        var response = new StatusStreamLogsResponse
+        {
+            Logs = logs.Select(x => new StatusStreamLogEntryResponse
+            {
+                TimestampUtc = x.TimestampUtc,
+                PayloadJson = x.PayloadJson,
+                Source = x.Source
+            }).ToList()
+        };
+
+        return Ok(ApiResponse<StatusStreamLogsResponse>.SuccessResponse(response));
+    }
+
+    [Authorize(Roles = "Admin,App")]
+    [HttpDelete("status-stream-logs")]
+    public async Task<ActionResult<ApiResponse<string>>> ClearStatusStreamLogs(CancellationToken ct = default)
+    {
+        await statusStreamLogStore.ClearAsync(ct);
+        return Ok(ApiResponse<string>.SuccessResponse("Status stream logs cleared."));
+    }
+
+    private static VpnServerPostSetupStatusResponse ToPostSetupStatusResponse(PostSetupStatus status) =>
+        new()
+        {
+            OperationId = status.OperationId,
+            VpnServerId = status.VpnServerId,
+            State = (VpnServerPostSetupState)status.State,
+            Message = status.Message,
+            CurrentStep = status.CurrentStep,
+            StartedAtUtc = status.StartedAtUtc,
+            FinishedAtUtc = status.FinishedAtUtc,
+            Details = status.Details.ToDictionary(x => x.Key, x => x.Value)
+        };
 
     private async Task FillTagsForOverviewResponse(VpnServerWithStatusesResponse response, CancellationToken ct)
     {

@@ -18,7 +18,7 @@ namespace DataGateMonitor.DataBase.Migrations
 #pragma warning disable 612, 618
             modelBuilder
                 .HasDefaultSchema("xgb_dashopnvpn")
-                .HasAnnotation("ProductVersion", "10.0.7")
+                .HasAnnotation("ProductVersion", "10.0.8")
                 .HasAnnotation("Relational:MaxIdentifierLength", 63);
 
             NpgsqlModelBuilderExtensions.UseIdentityByDefaultColumns(modelBuilder);
@@ -1142,6 +1142,60 @@ namespace DataGateMonitor.DataBase.Migrations
                             Language = 2,
                             LastUpdate = new DateTimeOffset(new DateTime(1, 1, 1, 0, 0, 0, 0, DateTimeKind.Unspecified), new TimeSpan(0, 0, 0, 0, 0)),
                             Text = "Το αρχείο δεν βρέθηκε ή έχει ήδη διαγραφεί."
+                        },
+                        new
+                        {
+                            Id = 73,
+                            CreateDate = new DateTimeOffset(new DateTime(1, 1, 1, 0, 0, 0, 0, DateTimeKind.Unspecified), new TimeSpan(0, 0, 0, 0, 0)),
+                            Key = "DashboardLoginCode",
+                            Language = 1,
+                            LastUpdate = new DateTimeOffset(new DateTime(1, 1, 1, 0, 0, 0, 0, DateTimeKind.Unspecified), new TimeSpan(0, 0, 0, 0, 0)),
+                            Text = "Your dashboard login code:\n\n<code>{code}</code>\n\nValid for {minutes} min. Enter it on the DataGate Monitor sign-in page under «Continue with Telegram».\nDo not share this code."
+                        },
+                        new
+                        {
+                            Id = 74,
+                            CreateDate = new DateTimeOffset(new DateTime(1, 1, 1, 0, 0, 0, 0, DateTimeKind.Unspecified), new TimeSpan(0, 0, 0, 0, 0)),
+                            Key = "DashboardLoginCode",
+                            Language = 2,
+                            LastUpdate = new DateTimeOffset(new DateTime(1, 1, 1, 0, 0, 0, 0, DateTimeKind.Unspecified), new TimeSpan(0, 0, 0, 0, 0)),
+                            Text = "Ο κωδικός σύνδεσης στον πίνακα:\n\n<code>{code}</code>\n\nΙσχύει για {minutes} λεπτά. Εισαγάγετέ τον στη σελίδα σύνδεσης DataGate Monitor στην επιλογή «Continue with Telegram».\nΜην μοιράζεστε τον κωδικό."
+                        },
+                        new
+                        {
+                            Id = 75,
+                            CreateDate = new DateTimeOffset(new DateTime(1, 1, 1, 0, 0, 0, 0, DateTimeKind.Unspecified), new TimeSpan(0, 0, 0, 0, 0)),
+                            Key = "DashboardLoginCode",
+                            Language = 3,
+                            LastUpdate = new DateTimeOffset(new DateTime(1, 1, 1, 0, 0, 0, 0, DateTimeKind.Unspecified), new TimeSpan(0, 0, 0, 0, 0)),
+                            Text = "Код для входа в панель:\n\n<code>{code}</code>\n\nДействует {minutes} мин. Введите его на странице входа DataGate Monitor в разделе «Continue with Telegram».\nНе передавайте код никому."
+                        },
+                        new
+                        {
+                            Id = 76,
+                            CreateDate = new DateTimeOffset(new DateTime(1, 1, 1, 0, 0, 0, 0, DateTimeKind.Unspecified), new TimeSpan(0, 0, 0, 0, 0)),
+                            Key = "DashboardLoginCodeError",
+                            Language = 1,
+                            LastUpdate = new DateTimeOffset(new DateTime(1, 1, 1, 0, 0, 0, 0, DateTimeKind.Unspecified), new TimeSpan(0, 0, 0, 0, 0)),
+                            Text = "Could not issue a login code. Register in the bot with /register first, or contact support if you are blocked."
+                        },
+                        new
+                        {
+                            Id = 77,
+                            CreateDate = new DateTimeOffset(new DateTime(1, 1, 1, 0, 0, 0, 0, DateTimeKind.Unspecified), new TimeSpan(0, 0, 0, 0, 0)),
+                            Key = "DashboardLoginCodeError",
+                            Language = 2,
+                            LastUpdate = new DateTimeOffset(new DateTime(1, 1, 1, 0, 0, 0, 0, DateTimeKind.Unspecified), new TimeSpan(0, 0, 0, 0, 0)),
+                            Text = "Αδυναμία έκδοσης κωδικού. Κάντε πρώτα εγγραφή με /register ή επικοινωνήστε με την υποστήριξη αν έχετε αποκλειστεί."
+                        },
+                        new
+                        {
+                            Id = 78,
+                            CreateDate = new DateTimeOffset(new DateTime(1, 1, 1, 0, 0, 0, 0, DateTimeKind.Unspecified), new TimeSpan(0, 0, 0, 0, 0)),
+                            Key = "DashboardLoginCodeError",
+                            Language = 3,
+                            LastUpdate = new DateTimeOffset(new DateTime(1, 1, 1, 0, 0, 0, 0, DateTimeKind.Unspecified), new TimeSpan(0, 0, 0, 0, 0)),
+                            Text = "Не удалось выдать код. Сначала зарегистрируйтесь в боте через /register или обратитесь в поддержку, если аккаунт заблокирован."
                         });
                 });
 
@@ -2126,6 +2180,13 @@ namespace DataGateMonitor.DataBase.Migrations
                         .ValueGeneratedOnAdd()
                         .HasColumnType("timestamp with time zone")
                         .HasDefaultValueSql("CURRENT_TIMESTAMP");
+
+                    b.Property<DateTimeOffset?>("TotpEnabledAt")
+                        .HasColumnType("timestamp with time zone");
+
+                    b.Property<string>("TotpSecretEncrypted")
+                        .HasMaxLength(512)
+                        .HasColumnType("character varying(512)");
 
                     b.Property<int>("UserId")
                         .HasColumnType("integer");
@@ -3234,6 +3295,92 @@ namespace DataGateMonitor.DataBase.Migrations
                     b.HasIndex("VpnServerId");
 
                     b.ToTable("VpnServerTags", "xgb_dashopnvpn");
+                });
+
+            modelBuilder.Entity("DataGateMonitor.Models.WindowsCrashReport", b =>
+                {
+                    b.Property<long>("Id")
+                        .ValueGeneratedOnAdd()
+                        .HasColumnType("bigint");
+
+                    NpgsqlPropertyBuilderExtensions.UseIdentityByDefaultColumn(b.Property<long>("Id"));
+
+                    b.Property<string>("AppProcess")
+                        .IsRequired()
+                        .HasMaxLength(256)
+                        .HasColumnType("character varying(256)");
+
+                    b.Property<DateTimeOffset>("CreateDate")
+                        .ValueGeneratedOnAdd()
+                        .HasColumnType("timestamp with time zone")
+                        .HasDefaultValueSql("CURRENT_TIMESTAMP");
+
+                    b.Property<string>("Device")
+                        .HasMaxLength(256)
+                        .HasColumnType("character varying(256)");
+
+                    b.Property<string>("Exception")
+                        .HasMaxLength(512)
+                        .HasColumnType("character varying(512)");
+
+                    b.Property<string>("FileName")
+                        .IsRequired()
+                        .HasMaxLength(512)
+                        .HasColumnType("character varying(512)");
+
+                    b.Property<string>("Kind")
+                        .HasMaxLength(32)
+                        .HasColumnType("character varying(32)");
+
+                    b.Property<DateTimeOffset>("LastUpdate")
+                        .ValueGeneratedOnAdd()
+                        .HasColumnType("timestamp with time zone")
+                        .HasDefaultValueSql("CURRENT_TIMESTAMP");
+
+                    b.Property<string>("Message")
+                        .HasMaxLength(4000)
+                        .HasColumnType("character varying(4000)");
+
+                    b.Property<string>("ParseStatus")
+                        .IsRequired()
+                        .HasMaxLength(32)
+                        .HasColumnType("character varying(32)");
+
+                    b.Property<string>("PayloadRaw")
+                        .IsRequired()
+                        .HasColumnType("text");
+
+                    b.Property<string>("Process")
+                        .HasMaxLength(256)
+                        .HasColumnType("character varying(256)");
+
+                    b.Property<string>("Sdk")
+                        .HasMaxLength(128)
+                        .HasColumnType("character varying(128)");
+
+                    b.Property<string>("Stacktrace")
+                        .HasColumnType("text");
+
+                    b.Property<string>("Tag")
+                        .HasMaxLength(256)
+                        .HasColumnType("character varying(256)");
+
+                    b.Property<string>("Thread")
+                        .HasMaxLength(256)
+                        .HasColumnType("character varying(256)");
+
+                    b.Property<DateTimeOffset?>("TimestampUtc")
+                        .HasColumnType("timestamp with time zone");
+
+                    b.HasKey("Id");
+
+                    b.HasIndex("CreateDate");
+
+                    b.HasIndex("ParseStatus");
+
+                    b.HasIndex("AppProcess", "CreateDate");
+
+                    b.ToTable("WindowsCrashReports", "xgb_dashopnvpn");
                 });
 
             modelBuilder.Entity("DataGateMonitor.Models.IssuedOvpnFileToken", b =>

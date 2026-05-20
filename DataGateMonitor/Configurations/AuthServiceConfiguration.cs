@@ -13,6 +13,7 @@ using DataGateMonitor.Services.Api.Auth.ForgotPassword;
 using DataGateMonitor.Services.Api.Auth.EmailConfirmation;
 using DataGateMonitor.Services.Api.Auth.Login;
 using DataGateMonitor.Services.Api.Auth.TelegramLogin;
+using DataGateMonitor.Services.Api.Auth.Totp;
 using DataGateMonitor.Services.Api.Auth.Registers;
 using DataGateMonitor.Services.Api.Auth.Registers.Interfaces;
 using DataGateMonitor.Services.Api.Auth.Users;
@@ -30,6 +31,7 @@ public static class AuthServiceConfiguration
         
         services.AddScoped<IUserLoginService, UserLoginService>();
         services.AddScoped<ITokenService, TokenService>();
+        services.AddScoped<IUserSessionService, UserSessionService>();
         services.AddScoped<IUserAccountService, UserAccountService>();
         services.AddScoped<IUserRoleService, UserRoleService>();
         services.AddScoped<IPasswordHasher<User>, PasswordHasher<User>>();
@@ -47,6 +49,7 @@ public static class AuthServiceConfiguration
         services.AddScoped<IUserQuotaPlanService, UserQuotaPlanService>();
 
         services.AddMemoryCache();
+        services.AddSingleton<IAdminIdleSessionTracker, AdminIdleSessionTracker>();
         services.Configure<EmailSenderSettings>(configuration.GetSection("EmailSender"));
         services.AddScoped<SmtpEmailSenderService>();
         services.AddScoped<ResendEmailSenderService>();
@@ -54,6 +57,7 @@ public static class AuthServiceConfiguration
         services.AddScoped<IAdminForgotPasswordService, AdminForgotPasswordService>();
         services.AddScoped<IEmailConfirmationService, EmailConfirmationService>();
         services.AddScoped<ITelegramLoginCodeService, TelegramLoginCodeService>();
+        services.AddScoped<IAdminTotpService, AdminTotpService>();
 
         services.AddAuthorization(options =>
         {

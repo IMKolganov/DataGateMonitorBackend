@@ -489,6 +489,53 @@ public static class LocalizationTextSeedData
             Id = 72, Key = "ErrorDeletedFile", Language = Language.Greek,
             Text = "Το αρχείο δεν βρέθηκε ή έχει ήδη διαγραφεί."
         },
+
+        new LocalizationText
+        {
+            Id = 73, Key = "DashboardLoginCode", Language = Language.English,
+            Text =
+                "Your dashboard login code:\n\n" +
+                "<code>{code}</code>\n\n" +
+                "Valid for {minutes} min. Enter it on the DataGate Monitor sign-in page under «Continue with Telegram».\n" +
+                "Do not share this code."
+        },
+        new LocalizationText
+        {
+            Id = 74, Key = "DashboardLoginCode", Language = Language.Greek,
+            Text =
+                "Ο κωδικός σύνδεσης στον πίνακα:\n\n" +
+                "<code>{code}</code>\n\n" +
+                "Ισχύει για {minutes} λεπτά. Εισαγάγετέ τον στη σελίδα σύνδεσης DataGate Monitor στην επιλογή «Continue with Telegram».\n" +
+                "Μην μοιράζεστε τον κωδικό."
+        },
+        new LocalizationText
+        {
+            Id = 75, Key = "DashboardLoginCode", Language = Language.Russian,
+            Text =
+                "Код для входа в панель:\n\n" +
+                "<code>{code}</code>\n\n" +
+                "Действует {minutes} мин. Введите его на странице входа DataGate Monitor в разделе «Continue with Telegram».\n" +
+                "Не передавайте код никому."
+        },
+
+        new LocalizationText
+        {
+            Id = 76, Key = "DashboardLoginCodeError", Language = Language.English,
+            Text =
+                "Could not issue a login code. Register in the bot with /register first, or contact support if you are blocked."
+        },
+        new LocalizationText
+        {
+            Id = 77, Key = "DashboardLoginCodeError", Language = Language.Greek,
+            Text =
+                "Αδυναμία έκδοσης κωδικού. Κάντε πρώτα εγγραφή με /register ή επικοινωνήστε με την υποστήριξη αν έχετε αποκλειστεί."
+        },
+        new LocalizationText
+        {
+            Id = 78, Key = "DashboardLoginCodeError", Language = Language.Russian,
+            Text =
+                "Не удалось выдать код. Сначала зарегистрируйтесь в боте через /register или обратитесь в поддержку, если аккаунт заблокирован."
+        },
     };
 
 }
