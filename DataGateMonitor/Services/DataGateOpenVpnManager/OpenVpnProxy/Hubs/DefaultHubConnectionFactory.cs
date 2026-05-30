@@ -1,4 +1,5 @@
 using Microsoft.AspNetCore.SignalR.Client;
+using DataGateMonitor.Serialization;
 using DataGateMonitor.Services.DataGateOpenVpnManager.OpenVpnProxy.Hubs.Interfaces;
 
 namespace DataGateMonitor.Services.DataGateOpenVpnManager.OpenVpnProxy.Hubs;
@@ -9,6 +10,7 @@ internal sealed class DefaultHubConnectionFactory : IHubConnectionFactory
     {
         var connection = new HubConnectionBuilder()
             .WithUrl(fullUrl, options => { options.AccessTokenProvider = accessTokenProvider; })
+            .AddNewtonsoftJsonProtocol(options => options.PayloadSerializerSettings = ProjectJson.WebSettings)
             .WithAutomaticReconnect()
             .ConfigureLogging(logging =>
             {
