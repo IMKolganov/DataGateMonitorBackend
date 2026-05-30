@@ -27,6 +27,7 @@ public sealed class TrafficDailyRollupNotificationService(INotificationService n
                 $"Upserted {result.SessionDayRowsUpserted} session-day row(s).",
             Severity = NotificationSeverity.Info,
             Source = Source,
+            PreferenceKind = ApplicationNotificationKind.TrafficDailyRollupSucceeded
         }, Channels, ct);
     }
 
@@ -51,5 +52,6 @@ public sealed class TrafficDailyRollupNotificationService(INotificationService n
             Message = $"Phase: {phase}. {detail}",
             Severity = NotificationSeverity.Error,
             Source = Source,
+            PreferenceKind = ApplicationNotificationKind.TrafficDailyRollupFailed
         }, Channels, ct);
 }

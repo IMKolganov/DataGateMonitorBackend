@@ -51,4 +51,10 @@ public enum ApplicationNotificationKind
 
     /// <summary>Password hash changed (forgot/reset flow or future profile password change). Not used for successful login.</summary>
     AppUserPasswordChanged = 28,
+
+    /// <summary>Daily traffic rollup completed successfully.</summary>
+    TrafficDailyRollupSucceeded = 29,
+
+    /// <summary>Daily traffic rollup failed.</summary>
+    TrafficDailyRollupFailed = 30,
 }
