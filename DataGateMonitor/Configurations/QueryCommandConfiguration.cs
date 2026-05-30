@@ -52,6 +52,8 @@ public static class QueryCommandConfiguration
         services.AddScoped<INotificationRecipientQueryService, NotificationRecipientQueryService>();
 
         services.AddScoped<IOpenVpnGeoQueryService, OpenVpnGeoQueryService>();
+        services.AddScoped<IOverviewTrafficAggregator, OverviewTrafficAggregator>();
+        services.AddScoped<IOverviewTrafficDailyRollupService, OverviewTrafficDailyRollupService>();
         services.AddScoped<IOpenVpnOverviewSeriesQuery, OpenVpnOverviewSeriesQuery>();
         services.AddScoped<IOpenVpnOverviewTotalsQuery, OpenVpnOverviewTotalsQuery>();
         services.AddScoped<IVpnServerClientOverviewQuery, VpnServerClientOverviewQuery>();

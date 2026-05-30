@@ -21,12 +21,12 @@
         <PrivateAssets>all</PrivateAssets>
       </PackageReference>
       <PackageReference Include="Microsoft.EntityFrameworkCore.Relational" Version="10.0.8" />
+      <PackageReference Include="Npgsql.EntityFrameworkCore.PostgreSQL" Version="10.0.1" />
       <PackageReference Include="Microsoft.Extensions.Configuration" Version="10.0.8" />
       <PackageReference Include="Microsoft.Extensions.Configuration.Abstractions" Version="10.0.8" />
       <PackageReference Include="Microsoft.Extensions.Configuration.EnvironmentVariables" Version="10.0.8" />
       <PackageReference Include="Microsoft.Extensions.Configuration.FileExtensions" Version="10.0.8" />
       <PackageReference Include="Microsoft.Extensions.Configuration.Json" Version="10.0.8" />
-      <PackageReference Include="Npgsql.EntityFrameworkCore.PostgreSQL" Version="10.0.1" />
     </ItemGroup>
 
 </Project>

@@ -61,7 +61,7 @@ public class OpenVpnOverviewTotalsQueryTests
         });
         await ctx.SaveChangesAsync();
 
-        var sut = new OpenVpnOverviewTotalsQuery(uow.Object);
+        var sut = new OpenVpnOverviewTotalsQuery(uow.Object, OverviewQueryTestHelper.CreateTrafficAggregator(uow.Object));
         var res = await sut.GetOverviewTotalsAsync(from, to, vpnServerId: 1, externalId: null, CancellationToken.None);
 
         Assert.Equal(3, res.Totals.SessionsCount);
@@ -94,7 +94,7 @@ public class OpenVpnOverviewTotalsQueryTests
         });
         await ctx.SaveChangesAsync();
 
-        var sut = new OpenVpnOverviewTotalsQuery(uow.Object);
+        var sut = new OpenVpnOverviewTotalsQuery(uow.Object, OverviewQueryTestHelper.CreateTrafficAggregator(uow.Object));
         // reversed bounds, filtered by externalId
         var res = await sut.GetOverviewTotalsAsync(to, from, vpnServerId: 2, externalId: "X", CancellationToken.None);
 
@@ -132,7 +132,7 @@ public class OpenVpnOverviewTotalsQueryTests
         });
         await ctx.SaveChangesAsync();
 
-        var sut = new OpenVpnOverviewTotalsQuery(uow.Object);
+        var sut = new OpenVpnOverviewTotalsQuery(uow.Object, OverviewQueryTestHelper.CreateTrafficAggregator(uow.Object));
         var res = await sut.GetOverviewTotalsAsync(from, to, vpnServerId: 7, externalId: null, CancellationToken.None);
 
         Assert.Equal(400, res.Totals.TrafficInBytes);
