@@ -3,6 +3,7 @@ using System;
 using DataGateMonitor.DataBase.Contexts;
 using Microsoft.EntityFrameworkCore;
 using Microsoft.EntityFrameworkCore.Infrastructure;
+using Microsoft.EntityFrameworkCore.Migrations;
 using Microsoft.EntityFrameworkCore.Storage.ValueConversion;
 using Npgsql.EntityFrameworkCore.PostgreSQL.Metadata;
 
@@ -11,9 +12,11 @@ using Npgsql.EntityFrameworkCore.PostgreSQL.Metadata;
 namespace DataGateMonitor.DataBase.Migrations
 {
     [DbContext(typeof(ApplicationDbContext))]
-    partial class ApplicationDbContextModelSnapshot : ModelSnapshot
+    [Migration("20260531000744_ClientTraffic_At_Covering_Index")]
+    partial class ClientTraffic_At_Covering_Index
     {
-        protected override void BuildModel(ModelBuilder modelBuilder)
+        /// <inheritdoc />
+        protected override void BuildTargetModel(ModelBuilder modelBuilder)
         {
 #pragma warning disable 612, 618
             modelBuilder
@@ -2999,65 +3002,6 @@ namespace DataGateMonitor.DataBase.Migrations
                         .HasDatabaseName("UX_ClientTraffic_Server_Session_At");
 
                     b.ToTable("VpnServerClientTraffics", "xgb_dashopnvpn");
-                });
-
-            modelBuilder.Entity("DataGateMonitor.Models.VpnServerClientTrafficDaily", b =>
-                {
-                    b.Property<int>("Id")
-                        .ValueGeneratedOnAdd()
-                        .HasColumnType("integer");
-
-                    NpgsqlPropertyBuilderExtensions.UseIdentityByDefaultColumn(b.Property<int>("Id"));
-
-                    b.Property<DateTimeOffset>("CreateDate")
-                        .ValueGeneratedOnAdd()
-                        .HasColumnType("timestamp with time zone")
-                        .HasDefaultValueSql("CURRENT_TIMESTAMP");
-
-                    b.Property<DateOnly>("DayUtc")
-                        .HasColumnType("date");
-
-                    b.Property<string>("ExternalId")
-                        .IsRequired()
-                        .HasMaxLength(255)
-                        .HasColumnType("character varying(255)");
-
-                    b.Property<DateTimeOffset>("LastUpdate")
-                        .ValueGeneratedOnAdd()
-                        .HasColumnType("timestamp with time zone")
-                        .HasDefaultValueSql("CURRENT_TIMESTAMP");
-
-                    b.Property<int>("SampleCount")
-                        .HasColumnType("integer");
-
-                    b.Property<Guid>("SessionId")
-                        .HasColumnType("uuid");
-
-                    b.Property<long>("TrafficInBytes")
-                        .HasColumnType("bigint");
-
-                    b.Property<long>("TrafficOutBytes")
-                        .HasColumnType("bigint");
-
-                    b.Property<int?>("UserId")
-                        .HasColumnType("integer");
-
-                    b.Property<int>("VpnServerId")
-                        .HasColumnType("integer");
-
-                    b.HasKey("Id");
-
-                    b.HasIndex("DayUtc", "ExternalId")
-                        .HasDatabaseName("IX_ClientTrafficDaily_Day_External");
-
-                    b.HasIndex("DayUtc", "VpnServerId")
-                        .HasDatabaseName("IX_ClientTrafficDaily_Day_Server");
-
-                    b.HasIndex("VpnServerId", "SessionId", "DayUtc")
-                        .IsUnique()
-                        .HasDatabaseName("UX_ClientTrafficDaily_Server_Session_Day");
-
-                    b.ToTable("VpnServerClientTrafficDailies", "xgb_dashopnvpn");
                 });
 
             modelBuilder.Entity("DataGateMonitor.Models.VpnServerConflog", b =>

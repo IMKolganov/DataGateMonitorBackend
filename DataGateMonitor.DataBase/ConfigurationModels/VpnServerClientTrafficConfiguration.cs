@@ -34,9 +34,10 @@ public class VpnServerClientTrafficConfiguration : BaseEntityConfiguration<VpnSe
         entity.HasIndex(e => e.MeasuredAt)
             .HasDatabaseName("IX_ClientTraffic_At");
 
-        // ORDER BY SessionId, MeasuredAt (plus WHERE by MeasuredAt)
+        // WHERE MeasuredAt BETWEEN ... + overview window (covering avoids heap fetches)
         entity.HasIndex(e => new { e.MeasuredAt, e.SessionId })
-            .HasDatabaseName("IX_ClientTraffic_At_Session");
+            .HasDatabaseName("IX_ClientTraffic_At_Covering")
+            .IncludeProperties(e => new { e.ExternalId, e.VpnServerId, e.BytesReceived, e.BytesSent });
 
         // ORDER BY ExternalId, SessionId, MeasuredAt (plus WHERE by MeasuredAt)
         entity.HasIndex(e => new { e.MeasuredAt, e.ExternalId, e.SessionId })
