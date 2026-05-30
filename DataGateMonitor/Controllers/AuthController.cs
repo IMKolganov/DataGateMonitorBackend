@@ -191,7 +191,7 @@ public class AuthController(
         CancellationToken ct)
     {
         if (request == null)
-            return BadRequest();
+            return BadRequest(ApiResponse<GoogleLoginResponse>.ErrorResponse("Request body is required."));
 
         var idToken = await exchange.ExchangeCodeForIdTokenAsync(
             request.Code,
@@ -217,7 +217,7 @@ public class AuthController(
         CancellationToken ct)
     {
         if (request == null)
-            return BadRequest();
+            return BadRequest(ApiResponse<TelegramRequestLoginCodeResponse>.ErrorResponse("Request body is required."));
 
         var result = await telegramLoginCodeService.RequestLoginCodeAsync(request, ct);
         if (result == null)

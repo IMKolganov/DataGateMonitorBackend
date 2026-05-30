@@ -11,6 +11,6 @@ public class VpnServerWithStatusesV3Response
 
     public List<VpnServerWithStatusV2Dto> VpnServerWithStatuses { get; set; } = [];
 
-    [System.Text.Json.Serialization.JsonPropertyName("openVpnServerWithStatuses")]
+    [Newtonsoft.Json.JsonProperty("openVpnServerWithStatuses")]
     public List<VpnServerWithStatusV2Dto> OpenVpnServerWithStatuses => VpnServerWithStatuses;
 }

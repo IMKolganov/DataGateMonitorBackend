@@ -241,7 +241,7 @@ public class VpnServersController(IVpnDataService vpnDataService,
 
         var server = await openVpnServerQueryService.GetById(request.VpnServerId, ct);
         if (server == null)
-            return NotFound();
+            return NotFound(ApiResponse<VpnServerResponse>.ErrorResponse("VPN server not found."));
         var response = server.Adapt<VpnServerResponse>();
         response.VpnServer.Tags = await openVpnServerTagQueryService.GetTagNamesByVpnServerId(request.VpnServerId, ct);
         return Ok(ApiResponse<VpnServerResponse>.SuccessResponse(response));

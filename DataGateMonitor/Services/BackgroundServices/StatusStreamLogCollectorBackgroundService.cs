@@ -1,5 +1,5 @@
-using System.Text.Json;
 using Mapster;
+using DataGateMonitor.Serialization;
 using DataGateMonitor.Hubs.Models;
 using DataGateMonitor.Services.BackgroundServices.Interfaces;
 using DataGateMonitor.Services.StatusStreamLogs;
@@ -14,7 +14,6 @@ public sealed class StatusStreamLogCollectorBackgroundService(
     : Microsoft.Extensions.Hosting.BackgroundService
 {
     private const int PollIntervalMs = 700;
-    private readonly JsonSerializerOptions _jsonOptions = new(JsonSerializerDefaults.Web);
     private string? _lastStatusesSnapshot;
 
     protected override async Task ExecuteAsync(CancellationToken stoppingToken)
@@ -30,7 +29,7 @@ public sealed class StatusStreamLogCollectorBackgroundService(
 
                 if (statuses.Count > 0)
                 {
-                    var statusesSnapshot = JsonSerializer.Serialize(statuses, _jsonOptions);
+                    var statusesSnapshot = ProjectJson.Serialize(statuses);
 
                     // Reduce log noise: skip sequential snapshots with no status changes.
                     if (string.Equals(_lastStatusesSnapshot, statusesSnapshot, StringComparison.Ordinal))
@@ -45,7 +44,7 @@ public sealed class StatusStreamLogCollectorBackgroundService(
                         Statuses = statuses,
                         TimestampUtc = DateTimeOffset.UtcNow
                     };
-                    var payloadJson = JsonSerializer.Serialize(payload, _jsonOptions);
+                    var payloadJson = ProjectJson.Serialize(payload);
                     await statusStreamLogStore.AppendAsync(
                         new StatusStreamLogEntry
                         {

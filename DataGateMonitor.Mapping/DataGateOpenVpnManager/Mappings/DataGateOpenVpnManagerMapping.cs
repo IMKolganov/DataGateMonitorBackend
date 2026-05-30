@@ -1,22 +1,17 @@
-using System.Text.Json;
 using Mapster;
 using DataGateMonitor.Models;
+using DataGateMonitor.Serialization;
 using DataGateMonitor.SharedModels.DataGateMonitor.OpenVpnFiles.Requests;
 using DataGateMonitor.SharedModels.DataGateMonitor.VpnServerConflog.Dto;
 using DataGateMonitor.SharedModels.DataGateOpenVpnManager.Info;
 using DataGateMonitor.SharedModels.DataGateOpenVpnManager.OvpnFile.Requests;
 using DataGateMonitor.SharedModels.DataGateOpenVpnManager.OvpnFile.Responses;
+using Newtonsoft.Json.Linq;
 
 namespace DataGateMonitor.Mapping.DataGateOpenVpnManager.Mappings;
 
 public class DataGateOpenVpnManagerMapping : IRegister
 {
-    private static readonly JsonSerializerOptions ConflogJsonOptions = new()
-    {
-        PropertyNameCaseInsensitive = true,
-        PropertyNamingPolicy = JsonNamingPolicy.CamelCase
-    };
-
     public void Register(TypeAdapterConfig config)
     {
         config.NewConfig<VpnServerConflog, VpnServerConflogDto>()
@@ -61,25 +56,18 @@ public class DataGateOpenVpnManagerMapping : IRegister
             return null;
         try
         {
-            using var doc = JsonDocument.Parse(payloadJson);
-            var root = doc.RootElement;
+            var root = JObject.Parse(payloadJson);
 
             // Backward compatibility:
             // - old conflog rows: payload is plain RootOpenVpnInfoResponse
             // - new rows (after Xray support): payload is VpnMicroserviceDiagnosticsDto
             //   with nested { openVpn: { ... } }.
-            if (root.ValueKind == JsonValueKind.Object &&
-                root.TryGetProperty("openVpn", out var openVpnElement) &&
-                openVpnElement.ValueKind == JsonValueKind.Object)
-            {
-                return JsonSerializer.Deserialize<RootOpenVpnInfoResponse>(
-                    openVpnElement.GetRawText(),
-                    ConflogJsonOptions);
-            }
+            if (root["openVpn"] is JObject openVpnObj)
+                return openVpnObj.ToObject<RootOpenVpnInfoResponse>(Newtonsoft.Json.JsonSerializer.Create(ProjectJson.WebSettings));
 
-            return JsonSerializer.Deserialize<RootOpenVpnInfoResponse>(payloadJson, ConflogJsonOptions);
+            return ProjectJson.Deserialize<RootOpenVpnInfoResponse>(payloadJson);
         }
-        catch (JsonException)
+        catch (Newtonsoft.Json.JsonException)
         {
             return null;
         }

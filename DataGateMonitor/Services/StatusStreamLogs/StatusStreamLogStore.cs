@@ -1,5 +1,5 @@
 using System.Collections.Concurrent;
-using System.Text.Json;
+using DataGateMonitor.Serialization;
 using StackExchange.Redis;
 
 namespace DataGateMonitor.Services.StatusStreamLogs;
@@ -13,7 +13,6 @@ public sealed class StatusStreamLogStore(
     private const string MemorySource = "memory";
     private const int DefaultMaxEntries = 300;
     private const int MaxAllowedEntries = 2000;
-    private readonly JsonSerializerOptions _jsonOptions = new(JsonSerializerDefaults.Web);
     private readonly ConcurrentQueue<StatusStreamLogEntry> _memoryQueue = new();
     private readonly SemaphoreSlim _connectLock = new(1, 1);
     private readonly string? _connectionString =
@@ -47,7 +46,7 @@ public sealed class StatusStreamLogStore(
                 PayloadJson = normalized.PayloadJson,
                 Source = RedisSource
             };
-            var redisValue = JsonSerializer.Serialize(redisEntry, _jsonOptions);
+            var redisValue = ProjectJson.Serialize(redisEntry);
             await db.ListLeftPushAsync(RedisListKey, redisValue);
             await db.ListTrimAsync(RedisListKey, 0, _maxEntries - 1);
         }
@@ -78,7 +77,7 @@ public sealed class StatusStreamLogStore(
                         if (string.IsNullOrWhiteSpace(raw))
                             continue;
 
-                        var parsed = JsonSerializer.Deserialize<StatusStreamLogEntry>(raw, _jsonOptions);
+                        var parsed = ProjectJson.Deserialize<StatusStreamLogEntry>(raw);
                         if (parsed is null)
                             continue;
 

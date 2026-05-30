@@ -6,9 +6,11 @@ using DataGateMonitor.Models;
 using DataGateMonitor.Services.Api.Auth.Registers.Interfaces;
 using DataGateMonitor.Services.DataGateOpenVpnManager.Interfaces;
 using DataGateMonitor.Services.GeoLite.Interfaces;
+using DataGateMonitor.Serialization;
 using DataGateMonitor.Services.Others.Notifications.OpenVpnMicroserviceClient;
 using DataGateMonitor.SharedModels.DataGateOpenVpnManager.Proxy.Responses;
 using DataGateMonitor.SharedModels.Enums;
+using DataGateMonitor.SharedModels.Responses;
 
 namespace DataGateMonitor.Services.DataGateOpenVpnManager;
 
@@ -113,17 +115,20 @@ public sealed class ProxyClientLookupService(
 
             response.EnsureSuccessStatusCode();
 
-            var body = await response.Content.ReadFromJsonAsync<ProxyClientLookupResponse>(cancellationToken: ct)
-                       .ConfigureAwait(false);
+            var wrapped = await ProjectJson.ReadContentAsync<ApiResponse<ProxyClientLookupResponse>>(response.Content, ct)
+                .ConfigureAwait(false);
 
-            if (body is null)
+            if (wrapped is not { Success: true, Data: not null })
             {
-                await NotifyLookupFailureAsync(server, realAddress,
-                    "Empty or invalid JSON in proxy client lookup response", NotificationSeverity.Error, ct)
+                var detail = wrapped?.Message is { Length: > 0 } msg
+                    ? msg
+                    : "Empty or invalid JSON in proxy client lookup response";
+                await NotifyLookupFailureAsync(server, realAddress, detail, NotificationSeverity.Error, ct)
                     .ConfigureAwait(false);
+                return null;
             }
 
-            return body;
+            return wrapped.Data;
         }
         catch (Exception ex)
         {
