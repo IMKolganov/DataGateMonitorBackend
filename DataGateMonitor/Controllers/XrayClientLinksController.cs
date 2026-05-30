@@ -63,7 +63,7 @@ public class XrayClientLinksController(
         catch (Exception ex)
         {
             logger.LogError(ex, "Failed to get all Xray client links on server {VpnServerId}", request.VpnServerId);
-            return BadRequest(ApiResponse<string>.ErrorResponse(ex.Message));
+            return BadRequest(ApiResponse<OvpnFilesResponse>.ErrorResponse(ex.Message));
         }
     }
 
@@ -85,7 +85,7 @@ public class XrayClientLinksController(
         {
             logger.LogError(ex, "Failed to get all Xray client links on server {VpnServerId} and {ExternalId}",
                 request.VpnServerId, request.ExternalId);
-            return BadRequest(ApiResponse<string>.ErrorResponse(ex.Message));
+            return BadRequest(ApiResponse<OvpnFilesResponse>.ErrorResponse(ex.Message));
         }
     }
 
@@ -108,7 +108,7 @@ public class XrayClientLinksController(
         {
             logger.LogError(ex, "Failed to get all Xray client links with token on server {VpnServerId}",
                 request.VpnServerId);
-            return BadRequest(ApiResponse<string>.ErrorResponse(ex.Message));
+            return BadRequest(ApiResponse<OvpnFilesWithTokensResponse>.ErrorResponse(ex.Message));
         }
     }
 
@@ -131,7 +131,7 @@ public class XrayClientLinksController(
         {
             logger.LogError(ex, "Failed to get all Xray client links with token on server {VpnServerId} and {ExternalId}",
                 request.VpnServerId, request.ExternalId);
-            return BadRequest(ApiResponse<string>.ErrorResponse(ex.Message));
+            return BadRequest(ApiResponse<OvpnFilesWithTokensResponse>.ErrorResponse(ex.Message));
         }
     }
 
@@ -148,7 +148,7 @@ public class XrayClientLinksController(
         catch (Exception ex)
         {
             logger.LogError(ex, "Failed to get all Xray client links for {ExternalId}", request.ExternalId);
-            return BadRequest(ApiResponse<string>.ErrorResponse(ex.Message));
+            return BadRequest(ApiResponse<OvpnFilesResponse>.ErrorResponse(ex.Message));
         }
     }
 
@@ -169,7 +169,7 @@ public class XrayClientLinksController(
         {
             logger.LogError(ex, "Failed to add Xray client link for {CommonName} on server {VpnServerId}",
                 request.CommonName, request.VpnServerId);
-            return BadRequest(ApiResponse<string>.ErrorResponse(ex.Message));
+            return BadRequest(ApiResponse<OvpnFileResponse>.ErrorResponse(ex.Message));
         }
     }
 
@@ -190,7 +190,7 @@ public class XrayClientLinksController(
         {
             logger.LogError(ex, "Failed to add Xray client link with token for {CommonName} on server {VpnServerId}",
                 request.CommonName, request.VpnServerId);
-            return BadRequest(ApiResponse<string>.ErrorResponse(ex.Message));
+            return BadRequest(ApiResponse<OvpnFileWithTokenResponse>.ErrorResponse(ex.Message));
         }
     }
 
@@ -211,7 +211,7 @@ public class XrayClientLinksController(
         {
             logger.LogError(ex, "Failed to revoke Xray client link for {CommonName} on server {VpnServerId}",
                 request.CommonName, request.VpnServerId);
-            return BadRequest(ApiResponse<string>.ErrorResponse(ex.Message));
+            return BadRequest(ApiResponse<OvpnFileResponse>.ErrorResponse(ex.Message));
         }
     }
 
@@ -232,7 +232,7 @@ public class XrayClientLinksController(
         {
             logger.LogError(ex, "Failed to download Xray client link {IssuedOvpnFileId} for {VpnServerId}",
                 request.IssuedOvpnFileId, request.VpnServerId);
-            return BadRequest(ApiResponse<string>.ErrorResponse(ex.Message));
+            return BadRequest(ApiResponse<DownloadFileResponse>.ErrorResponse(ex.Message));
         }
     }
 
@@ -253,7 +253,7 @@ public class XrayClientLinksController(
         {
             logger.LogError(ex, "Failed to download Xray client link {CommonName} for {VpnServerId}",
                 request.CommonName, request.VpnServerId);
-            return BadRequest(ApiResponse<string>.ErrorResponse(ex.Message));
+            return BadRequest(ApiResponse<DownloadFileResponse>.ErrorResponse(ex.Message));
         }
     }
 

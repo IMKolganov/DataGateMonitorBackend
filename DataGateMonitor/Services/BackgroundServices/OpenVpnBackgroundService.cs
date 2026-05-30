@@ -1,7 +1,6 @@
 using System.Collections.Concurrent;
 using System.Diagnostics;
-using System.Text.Json;
-using System.Text.Json.Serialization;
+using DataGateMonitor.Serialization;
 using Microsoft.EntityFrameworkCore;
 using Npgsql;
 using DataGateMonitor.DataBase.Services.Query.VpnServerTable;
@@ -32,11 +31,6 @@ public class OpenVpnBackgroundService : BackgroundService, IOpenVpnBackgroundSer
     private readonly int _maxPollingDegreeOfParallelism;
     private CancellationTokenSource _delayTokenSource = new();
     private readonly ConcurrentDictionary<int, ServiceStatus> _previousStatusByServer = new();
-    private readonly JsonSerializerOptions _logJsonOptions = new(JsonSerializerDefaults.Web)
-    {
-        DefaultIgnoreCondition = JsonIgnoreCondition.WhenWritingNull
-    };
-
     public OpenVpnBackgroundService(
         ILogger<OpenVpnBackgroundService> logger,
         IServiceProvider serviceProvider,
@@ -504,7 +498,7 @@ public class OpenVpnBackgroundService : BackgroundService, IOpenVpnBackgroundSer
                 new StatusStreamLogEntry
                 {
                     TimestampUtc = DateTimeOffset.UtcNow,
-                    PayloadJson = JsonSerializer.Serialize(payload, _logJsonOptions),
+                    PayloadJson = ProjectJson.Serialize(payload),
                     Source = "service"
                 },
                 ct);
