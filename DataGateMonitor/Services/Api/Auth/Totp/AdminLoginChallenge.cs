@@ -7,4 +7,5 @@ internal sealed class AdminLoginChallenge
     public string? DeviceId { get; init; }
     public string? UserAgent { get; init; }
     public DateTimeOffset ExpiresAtUtc { get; init; }
+    public int FailedAttempts { get; set; }
 }
