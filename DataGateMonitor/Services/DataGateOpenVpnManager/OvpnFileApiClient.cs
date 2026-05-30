@@ -1,9 +1,9 @@
 ﻿using System.Net.Http.Headers;
-using Newtonsoft.Json;
-using Newtonsoft.Json.Linq;
 using DataGateMonitor.DataBase.Services.Query.VpnServerTable;
+using DataGateMonitor.Serialization;
 using DataGateMonitor.Services.Api.Auth.Registers.Interfaces;
 using DataGateMonitor.Services.DataGateOpenVpnManager.Interfaces;
+using DataGateMonitor.Services.Helpers;
 using DataGateMonitor.SharedModels.DataGateOpenVpnManager.OvpnFile.Requests;
 using DataGateMonitor.SharedModels.DataGateOpenVpnManager.OvpnFile.Responses;
 
@@ -33,6 +33,17 @@ public class OvpnFileApiClient(
         return client;
     }
 
+    private static async Task ThrowIfNotSuccessAsync(HttpResponseMessage response, string action,
+        CancellationToken cancellationToken)
+    {
+        if (response.IsSuccessStatusCode)
+            return;
+
+        var detail = await MicroserviceApiResponseHelper.ReadErrorMessageAsync(response, cancellationToken);
+        throw new InvalidOperationException(
+            $"Failed to {action}. Status: {(int)response.StatusCode} {response.ReasonPhrase}. Details: {detail}");
+    }
+
     public async Task<OvpnFileMetadata> AddOvpnFile(int vpnServerId, GenerateOvpnFileRequest request,
         CancellationToken cancellationToken)
     {
@@ -43,38 +54,11 @@ public class OvpnFileApiClient(
                 "backend", "DataGateOpenVpnManager");
             client.DefaultRequestHeaders.Authorization = new AuthenticationHeaderValue("Bearer", jwt);
 
-            var response = await client.PostAsJsonAsync(EndpointOvpnFilesAdd, request, cancellationToken);
+            var response = await client.PostAsync(EndpointOvpnFilesAdd, ProjectJson.ToJsonContent(request), cancellationToken);
+            await ThrowIfNotSuccessAsync(response, "add OVPN file", cancellationToken);
 
-            if (!response.IsSuccessStatusCode)
-            {
-                var rawError = await response.Content.ReadAsStringAsync(cancellationToken);
-                logger.LogWarning("Service responded with error JSON: {Error}", rawError);
-
-                string extractedError = "Unknown error";
-
-                try
-                {
-                    var root = JsonConvert.DeserializeObject<JObject>(rawError);
-                    var error = root?["error"]?.ToString();
-
-                    if (!string.IsNullOrWhiteSpace(error))
-                        extractedError = error;
-                }
-                catch (Exception ex)
-                {
-                    logger.LogWarning(ex, "Failed to parse error JSON from service response.");
-                }
-
-                throw new InvalidOperationException(
-                    $"Failed to add OVPN file. Status: {(int)response.StatusCode} {response.ReasonPhrase}. Details:\n{extractedError}");
-            }
-
-            var result = await response.Content.ReadFromJsonAsync<OvpnFileMetadata>(cancellationToken);
-
-            if (result == null)
-            {
-                throw new InvalidOperationException("Received null response when adding OVPN file.");
-            }
+            var result = await MicroserviceApiResponseHelper.ReadSuccessDataAsync<OvpnFileMetadata>(
+                response, cancellationToken);
 
             logger.LogInformation(
                 "Successfully added OVPN file for {CommonName} on server {ServerUrl}, VpnServerId: {VpnServerId}",
@@ -88,7 +72,7 @@ public class OvpnFileApiClient(
                 request.CommonName, vpnServerId);
             throw;
         }
-        catch (JsonException ex)
+        catch (Newtonsoft.Json.JsonException ex)
         {
             logger.LogError(ex, "Failed to deserialize add OVPN file response for {CommonName} on server {VpnServerId}",
                 request.CommonName, vpnServerId);
@@ -106,41 +90,14 @@ public class OvpnFileApiClient(
                 "backend", "DataGateOpenVpnManager");
             client.DefaultRequestHeaders.Authorization = new AuthenticationHeaderValue("Bearer", jwt);
 
-            var response = await client.PostAsJsonAsync(EndpointOvpnFilesRevoke, request, cancellationToken);
-
-            if (!response.IsSuccessStatusCode)
-            {
-                var rawError = await response.Content.ReadAsStringAsync(cancellationToken);
-                logger.LogWarning("Service responded with error JSON while revoking OVPN file: {Error}", rawError);
-
-                string extractedError = "Unknown error";
-                try
-                {
-                    var root = JsonConvert.DeserializeObject<JObject>(rawError);
-                    extractedError = root?["error"]?.ToString() ?? extractedError;
-                }
-                catch (Exception ex)
-                {
-                    logger.LogWarning(ex, "Failed to parse JSON error from revoke response.");
-                }
-
-                throw new InvalidOperationException(
-                    $"Failed to revoke OVPN file. Status: {(int)response.StatusCode} {response.ReasonPhrase}. Details: {extractedError}");
-            }
+            var response = await client.PostAsync(EndpointOvpnFilesRevoke, ProjectJson.ToJsonContent(request), cancellationToken);
+            await ThrowIfNotSuccessAsync(response, "revoke OVPN file", cancellationToken);
 
             var metadata =
-                await response.Content.ReadFromJsonAsync<OvpnFileMetadata>(cancellationToken: cancellationToken);
+                await MicroserviceApiResponseHelper.ReadSuccessDataAsync<OvpnFileMetadata>(response, cancellationToken);
 
-            if (metadata == null)
-            {
-                logger.LogWarning("⚠ Revoke succeeded but metadata is null. CN={CN}, VpnServerId={ID}",
-                    request.CommonName, vpnServerId);
-            }
-            else
-            {
-                logger.LogInformation("✅ OVPN file revocation completed for {CommonName} on server {ServerUrl}",
-                    metadata.CommonName, client.BaseAddress);
-            }
+            logger.LogInformation("OVPN file revocation completed for {CommonName} on server {ServerUrl}",
+                metadata.CommonName, client.BaseAddress);
 
             return true;
         }
@@ -150,7 +107,7 @@ public class OvpnFileApiClient(
                 request.CommonName, vpnServerId);
             throw;
         }
-        catch (JsonException ex)
+        catch (Newtonsoft.Json.JsonException ex)
         {
             logger.LogError(ex,
                 "Failed to deserialize revoke OVPN file response for {CommonName} on server {VpnServerId}",
@@ -169,39 +126,11 @@ public class OvpnFileApiClient(
                 "backend", "DataGateOpenVpnManager");
             client.DefaultRequestHeaders.Authorization = new AuthenticationHeaderValue("Bearer", jwt);
 
-            var response = await client.PostAsJsonAsync(EndpointOvpnFilesDownload, request, cancellationToken);
+            var response = await client.PostAsync(EndpointOvpnFilesDownload, ProjectJson.ToJsonContent(request), cancellationToken);
+            await ThrowIfNotSuccessAsync(response, "download OVPN file", cancellationToken);
 
-            if (!response.IsSuccessStatusCode)
-            {
-                var rawError = await response.Content.ReadAsStringAsync(cancellationToken);
-                logger.LogWarning("Service responded with error JSON: {Error}", rawError);
-
-                string extractedError = "Unknown error";
-
-                try
-                {
-                    var root = JsonConvert.DeserializeObject<JObject>(rawError);
-                    var error = root?["error"]?.ToString();
-
-                    if (!string.IsNullOrWhiteSpace(error))
-                        extractedError = error;
-                }
-                catch (Exception ex)
-                {
-                    logger.LogWarning(ex, "Failed to parse simple JSON error from service.");
-                }
-
-                throw new InvalidOperationException(
-                    $"Failed to download OVPN file. Status: {(int)response.StatusCode} {response.ReasonPhrase}. Details: {extractedError}");
-            }
-
-            var content = await response.Content.ReadFromJsonAsync<OvpnFileDownload>(cancellationToken);
-
-            if (content == null)
-            {
-                throw new InvalidOperationException(
-                    $"Failed to deserialize OVPN file content for CommonName: {request.CommonName}, FileName: {request.FileName}. The server returned a successful status code but the content was null.");
-            }
+            var content = await MicroserviceApiResponseHelper.ReadSuccessDataAsync<OvpnFileDownload>(
+                response, cancellationToken);
 
             logger.LogDebug("Successfully downloaded OVPN file {FileName} for {CommonName} on server {ServerUrl}",
                 request.FileName, request.CommonName, client.BaseAddress);
@@ -215,7 +144,7 @@ public class OvpnFileApiClient(
                 request.FileName, request.CommonName, vpnServerId);
             throw;
         }
-        catch (JsonException ex)
+        catch (Newtonsoft.Json.JsonException ex)
         {
             logger.LogError(ex,
                 "Failed to deserialize OVPN file content for {FileName} and {CommonName} on server {VpnServerId}",

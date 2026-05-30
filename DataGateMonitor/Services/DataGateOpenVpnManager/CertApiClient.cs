@@ -2,8 +2,10 @@
 using System.Net.Http.Headers;
 using Newtonsoft.Json;
 using DataGateMonitor.DataBase.Services.Query.VpnServerTable;
+using DataGateMonitor.Serialization;
 using DataGateMonitor.Services.Api.Auth.Registers.Interfaces;
 using DataGateMonitor.Services.DataGateOpenVpnManager.Interfaces;
+using DataGateMonitor.Services.Helpers;
 using DataGateMonitor.Services.Others.Notifications.CertApiClient;
 using DataGateMonitor.SharedModels.DataGateOpenVpnManager.Cert.Responses;
 using DataGateMonitor.SharedModels.DataGateMonitor.VpnServerCerts.Requests;
@@ -34,7 +36,7 @@ public class CertApiClient(
         VpnServerType serverType,
         CancellationToken cancellationToken)
     {
-        var error = await response.Content.ReadAsStringAsync(cancellationToken);
+        var error = await MicroserviceApiResponseHelper.ReadErrorMessageAsync(response, cancellationToken);
         var message = $"Server returned {(int)response.StatusCode} ({response.StatusCode}): {error}";
         if (response.StatusCode == HttpStatusCode.Unauthorized)
         {
@@ -109,10 +111,10 @@ public class CertApiClient(
                 }
 
                 var certificates =
-                    await response.Content.ReadFromJsonAsync<List<ServerCertificate>>(
-                        cancellationToken: cancellationToken);
+                    await MicroserviceApiResponseHelper.ReadSuccessDataAsync<List<ServerCertificate>>(
+                        response, cancellationToken);
 
-                await certificateNotificationService.NotifyReadAllAsync(vpnServerId, certificates!.Count,
+                await certificateNotificationService.NotifyReadAllAsync(vpnServerId, certificates.Count,
                     cancellationToken);
                 return certificates;
             }
@@ -149,7 +151,7 @@ public class CertApiClient(
                 http.DefaultRequestHeaders.Authorization = new AuthenticationHeaderValue("Bearer", jwt);
 
                 var request = new AddServerCertificateRequest { CommonName = commonName };
-                var response = await http.PostAsJsonAsync(EndpointCertsAdd, request,
+                var response = await http.PostAsync(EndpointCertsAdd, ProjectJson.ToJsonContent(request),
                     cancellationToken);
 
                 if (!response.IsSuccessStatusCode)
@@ -163,9 +165,8 @@ public class CertApiClient(
                 }
 
                 var certificate =
-                    await response.Content.ReadFromJsonAsync<ServerCertificate>(cancellationToken: cancellationToken);
-                if (certificate == null)
-                    throw new InvalidOperationException("Received null response when building certificate");
+                    await MicroserviceApiResponseHelper.ReadSuccessDataAsync<ServerCertificate>(
+                        response, cancellationToken);
 
                 logger.LogInformation("Successfully built certificate for {CommonName} on server {VpnServerId}",
                     commonName,
@@ -207,7 +208,7 @@ public class CertApiClient(
                     "backend", GetCertJwtAudience(serverType));
                 http.DefaultRequestHeaders.Authorization = new AuthenticationHeaderValue("Bearer", jwt);
 
-                var response = await http.PostAsJsonAsync(EndpointCertsRevoke, request,
+                var response = await http.PostAsync(EndpointCertsRevoke, ProjectJson.ToJsonContent(request),
                     cancellationToken);
 
                 if (!response.IsSuccessStatusCode)
@@ -222,9 +223,8 @@ public class CertApiClient(
                 }
 
                 var certificate =
-                    await response.Content.ReadFromJsonAsync<ServerCertificate>(cancellationToken: cancellationToken);
-                if (certificate == null)
-                    throw new InvalidOperationException("Received null response when revoking certificate");
+                    await MicroserviceApiResponseHelper.ReadSuccessDataAsync<ServerCertificate>(
+                        response, cancellationToken);
 
                 logger.LogInformation(
                     "Certificate revocation completed for {CommonName} on server {VpnServerId}." +

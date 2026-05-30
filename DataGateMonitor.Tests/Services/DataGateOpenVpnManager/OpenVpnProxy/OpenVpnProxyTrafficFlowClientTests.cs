@@ -1,9 +1,9 @@
-using System.Text.Json;
 using FluentAssertions;
 using Microsoft.AspNetCore.SignalR;
 using Microsoft.AspNetCore.SignalR.Client;
 using Microsoft.Extensions.Logging;
 using Moq;
+using Newtonsoft.Json.Linq;
 using DataGateMonitor.Hubs;
 using DataGateMonitor.Models;
 using DataGateMonitor.Services.Api.Auth.Registers.Interfaces;
@@ -23,7 +23,7 @@ public class OpenVpnProxyTrafficFlowClientTests
         groupProxy
             .Setup(p => p.SendCoreAsync(
                 "TrafficFlowUpdated",
-                It.Is<object?[]>(args => args.Length == 1 && args[0] is JsonElement),
+                It.Is<object?[]>(args => args.Length == 1 && args[0] is JToken),
                 It.IsAny<CancellationToken>()))
             .Returns(Task.CompletedTask)
             .Verifiable();
@@ -39,15 +39,15 @@ public class OpenVpnProxyTrafficFlowClientTests
             .Setup(t => t.GenerateToken(It.IsAny<string>(), It.IsAny<string>(), It.IsAny<string>(), It.IsAny<string>()))
             .Returns("token");
 
-        Func<JsonElement, Task>? capturedHandler = null;
+        Func<JToken, Task>? capturedHandler = null;
         var connection = new Mock<IHubConnectionProxy>();
         connection.SetupSequence(c => c.State)
             .Returns(HubConnectionState.Disconnected)
             .Returns(HubConnectionState.Connected);
         connection.Setup(c => c.StartAsync(It.IsAny<CancellationToken>())).Returns(Task.CompletedTask).Verifiable();
         connection
-            .Setup(c => c.On("TrafficFlowUpdated", It.IsAny<Func<JsonElement, Task>>()))
-            .Callback<string, Func<JsonElement, Task>>((_, handler) => capturedHandler = handler);
+            .Setup(c => c.On("TrafficFlowUpdated", It.IsAny<Func<JToken, Task>>()))
+            .Callback<string, Func<JToken, Task>>((_, handler) => capturedHandler = handler);
 
         var hubFactory = new Mock<IHubConnectionFactory>();
         hubFactory
@@ -68,7 +68,7 @@ public class OpenVpnProxyTrafficFlowClientTests
         await client.StartListeningAsync(CancellationToken.None);
 
         capturedHandler.Should().NotBeNull();
-        var payload = JsonDocument.Parse("""[{ "connectionId": "c1" }]""").RootElement;
+        var payload = JArray.Parse("""[{ "connectionId": "c1" }]""");
         await capturedHandler!(payload);
 
         hubFactory.VerifyAll();
@@ -91,7 +91,7 @@ public class OpenVpnProxyTrafficFlowClientTests
 
         var connection = new Mock<IHubConnectionProxy>();
         connection.SetupGet(c => c.State).Returns(HubConnectionState.Connected);
-        connection.Setup(c => c.On("TrafficFlowUpdated", It.IsAny<Func<JsonElement, Task>>()));
+        connection.Setup(c => c.On("TrafficFlowUpdated", It.IsAny<Func<JToken, Task>>()));
 
         var hubFactory = new Mock<IHubConnectionFactory>();
         hubFactory.Setup(f => f.Create(It.IsAny<string>(), It.IsAny<Func<Task<string?>>>()))
@@ -124,7 +124,7 @@ public class OpenVpnProxyTrafficFlowClientTests
         groupProxy
             .Setup(p => p.SendCoreAsync(
                 "TrafficFlowUpdated",
-                It.Is<object?[]>(args => args.Length == 1 && args[0] is JsonElement),
+                It.Is<object?[]>(args => args.Length == 1 && args[0] is JToken),
                 It.IsAny<CancellationToken>()))
             .Callback(() => Interlocked.Increment(ref relayed))
             .Returns(Task.CompletedTask);
@@ -140,15 +140,15 @@ public class OpenVpnProxyTrafficFlowClientTests
             .Setup(t => t.GenerateToken(It.IsAny<string>(), It.IsAny<string>(), It.IsAny<string>(), It.IsAny<string>()))
             .Returns("token");
 
-        Func<JsonElement, Task>? capturedHandler = null;
+        Func<JToken, Task>? capturedHandler = null;
         var connection = new Mock<IHubConnectionProxy>();
         connection.SetupSequence(c => c.State)
             .Returns(HubConnectionState.Disconnected)
             .Returns(HubConnectionState.Connected);
         connection.Setup(c => c.StartAsync(It.IsAny<CancellationToken>())).Returns(Task.CompletedTask);
         connection
-            .Setup(c => c.On("TrafficFlowUpdated", It.IsAny<Func<JsonElement, Task>>()))
-            .Callback<string, Func<JsonElement, Task>>((_, handler) => capturedHandler = handler);
+            .Setup(c => c.On("TrafficFlowUpdated", It.IsAny<Func<JToken, Task>>()))
+            .Callback<string, Func<JToken, Task>>((_, handler) => capturedHandler = handler);
 
         var hubFactory = new Mock<IHubConnectionFactory>();
         hubFactory.Setup(f => f.Create(It.IsAny<string>(), It.IsAny<Func<Task<string?>>>()))
@@ -165,7 +165,7 @@ public class OpenVpnProxyTrafficFlowClientTests
         await client.StartListeningAsync(CancellationToken.None);
         capturedHandler.Should().NotBeNull();
 
-        var payload = JsonDocument.Parse("""[{ "connectionId": "c1", "clientToServerBytesDelta": 1 }]""").RootElement;
+        var payload = JArray.Parse("""[{ "connectionId": "c1", "clientToServerBytesDelta": 1 }]""");
         var tasks = Enumerable.Range(0, payloadCount).Select(_ => capturedHandler!(payload));
         await Task.WhenAll(tasks);
 

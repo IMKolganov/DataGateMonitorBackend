@@ -1,5 +1,5 @@
-using System.Text.Json;
 using Microsoft.AspNetCore.SignalR;
+using Newtonsoft.Json.Linq;
 using Microsoft.AspNetCore.SignalR.Client;
 using DataGateMonitor.Hubs;
 using DataGateMonitor.Models;
@@ -64,7 +64,7 @@ public sealed class OpenVpnProxyTrafficFlowClient(
 
                 if (!_handlersRegistered)
                 {
-                    _connection.On<JsonElement>("TrafficFlowUpdated", async payload =>
+                    _connection.On<JToken>("TrafficFlowUpdated", async payload =>
                     {
                         await trafficFlowHub.Clients.Group(server.Id.ToString())
                             .SendAsync("TrafficFlowUpdated", payload);

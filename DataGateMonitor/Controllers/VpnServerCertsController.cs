@@ -42,7 +42,7 @@ public class VpnServerCertsController(ICertApiClient certApiClient,
         catch (Exception ex)
         {
             logger.LogError(ex, "Failed to get certificates from server {VpnServerId}", request.VpnServerId);
-            return BadRequest(ApiResponse<string>.ErrorResponse(ex.Message));
+            return BadRequest(ApiResponse<GetAllCertificatesResponse>.ErrorResponse(ex.Message));
         }
     }
 
@@ -73,7 +73,7 @@ public class VpnServerCertsController(ICertApiClient certApiClient,
             logger.LogError(ex, "Failed to build certificate for {CommonName} on server {VpnServerId}",
                 request.CommonName, request.VpnServerId);
 
-            return BadRequest(ApiResponse<string>.ErrorResponse(ex.Message));
+            return BadRequest(ApiResponse<BuildCertificateResponse>.ErrorResponse(ex.Message));
         }
     }
 
@@ -104,7 +104,7 @@ public class VpnServerCertsController(ICertApiClient certApiClient,
             logger.LogError(ex, "Failed to revoke certificate for {CommonName} on server {VpnServerId}",
                 request.CommonName, request.VpnServerId);
 
-            return BadRequest(ApiResponse<string>.ErrorResponse(ex.Message));
+            return BadRequest(ApiResponse<RevokeCertificateResponse>.ErrorResponse(ex.Message));
         }
     }
 }

@@ -24,7 +24,24 @@ public class XrayNodeApiClientTests
     [Fact]
     public async Task GetActiveClientsAsync_ReturnsDeserializedClients_On200()
     {
-        const string json = """{"clients":[{"email":"a@b.c","remoteAddress":"1.1.1.1:1","bytesReceived":1,"bytesSent":2,"connectedSince":"2024-01-02T03:04:05Z"}]}""";
+        const string json = """
+            {
+              "success": true,
+              "message": "Success",
+              "data": {
+                "clients": [
+                  {
+                    "email": "a@b.c",
+                    "remoteAddress": "1.1.1.1:1",
+                    "bytesReceived": 1,
+                    "bytesSent": 2,
+                    "connectedSince": "2024-01-02T03:04:05Z"
+                  }
+                ],
+                "polledAt": "2024-01-02T03:04:05Z"
+              }
+            }
+            """;
 
         var handler = new StubHandler(req =>
         {
