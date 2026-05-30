@@ -19,12 +19,14 @@ public class OpenVpnProxyTrafficFlowClientTests
     {
         var server = new VpnServer { Id = 15, ApiUrl = "https://node.example/api" };
 
+        object? relayedPayload = null;
         var groupProxy = new Mock<IClientProxy>();
         groupProxy
             .Setup(p => p.SendCoreAsync(
                 "TrafficFlowUpdated",
-                It.Is<object?[]>(args => args.Length == 1 && args[0] is JToken),
+                It.Is<object?[]>(args => args.Length == 1 && args[0] != null),
                 It.IsAny<CancellationToken>()))
+            .Callback<string, object?[], CancellationToken>((_, args, _) => relayedPayload = args[0])
             .Returns(Task.CompletedTask)
             .Verifiable();
 
@@ -71,6 +73,7 @@ public class OpenVpnProxyTrafficFlowClientTests
         var payload = JArray.Parse("""[{ "connectionId": "c1" }]""");
         await capturedHandler!(payload);
 
+        relayedPayload.Should().NotBeNull();
         hubFactory.VerifyAll();
         connection.Verify(c => c.StartAsync(It.IsAny<CancellationToken>()), Times.Once);
         groupProxy.VerifyAll();
@@ -124,7 +127,7 @@ public class OpenVpnProxyTrafficFlowClientTests
         groupProxy
             .Setup(p => p.SendCoreAsync(
                 "TrafficFlowUpdated",
-                It.Is<object?[]>(args => args.Length == 1 && args[0] is JToken),
+                It.Is<object?[]>(args => args.Length == 1 && args[0] != null),
                 It.IsAny<CancellationToken>()))
             .Callback(() => Interlocked.Increment(ref relayed))
             .Returns(Task.CompletedTask);

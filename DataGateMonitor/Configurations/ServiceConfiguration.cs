@@ -26,6 +26,7 @@ using DataGateMonitor.Services.StatusStreamLogs;
 using DataGateMonitor.Services.XrayNode;
 using System.Net;
 using System.Net.Http;
+using DataGateMonitor.Serialization;
 
 namespace DataGateMonitor.Configurations;
 
@@ -47,9 +48,10 @@ public static class ServiceConfiguration
             });
         });
         services.AddSignalR(options =>
-        {
-            options.EnableDetailedErrors = true;
-        });
+            {
+                options.EnableDetailedErrors = true;
+            })
+            .AddNewtonsoftJsonProtocol(options => options.PayloadSerializerSettings = ProjectJson.WebSettings);
         services.ConfigureHttpClientDefaults(builder =>
         {
             builder.ConfigurePrimaryHttpMessageHandler(() => new SocketsHttpHandler

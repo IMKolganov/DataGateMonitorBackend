@@ -8,6 +8,7 @@ using DataGateMonitor.DataBase.Services.Command.Interfaces;
 using DataGateMonitor.DataBase.Services.Query.IssuedOvpnFileTable;
 using DataGateMonitor.Hubs;
 using DataGateMonitor.Models;
+using DataGateMonitor.Serialization;
 using DataGateMonitor.Services.Api.Auth.Registers.Interfaces;
 using DataGateMonitor.Services.DataGateOpenVpnManager.Interfaces;
 using DataGateMonitor.Services.Others.Notifications.OpenVpnMicroserviceClient;
@@ -131,6 +132,7 @@ public class OpenVpnEventClient(
                             Task.FromResult<string?>(tokenService.GenerateToken(
                                 "vpn-cert-issuer", "cert-create", "backend", "DataGateOpenVpnManager"));
                     })
+                    .AddNewtonsoftJsonProtocol(options => options.PayloadSerializerSettings = ProjectJson.WebSettings)
                     .WithAutomaticReconnect([
                         TimeSpan.Zero, TimeSpan.FromSeconds(2),
                         TimeSpan.FromSeconds(5), TimeSpan.FromSeconds(15),
