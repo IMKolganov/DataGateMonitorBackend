@@ -36,7 +36,7 @@ public class TrafficDailyRollupNotificationServiceTests
         Assert.NotNull(captured);
         Assert.Equal(NotificationTypes.TrafficDailyRollupSucceeded, captured!.Type);
         Assert.Equal(NotificationSeverity.Info, captured.Severity);
-        Assert.Null(captured.PreferenceKind);
+        Assert.Equal(ApplicationNotificationKind.TrafficDailyRollupSucceeded, captured.PreferenceKind);
         Assert.Contains("2 UTC day(s)", captured.Message, StringComparison.Ordinal);
         Assert.Contains("42 session-day row(s)", captured.Message, StringComparison.Ordinal);
         Assert.Equal(["web", "telegram"], channels);
@@ -65,7 +65,7 @@ public class TrafficDailyRollupNotificationServiceTests
         Assert.NotNull(captured);
         Assert.Equal(NotificationTypes.TrafficDailyRollupFailed, captured!.Type);
         Assert.Equal(NotificationSeverity.Error, captured.Severity);
-        Assert.Null(captured.PreferenceKind);
+        Assert.Equal(ApplicationNotificationKind.TrafficDailyRollupFailed, captured.PreferenceKind);
         Assert.Contains("2026-05-03", captured.Message, StringComparison.Ordinal);
         Assert.Contains("boom", captured.Message, StringComparison.Ordinal);
         Assert.Contains("Completed 1 day(s)", captured.Message, StringComparison.Ordinal);
