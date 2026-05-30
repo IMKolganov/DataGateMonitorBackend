@@ -61,7 +61,7 @@ public class OpenVpnOverviewSeriesQueryTests
 
         await ctx.SaveChangesAsync();
 
-        var sut = new OpenVpnOverviewSeriesQuery(uow.Object);
+        var sut = new OpenVpnOverviewSeriesQuery(uow.Object, OverviewQueryTestHelper.CreateTrafficAggregator(uow.Object));
         var res = await sut.GetOverviewSeriesFromSessionsAsync(from, to, OverviewGrouping.Auto, vpnServerId: 1, externalId: null, CancellationToken.None);
 
         // FillMissingBuckets includes the bucket aligned to 'to' as well => expect 3: 00:00, 01:00, 02:00
@@ -135,7 +135,7 @@ public class OpenVpnOverviewSeriesQueryTests
         });
         await ctx.SaveChangesAsync();
 
-        var sut = new OpenVpnOverviewSeriesQuery(uow.Object);
+        var sut = new OpenVpnOverviewSeriesQuery(uow.Object, OverviewQueryTestHelper.CreateTrafficAggregator(uow.Object));
         var res = await sut.GetOverviewUsersFromSessionsAsync(from, to, vpnServerId: null, externalId: null, CancellationToken.None);
 
         // Should contain both users
@@ -182,7 +182,7 @@ public class OpenVpnOverviewSeriesQueryTests
         });
         await ctx.SaveChangesAsync();
 
-        var sut = new OpenVpnOverviewSeriesQuery(uow.Object);
+        var sut = new OpenVpnOverviewSeriesQuery(uow.Object, OverviewQueryTestHelper.CreateTrafficAggregator(uow.Object));
         var res = await sut.GetOverviewUsersSeriesFromSessionsAsync(from, to, OverviewGrouping.Auto, vpnServerId: 1, externalId: null, CancellationToken.None);
 
         Assert.Equal(3, res.Rows.Count); // 00:00, 01:00, 02:00 (zero-filled)

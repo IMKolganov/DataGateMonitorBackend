@@ -13,4 +13,7 @@ public static class NotificationTypes
 
     public const string UserRegistered       = "user.registered";
     public const string UserPasswordChanged  = "user.password_changed";
+
+    public const string TrafficDailyRollupSucceeded = "traffic.daily-rollup.succeeded";
+    public const string TrafficDailyRollupFailed      = "traffic.daily-rollup.failed";
 }

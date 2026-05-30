@@ -42,6 +42,7 @@ public class ApplicationDbContext(DbContextOptions<ApplicationDbContext> options
     public DbSet<IncomingMessageLog> IncomingMessageLogs { get; set; } = null!;
     public DbSet<VpnServerEventLog> VpnServerEventLogs { get; set; } = null!;
     public DbSet<VpnServerClientTraffic> VpnServerClientTraffics { get; set; } = null!;
+    public DbSet<VpnServerClientTrafficDaily> VpnServerClientTrafficDailies { get; set; } = null!;
     public DbSet<Notification> Notifications { get; set; } = null!;
     public DbSet<NotificationRecipient> NotificationRecipients { get; set; } = null!;
     public DbSet<User> Users { get; set; } = null!;
@@ -81,6 +82,7 @@ public class ApplicationDbContext(DbContextOptions<ApplicationDbContext> options
         modelBuilder.ApplyConfiguration(new IncomingMessageLogConfiguration());
         modelBuilder.ApplyConfiguration(new VpnServerEventLogConfiguration());
         modelBuilder.ApplyConfiguration(new VpnServerClientTrafficConfiguration());
+        modelBuilder.ApplyConfiguration(new VpnServerClientTrafficDailyConfiguration());
         modelBuilder.ApplyConfiguration(new NotificationConfiguration());
         modelBuilder.ApplyConfiguration(new NotificationRecipientConfiguration());
         modelBuilder.ApplyConfiguration(new UserConfiguration());

@@ -98,10 +98,12 @@ public static class ServiceConfiguration
         services.AddSingleton<IOpenVpnBackgroundService>(provider => provider.GetRequiredService<OpenVpnBackgroundService>());
         if (databaseRuntime.IsConnectionConfigured)
         {
+            services.AddScoped<ITrafficDailyRollupRunner, TrafficDailyRollupRunner>();
             services.AddHostedService(provider => provider.GetRequiredService<OpenVpnBackgroundService>());
             services.AddHostedService<OpenVpnEventBackgroundService>();
             services.AddHostedService<OpenVpnStatusStreamPublisher>();
             services.AddHostedService<OpenVpnProxyTrafficFlowBackgroundService>();
+            services.AddHostedService<TrafficDailyRollupBackgroundService>();
         }
 
         services.AddScoped<IVpnEventLogService, VpnEventLogService>();
