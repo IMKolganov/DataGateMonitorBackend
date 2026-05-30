@@ -1,4 +1,5 @@
 using Moq;
+using DataGateMonitor.Serialization;
 using DataGateMonitor.DataBase.Services.Command.Interfaces;
 using DataGateMonitor.DataBase.Services.Query.VpnServerConflogTable;
 using DataGateMonitor.DataBase.Services.Query.VpnServerTable;
@@ -62,8 +63,7 @@ public class VpnServerConflogServiceTests
         var micro = new Mock<IMicroserviceInfoService>();
         micro.Setup(m => m.GetInfoByUrlAsync("https://host", null, It.IsAny<CancellationToken>())).ReturnsAsync(response);
 
-        var jsonOptions = new System.Text.Json.JsonSerializerOptions { PropertyNamingPolicy = System.Text.Json.JsonNamingPolicy.CamelCase, WriteIndented = false };
-        var existingJson = System.Text.Json.JsonSerializer.Serialize(response, jsonOptions);
+        var existingJson = ProjectJson.Serialize(response);
         var last = new VpnServerConflog { Id = 1, RequestUrl = "https://host", PayloadJson = existingJson };
         var conflogQ = new Mock<IVpnServerConflogQueryService>();
         conflogQ.Setup(q => q.GetLastByRequestUrl(It.IsAny<string>(), It.IsAny<CancellationToken>())).ReturnsAsync(last);
@@ -133,8 +133,7 @@ public class VpnServerConflogServiceTests
         serverQ.Setup(q => q.GetById(10, It.IsAny<CancellationToken>()))
             .ReturnsAsync(new VpnServer { Id = 10, ServerType = VpnServerType.OpenVpn, ApiUrl = "https://host" });
 
-        var jsonOptions = new System.Text.Json.JsonSerializerOptions { PropertyNamingPolicy = System.Text.Json.JsonNamingPolicy.CamelCase, WriteIndented = false };
-        var samePayloadJson = System.Text.Json.JsonSerializer.Serialize(response, jsonOptions);
+        var samePayloadJson = ProjectJson.Serialize(response);
         var oldConflogFromDeletedServer = new VpnServerConflog { Id = 1, VpnServerId = 5, RequestUrl = "https://host", PayloadJson = samePayloadJson };
 
         var conflogQ = new Mock<IVpnServerConflogQueryService>();

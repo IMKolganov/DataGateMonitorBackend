@@ -20,7 +20,7 @@ public class SettingsController(ISettingsService settingsService) : BaseControll
         var settingType = await settingsService.GetValueAsync<string>($"{request.Key}_Type", cancellationToken);
         if (settingType == null)
         {
-            return NotFound(ApiResponse<string>.ErrorResponse($"Setting '{request.Key}' not found."));
+            return NotFound(ApiResponse<SettingResponse>.ErrorResponse($"Setting '{request.Key}' not found."));
         }
 
         object? value = settingType.ToLower() switch
@@ -35,7 +35,7 @@ public class SettingsController(ISettingsService settingsService) : BaseControll
 
         if (value is null)
         {
-            return NotFound(ApiResponse<string>.ErrorResponse($"Setting '{request.Key}' not found."));
+            return NotFound(ApiResponse<SettingResponse>.ErrorResponse($"Setting '{request.Key}' not found."));
         }
 
         return Ok(ApiResponse<SettingResponse>.SuccessResponse(new SettingResponse
@@ -61,7 +61,7 @@ public class SettingsController(ISettingsService settingsService) : BaseControll
 
         if (convertedValue is null)
         {
-            return BadRequest(ApiResponse<string>.ErrorResponse($"Invalid value '{request.Value}' for type '{request.Type}'."));
+            return BadRequest(ApiResponse<SettingResponse>.ErrorResponse($"Invalid value '{request.Value}' for type '{request.Type}'."));
         }
 
         await settingsService.SetValueAsync(request.Key, convertedValue, cancellationToken);

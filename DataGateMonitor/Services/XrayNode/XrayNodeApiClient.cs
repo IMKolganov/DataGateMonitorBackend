@@ -1,8 +1,10 @@
 using System.Net.Http.Headers;
-using System.Text;
-using System.Text.Json;
 using DataGateMonitor.Models.XrayNode;
 using DataGateMonitor.Services.Api.Auth.Registers.Interfaces;
+using DataGateMonitor.Services.Helpers;
+using DataGateMonitor.Serialization;
+using DataGateMonitor.SharedModels.DataGateXRayManager.XrayClients;
+using DataGateMonitor.SharedModels.Responses;
 
 namespace DataGateMonitor.Services.XrayNode;
 
@@ -17,11 +19,6 @@ public sealed class XrayNodeApiClient(
     internal const string KickRelativePath = "api/xray/clients/kick";
     internal const string DisableRelativePath = "api/xray/users/disable";
     private const string AudienceXRayManager = "DataGateXRayManager";
-
-    private static readonly JsonSerializerOptions JsonOptions = new()
-    {
-        PropertyNameCaseInsensitive = true,
-    };
 
     public async Task<XrayNodeClientsResponse?> GetActiveClientsAsync(string baseApiUrl,
         CancellationToken cancellationToken)
@@ -47,11 +44,11 @@ public sealed class XrayNodeApiClient(
             return null;
         }
 
-        await using var stream = await response.Content.ReadAsStreamAsync(cancellationToken);
-        var result = await JsonSerializer.DeserializeAsync<XrayNodeClientsResponse>(stream, JsonOptions,
-            cancellationToken);
+        var wrapped = await ProjectJson.ReadContentAsync<ApiResponse<XrayClientsEnvelope>>(response.Content, cancellationToken);
+        if (wrapped is not { Success: true, Data: not null })
+            return new XrayNodeClientsResponse();
 
-        return result ?? new XrayNodeClientsResponse();
+        return MapEnvelopeToNodeResponse(wrapped.Data);
     }
 
     public async Task KickUserAsync(string baseApiUrl, string commonName, CancellationToken cancellationToken)
@@ -74,23 +71,38 @@ public sealed class XrayNodeApiClient(
 
         var baseUri = baseApiUrl.TrimEnd('/') + "/";
         var requestUri = new Uri(new Uri(baseUri, UriKind.Absolute), relativePath);
-        var json = JsonSerializer.Serialize(body, JsonOptions);
         var client = httpClientFactory.CreateClient(HttpClientName);
         using var request = new HttpRequestMessage(HttpMethod.Post, requestUri)
         {
-            Content = new StringContent(json, Encoding.UTF8, "application/json")
+            Content = ProjectJson.ToJsonContent(body)
         };
         request.Headers.Authorization = new AuthenticationHeaderValue("Bearer",
             tokenService.GenerateToken("vpn-cert-issuer", "cert-create", "backend", AudienceXRayManager));
 
         using var response = await client.SendAsync(request, cancellationToken);
-        var raw = await response.Content.ReadAsStringAsync(cancellationToken);
         if (!response.IsSuccessStatusCode)
         {
-            logger.LogWarning("Xray node {Action} failed: {Status} {Body}", actionLabel,
-                (int)response.StatusCode, raw);
+            var detail = await MicroserviceApiResponseHelper.ReadErrorMessageAsync(response, cancellationToken);
+            logger.LogWarning("Xray node {Action} failed: {Status} {Detail}", actionLabel,
+                (int)response.StatusCode, detail);
             throw new HttpRequestException(
-                $"Xray node {actionLabel} failed ({(int)response.StatusCode}): {raw}");
+                $"Xray node {actionLabel} failed ({(int)response.StatusCode}): {detail}", null, response.StatusCode);
         }
     }
+
+    private static XrayNodeClientsResponse MapEnvelopeToNodeResponse(XrayClientsEnvelope envelope) =>
+        new()
+        {
+            Clients = envelope.Clients.Select(c => new XrayNodeClientDto
+            {
+                Email = c.Email,
+                RemoteAddress = c.RemoteAddress,
+                Username = c.Username,
+                BytesReceived = c.BytesReceived,
+                BytesSent = c.BytesSent,
+                ConnectedSince = c.ConnectedSince,
+            }).ToList(),
+            PollError = envelope.PollError,
+            PolledAt = envelope.PolledAt,
+        };
 }

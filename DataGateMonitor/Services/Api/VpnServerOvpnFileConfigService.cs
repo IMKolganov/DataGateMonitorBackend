@@ -4,7 +4,8 @@ using DataGateMonitor.Models;
 using DataGateMonitor.Services.Api.Interfaces;
 using DataGateMonitor.Services.DataGateOpenVpnManager.Interfaces;
 using DataGateMonitor.SharedModels.Enums;
-using System.Text.Json;
+using DataGateMonitor.Serialization;
+using Newtonsoft.Json.Linq;
 using System.Text.RegularExpressions;
 
 namespace DataGateMonitor.Services.Api;
@@ -88,26 +89,26 @@ public class VpnServerOvpnFileConfigService(
         port = null;
         proto = null;
 
-        using var doc = JsonDocument.Parse(JsonSerializer.Serialize(openVpnInfo));
-        if (!TryGetPropertyIgnoreCase(doc.RootElement, "config", out var cfg) || cfg.ValueKind != JsonValueKind.Object)
-            return false;
-
-        if (TryGetPropertyIgnoreCase(cfg, "port", out var portEl) && portEl.TryGetInt32(out var parsedPort))
-            port = parsedPort;
-
-        if (TryGetPropertyIgnoreCase(cfg, "proto", out var protoEl) && protoEl.ValueKind == JsonValueKind.String)
+        var root = JObject.FromObject(openVpnInfo, Newtonsoft.Json.JsonSerializer.Create(ProjectJson.WebSettings));
+        if (TryGetPropertyIgnoreCase(root, "config", out var cfgToken) && cfgToken is JObject cfg)
         {
-            var p = protoEl.GetString()?.Trim().ToLowerInvariant();
-            if (p is "tcp" or "udp")
-                proto = p;
+            if (TryGetPropertyIgnoreCase(cfg, "port", out var portToken) && portToken.Type == JTokenType.Integer)
+                port = portToken.Value<int>();
+
+            if (TryGetPropertyIgnoreCase(cfg, "proto", out var protoToken) && protoToken.Type == JTokenType.String)
+            {
+                var p = protoToken.Value<string>()?.Trim().ToLowerInvariant();
+                if (p is "tcp" or "udp")
+                    proto = p;
+            }
         }
 
         return port.HasValue || !string.IsNullOrWhiteSpace(proto);
     }
 
-    private static bool TryGetPropertyIgnoreCase(JsonElement obj, string propertyName, out JsonElement value)
+    private static bool TryGetPropertyIgnoreCase(JObject obj, string propertyName, out JToken? value)
     {
-        foreach (var prop in obj.EnumerateObject())
+        foreach (var prop in obj.Properties())
         {
             if (string.Equals(prop.Name, propertyName, StringComparison.OrdinalIgnoreCase))
             {
@@ -116,7 +117,7 @@ public class VpnServerOvpnFileConfigService(
             }
         }
 
-        value = default;
+        value = null;
         return false;
     }
 
