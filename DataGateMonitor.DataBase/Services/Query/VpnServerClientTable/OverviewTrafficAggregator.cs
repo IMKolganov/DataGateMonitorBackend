@@ -139,7 +139,7 @@ public sealed class OverviewTrafficAggregator(
 
         var rawRows = await QueryTrafficSeriesBucketsPostgresAsync(
             ctx, rawFrom, rawTo, grouping, vpnServerId, externalId, ct);
-        return OverviewTrafficDailyQueries.MergeBuckets(dailyRows, rawRows);
+        return OverviewTrafficDailyQueries.MergeBuckets(dailyRows, rawRows, fromUtc.Offset);
     }
 
     private async Task<IReadOnlyList<OverviewUsersSeriesBucketRow>> QueryUsersSeriesHybridAsync(
@@ -169,7 +169,7 @@ public sealed class OverviewTrafficAggregator(
 
         var rawRows = await QueryUsersSeriesBucketsPostgresAsync(
             ctx, rawFrom, rawTo, grouping, vpnServerId, externalId, ct);
-        return dailyRows.Concat(rawRows).OrderBy(x => x.BucketTs).ToList();
+        return OverviewTrafficDailyQueries.MergeUsersSeriesBuckets(dailyRows, rawRows, fromUtc.Offset);
     }
 
     private async Task<OverviewTrafficTotalsRow> QueryTrafficTotalsHybridAsync(
@@ -217,16 +217,18 @@ public sealed class OverviewTrafficAggregator(
         if (!hasDaily)
             return await QueryUserTrafficRowsPostgresAsync(ctx, fromUtc, toUtc, vpnServerId, externalId, ct);
 
-        if (split.RawFromUtc is { } rawFrom && split.RawToUtc is { } rawTo && rawTo > rawFrom)
-            return await QueryUserTrafficRowsPostgresAsync(ctx, fromUtc, toUtc, vpnServerId, externalId, ct);
-
+        IReadOnlyList<OverviewUserTrafficRow> dailyRows = [];
         if (split.DailyToExclusive > split.DailyFrom)
         {
-            return await OverviewTrafficDailyQueries.QueryUserTrafficAsync(
+            dailyRows = await OverviewTrafficDailyQueries.QueryUserTrafficAsync(
                 ctx, split.DailyFrom, split.DailyToExclusive, vpnServerId, externalId, ct);
         }
 
-        return await QueryUserTrafficRowsPostgresAsync(ctx, fromUtc, toUtc, vpnServerId, externalId, ct);
+        if (split.RawFromUtc is not { } rawFrom || split.RawToUtc is not { } rawTo || rawTo <= rawFrom)
+            return dailyRows;
+
+        var rawRows = await QueryUserTrafficRowsPostgresAsync(ctx, rawFrom, rawTo, vpnServerId, externalId, ct);
+        return OverviewTrafficDailyQueries.MergeUserTrafficRows(dailyRows, rawRows);
     }
 
     private async Task<IReadOnlyList<OverviewTrafficBucketRow>> QueryTrafficSeriesBucketsPostgresAsync(

@@ -52,7 +52,16 @@ public static class OverviewTrafficDailyPostgresSql
     };
 
     public static string BucketStartSql(string truncUnit, string dayColumn = "f.\"DayUtc\"")
-        => truncUnit == "day"
-            ? $"({dayColumn}::timestamp AT TIME ZONE 'UTC')"
-            : $"date_trunc('{truncUnit}', {dayColumn}::timestamp AT TIME ZONE 'UTC')";
+    {
+        if (truncUnit == "day")
+            return $"({dayColumn}::timestamp AT TIME ZONE 'UTC')";
+
+        // Build UTC bucket starts from calendar DayUtc (avoids Npgsql/FillMissing key drift on date_trunc).
+        return truncUnit switch
+        {
+            "month" => $"make_timestamptz(EXTRACT(YEAR FROM {dayColumn})::int, EXTRACT(MONTH FROM {dayColumn})::int, 1, 0, 0, 0, 'UTC')",
+            "year" => $"make_timestamptz(EXTRACT(YEAR FROM {dayColumn})::int, 1, 1, 0, 0, 0, 'UTC')",
+            _ => $"({dayColumn}::timestamp AT TIME ZONE 'UTC')",
+        };
+    }
 }

@@ -95,4 +95,49 @@ public class OverviewTrafficDailyQueriesTests
         Assert.Equal(t1, merged[0].BucketTs);
         Assert.Equal(t2, merged[1].BucketTs);
     }
+
+    [Fact]
+    public void MergeUserTrafficRows_CombinesDailyAndRawRowsByExternalId()
+    {
+        var daily = new OverviewUserTrafficRow
+        {
+            ExternalId = "user-a",
+            VpnServerId = 1,
+            Sessions = 2,
+            TrafficInBytes = 100,
+            TrafficOutBytes = 50,
+            FirstSeen = new DateTimeOffset(2026, 5, 1, 0, 0, 0, TimeSpan.Zero),
+            LastSeen = new DateTimeOffset(2026, 5, 29, 0, 0, 0, TimeSpan.Zero),
+        };
+        var raw = new OverviewUserTrafficRow
+        {
+            ExternalId = "user-a",
+            VpnServerId = 1,
+            Sessions = 1,
+            TrafficInBytes = 10,
+            TrafficOutBytes = 5,
+            FirstSeen = new DateTimeOffset(2026, 5, 31, 8, 0, 0, TimeSpan.Zero),
+            LastSeen = new DateTimeOffset(2026, 5, 31, 12, 0, 0, TimeSpan.Zero),
+        };
+        var rawOnly = new OverviewUserTrafficRow
+        {
+            ExternalId = "user-b",
+            Sessions = 1,
+            TrafficInBytes = 500,
+            TrafficOutBytes = 0,
+            FirstSeen = new DateTimeOffset(2026, 5, 31, 9, 0, 0, TimeSpan.Zero),
+            LastSeen = new DateTimeOffset(2026, 5, 31, 10, 0, 0, TimeSpan.Zero),
+        };
+
+        var merged = OverviewTrafficDailyQueries.MergeUserTrafficRows([daily], [raw, rawOnly]);
+
+        Assert.Equal(2, merged.Count);
+        Assert.Equal("user-b", merged[0].ExternalId);
+        Assert.Equal("user-a", merged[1].ExternalId);
+        Assert.Equal(110, merged[1].TrafficInBytes);
+        Assert.Equal(55, merged[1].TrafficOutBytes);
+        Assert.Equal(3, merged[1].Sessions);
+        Assert.Equal(daily.FirstSeen, merged[1].FirstSeen);
+        Assert.Equal(raw.LastSeen, merged[1].LastSeen);
+    }
 }
