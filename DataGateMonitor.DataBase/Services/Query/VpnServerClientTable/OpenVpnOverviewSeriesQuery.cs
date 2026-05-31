@@ -195,6 +195,72 @@ public sealed class OpenVpnOverviewSeriesQuery(
             : OverviewGrouping.Years;
     }
 
+    private static Dictionary<DateTimeOffset, OverviewSeriesRowDto> BuildSeriesBucketDict(
+        IEnumerable<OverviewSeriesRowDto> rows,
+        OverviewGrouping mode,
+        TimeSpan offset)
+    {
+        var dict = new Dictionary<DateTimeOffset, OverviewSeriesRowDto>();
+        foreach (var row in rows)
+        {
+            var key = OverviewBucketMath.AlignToBucketStartWithOffset(mode, row.Ts, offset);
+            if (dict.TryGetValue(key, out var existing))
+            {
+                dict[key] = new OverviewSeriesRowDto
+                {
+                    Ts = key,
+                    ActiveClients = existing.ActiveClients + row.ActiveClients,
+                    TrafficInBytes = existing.TrafficInBytes + row.TrafficInBytes,
+                    TrafficOutBytes = existing.TrafficOutBytes + row.TrafficOutBytes,
+                };
+            }
+            else
+            {
+                dict[key] = new OverviewSeriesRowDto
+                {
+                    Ts = key,
+                    ActiveClients = row.ActiveClients,
+                    TrafficInBytes = row.TrafficInBytes,
+                    TrafficOutBytes = row.TrafficOutBytes,
+                };
+            }
+        }
+
+        return dict;
+    }
+
+    private static Dictionary<DateTimeOffset, OverviewUsersSeriesRowDto> BuildUsersSeriesBucketDict(
+        IEnumerable<OverviewUsersSeriesRowDto> rows,
+        OverviewGrouping mode,
+        TimeSpan offset)
+    {
+        var dict = new Dictionary<DateTimeOffset, OverviewUsersSeriesRowDto>();
+        foreach (var row in rows)
+        {
+            var key = OverviewBucketMath.AlignToBucketStartWithOffset(mode, row.Ts, offset);
+            if (dict.TryGetValue(key, out var existing))
+            {
+                dict[key] = new OverviewUsersSeriesRowDto
+                {
+                    Ts = key,
+                    ActiveSessions = existing.ActiveSessions + row.ActiveSessions,
+                    ActiveUsers = existing.ActiveUsers + row.ActiveUsers,
+                };
+            }
+            else
+            {
+                dict[key] = new OverviewUsersSeriesRowDto
+                {
+                    Ts = key,
+                    ActiveSessions = row.ActiveSessions,
+                    ActiveUsers = row.ActiveUsers,
+                };
+            }
+        }
+
+        return dict;
+    }
+
     private static List<OverviewSeriesRowDto> FillMissingBuckets(
         List<OverviewSeriesRowDto> rows,
         DateTimeOffset fromUtc,
@@ -202,7 +268,7 @@ public sealed class OpenVpnOverviewSeriesQuery(
         OverviewGrouping mode,
         TimeSpan offset)
     {
-        var dict = rows.ToDictionary(r => r.Ts);
+        var dict = BuildSeriesBucketDict(rows, mode, offset);
         var list = new List<OverviewSeriesRowDto>();
 
         if (mode is OverviewGrouping.Months or OverviewGrouping.Years)
@@ -236,7 +302,7 @@ public sealed class OpenVpnOverviewSeriesQuery(
         OverviewGrouping mode,
         TimeSpan offset)
     {
-        var dict = rows.ToDictionary(r => r.Ts);
+        var dict = BuildUsersSeriesBucketDict(rows, mode, offset);
         var list = new List<OverviewUsersSeriesRowDto>();
 
         if (mode is OverviewGrouping.Months or OverviewGrouping.Years)

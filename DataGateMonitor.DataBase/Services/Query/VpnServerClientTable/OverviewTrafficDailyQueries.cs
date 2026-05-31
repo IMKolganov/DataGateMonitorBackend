@@ -200,7 +200,125 @@ public static class OverviewTrafficDailyQueries
     internal static List<OverviewTrafficBucketRow> MergeBuckets(
         IEnumerable<OverviewTrafficBucketRow> first,
         IEnumerable<OverviewTrafficBucketRow> second)
-        => first.Concat(second).OrderBy(x => x.BucketTs).ToList();
+        => MergeBuckets(first, second, TimeSpan.Zero);
+
+    internal static List<OverviewTrafficBucketRow> MergeBuckets(
+        IEnumerable<OverviewTrafficBucketRow> first,
+        IEnumerable<OverviewTrafficBucketRow> second,
+        TimeSpan offset)
+    {
+        var merged = new Dictionary<DateTimeOffset, OverviewTrafficBucketRow>();
+
+        foreach (var row in first.Concat(second))
+        {
+            var key = OverviewBucketMath.AlignToBucketStartWithOffset(
+                InferGroupingFromBucket(row.BucketTs, offset), row.BucketTs, offset);
+
+            if (merged.TryGetValue(key, out var existing))
+            {
+                merged[key] = new OverviewTrafficBucketRow
+                {
+                    BucketTs = key,
+                    ActiveClients = existing.ActiveClients + row.ActiveClients,
+                    TrafficInBytes = existing.TrafficInBytes + row.TrafficInBytes,
+                    TrafficOutBytes = existing.TrafficOutBytes + row.TrafficOutBytes,
+                };
+            }
+            else
+            {
+                merged[key] = new OverviewTrafficBucketRow
+                {
+                    BucketTs = key,
+                    ActiveClients = row.ActiveClients,
+                    TrafficInBytes = row.TrafficInBytes,
+                    TrafficOutBytes = row.TrafficOutBytes,
+                };
+            }
+        }
+
+        return merged.Values.OrderBy(x => x.BucketTs).ToList();
+    }
+
+    internal static List<OverviewUsersSeriesBucketRow> MergeUsersSeriesBuckets(
+        IEnumerable<OverviewUsersSeriesBucketRow> first,
+        IEnumerable<OverviewUsersSeriesBucketRow> second,
+        TimeSpan offset)
+    {
+        var merged = new Dictionary<DateTimeOffset, OverviewUsersSeriesBucketRow>();
+
+        foreach (var row in first.Concat(second))
+        {
+            var key = OverviewBucketMath.AlignToBucketStartWithOffset(
+                InferGroupingFromBucket(row.BucketTs, offset), row.BucketTs, offset);
+
+            if (merged.TryGetValue(key, out var existing))
+            {
+                merged[key] = new OverviewUsersSeriesBucketRow
+                {
+                    BucketTs = key,
+                    ActiveSessions = existing.ActiveSessions + row.ActiveSessions,
+                    ActiveUsers = existing.ActiveUsers + row.ActiveUsers,
+                };
+            }
+            else
+            {
+                merged[key] = new OverviewUsersSeriesBucketRow
+                {
+                    BucketTs = key,
+                    ActiveSessions = row.ActiveSessions,
+                    ActiveUsers = row.ActiveUsers,
+                };
+            }
+        }
+
+        return merged.Values.OrderBy(x => x.BucketTs).ToList();
+    }
+
+    private static OverviewGrouping InferGroupingFromBucket(DateTimeOffset bucketTs, TimeSpan offset)
+    {
+        var local = bucketTs.ToOffset(offset);
+        if (local is { Month: 1, Day: 1, Hour: 0, Minute: 0, Second: 0 })
+            return OverviewGrouping.Years;
+        if (local is { Day: 1, Hour: 0, Minute: 0, Second: 0 })
+            return OverviewGrouping.Months;
+        return OverviewGrouping.Days;
+    }
+
+    internal static List<OverviewUserTrafficRow> MergeUserTrafficRows(
+        IEnumerable<OverviewUserTrafficRow> dailyRows,
+        IEnumerable<OverviewUserTrafficRow> rawRows)
+    {
+        var merged = new Dictionary<string, OverviewUserTrafficRow>(StringComparer.Ordinal);
+
+        foreach (var row in dailyRows)
+            merged[row.ExternalId] = row;
+
+        foreach (var row in rawRows)
+        {
+            if (merged.TryGetValue(row.ExternalId, out var existing))
+            {
+                merged[row.ExternalId] = new OverviewUserTrafficRow
+                {
+                    ExternalId = row.ExternalId,
+                    VpnServerId = existing.VpnServerId ?? row.VpnServerId,
+                    Sessions = existing.Sessions + row.Sessions,
+                    TrafficInBytes = existing.TrafficInBytes + row.TrafficInBytes,
+                    TrafficOutBytes = existing.TrafficOutBytes + row.TrafficOutBytes,
+                    FirstSeen = existing.FirstSeen <= row.FirstSeen ? existing.FirstSeen : row.FirstSeen,
+                    LastSeen = existing.LastSeen >= row.LastSeen ? existing.LastSeen : row.LastSeen,
+                };
+            }
+            else
+            {
+                merged[row.ExternalId] = row;
+            }
+        }
+
+        return merged.Values
+            .OrderByDescending(r => r.TrafficInBytes + r.TrafficOutBytes)
+            .ThenBy(r => r.ExternalId, StringComparer.Ordinal)
+            .ToList();
+    }
 
     private static DateTimeOffset StartOfUtcDay(DateTimeOffset t)
         => new(t.UtcDateTime.Date, TimeSpan.Zero);
