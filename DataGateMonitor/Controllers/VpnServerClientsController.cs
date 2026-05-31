@@ -68,7 +68,7 @@ public class VpnServerClientsController(
             request.To,
             request.Grouping,
             request.VpnServerId,
-            request.ExternalId,
+            NormalizeExternalId(request.ExternalId),
             ct);
 
         return Ok(ApiResponse<OverviewSeriesResponse>.SuccessResponse(result));
@@ -86,7 +86,7 @@ public class VpnServerClientsController(
             request.From,
             request.To,
             request.VpnServerId,
-            request.ExternalId,
+            NormalizeExternalId(request.ExternalId),
             ct);
     
         return Ok(ApiResponse<OverviewTotalsResponse>.SuccessResponse(result));
@@ -104,7 +104,7 @@ public class VpnServerClientsController(
             request.From,
             request.To,
             request.VpnServerId,
-            request.ExternalId,
+            NormalizeExternalId(request.ExternalId),
             request.OnlyWithCoordinates,
             ct);
 
@@ -123,7 +123,7 @@ public class VpnServerClientsController(
             request.From,
             request.To,
             request.VpnServerId,
-            request.ExternalId,
+            NormalizeExternalId(request.ExternalId),
             ct);
 
         ClientStatisticsResponseSanitizer.ApplyIfNeeded(User, users);
@@ -146,7 +146,7 @@ public class VpnServerClientsController(
             request.To,
             request.Grouping,
             request.VpnServerId,
-            request.ExternalId,
+            NormalizeExternalId(request.ExternalId),
             ct);
 
         return Ok(ApiResponse<OverviewUsersSeriesResponse>.SuccessResponse(result));
@@ -159,5 +159,17 @@ public class VpnServerClientsController(
 
         return VpnServerAuthorizationHelper.RequireVpnServerAccessOrForbidAsync<T>(
             User, vpnServerAccessQueryService, vpnServerId.Value, ct);
+    }
+
+    private static string? NormalizeExternalId(string? externalId)
+    {
+        if (string.IsNullOrWhiteSpace(externalId))
+            return null;
+
+        var trimmed = externalId.Trim();
+        return trimmed.Equals("null", StringComparison.OrdinalIgnoreCase) ||
+               trimmed.Equals("undefined", StringComparison.OrdinalIgnoreCase)
+            ? null
+            : trimmed;
     }
 }
