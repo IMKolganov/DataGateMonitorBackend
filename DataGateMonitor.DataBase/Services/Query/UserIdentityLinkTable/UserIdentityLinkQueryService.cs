@@ -25,6 +25,11 @@ public class UserIdentityLinkQueryService(IQueryService<UserIdentityLink, int> q
         => q.Query()
             .FirstOrDefaultAsync(x => x.UserId == userId, ct);
 
+    public Task<List<UserIdentityLink>> GetListByUserId(int userId, CancellationToken ct)
+        => q.Query()
+            .Where(x => x.UserId == userId)
+            .ToListAsync(ct);
+
     public Task<bool> AnyByUserId(int userId, CancellationToken ct)
         => q.Any(x => x.UserId == userId, ct: ct);
 

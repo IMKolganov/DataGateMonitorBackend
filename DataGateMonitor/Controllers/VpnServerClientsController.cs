@@ -2,11 +2,14 @@ using Mapster;
 using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Mvc;
 using DataGateMonitor.DataBase.Services.Query.VpnServerClientTable;
+using DataGateMonitor.DataBase.Services.Query.UserIdentityLinkTable;
+using DataGateMonitor.Services.Api;
 using DataGateMonitor.Services.Api.Auth.Handlers.Interfaces;
 using DataGateMonitor.Services.Api.Privacy;
 using DataGateMonitor.SharedModels.DataGateMonitor.VpnServerClients.Requests;
 using DataGateMonitor.SharedModels.DataGateMonitor.VpnServerClients.Responses;
 using DataGateMonitor.SharedModels.Responses;
+using System.Security.Claims;
 
 namespace DataGateMonitor.Controllers;
 
@@ -19,22 +22,23 @@ public class VpnServerClientsController(
     IOpenVpnGeoQueryService openVpnGeoQueryService,
     IOpenVpnOverviewTotalsQuery openVpnOverviewTotalsQuery,
     IOpenVpnOverviewSeriesQuery openVpnOverviewSeriesQuery,
+    IUserIdentityLinkQueryService userIdentityLinkQueryService,
     IVpnServerAccessQueryService vpnServerAccessQueryService) : BaseController
 {
     [HttpGet("get-all-connected")]
     public async Task<ActionResult<ApiResponse<ConnectedClientsResponse>>> GetAllConnectedClients(
         [FromQuery] GetConnectedClientsRequest request, CancellationToken cancellationToken)
     {
-        if (await VpnServerAuthorizationHelper.RequireVpnServerAccessOrForbidAsync<ConnectedClientsResponse>(
-                User, vpnServerAccessQueryService, request.VpnServerId, cancellationToken) is { } deny)
-            return deny;
-
         var result =
             await openVpnServerClientOverviewQuery.GetAllConnectedVpnServerClientsAsync(
             request.VpnServerId, request.Page, request.PageSize, cancellationToken);
 
         var response = result.Adapt<ConnectedClientsResponse>();
+        var ownExternalId = GetCurrentUserExternalId();
+        var ownDisplayName = User.FindFirstValue(ClaimTypes.Name) ?? User.FindFirstValue("displayName");
+        var ownRows = CaptureOwnConnectedRowIndexes(response, ownExternalId);
         ClientStatisticsResponseSanitizer.ApplyIfNeeded(User, response);
+        RestoreOwnConnectedRowIdentity(response, ownRows, ownExternalId, ownDisplayName);
         return Ok(ApiResponse<ConnectedClientsResponse>.SuccessResponse(response));
     }
 
@@ -51,7 +55,11 @@ public class VpnServerClientsController(
             request.VpnServerId, request.Page, request.PageSize, ct);
 
         var response = result.Adapt<ConnectedClientsResponse>();
+        var ownExternalId = GetCurrentUserExternalId();
+        var ownDisplayName = User.FindFirstValue(ClaimTypes.Name) ?? User.FindFirstValue("displayName");
+        var ownRows = CaptureOwnConnectedRowIndexes(response, ownExternalId);
         ClientStatisticsResponseSanitizer.ApplyIfNeeded(User, response);
+        RestoreOwnConnectedRowIdentity(response, ownRows, ownExternalId, ownDisplayName);
         return Ok(ApiResponse<ConnectedClientsResponse>.SuccessResponse(response));
     }
     
@@ -60,15 +68,14 @@ public class VpnServerClientsController(
         [FromQuery] GetOverviewSeriesRequest request,
         CancellationToken ct = default)
     {
-        if (await RequireOverviewServerAccessAsync<OverviewSeriesResponse>(request.VpnServerId, ct) is { } deny)
-            return deny;
+        var externalId = await ResolveEffectiveExternalIdAsync(request.ExternalId, ct);
 
         var result = await openVpnOverviewSeriesQuery.GetOverviewSeriesFromSessionsAsync(
             request.From,
             request.To,
             request.Grouping,
             request.VpnServerId,
-            NormalizeExternalId(request.ExternalId),
+            externalId,
             ct);
 
         return Ok(ApiResponse<OverviewSeriesResponse>.SuccessResponse(result));
@@ -79,14 +86,13 @@ public class VpnServerClientsController(
         [FromQuery] GetOverviewSummaryRequest request,
         CancellationToken ct = default)
     {
-        if (await RequireOverviewServerAccessAsync<OverviewTotalsResponse>(request.VpnServerId, ct) is { } deny)
-            return deny;
+        var externalId = await ResolveEffectiveExternalIdAsync(request.ExternalId, ct);
 
         var result = await openVpnOverviewTotalsQuery.GetOverviewTotalsAsync(
             request.From,
             request.To,
             request.VpnServerId,
-            NormalizeExternalId(request.ExternalId),
+            externalId,
             ct);
     
         return Ok(ApiResponse<OverviewTotalsResponse>.SuccessResponse(result));
@@ -97,14 +103,13 @@ public class VpnServerClientsController(
         [FromQuery] GetOverviewPointsRequest request,
         CancellationToken ct = default)
     {
-        if (await RequireOverviewServerAccessAsync<OverviewPointsResponse>(request.VpnServerId, ct) is { } deny)
-            return deny;
+        var externalId = await ResolveEffectiveExternalIdAsync(request.ExternalId, ct);
 
         var points = await openVpnGeoQueryService.GetGeoPointsAsync(
             request.From,
             request.To,
             request.VpnServerId,
-            NormalizeExternalId(request.ExternalId),
+            externalId,
             request.OnlyWithCoordinates,
             ct);
 
@@ -116,17 +121,20 @@ public class VpnServerClientsController(
         [FromQuery] GetOverviewUsersRequest request,
         CancellationToken ct = default)
     {
-        if (await RequireOverviewServerAccessAsync<OverviewUsersResponse>(request.VpnServerId, ct) is { } deny)
-            return deny;
+        var externalId = NormalizeExternalId(request.ExternalId);
 
         var users = await openVpnOverviewSeriesQuery.GetOverviewUsersFromSessionsAsync(
             request.From,
             request.To,
             request.VpnServerId,
-            NormalizeExternalId(request.ExternalId),
+            externalId,
             ct);
 
+        var ownExternalId = GetCurrentUserExternalId();
+        var ownDisplayName = User.FindFirstValue(ClaimTypes.Name) ?? User.FindFirstValue("displayName");
+        var ownRows = CaptureOwnOverviewUsersRowIndexes(users, ownExternalId);
         ClientStatisticsResponseSanitizer.ApplyIfNeeded(User, users);
+        RestoreOwnOverviewUsersRowIdentity(users, ownRows, ownExternalId, ownDisplayName);
         return Ok(ApiResponse<OverviewUsersResponse>.SuccessResponse(users));
     }
 
@@ -138,27 +146,17 @@ public class VpnServerClientsController(
         [FromQuery] GetOverviewSeriesRequest request,
         CancellationToken ct = default)
     {
-        if (await RequireOverviewServerAccessAsync<OverviewUsersSeriesResponse>(request.VpnServerId, ct) is { } deny)
-            return deny;
+        var externalId = NormalizeExternalId(request.ExternalId);
 
         var result = await openVpnOverviewSeriesQuery.GetOverviewUsersSeriesFromSessionsAsync(
             request.From,
             request.To,
             request.Grouping,
             request.VpnServerId,
-            NormalizeExternalId(request.ExternalId),
+            externalId,
             ct);
 
         return Ok(ApiResponse<OverviewUsersSeriesResponse>.SuccessResponse(result));
-    }
-
-    private Task<ActionResult<ApiResponse<T>>?> RequireOverviewServerAccessAsync<T>(int? vpnServerId, CancellationToken ct)
-    {
-        if (!vpnServerId.HasValue)
-            return Task.FromResult<ActionResult<ApiResponse<T>>?>(null);
-
-        return VpnServerAuthorizationHelper.RequireVpnServerAccessOrForbidAsync<T>(
-            User, vpnServerAccessQueryService, vpnServerId.Value, ct);
     }
 
     private static string? NormalizeExternalId(string? externalId)
@@ -171,5 +169,117 @@ public class VpnServerClientsController(
                trimmed.Equals("undefined", StringComparison.OrdinalIgnoreCase)
             ? null
             : trimmed;
+    }
+
+    private string? GetCurrentUserExternalId() => NormalizeExternalId(
+        User.FindFirstValue("externalId") ??
+        User.FindFirstValue("ExternalId"));
+
+    private static List<int> CaptureOwnConnectedRowIndexes(
+        ConnectedClientsResponse response,
+        string? ownExternalId)
+    {
+        if (string.IsNullOrWhiteSpace(ownExternalId))
+            return [];
+
+        var captured = new List<int>();
+        for (var i = 0; i < response.VpnClients.Count; i++)
+        {
+            var row = response.VpnClients[i];
+            if (!string.Equals(NormalizeExternalId(row.ExternalId), ownExternalId, StringComparison.Ordinal))
+                continue;
+
+            captured.Add(i);
+        }
+
+        return captured;
+    }
+
+    private static void RestoreOwnConnectedRowIdentity(
+        ConnectedClientsResponse response,
+        List<int> ownRows,
+        string? ownExternalId,
+        string? ownDisplayName)
+    {
+        foreach (var index in ownRows)
+        {
+            if (index >= 0 && index < response.VpnClients.Count)
+            {
+                if (!string.IsNullOrWhiteSpace(ownExternalId))
+                    response.VpnClients[index].ExternalId = ownExternalId;
+                if (!string.IsNullOrWhiteSpace(ownDisplayName))
+                    response.VpnClients[index].DisplayName = ownDisplayName;
+            }
+        }
+    }
+
+    private static List<int> CaptureOwnOverviewUsersRowIndexes(
+        OverviewUsersResponse response,
+        string? ownExternalId)
+    {
+        if (string.IsNullOrWhiteSpace(ownExternalId))
+            return [];
+
+        var captured = new List<int>();
+        for (var i = 0; i < response.OverviewUserItems.Count; i++)
+        {
+            var row = response.OverviewUserItems[i];
+            if (!string.Equals(NormalizeExternalId(row.ExternalId), ownExternalId, StringComparison.Ordinal))
+                continue;
+
+            captured.Add(i);
+        }
+
+        return captured;
+    }
+
+    private static void RestoreOwnOverviewUsersRowIdentity(
+        OverviewUsersResponse response,
+        List<int> ownRows,
+        string? ownExternalId,
+        string? ownDisplayName)
+    {
+        foreach (var index in ownRows)
+        {
+            if (index >= 0 && index < response.OverviewUserItems.Count)
+            {
+                response.OverviewUserItems[index].ExternalId = ownExternalId;
+                if (!string.IsNullOrWhiteSpace(ownDisplayName))
+                    response.OverviewUserItems[index].DisplayName = ownDisplayName;
+            }
+        }
+    }
+
+    private async Task<string?> ResolveEffectiveExternalIdAsync(string? externalId, CancellationToken ct)
+    {
+        var normalized = NormalizeExternalId(externalId);
+        var isAdmin = HttpUserContext.IsPrivileged(User);
+
+        // Admin keeps explicit filtering behavior; omitted ExternalId means global analytics.
+        if (isAdmin)
+            return normalized;
+
+        var userIdClaim = User.FindFirstValue(ClaimTypes.NameIdentifier)
+                          ?? User.FindFirstValue("http://schemas.xmlsoap.org/ws/2005/05/identity/claims/nameidentifier")
+                          ?? User.FindFirstValue("nameid")
+                          ?? User.FindFirstValue("sub");
+        if (int.TryParse(userIdClaim, out var userId))
+        {
+            // For regular users, trust server-side identity link as the source of truth.
+            var link = await userIdentityLinkQueryService.GetByUserId(userId, ct);
+            var linkedExternalId = NormalizeExternalId(link?.ExternalId);
+            if (!string.IsNullOrWhiteSpace(linkedExternalId))
+                return linkedExternalId;
+        }
+
+        // Fallback for older tokens when identity link is missing/inconsistent.
+        var claimExternalId = NormalizeExternalId(
+            User.FindFirstValue("externalId") ??
+            User.FindFirstValue("ExternalId"));
+        if (!string.IsNullOrWhiteSpace(claimExternalId))
+            return claimExternalId;
+
+        // Last resort (legacy clients) - still better than dropping all data.
+        return normalized;
     }
 }

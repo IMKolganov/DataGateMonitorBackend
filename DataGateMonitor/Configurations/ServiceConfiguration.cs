@@ -115,6 +115,7 @@ public static class ServiceConfiguration
         services.AddScoped<IExternalIpAddressService, ExternalIpAddressService>();
 
         services.AddScoped<IUserService, UserService>();
+        services.AddScoped<IUserMergeService, UserMergeService>();
         
         services.AddScoped<IQuotaPlanService, QuotaPlanService>();
         services.AddScoped<IUserRoleManagementService, UserRoleManagementService>();

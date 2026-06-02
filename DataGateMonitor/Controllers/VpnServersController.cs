@@ -235,10 +235,6 @@ public class VpnServersController(IVpnDataService vpnDataService,
     public async Task<ActionResult<ApiResponse<VpnServerResponse>>> GetServer(
         [FromRoute] GetServerRequest request, CancellationToken ct)
     {
-        if (await VpnServerAuthorizationHelper.RequireVpnServerAccessOrForbidAsync<VpnServerResponse>(User, vpnServerAccessQueryService,
-                request.VpnServerId, ct) is { } denyGet)
-            return denyGet;
-
         var server = await openVpnServerQueryService.GetById(request.VpnServerId, ct);
         if (server == null)
             return NotFound(ApiResponse<VpnServerResponse>.ErrorResponse("VPN server not found."));
