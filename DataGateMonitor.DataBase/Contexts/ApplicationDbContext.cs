@@ -48,6 +48,7 @@ public class ApplicationDbContext(DbContextOptions<ApplicationDbContext> options
     public DbSet<User> Users { get; set; } = null!;
     public DbSet<UserCredential> UserCredentials { get; set; } = null!;
     public DbSet<UserIdentityLink> UserIdentityLinks { get; set; } = null!;
+    public DbSet<MergedUserArchive> MergedUserArchives { get; set; } = null!;
     public DbSet<QuotaPlan> QuotaPlans { get; set; } = null!;
     public DbSet<UserQuotaPlan> UserQuotaPlans { get; set; } = null!;
     public DbSet<QuotaPlanAllowedServer> QuotaPlanAllowedServers { get; set; } = null!;
@@ -88,6 +89,7 @@ public class ApplicationDbContext(DbContextOptions<ApplicationDbContext> options
         modelBuilder.ApplyConfiguration(new UserConfiguration());
         modelBuilder.ApplyConfiguration(new UserCredentialConfiguration());
         modelBuilder.ApplyConfiguration(new UserIdentityLinkConfiguration());
+        modelBuilder.ApplyConfiguration(new MergedUserArchiveConfiguration());
         modelBuilder.ApplyConfiguration(new QuotaPlanConfiguration());
         modelBuilder.ApplyConfiguration(new UserQuotaPlanConfiguration());
         modelBuilder.ApplyConfiguration(new QuotaPlanAllowedServerConfiguration());

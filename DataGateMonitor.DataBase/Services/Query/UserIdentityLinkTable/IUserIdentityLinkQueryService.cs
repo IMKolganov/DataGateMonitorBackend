@@ -10,6 +10,7 @@ public interface IUserIdentityLinkQueryService
     Task<UserIdentityLink?> GetByProviderAndExternalId(string provider, string externalId, CancellationToken ct);
     public Task<UserIdentityLink?> GetByExternalId(string externalId, CancellationToken ct);
     Task<UserIdentityLink?> GetByUserId(int userId, CancellationToken ct);
+    Task<List<UserIdentityLink>> GetListByUserId(int userId, CancellationToken ct);
     Task<bool> AnyByUserId(int userId, CancellationToken ct);
 
     Task<IPagedResult<UserIdentityLink>> GetPage(int page, int pageSize, CancellationToken ct);

@@ -1,6 +1,7 @@
 using Microsoft.AspNetCore.Mvc;
 using Moq;
 using DataGateMonitor.Controllers;
+using DataGateMonitor.Services.Api.CurrentUser.Interfaces;
 using DataGateMonitor.Services.Users.Interfaces;
 using DataGateMonitor.SharedModels.DataGateMonitor.User.Requests;
 using DataGateMonitor.SharedModels.DataGateMonitor.User.Responses;
@@ -12,11 +13,16 @@ namespace DataGateMonitor.Tests.Controllers;
 public class UserControllerTests
 {
     private readonly Mock<IUserService> _userServiceMock = new(MockBehavior.Strict);
+    private readonly Mock<IUserMergeService> _userMergeServiceMock = new(MockBehavior.Strict);
+    private readonly Mock<ICurrentUserService> _currentUserServiceMock = new(MockBehavior.Strict);
     private readonly UserController _controller;
 
     public UserControllerTests()
     {
-        _controller = new UserController(_userServiceMock.Object);
+        _controller = new UserController(
+            _userServiceMock.Object,
+            _userMergeServiceMock.Object,
+            _currentUserServiceMock.Object);
     }
 
     [Fact]
