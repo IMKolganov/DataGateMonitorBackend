@@ -212,6 +212,8 @@ public sealed class OpenVpnOverviewSeriesQuery(
                     ActiveClients = existing.ActiveClients + row.ActiveClients,
                     TrafficInBytes = existing.TrafficInBytes + row.TrafficInBytes,
                     TrafficOutBytes = existing.TrafficOutBytes + row.TrafficOutBytes,
+                    TrafficTotalBytes = (existing.TrafficInBytes + row.TrafficInBytes)
+                                      + (existing.TrafficOutBytes + row.TrafficOutBytes),
                 };
             }
             else
@@ -222,6 +224,7 @@ public sealed class OpenVpnOverviewSeriesQuery(
                     ActiveClients = row.ActiveClients,
                     TrafficInBytes = row.TrafficInBytes,
                     TrafficOutBytes = row.TrafficOutBytes,
+                    TrafficTotalBytes = row.TrafficInBytes + row.TrafficOutBytes,
                 };
             }
         }
