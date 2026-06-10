@@ -1,491 +1,192 @@
-// using Microsoft.AspNetCore.Mvc;
-// using Microsoft.Extensions.Configuration;
-// using Moq;
-// using DataGateMonitor.Controllers;
-// using DataGateMonitor.Models;
-// using DataGateMonitor.Models.Helpers.Auth;
-// using DataGateMonitor.Services.Api.Auth.Interfaces;
-// using DataGateMonitor.SharedModels.DataGateMonitor.Auth.Requests;
-// using DataGateMonitor.SharedModels.DataGateMonitor.Auth.Responses;
-// using DataGateMonitor.SharedModels.Responses;
-//
-// namespace DataGateMonitor.Tests.Controllers
-// {
-//     public class AuthControllerTests
-//     {
-//         private readonly Mock<IApplicationService> appServiceMock;
-//         private readonly Mock<IMicroserviceTokenService> microserviceTokenServiceMock;
-//         private readonly Mock<IUserRegistrationService> userRegistrationServiceMock;
-//         private readonly Mock<IGoogleAuthService> googleAuthServiceMock;
-//         private readonly IConfiguration configuration;
-//         private readonly AuthController controller;
-//
-//         public AuthControllerTests()
-//         {
-//             appServiceMock = new Mock<IApplicationService>();
-//             microserviceTokenServiceMock = new Mock<IMicroserviceTokenService>();
-//             userRegistrationServiceMock = new Mock<IUserRegistrationService>();
-//             googleAuthServiceMock = new Mock<IGoogleAuthService>();
-//
-//             configuration = new ConfigurationBuilder()
-//                 .AddInMemoryCollection(new Dictionary<string, string?>
-//                 {
-//                     ["Jwt:Secret"] = "VeryStrongTestSecretKey1234567890"
-//                 })
-//                 .Build();
-//
-//             controller = new AuthController(
-//                 configuration,
-//                 appServiceMock.Object,
-//                 microserviceTokenServiceMock.Object,
-//                 userRegistrationServiceMock.Object,
-//                 googleAuthServiceMock.Object);
-//         }
-//
-//         // ---------------------------
-//         // GetSystemStatus
-//         // ---------------------------
-//
-//         [Fact]
-//         public async Task GetSystemStatus_ReturnsOk_WithSystemSetTrue()
-//         {
-//             // Arrange
-//             appServiceMock
-//                 .Setup(s => s.IsSystemApplicationSetAsync(It.IsAny<CancellationToken>()))
-//                 .ReturnsAsync(true);
-//
-//             var ct = CancellationToken.None;
-//
-//             // Act
-//             var result = await controller.GetSystemStatus(ct);
-//
-//             // Assert
-//             var ok = Assert.IsType<OkObjectResult>(result.Result);
-//             var response = Assert.IsType<ApiResponse<SystemSecretStatusResponse>>(ok.Value);
-//
-//             Assert.True(response.Success);
-//             Assert.Equal("Success", response.Message);
-//             Assert.NotNull(response.Data);
-//             Assert.True(response.Data.SystemSet);
-//
-//             appServiceMock.Verify(s => s.IsSystemApplicationSetAsync(ct), Times.Once);
-//         }
-//
-//         // ---------------------------
-//         // SetSystemSecret
-//         // ---------------------------
-//
-//         [Fact]
-//         public async Task SetSystemSecret_WhenSystemAlreadySet_ReturnsBadRequest()
-//         {
-//             // Arrange
-//             var request = new SetSecretRequest
-//             {
-//                 ClientId = "sys-client",
-//                 ClientSecret = "new-secret"
-//             };
-//
-//             var existingSystemApp = new ClientApplication
-//             {
-//                 ClientId = request.ClientId,
-//                 ClientSecret = "already-set-secret",
-//                 Name = "SystemApp",
-//                 IsSystem = true
-//             };
-//
-//             appServiceMock
-//                 .Setup(s => s.GetApplicationSystemByClientIdAsync(request.ClientId, It.IsAny<CancellationToken>()))
-//                 .ReturnsAsync(existingSystemApp);
-//
-//             var ct = CancellationToken.None;
-//
-//             // Act
-//             var result = await controller.SetSystemSecret(request, ct);
-//
-//             // Assert
-//             var badRequest = Assert.IsType<BadRequestObjectResult>(result.Result);
-//             var response = Assert.IsType<ApiResponse<AuthResponse>>(badRequest.Value);
-//
-//             Assert.False(response.Success);
-//             Assert.Equal("System application is already set", response.Message);
-//             Assert.Null(response.Data);
-//
-//             appServiceMock.Verify(
-//                 s => s.GetApplicationSystemByClientIdAsync(request.ClientId, ct),
-//                 Times.Once);
-//
-//             appServiceMock.Verify(
-//                 s => s.UpdateApplicationAsync(It.IsAny<ClientApplication>(), It.IsAny<CancellationToken>()),
-//                 Times.Never);
-//         }
-//
-//         [Fact]
-//         public async Task SetSystemSecret_WhenSystemNotExists_CreatesSystemAndReturnsOk()
-//         {
-//             // Arrange
-//             var request = new SetSecretRequest
-//             {
-//                 ClientId = "new-system-client",
-//                 ClientSecret = "super-secret"
-//             };
-//
-//             appServiceMock
-//                 .Setup(s => s.GetApplicationSystemByClientIdAsync(request.ClientId, It.IsAny<CancellationToken>()))
-//                 .ReturnsAsync((ClientApplication?)null);
-//
-//             ClientApplication? savedEntity = null;
-//
-//             appServiceMock
-//                 .Setup(s => s.UpdateApplicationAsync(It.IsAny<ClientApplication>(), It.IsAny<CancellationToken>()))
-//                 .ReturnsAsync((ClientApplication entity, CancellationToken _) =>
-//                 {
-//                     savedEntity = entity;
-//                     return entity;
-//                 });
-//
-//             var ct = CancellationToken.None;
-//
-//             // Act
-//             var result = await controller.SetSystemSecret(request, ct);
-//
-//             // Assert
-//             var ok = Assert.IsType<OkObjectResult>(result.Result);
-//             var response = Assert.IsType<ApiResponse<AuthResponse>>(ok.Value);
-//
-//             Assert.True(response.Success);
-//             Assert.Equal("Success", response.Message);
-//             Assert.NotNull(response.Data);
-//             Assert.Equal("ClientSecret set successfully", response.Data.Message);
-//
-//             appServiceMock.Verify(
-//                 s => s.GetApplicationSystemByClientIdAsync(request.ClientId, ct),
-//                 Times.Once);
-//
-//             appServiceMock.Verify(
-//                 s => s.UpdateApplicationAsync(It.IsAny<ClientApplication>(), ct),
-//                 Times.Once);
-//
-//             Assert.NotNull(savedEntity);
-//             Assert.Equal(request.ClientId, savedEntity!.ClientId);
-//             Assert.True(savedEntity.IsSystem);
-//             Assert.False(string.IsNullOrWhiteSpace(savedEntity.ClientSecret));
-//         }
-//
-//         // ---------------------------
-//         // GenerateToken
-//         // ---------------------------
-//
-//         [Fact]
-//         public async Task GenerateToken_WhenAppNotFound_ReturnsUnauthorized()
-//         {
-//             // Arrange
-//             var request = new TokenRequest
-//             {
-//                 ClientId = "unknown-client",
-//                 ClientSecret = "secret"
-//             };
-//
-//             appServiceMock
-//                 .Setup(s => s.GetApplicationByClientIdAsync(request.ClientId, It.IsAny<CancellationToken>()))
-//                 .ReturnsAsync((ClientApplication?)null);
-//
-//             var ct = CancellationToken.None;
-//
-//             // Act
-//             var result = await controller.GenerateToken(request, ct);
-//
-//             // Assert
-//             var unauthorized = Assert.IsType<UnauthorizedObjectResult>(result.Result);
-//             var response = Assert.IsType<ApiResponse<TokenResponse>>(unauthorized.Value);
-//
-//             Assert.False(response.Success);
-//             Assert.Equal("Invalid credentials", response.Message);
-//             Assert.Null(response.Data);
-//
-//             appServiceMock.Verify(
-//                 s => s.GetApplicationByClientIdAsync(request.ClientId, ct),
-//                 Times.Once);
-//         }
-//
-//         [Fact]
-//         public async Task GenerateToken_SystemApp_WithHashedSecret_ReturnsOkWithToken()
-//         {
-//             // Arrange
-//             var request = new TokenRequest
-//             {
-//                 ClientId = "sys-client",
-//                 ClientSecret = "plain-secret"
-//             };
-//
-//             var hashed = BCrypt.Net.BCrypt.HashPassword(request.ClientSecret);
-//
-//             var systemApp = new ClientApplication
-//             {
-//                 ClientId = request.ClientId,
-//                 ClientSecret = hashed,
-//                 Name = "SystemApp",
-//                 IsSystem = true
-//             };
-//
-//             appServiceMock
-//                 .Setup(s => s.GetApplicationByClientIdAsync(request.ClientId, It.IsAny<CancellationToken>()))
-//                 .ReturnsAsync(systemApp);
-//
-//             var ct = CancellationToken.None;
-//
-//             // Act
-//             var result = await controller.GenerateToken(request, ct);
-//
-//             // Assert
-//             var ok = Assert.IsType<OkObjectResult>(result.Result);
-//             var response = Assert.IsType<ApiResponse<TokenResponse>>(ok.Value);
-//
-//             Assert.True(response.Success);
-//             Assert.Equal("Success", response.Message);
-//             Assert.NotNull(response.Data);
-//             Assert.False(string.IsNullOrWhiteSpace(response.Data.Token));
-//
-//             Assert.True(response.Data.Expiration > DateTimeOffset.UtcNow);
-//
-//             appServiceMock.Verify(
-//                 s => s.GetApplicationByClientIdAsync(request.ClientId, ct),
-//                 Times.Once);
-//         }
-//
-//         [Fact]
-//         public async Task GenerateToken_NonSystemApp_WithWrongSecret_ReturnsUnauthorized()
-//         {
-//             // Arrange
-//             var request = new TokenRequest
-//             {
-//                 ClientId = "app-client",
-//                 ClientSecret = "wrong-secret"
-//             };
-//
-//             var app = new ClientApplication
-//             {
-//                 ClientId = request.ClientId,
-//                 ClientSecret = "real-secret",
-//                 Name = "NormalApp",
-//                 IsSystem = false
-//             };
-//
-//             appServiceMock
-//                 .Setup(s => s.GetApplicationByClientIdAsync(request.ClientId, It.IsAny<CancellationToken>()))
-//                 .ReturnsAsync(app);
-//
-//             var ct = CancellationToken.None;
-//
-//             // Act
-//             var result = await controller.GenerateToken(request, ct);
-//
-//             // Assert
-//             var unauthorized = Assert.IsType<UnauthorizedObjectResult>(result.Result);
-//             var response = Assert.IsType<ApiResponse<TokenResponse>>(unauthorized.Value);
-//
-//             Assert.False(response.Success);
-//             Assert.Equal("Invalid credentials", response.Message);
-//             Assert.Null(response.Data);
-//
-//             appServiceMock.Verify(
-//                 s => s.GetApplicationByClientIdAsync(request.ClientId, ct),
-//                 Times.Once);
-//         }
-//
-//         [Fact]
-//         public async Task GenerateToken_NonSystemApp_WithCorrectSecret_ReturnsOkWithToken()
-//         {
-//             // Arrange
-//             var request = new TokenRequest
-//             {
-//                 ClientId = "app-client",
-//                 ClientSecret = "real-secret"
-//             };
-//
-//             var app = new ClientApplication
-//             {
-//                 ClientId = request.ClientId,
-//                 ClientSecret = "real-secret",
-//                 Name = "NormalApp",
-//                 IsSystem = false
-//             };
-//
-//             appServiceMock
-//                 .Setup(s => s.GetApplicationByClientIdAsync(request.ClientId, It.IsAny<CancellationToken>()))
-//                 .ReturnsAsync(app);
-//
-//             var ct = CancellationToken.None;
-//
-//             // Act
-//             var result = await controller.GenerateToken(request, ct);
-//
-//             // Assert
-//             var ok = Assert.IsType<OkObjectResult>(result.Result);
-//             var response = Assert.IsType<ApiResponse<TokenResponse>>(ok.Value);
-//
-//             Assert.True(response.Success);
-//             Assert.Equal("Success", response.Message);
-//             Assert.NotNull(response.Data);
-//             Assert.False(string.IsNullOrWhiteSpace(response.Data.Token));
-//             Assert.True(response.Data.Expiration > DateTimeOffset.UtcNow);
-//
-//             appServiceMock.Verify(
-//                 s => s.GetApplicationByClientIdAsync(request.ClientId, ct),
-//                 Times.Once);
-//         }
-//
-//         // ---------------------------
-//         // GetPublicKeyForMicroservice
-//         // ---------------------------
-//
-//         [Fact]
-//         public void GetPublicKeyForMicroservice_WhenPinTooSmall_ReturnsBadRequest()
-//         {
-//             // Arrange
-//             const int pin = 9999;
-//
-//             // Act
-//             var result = controller.GetPublicKeyForMicroservice(pin);
-//
-//             // Assert
-//             var badRequest = Assert.IsType<BadRequestObjectResult>(result.Result);
-//             var response = Assert.IsType<ApiResponse<string>>(badRequest.Value);
-//
-//             Assert.False(response.Success);
-//             Assert.Equal("Invalid pin", response.Message);
-//             Assert.Null(response.Data);
-//
-//             microserviceTokenServiceMock.Verify(
-//                 s => s.GetPublicKeyPem(),
-//                 Times.Never);
-//         }
-//
-//         [Fact]
-//         public void GetPublicKeyForMicroservice_WhenPinValid_ReturnsOkWithKey()
-//         {
-//             // Arrange
-//             const int pin = 12345;
-//             const string publicKey = "-----BEGIN PUBLIC KEY-----\nTEST\n-----END PUBLIC KEY-----";
-//
-//             microserviceTokenServiceMock
-//                 .Setup(s => s.GetPublicKeyPem())
-//                 .Returns(publicKey);
-//
-//             // Act
-//             var result = controller.GetPublicKeyForMicroservice(pin);
-//
-//             // Assert
-//             var ok = Assert.IsType<OkObjectResult>(result.Result);
-//             var response = Assert.IsType<ApiResponse<string>>(ok.Value);
-//
-//             Assert.True(response.Success);
-//             Assert.Equal("Success", response.Message);
-//             Assert.Equal(publicKey, response.Data);
-//
-//             microserviceTokenServiceMock.Verify(
-//                 s => s.GetPublicKeyPem(),
-//                 Times.Once);
-//         }
-//
-//         // ---------------------------
-//         // Register
-//         // ---------------------------
-//
-//         [Fact]
-//         public async Task Register_WhenValidRequest_ReturnsOkWithSuccessResponse()
-//         {
-//             // Arrange
-//             var request = new RegisterUserRequest
-//             {
-//                 DisplayName = "Test User",
-//                 Email = "test@example.com",
-//                 Login = "test-login",
-//                 Password = "StrongPass123!",
-//                 ConfirmPassword = "StrongPass123!"
-//             };
-//
-//             var serviceResult = new RegisterUserResponse
-//             {
-//                 UserId = 42,
-//                 DisplayName = "Test User",
-//                 Email = "test@example.com",
-//                 HasDashboardAccess = true
-//             };
-//
-//             userRegistrationServiceMock
-//                 .Setup(s => s.RegisterAsync(request, It.IsAny<CancellationToken>()))
-//                 .ReturnsAsync(serviceResult);
-//
-//             var ct = CancellationToken.None;
-//
-//             // Act
-//             var result = await controller.Register(request, ct);
-//
-//             // Assert
-//             var ok = Assert.IsType<OkObjectResult>(result.Result);
-//             var response = Assert.IsType<ApiResponse<RegisterUserResponse>>(ok.Value);
-//
-//             Assert.True(response.Success);
-//             Assert.Equal("Success", response.Message);
-//             Assert.NotNull(response.Data);
-//             Assert.Equal(serviceResult.UserId, response.Data.UserId);
-//             Assert.Equal(serviceResult.DisplayName, response.Data.DisplayName);
-//             Assert.Equal(serviceResult.Email, response.Data.Email);
-//             Assert.Equal(serviceResult.HasDashboardAccess, response.Data.HasDashboardAccess);
-//
-//             userRegistrationServiceMock.Verify(
-//                 s => s.RegisterAsync(request, ct),
-//                 Times.Once);
-//         }
-//
-//         // ---------------------------
-//         // GoogleLogin
-//         // ---------------------------
-//
-//         [Fact]
-//         public async Task GoogleLogin_WhenValidRequest_ReturnsOkWithSuccessResponse()
-//         {
-//             // Arrange
-//             var request = new GoogleLoginRequest
-//             {
-//                 IdToken = "google-id-token"
-//             };
-//
-//             var serviceResult = new GoogleLoginResponse
-//             {
-//                 Token = "jwt-token",
-//                 Expiration = DateTimeOffset.UtcNow.AddHours(1),
-//                 UserId = 7,
-//                 DisplayName = "Google User",
-//                 Email = "google@example.com",
-//                 IsNewUser = true
-//             };
-//
-//             googleAuthServiceMock
-//                 .Setup(s => s.LoginWithGoogleAsync(request.IdToken, It.IsAny<CancellationToken>()))
-//                 .ReturnsAsync(serviceResult);
-//
-//             var ct = CancellationToken.None;
-//
-//             // Act
-//             var result = await controller.GoogleLogin(request, ct);
-//
-//             // Assert
-//             var ok = Assert.IsType<OkObjectResult>(result.Result);
-//             var response = Assert.IsType<ApiResponse<GoogleLoginResponse>>(ok.Value);
-//
-//             Assert.True(response.Success);
-//             Assert.Equal("Success", response.Message);
-//             Assert.NotNull(response.Data);
-//             Assert.Equal(serviceResult.Token, response.Data.Token);
-//             Assert.Equal(serviceResult.UserId, response.Data.UserId);
-//             Assert.Equal(serviceResult.DisplayName, response.Data.DisplayName);
-//             Assert.Equal(serviceResult.Email, response.Data.Email);
-//             Assert.Equal(serviceResult.IsNewUser, response.Data.IsNewUser);
-//
-//             googleAuthServiceMock.Verify(
-//                 s => s.LoginWithGoogleAsync(request.IdToken, ct),
-//                 Times.Once);
-//         }
-//     }
-// }
+using Microsoft.AspNetCore.Mvc;
+using Microsoft.Extensions.Configuration;
+using Moq;
+using DataGateMonitor.Controllers;
+using DataGateMonitor.Services.Api.Auth.EmailConfirmation;
+using DataGateMonitor.Services.Api.Auth.EmailConfirmation.Models;
+using DataGateMonitor.Services.Api.Auth.ForgotPassword;
+using DataGateMonitor.Services.Api.Auth.Login;
+using DataGateMonitor.Services.Api.Auth.Registers.Interfaces;
+using DataGateMonitor.Services.Api.Auth.TelegramLogin;
+using DataGateMonitor.Services.Api.Auth.Totp;
+using DataGateMonitor.Services.Api.CurrentUser.Interfaces;
+using DataGateMonitor.DataBase.Services.Query.UserTable;
+using DataGateMonitor.Models;
+using DataGateMonitor.SharedModels.DataGateMonitor.Auth.Requests;
+using DataGateMonitor.SharedModels.DataGateMonitor.Auth.Responses;
+using DataGateMonitor.SharedModels.Responses;
+using Xunit;
+
+namespace DataGateMonitor.Tests.Controllers;
+
+public class AuthControllerTests
+{
+    private readonly Mock<IApplicationService> _appService = new();
+    private readonly Mock<IMicroserviceTokenService> _microserviceTokenService = new();
+    private readonly Mock<IUserRegistrationService> _userRegistrationService = new();
+    private readonly Mock<IUserLoginService> _userLoginService = new();
+    private readonly Mock<IUserQueryService> _userQueryService = new();
+    private readonly Mock<IEmailConfirmationService> _emailConfirmationService = new();
+    private readonly Mock<IGoogleAuthCodeExchangeService> _exchange = new();
+    private readonly Mock<ITokenService> _tokenService = new();
+    private readonly Mock<IAdminForgotPasswordService> _adminForgotPasswordService = new();
+    private readonly Mock<ITelegramLoginCodeService> _telegramLoginCodeService = new();
+    private readonly Mock<IAdminTotpService> _adminTotpService = new();
+    private readonly Mock<ICurrentUserService> _currentUserService = new();
+    private readonly Mock<IAdminIdleSessionTracker> _adminIdleSessionTracker = new();
+    private readonly Mock<IUserSessionService> _userSessionService = new();
+
+    private AuthController CreateController()
+    {
+        var config = new ConfigurationBuilder()
+            .AddInMemoryCollection(new Dictionary<string, string?>
+            {
+                ["Jwt:Secret"] = "VeryStrongTestSecretKey1234567890",
+                ["Jwt:AdminIdleTimeoutMinutes"] = "20",
+            })
+            .Build();
+
+        return new AuthController(
+            config,
+            _appService.Object,
+            _microserviceTokenService.Object,
+            _userRegistrationService.Object,
+            _userLoginService.Object,
+            _userQueryService.Object,
+            _emailConfirmationService.Object,
+            _exchange.Object,
+            _tokenService.Object,
+            _adminForgotPasswordService.Object,
+            _telegramLoginCodeService.Object,
+            _adminTotpService.Object,
+            _currentUserService.Object,
+            _adminIdleSessionTracker.Object,
+            _userSessionService.Object);
+    }
+
+    [Fact]
+    public void GetSessionPolicy_ReturnsConfiguredTimeout()
+    {
+        var controller = CreateController();
+
+        var result = controller.GetSessionPolicy();
+
+        var ok = Assert.IsType<OkObjectResult>(result.Result);
+        var response = Assert.IsType<ApiResponse<AuthSessionPolicyResponse>>(ok.Value);
+        Assert.True(response.Success);
+        Assert.Equal(20, response.Data!.AdminIdleTimeoutMinutes);
+    }
+
+    [Fact]
+    public async Task GenerateToken_WhenAppMissing_ReturnsUnauthorized()
+    {
+        _appService
+            .Setup(s => s.GetApplicationByClientIdAsync("client", It.IsAny<CancellationToken>()))
+            .ReturnsAsync((ClientApplication?)null);
+
+        var controller = CreateController();
+        var result = await controller.GenerateToken(
+            new TokenRequest { ClientId = "client", ClientSecret = "secret" },
+            CancellationToken.None);
+
+        var unauthorized = Assert.IsType<UnauthorizedObjectResult>(result.Result);
+        var response = Assert.IsType<ApiResponse<TokenResponse>>(unauthorized.Value);
+        Assert.False(response.Success);
+    }
+
+    [Fact]
+    public async Task Login_DelegatesToUserLoginService()
+    {
+        var loginResponse = new LoginResponse { UserId = 1, Token = "jwt" };
+        _userLoginService
+            .Setup(s => s.LoginAsync(It.IsAny<LoginRequest>(), It.IsAny<CancellationToken>()))
+            .ReturnsAsync(loginResponse);
+
+        var controller = CreateController();
+        var request = new LoginRequest { Login = "admin", Password = "pass" };
+        var result = await controller.Login(request, CancellationToken.None);
+
+        var ok = Assert.IsType<OkObjectResult>(result.Result);
+        var response = Assert.IsType<ApiResponse<LoginResponse>>(ok.Value);
+        Assert.True(response.Success);
+        Assert.Equal("jwt", response.Data!.Token);
+    }
+
+    [Fact]
+    public async Task RequestEmailConfirmation_WhenEmailMissing_ReturnsBadRequest()
+    {
+        var controller = CreateController();
+
+        var result = await controller.RequestEmailConfirmation(
+            new RequestEmailConfirmationRequest { Email = "  " },
+            CancellationToken.None);
+
+        var bad = Assert.IsType<BadRequestObjectResult>(result.Result);
+        var response = Assert.IsType<ApiResponse<string>>(bad.Value);
+        Assert.False(response.Success);
+    }
+
+    [Fact]
+    public async Task RequestEmailConfirmation_WhenUserUnconfirmed_SendsEmail()
+    {
+        _userQueryService
+            .Setup(q => q.GetByEmail("user@example.com", It.IsAny<CancellationToken>()))
+            .ReturnsAsync(new User { Id = 3, Email = "user@example.com", IsEmailConfirmed = false });
+
+        var controller = CreateController();
+        var result = await controller.RequestEmailConfirmation(
+            new RequestEmailConfirmationRequest { Email = "user@example.com" },
+            CancellationToken.None);
+
+        var ok = Assert.IsType<OkObjectResult>(result.Result);
+        Assert.True(((ApiResponse<string>)ok.Value!).Success);
+        _emailConfirmationService.Verify(
+            s => s.SendConfirmationAsync(3, "user@example.com", It.IsAny<CancellationToken>()),
+            Times.Once);
+    }
+
+    [Fact]
+    public async Task GoogleLogin_ReturnsMappedResponse()
+    {
+        _userLoginService
+            .Setup(s => s.LoginWithGoogleAsync("id-token", It.IsAny<CancellationToken>()))
+            .ReturnsAsync(new GoogleLoginResponse { UserId = 9, Token = "google-jwt", IsNewUser = false });
+
+        var controller = CreateController();
+        var result = await controller.GoogleLogin(
+            new GoogleLoginRequest { IdToken = "id-token" },
+            CancellationToken.None);
+
+        var ok = Assert.IsType<OkObjectResult>(result.Result);
+        var response = Assert.IsType<ApiResponse<GoogleLoginResponse>>(ok.Value);
+        Assert.Equal(9, response.Data!.UserId);
+    }
+
+    [Fact]
+    public async Task TelegramRequestLoginCode_WhenUserMissing_ReturnsNotFound()
+    {
+        _telegramLoginCodeService
+            .Setup(s => s.RequestLoginCodeAsync(It.IsAny<TelegramRequestLoginCodeRequest>(), It.IsAny<CancellationToken>()))
+            .ReturnsAsync((TelegramRequestLoginCodeResponse?)null);
+
+        var controller = CreateController();
+        var result = await controller.TelegramRequestLoginCode(
+            new TelegramRequestLoginCodeRequest { TelegramId = 1 },
+            CancellationToken.None);
+
+        var notFound = Assert.IsType<NotFoundObjectResult>(result.Result);
+        Assert.False(((ApiResponse<TelegramRequestLoginCodeResponse>)notFound.Value!).Success);
+    }
+
+    [Fact]
+    public void GetPublicKeyForMicroservice_WhenPinTooLow_ReturnsBadRequest()
+    {
+        _microserviceTokenService.Setup(s => s.GetPublicKeyPem()).Returns("pem-key");
+
+        var controller = CreateController();
+        var result = controller.GetPublicKeyForMicroservice(100);
+
+        var bad = Assert.IsType<BadRequestObjectResult>(result.Result);
+        Assert.False(((ApiResponse<string>)bad.Value!).Success);
+    }
+}

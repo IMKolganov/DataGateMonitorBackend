@@ -166,4 +166,42 @@ public class UserControllerTests
 
         _userServiceMock.VerifyAll();
     }
+
+    [Fact]
+    public async Task GetEmailConfirmationStatus_ReturnsOk_WithStatus()
+    {
+        var req = new GetUserEmailConfirmationStatusRequest { Id = 42 };
+        var expected = new GetUserEmailConfirmationStatusResponse { IsEmailConfirmed = true };
+
+        _userServiceMock
+            .Setup(s => s.GetEmailConfirmationStatus(req, It.IsAny<CancellationToken>()))
+            .ReturnsAsync(expected);
+
+        var result = await _controller.GetEmailConfirmationStatus(req, CancellationToken.None);
+
+        var ok = Assert.IsType<OkObjectResult>(result.Result);
+        var response = Assert.IsType<ApiResponse<GetUserEmailConfirmationStatusResponse>>(ok.Value);
+        Assert.True(response.Success);
+        Assert.True(response.Data!.IsEmailConfirmed);
+        _userServiceMock.VerifyAll();
+    }
+
+    [Fact]
+    public async Task ConfirmEmail_ReturnsOk_WithConfirmedResponse()
+    {
+        var req = new ConfirmUserEmailRequest { Id = 42 };
+        var expected = new ConfirmUserEmailResponse { IsEmailConfirmed = true };
+
+        _userServiceMock
+            .Setup(s => s.ConfirmEmailManually(req, It.IsAny<CancellationToken>()))
+            .ReturnsAsync(expected);
+
+        var result = await _controller.ConfirmEmail(req, CancellationToken.None);
+
+        var ok = Assert.IsType<OkObjectResult>(result.Result);
+        var response = Assert.IsType<ApiResponse<ConfirmUserEmailResponse>>(ok.Value);
+        Assert.True(response.Success);
+        Assert.True(response.Data!.IsEmailConfirmed);
+        _userServiceMock.VerifyAll();
+    }
 }

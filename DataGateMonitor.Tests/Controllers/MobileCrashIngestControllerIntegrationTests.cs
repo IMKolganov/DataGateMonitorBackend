@@ -4,6 +4,7 @@ using Microsoft.EntityFrameworkCore;
 using Microsoft.Extensions.Configuration;
 using Microsoft.Extensions.DependencyInjection;
 using Microsoft.Extensions.DependencyInjection.Extensions;
+using Microsoft.Extensions.Hosting;
 
 namespace DataGateMonitor.Tests.Controllers;
 
@@ -110,8 +111,13 @@ file sealed class CrashIngestWebApplicationFactory(
     int rateLimitWindowSeconds = 60)
     : WebApplicationFactory<Program>
 {
+    private readonly string _databaseName = $"mobile-crash-tests-{Guid.NewGuid()}";
+
     protected override void ConfigureWebHost(Microsoft.AspNetCore.Hosting.IWebHostBuilder builder)
     {
+        Environment.SetEnvironmentVariable("DATAGATE_USE_INMEMORY_DB", "true");
+        Environment.SetEnvironmentVariable("DATAGATE_INMEMORY_DB_NAME", _databaseName);
+
         builder.ConfigureAppConfiguration((_, configBuilder) =>
         {
             var overrides = new Dictionary<string, string?>
@@ -124,19 +130,13 @@ file sealed class CrashIngestWebApplicationFactory(
             };
             configBuilder.AddInMemoryCollection(overrides);
         });
+    }
 
-        builder.ConfigureServices(services =>
-        {
-            services.RemoveAll(typeof(ApplicationDbContext));
-            services.RemoveAll(typeof(DbContextOptions<ApplicationDbContext>));
-            services.RemoveAll(typeof(IDbContextFactory<ApplicationDbContext>));
-
-            var databaseName = $"mobile-crash-tests-{Guid.NewGuid()}";
-            services.AddDbContext<ApplicationDbContext>(options =>
-                options.UseInMemoryDatabase(databaseName));
-
-            services.AddDbContextFactory<ApplicationDbContext>(options =>
-                options.UseInMemoryDatabase(databaseName));
-        });
+    protected override IHost CreateHost(IHostBuilder builder)
+    {
+        var host = base.CreateHost(builder);
+        using var scope = host.Services.CreateScope();
+        scope.ServiceProvider.GetRequiredService<ApplicationDbContext>().Database.EnsureCreated();
+        return host;
     }
 }

@@ -15,6 +15,23 @@ public static class DataBaseConfigurations
     public static void DataBaseServices(this IServiceCollection services, IConfiguration configuration,
         ILogger logger, DatabaseRuntimeOptions databaseRuntime)
     {
+        if (IntegrationTestDatabaseOptions.UseInMemoryDatabaseForIntegrationTests(out var inMemoryDatabaseName))
+        {
+            logger.Information("Using EF Core in-memory database for integration tests: {DatabaseName}", inMemoryDatabaseName);
+            services.AddDbContext<ApplicationDbContext>(
+                options => options.UseInMemoryDatabase(inMemoryDatabaseName),
+                ServiceLifetime.Scoped);
+            services.AddDbContextFactory<ApplicationDbContext>(
+                options => options.UseInMemoryDatabase(inMemoryDatabaseName),
+                ServiceLifetime.Scoped);
+            services.AddScoped<IRepositoryFactory, RepositoryFactory>();
+            services.AddScoped<IQueryFactory, QueryFactory>();
+            services.AddScoped<IUnitOfWork, UnitOfWork>();
+            services.AddSingleton<ApplicationDatabaseState>();
+            services.AddSingleton<IApplicationDatabaseState>(sp => sp.GetRequiredService<ApplicationDatabaseState>());
+            return;
+        }
+
         if (!databaseRuntime.IsConnectionConfigured)
         {
             logger.Error(
@@ -108,4 +125,17 @@ file sealed class MarkDatabaseUnconfiguredHostedService(ApplicationDatabaseState
     }
 
     public Task StopAsync(CancellationToken cancellationToken) => Task.CompletedTask;
+}
+
+file static class IntegrationTestDatabaseOptions
+{
+    public static bool UseInMemoryDatabaseForIntegrationTests(out string databaseName)
+    {
+        databaseName = Environment.GetEnvironmentVariable("DATAGATE_INMEMORY_DB_NAME") ?? string.Empty;
+        return string.Equals(
+                   Environment.GetEnvironmentVariable("DATAGATE_USE_INMEMORY_DB"),
+                   "true",
+                   StringComparison.OrdinalIgnoreCase)
+               && !string.IsNullOrWhiteSpace(databaseName);
+    }
 }

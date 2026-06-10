@@ -79,7 +79,7 @@ public class OpenVpnFilesControllerTests
         var result = await _controller.AddFile(new AddFileRequest { CommonName = "cn", VpnServerId = 1 }, CancellationToken.None);
 
         var bad = Assert.IsType<BadRequestObjectResult>(result.Result);
-        var response = Assert.IsType<ApiResponse<string>>(bad.Value);
+        var response = Assert.IsType<ApiResponse<OvpnFileResponse>>(bad.Value);
         Assert.False(response.Success);
     }
 
@@ -118,7 +118,7 @@ public class OpenVpnFilesControllerTests
         var result = await _controller.GetAllByVpnServerId(new ByVpnServerIdRequest { VpnServerId = 10 }, CancellationToken.None);
 
         var bad = Assert.IsType<BadRequestObjectResult>(result.Result);
-        var response = Assert.IsType<ApiResponse<string>>(bad.Value);
+        var response = Assert.IsType<ApiResponse<OvpnFilesResponse>>(bad.Value);
         Assert.False(response.Success);
     }
 
@@ -146,7 +146,7 @@ public class OpenVpnFilesControllerTests
             new ByExternalIdAndVpnServerIdRequest { VpnServerId = 3, ExternalId = "ext" }, CancellationToken.None);
 
         var bad = Assert.IsType<BadRequestObjectResult>(result.Result);
-        var response = Assert.IsType<ApiResponse<string>>(bad.Value);
+        var response = Assert.IsType<ApiResponse<OvpnFilesResponse>>(bad.Value);
         Assert.False(response.Success);
     }
 
@@ -172,7 +172,7 @@ public class OpenVpnFilesControllerTests
         var result = await _controller.GetAllWithToken(new ByVpnServerIdRequest { VpnServerId = 6 }, CancellationToken.None);
 
         var bad = Assert.IsType<BadRequestObjectResult>(result.Result);
-        var response = Assert.IsType<ApiResponse<string>>(bad.Value);
+        var response = Assert.IsType<ApiResponse<OvpnFilesWithTokensResponse>>(bad.Value);
         Assert.False(response.Success);
     }
 
@@ -198,7 +198,7 @@ public class OpenVpnFilesControllerTests
         var result = await _controller.GetAllWithToken(new ByExternalIdAndVpnServerIdRequest { VpnServerId = 2, ExternalId = "e1" }, CancellationToken.None);
 
         var bad = Assert.IsType<BadRequestObjectResult>(result.Result);
-        var response = Assert.IsType<ApiResponse<string>>(bad.Value);
+        var response = Assert.IsType<ApiResponse<OvpnFilesWithTokensResponse>>(bad.Value);
         Assert.False(response.Success);
     }
 
@@ -224,7 +224,7 @@ public class OpenVpnFilesControllerTests
         var result = await _controller.GetFiles(new ByExternalIdRequest { ExternalId = "ext2" }, CancellationToken.None);
 
         var bad = Assert.IsType<BadRequestObjectResult>(result.Result);
-        var response = Assert.IsType<ApiResponse<string>>(bad.Value);
+        var response = Assert.IsType<ApiResponse<OvpnFilesResponse>>(bad.Value);
         Assert.False(response.Success);
     }
 
@@ -290,7 +290,7 @@ public class OpenVpnFilesControllerTests
         var result = await _controller.AddFileWithToken(new AddFileRequest { CommonName = "cn", VpnServerId = 1 }, CancellationToken.None);
 
         var bad = Assert.IsType<BadRequestObjectResult>(result.Result);
-        var response = Assert.IsType<ApiResponse<string>>(bad.Value);
+        var response = Assert.IsType<ApiResponse<OvpnFileWithTokenResponse>>(bad.Value);
         Assert.False(response.Success);
     }
 
@@ -316,7 +316,7 @@ public class OpenVpnFilesControllerTests
         var result = await _controller.RevokeFile(new RevokeFileRequest { CommonName = "cn", VpnServerId = 5 }, CancellationToken.None);
 
         var bad = Assert.IsType<BadRequestObjectResult>(result.Result);
-        var response = Assert.IsType<ApiResponse<string>>(bad.Value);
+        var response = Assert.IsType<ApiResponse<OvpnFileResponse>>(bad.Value);
         Assert.False(response.Success);
     }
 
@@ -342,7 +342,7 @@ public class OpenVpnFilesControllerTests
         var result = await _controller.DownloadFile(new DownloadFileRequest { IssuedOvpnFileId = 1, VpnServerId = 1 }, CancellationToken.None);
 
         var bad = Assert.IsType<BadRequestObjectResult>(result.Result);
-        var response = Assert.IsType<ApiResponse<string>>(bad.Value);
+        var response = Assert.IsType<ApiResponse<DownloadFileResponse>>(bad.Value);
         Assert.False(response.Success);
     }
 

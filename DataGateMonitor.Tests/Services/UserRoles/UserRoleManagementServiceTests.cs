@@ -131,4 +131,58 @@ public class UserRoleManagementServiceTests
         _cmd.Verify(c => c.DeleteWhere(It.IsAny<System.Linq.Expressions.Expression<Func<UserRole, bool>>>(), It.IsAny<CancellationToken>()), Times.Once);
         _cmd.Verify(c => c.Add(It.Is<UserRole>(ur => ur.UserId == 1 && ur.RoleId == SystemRoles.AdminId), true, It.IsAny<CancellationToken>()), Times.Once);
     }
+
+    [Fact]
+    public async Task GetAssignmentByUserIdAsync_WhenRoleMissing_Throws()
+    {
+        _userQuery.Setup(q => q.GetById(1, It.IsAny<CancellationToken>())).ReturnsAsync(new User { Id = 1 });
+        _userRoleQuery.Setup(q => q.GetByUserId(1, It.IsAny<CancellationToken>()))
+            .ReturnsAsync(new UserRole { UserId = 1, RoleId = 99 });
+        _roleQuery.Setup(q => q.GetById(99, It.IsAny<CancellationToken>())).ReturnsAsync((Role?)null);
+
+        var sut = CreateSut();
+        await Assert.ThrowsAsync<InvalidOperationException>(() => sut.GetAssignmentByUserIdAsync(1, CancellationToken.None));
+    }
+
+    [Fact]
+    public async Task SetUserRoleAsync_WhenUserNotFound_Throws()
+    {
+        _userQuery.Setup(q => q.GetById(1, It.IsAny<CancellationToken>())).ReturnsAsync((User?)null);
+
+        var sut = CreateSut();
+        await Assert.ThrowsAsync<KeyNotFoundException>(() => sut.SetUserRoleAsync(1, SystemRoles.VpnUserId, CancellationToken.None));
+    }
+
+    [Fact]
+    public async Task SetUserRoleAsync_WhenRoleNotFound_Throws()
+    {
+        _userQuery.Setup(q => q.GetById(1, It.IsAny<CancellationToken>())).ReturnsAsync(new User { Id = 1 });
+        _roleQuery.Setup(q => q.GetById(999, It.IsAny<CancellationToken>())).ReturnsAsync((Role?)null);
+
+        var sut = CreateSut();
+        await Assert.ThrowsAsync<KeyNotFoundException>(() => sut.SetUserRoleAsync(1, 999, CancellationToken.None));
+    }
+
+    [Fact]
+    public async Task SetUserRoleAsync_AllowsAdminDemotion_WhenOtherAdminsExist()
+    {
+        _userQuery.Setup(q => q.GetById(1, It.IsAny<CancellationToken>())).ReturnsAsync(new User { Id = 1 });
+        _roleQuery.Setup(q => q.GetById(SystemRoles.VpnUserId, It.IsAny<CancellationToken>()))
+            .ReturnsAsync(new Role { Id = SystemRoles.VpnUserId, Name = "VpnUser", NormalizedName = "VPNUSER", IsSystem = true });
+
+        var existing = new UserRole { UserId = 1, RoleId = SystemRoles.AdminId };
+        _userRoleQuery.Setup(q => q.GetByUserId(1, It.IsAny<CancellationToken>())).ReturnsAsync(existing);
+        _userRoleQuery.Setup(q => q.GetUserIdsByRoleIdAsync(SystemRoles.AdminId, It.IsAny<CancellationToken>()))
+            .ReturnsAsync([1, 2]);
+
+        _cmd.Setup(c => c.DeleteWhere(It.IsAny<System.Linq.Expressions.Expression<Func<UserRole, bool>>>(), It.IsAny<CancellationToken>()))
+            .ReturnsAsync(1);
+        _cmd.Setup(c => c.Add(It.IsAny<UserRole>(), true, It.IsAny<CancellationToken>()))
+            .ReturnsAsync((UserRole ur, bool _, CancellationToken _) => ur);
+
+        var sut = CreateSut();
+        await sut.SetUserRoleAsync(1, SystemRoles.VpnUserId, CancellationToken.None);
+
+        _cmd.Verify(c => c.Add(It.IsAny<UserRole>(), true, It.IsAny<CancellationToken>()), Times.Once);
+    }
 }
