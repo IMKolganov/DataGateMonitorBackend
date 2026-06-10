@@ -10,13 +10,17 @@ using DataGateMonitor.Services.Api.Auth.Registers.Interfaces;
 using DataGateMonitor.Services.Others.Notifications.CertApiClient;
 using DataGateMonitor.SharedModels.DataGateOpenVpnManager.Cert.Responses;
 using DataGateMonitor.SharedModels.DataGateMonitor.VpnServerCerts.Requests;
+using DataGateMonitor.Serialization;
 using DataGateMonitor.SharedModels.Enums;
-using Xunit;
+using DataGateMonitor.SharedModels.Responses;
 
 namespace DataGateMonitor.Tests.Services.DataGateOpenVpnManager;
 
 public class CertApiClientTests
 {
+    private static HttpResponseMessage CreateSuccessResponse<T>(T data) where T : class =>
+        new(HttpStatusCode.OK) { Content = ProjectJson.ToJsonContent(ApiResponse<T>.SuccessResponse(data)) };
+
     private static HttpClient CreateMockHttpClient(HttpResponseMessage response)
     {
         var handler = new MockHttpMessageHandler(response);
@@ -51,10 +55,7 @@ public class CertApiClientTests
             new() { CommonName = "cert1", IsRevoked = false },
             new() { CommonName = "cert2", IsRevoked = true }
         };
-        var response = new HttpResponseMessage(HttpStatusCode.OK)
-        {
-            Content = JsonContent.Create(certs)
-        };
+        var response = CreateSuccessResponse(certs);
         var client = CreateMockHttpClient(response);
 
         var httpFactory = new Mock<IHttpClientFactory>(MockBehavior.Strict);
@@ -85,7 +86,7 @@ public class CertApiClientTests
     public async Task GetAllCertificatesAsync_ForXrayServer_UsesDataGateXRayManagerAudience()
     {
         var certs = new List<ServerCertificate> { new() { CommonName = "x1", IsRevoked = false } };
-        var response = new HttpResponseMessage(HttpStatusCode.OK) { Content = JsonContent.Create(certs) };
+        var response = CreateSuccessResponse(certs);
         var client = CreateMockHttpClient(response);
 
         var httpFactory = new Mock<IHttpClientFactory>(MockBehavior.Strict);
@@ -123,7 +124,7 @@ public class CertApiClientTests
     public async Task BuildCertificateAsync_ReturnsCertificate_AndCallsNotifyBuilt()
     {
         var cert = new ServerCertificate { CommonName = "new-cert", IsRevoked = false };
-        var response = new HttpResponseMessage(HttpStatusCode.OK) { Content = JsonContent.Create(cert) };
+        var response = CreateSuccessResponse(cert);
         var client = CreateMockHttpClient(response);
 
         var httpFactory = new Mock<IHttpClientFactory>(MockBehavior.Strict);

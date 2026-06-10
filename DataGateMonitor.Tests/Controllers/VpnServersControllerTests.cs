@@ -261,7 +261,10 @@ public class VpnServersControllerTests
         var req = new GetServerRequest { VpnServerId = 99 };
         var result = await _controller.GetServer(req, CancellationToken.None);
 
-        Assert.IsType<NotFoundResult>(result.Result);
+        var notFound = Assert.IsType<NotFoundObjectResult>(result.Result);
+        var response = Assert.IsType<ApiResponse<VpnServerResponse>>(notFound.Value);
+        Assert.False(response.Success);
+        Assert.Equal("VPN server not found.", response.Message);
     }
 
     [Fact]
@@ -561,7 +564,7 @@ public class VpnServersControllerTests
     }
 
     [Fact]
-    public async Task GetServer_WhenVpnUserNoAccess_Returns_Forbidden()
+    public async Task GetServer_WhenVpnUserAndServerExists_Returns_Ok()
     {
         SetUser(_controller, new ClaimsPrincipal(new ClaimsIdentity(
             [
@@ -569,14 +572,17 @@ public class VpnServersControllerTests
                 new Claim(ClaimTypes.NameIdentifier, "60")
             ],
             "mock")));
-        _vpnAccess.Setup(a => a.UserHasAccessAsync(60, 10, It.IsAny<CancellationToken>()))
-            .ReturnsAsync(false);
+        _serverQuery.Setup(s => s.GetById(10, It.IsAny<CancellationToken>()))
+            .ReturnsAsync(new VpnServer { Id = 10, ServerName = "S10", CreateDate = DateTimeOffset.UtcNow, LastUpdate = DateTimeOffset.UtcNow });
+        _tagQuery.Setup(q => q.GetTagNamesByVpnServerId(10, It.IsAny<CancellationToken>()))
+            .ReturnsAsync(new List<string>());
 
         var result = await _controller.GetServer(new GetServerRequest { VpnServerId = 10 }, CancellationToken.None);
 
-        var forbid = Assert.IsType<ObjectResult>(result.Result);
-        Assert.Equal(StatusCodes.Status403Forbidden, forbid.StatusCode);
-        _serverQuery.Verify(s => s.GetById(It.IsAny<int>(), It.IsAny<CancellationToken>()), Times.Never);
+        var ok = Assert.IsType<OkObjectResult>(result.Result);
+        var response = Assert.IsType<ApiResponse<VpnServerResponse>>(ok.Value);
+        Assert.True(response.Success);
+        _vpnAccess.Verify(a => a.UserHasAccessAsync(It.IsAny<int>(), It.IsAny<int>(), It.IsAny<CancellationToken>()), Times.Never);
     }
 
 }

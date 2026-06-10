@@ -9,6 +9,7 @@ using DataGateMonitor.DataBase.Services.Query.UserRefreshTokenTable;
 using DataGateMonitor.DataBase.Services.Query.UserTable;
 using DataGateMonitor.Models;
 using DataGateMonitor.Services.Api.Auth.Registers.Interfaces;
+using DataGateMonitor.Services.Api.Auth.Users;
 
 namespace DataGateMonitor.Services.Api.Auth.Login;
 
@@ -148,8 +149,10 @@ public sealed class TokenService(
         if (!string.IsNullOrWhiteSpace(externalId))
             return externalId;
 
-        var link = await userIdentityLinkQueryService.GetByUserId(user.Id, ct);
-        return string.IsNullOrWhiteSpace(link?.ExternalId) ? null : link.ExternalId;
+        return await UserIdentityLinkExternalIdResolver.ResolveAsync(
+            user.Id,
+            userIdentityLinkQueryService,
+            ct);
     }
 
     private async Task<(string Token, DateTimeOffset ExpiresAt)> CreateAccessTokenAsync(User user, string? externalId, CancellationToken ct)

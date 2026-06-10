@@ -5,6 +5,7 @@ using DataGateMonitor.DataBase.Services.Query.VpnServerClientTable;
 using DataGateMonitor.DataBase.Services.Query.UserIdentityLinkTable;
 using DataGateMonitor.Services.Api;
 using DataGateMonitor.Services.Api.Auth.Handlers.Interfaces;
+using DataGateMonitor.Services.Api.Auth.Users;
 using DataGateMonitor.Services.Api.Privacy;
 using DataGateMonitor.SharedModels.DataGateMonitor.VpnServerClients.Requests;
 using DataGateMonitor.SharedModels.DataGateMonitor.VpnServerClients.Responses;
@@ -266,8 +267,8 @@ public class VpnServerClientsController(
         if (int.TryParse(userIdClaim, out var userId))
         {
             // For regular users, trust server-side identity link as the source of truth.
-            var link = await userIdentityLinkQueryService.GetByUserId(userId, ct);
-            var linkedExternalId = NormalizeExternalId(link?.ExternalId);
+            var linkedExternalId = NormalizeExternalId(
+                await UserIdentityLinkExternalIdResolver.ResolveAsync(userId, userIdentityLinkQueryService, ct));
             if (!string.IsNullOrWhiteSpace(linkedExternalId))
                 return linkedExternalId;
         }
