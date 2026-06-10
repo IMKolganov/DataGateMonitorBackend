@@ -12,13 +12,13 @@ using DataGateMonitor.Services.Api.Auth.Registers.Interfaces;
 using DataGateMonitor.Services.Api.Auth.Totp;
 using DataGateMonitor.Services.Api.Auth.Users;
 using DataGateMonitor.Services.Others.Notifications;
-using DataGateMonitor.SharedModels.Auth.Google;
+using DataGateMonitor.SharedModels.DataGateMonitor.Auth.Requests;
 using DataGateMonitor.SharedModels.DataGateMonitor.Auth.Responses;
 using Xunit;
 
 namespace DataGateMonitor.Tests.Services.Api.Auth.Login;
 
-public class UserLoginServiceGoogleTests
+public class UserLoginServicePasswordTests
 {
     private static void SetupTotpPassthrough(Mock<IAdminTotpService> adminTotpService)
     {
@@ -36,7 +36,7 @@ public class UserLoginServiceGoogleTests
     }
 
     [Fact]
-    public async Task LoginWithGoogleAsync_WhenNewUser_NotifiesAdmins()
+    public async Task LoginAsync_WhenNoIdentityLink_CreatesLocalLinkBeforeIssuingToken()
     {
         var credentialQuery = new Mock<IUserCredentialQueryService>();
         var userQuery = new Mock<IUserQueryService>();
@@ -53,44 +53,37 @@ public class UserLoginServiceGoogleTests
         var httpContextAccessor = new Mock<IHttpContextAccessor>();
 
         SetupTotpPassthrough(adminTotpService);
-        credentialQuery
-            .Setup(c => c.GetByUserId(It.IsAny<int>(), It.IsAny<CancellationToken>()))
-            .ReturnsAsync((UserCredential?)null);
 
-        tokenValidator
-            .Setup(v => v.ValidateAsync("google-token", It.IsAny<CancellationToken>()))
-            .ReturnsAsync(new GoogleUserInfo
-            {
-                Subject = "google-sub-1",
-                Email = "new@example.com",
-                Name = "New Google User",
-            });
-
-        userIdentityLinkQuery
-            .Setup(q => q.GetByProviderAndExternalId("google", "google-sub-1", It.IsAny<CancellationToken>()))
-            .ReturnsAsync((UserIdentityLink?)null);
-        userQuery
-            .Setup(q => q.GetByEmail("new@example.com", It.IsAny<CancellationToken>()))
-            .ReturnsAsync((User?)null);
-
-        var createdUser = new User
+        var user = new User { Id = 42, DisplayName = "Email User", Email = "u@example.com", IsEmailConfirmed = true };
+        var credential = new UserCredential
         {
-            Id = 99,
-            DisplayName = "New Google User",
-            Email = "new@example.com",
+            UserId = 42,
+            Login = "email-user",
+            NormalizedLogin = "EMAIL-USER",
+            PasswordHash = "HASH",
         };
 
-        userAccountService
-            .Setup(s => s.CreateUserWithDefaultRoleAsync(It.IsAny<User>(), It.IsAny<CancellationToken>()))
-            .ReturnsAsync(createdUser);
+        credentialQuery
+            .Setup(q => q.GetByNormalizedLogin("EMAIL-USER", It.IsAny<CancellationToken>()))
+            .ReturnsAsync(credential);
+        userQuery.Setup(q => q.GetById(42, It.IsAny<CancellationToken>())).ReturnsAsync(user);
+        passwordHasher
+            .Setup(h => h.VerifyHashedPassword(user, "HASH", "Secret123!"))
+            .Returns(PasswordVerificationResult.Success);
 
+        userIdentityLinkQuery
+            .Setup(q => q.AnyByUserId(42, It.IsAny<CancellationToken>()))
+            .ReturnsAsync(false);
+
+        UserIdentityLink? capturedLink = null;
         userIdentityLinkCommand
             .Setup(c => c.Add(It.IsAny<UserIdentityLink>(), true, It.IsAny<CancellationToken>()))
-            .ReturnsAsync((UserIdentityLink link, bool _, CancellationToken _) => link);
+            .Callback<UserIdentityLink, bool, CancellationToken>((l, _, _) => capturedLink = l)
+            .ReturnsAsync((UserIdentityLink l, bool _, CancellationToken _) => l);
 
         tokenService
-            .Setup(t => t.IssueAsync(99, "google-sub-1", null, null, It.IsAny<CancellationToken>()))
-            .ReturnsAsync(new TokenPair("access", DateTime.UtcNow.AddHours(1), "refresh", DateTime.UtcNow.AddDays(1)));
+            .Setup(t => t.IssueAsync(42, null, null, null, It.IsAny<CancellationToken>()))
+            .ReturnsAsync(new TokenPair("access", DateTimeOffset.UtcNow.AddHours(1), "refresh", DateTimeOffset.UtcNow.AddDays(1)));
 
         var sut = new UserLoginService(
             credentialQuery.Object,
@@ -107,16 +100,23 @@ public class UserLoginServiceGoogleTests
             logger.Object,
             httpContextAccessor.Object);
 
-        var response = await sut.LoginWithGoogleAsync("google-token", CancellationToken.None);
+        await sut.LoginAsync(new LoginRequest { Login = "email-user", Password = "Secret123!" }, CancellationToken.None);
 
-        Assert.True(response.IsNewUser);
-        appNotificationFacade.Verify(
-            f => f.UserRegistered(99, "New Google User", null, "new@example.com", "Google", It.IsAny<CancellationToken>()),
+        Assert.NotNull(capturedLink);
+        Assert.Equal(42, capturedLink!.UserId);
+        Assert.Equal(AuthIdentityProviders.Local, capturedLink.Provider);
+        Assert.Equal("local:42", capturedLink.ExternalId);
+
+        userIdentityLinkCommand.Verify(
+            c => c.Add(It.IsAny<UserIdentityLink>(), true, It.IsAny<CancellationToken>()),
+            Times.Once);
+        tokenService.Verify(
+            t => t.IssueAsync(42, null, null, null, It.IsAny<CancellationToken>()),
             Times.Once);
     }
 
     [Fact]
-    public async Task LoginWithGoogleAsync_WhenExistingLink_DoesNotNotifyAdmins()
+    public async Task LoginAsync_WhenTelegramLinkAlreadyExists_DoesNotCreateLocalLink()
     {
         var credentialQuery = new Mock<IUserCredentialQueryService>();
         var userQuery = new Mock<IUserQueryService>();
@@ -133,25 +133,30 @@ public class UserLoginServiceGoogleTests
         var httpContextAccessor = new Mock<IHttpContextAccessor>();
 
         SetupTotpPassthrough(adminTotpService);
-        credentialQuery
-            .Setup(c => c.GetByUserId(5, It.IsAny<CancellationToken>()))
-            .ReturnsAsync((UserCredential?)null);
 
-        tokenValidator
-            .Setup(v => v.ValidateAsync("google-token", It.IsAny<CancellationToken>()))
-            .ReturnsAsync(new GoogleUserInfo { Subject = "google-sub-2", Email = "old@example.com", Name = "Old" });
+        var user = new User { Id = 5, DisplayName = "Tg User", IsEmailConfirmed = true };
+        var credential = new UserCredential
+        {
+            UserId = 5,
+            NormalizedLogin = "TGUSER",
+            PasswordHash = "HASH",
+        };
+
+        credentialQuery
+            .Setup(q => q.GetByNormalizedLogin("TGUSER", It.IsAny<CancellationToken>()))
+            .ReturnsAsync(credential);
+        userQuery.Setup(q => q.GetById(5, It.IsAny<CancellationToken>())).ReturnsAsync(user);
+        passwordHasher
+            .Setup(h => h.VerifyHashedPassword(user, "HASH", "Secret123!"))
+            .Returns(PasswordVerificationResult.Success);
 
         userIdentityLinkQuery
-            .Setup(q => q.GetByProviderAndExternalId("google", "google-sub-2", It.IsAny<CancellationToken>()))
-            .ReturnsAsync(new UserIdentityLink { UserId = 5 });
-
-        userQuery
-            .Setup(q => q.GetById(5, It.IsAny<CancellationToken>()))
-            .ReturnsAsync(new User { Id = 5, DisplayName = "Old", Email = "old@example.com" });
+            .Setup(q => q.AnyByUserId(5, It.IsAny<CancellationToken>()))
+            .ReturnsAsync(true);
 
         tokenService
-            .Setup(t => t.IssueAsync(5, "google-sub-2", null, null, It.IsAny<CancellationToken>()))
-            .ReturnsAsync(new TokenPair("access", DateTime.UtcNow.AddHours(1), "refresh", DateTime.UtcNow.AddDays(1)));
+            .Setup(t => t.IssueAsync(5, null, null, null, It.IsAny<CancellationToken>()))
+            .ReturnsAsync(new TokenPair("access", DateTimeOffset.UtcNow.AddHours(1), "refresh", DateTimeOffset.UtcNow.AddDays(1)));
 
         var sut = new UserLoginService(
             credentialQuery.Object,
@@ -168,17 +173,13 @@ public class UserLoginServiceGoogleTests
             logger.Object,
             httpContextAccessor.Object);
 
-        var response = await sut.LoginWithGoogleAsync("google-token", CancellationToken.None);
+        await sut.LoginAsync(new LoginRequest { Login = "tguser", Password = "Secret123!" }, CancellationToken.None);
 
-        Assert.False(response.IsNewUser);
-        appNotificationFacade.Verify(
-            f => f.UserRegistered(It.IsAny<int>(), It.IsAny<string>(), It.IsAny<string?>(), It.IsAny<string?>(), It.IsAny<string?>(), It.IsAny<CancellationToken>()),
-            Times.Never);
         userIdentityLinkCommand.Verify(
-            c => c.Add(
-                It.Is<UserIdentityLink>(l => l.Provider == AuthIdentityProviders.Local),
-                It.IsAny<bool>(),
-                It.IsAny<CancellationToken>()),
+            c => c.Add(It.IsAny<UserIdentityLink>(), It.IsAny<bool>(), It.IsAny<CancellationToken>()),
             Times.Never);
+        tokenService.Verify(
+            t => t.IssueAsync(5, null, null, null, It.IsAny<CancellationToken>()),
+            Times.Once);
     }
 }

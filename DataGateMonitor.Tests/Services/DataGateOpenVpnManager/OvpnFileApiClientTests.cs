@@ -8,13 +8,17 @@ using DataGateMonitor.Models;
 using DataGateMonitor.Services.Api.Auth.Registers.Interfaces;
 using DataGateMonitor.Services.DataGateOpenVpnManager;
 using DataGateMonitor.SharedModels.DataGateOpenVpnManager.OvpnFile.Requests;
+using DataGateMonitor.Serialization;
 using DataGateMonitor.SharedModels.DataGateOpenVpnManager.OvpnFile.Responses;
-using Xunit;
+using DataGateMonitor.SharedModels.Responses;
 
 namespace DataGateMonitor.Tests.Services.DataGateOpenVpnManager;
 
 public class OvpnFileApiClientTests
 {
+    private static HttpResponseMessage CreateSuccessResponse<T>(T data) where T : class =>
+        new(HttpStatusCode.OK) { Content = ProjectJson.ToJsonContent(ApiResponse<T>.SuccessResponse(data)) };
+
     private static HttpClient CreateMockHttpClient(HttpResponseMessage response)
     {
         var handler = new MockHttpMessageHandler(response);
@@ -60,7 +64,7 @@ public class OvpnFileApiClientTests
     public async Task AddOvpnFile_WhenSuccess_ReturnsMetadata()
     {
         var metadata = new OvpnFileMetadata { CommonName = "user@client", FileName = "user.ovpn", FilePath = "/path/user.ovpn" };
-        var response = new HttpResponseMessage(HttpStatusCode.OK) { Content = JsonContent.Create(metadata) };
+        var response = CreateSuccessResponse(metadata);
         var client = CreateMockHttpClient(response);
 
         var httpFactory = new Mock<IHttpClientFactory>(MockBehavior.Strict);
@@ -86,7 +90,7 @@ public class OvpnFileApiClientTests
     public async Task DownloadOvpnFile_WhenSuccess_ReturnsContent()
     {
         var download = new OvpnFileDownload { CommonName = "cn", FileName = "f.ovpn", Content = new byte[] { 1, 2, 3 } };
-        var response = new HttpResponseMessage(HttpStatusCode.OK) { Content = JsonContent.Create(download) };
+        var response = CreateSuccessResponse(download);
         var client = CreateMockHttpClient(response);
 
         var httpFactory = new Mock<IHttpClientFactory>(MockBehavior.Strict);

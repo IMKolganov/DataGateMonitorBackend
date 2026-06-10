@@ -297,29 +297,33 @@ public sealed class UserMergeService(
         List<string> warnings,
         CancellationToken ct)
     {
-        var survivorCredential = await uow.GetQuery<UserCredential>()
+        var survivorHasCredential = await uow.GetQuery<UserCredential>()
             .AsQueryable()
-            .FirstOrDefaultAsync(c => c.UserId == survivorUserId, ct);
+            .AsNoTracking()
+            .AnyAsync(c => c.UserId == survivorUserId, ct);
 
-        var mergedCredential = await uow.GetQuery<UserCredential>()
+        var mergedCredentialId = await uow.GetQuery<UserCredential>()
             .AsQueryable()
-            .FirstOrDefaultAsync(c => c.UserId == mergedUserId, ct);
+            .AsNoTracking()
+            .Where(c => c.UserId == mergedUserId)
+            .Select(c => c.Id)
+            .FirstOrDefaultAsync(ct);
 
-        if (mergedCredential is null)
+        if (mergedCredentialId == 0)
             return;
 
-        if (survivorCredential is null)
+        if (!survivorHasCredential)
         {
             stats.UserCredentialsReassigned += await uow.GetQuery<UserCredential>()
                 .AsQueryable()
-                .Where(c => c.Id == mergedCredential.Id)
+                .Where(c => c.Id == mergedCredentialId)
                 .ExecuteUpdateAsync(s => s.SetProperty(c => c.UserId, survivorUserId), ct);
             return;
         }
 
         stats.UserCredentialsRemoved += await uow.GetQuery<UserCredential>()
             .AsQueryable()
-            .Where(c => c.Id == mergedCredential.Id)
+            .Where(c => c.Id == mergedCredentialId)
             .ExecuteDeleteAsync(ct);
 
         warnings.Add(
@@ -335,25 +339,31 @@ public sealed class UserMergeService(
     {
         var now = DateTimeOffset.UtcNow;
 
-        var survivorActive = await uow.GetQuery<UserQuotaPlan>()
+        var survivorActivePlanId = await uow.GetQuery<UserQuotaPlan>()
             .AsQueryable()
-            .FirstOrDefaultAsync(p => p.UserId == survivorUserId && p.EffectiveTo == null, ct);
+            .AsNoTracking()
+            .Where(p => p.UserId == survivorUserId && p.EffectiveTo == null)
+            .Select(p => new { p.Id, p.QuotaPlanId })
+            .FirstOrDefaultAsync(ct);
 
-        var mergedActive = await uow.GetQuery<UserQuotaPlan>()
+        var mergedActivePlanId = await uow.GetQuery<UserQuotaPlan>()
             .AsQueryable()
-            .FirstOrDefaultAsync(p => p.UserId == mergedUserId && p.EffectiveTo == null, ct);
+            .AsNoTracking()
+            .Where(p => p.UserId == mergedUserId && p.EffectiveTo == null)
+            .Select(p => p.Id)
+            .FirstOrDefaultAsync(ct);
 
-        if (mergedActive is null)
+        if (mergedActivePlanId == 0)
         {
             stats.UserQuotaPlansReassigned += await UpdateUserIdAsync<UserQuotaPlan>(mergedUserId, survivorUserId, ct);
             return;
         }
 
-        if (survivorActive is null)
+        if (survivorActivePlanId is null)
         {
             stats.UserQuotaPlansReassigned += await uow.GetQuery<UserQuotaPlan>()
                 .AsQueryable()
-                .Where(p => p.Id == mergedActive.Id)
+                .Where(p => p.Id == mergedActivePlanId)
                 .ExecuteUpdateAsync(s => s.SetProperty(p => p.UserId, survivorUserId), ct);
 
             stats.UserQuotaPlansReassigned += await UpdateUserIdAsync<UserQuotaPlan>(
@@ -366,7 +376,7 @@ public sealed class UserMergeService(
 
         stats.UserQuotaPlansClosed += await uow.GetQuery<UserQuotaPlan>()
             .AsQueryable()
-            .Where(p => p.Id == mergedActive.Id)
+            .Where(p => p.Id == mergedActivePlanId)
             .ExecuteUpdateAsync(s => s
                 .SetProperty(p => p.EffectiveTo, now)
                 .SetProperty(p => p.Note, "Closed during Google→Telegram user merge"), ct);
@@ -378,36 +388,39 @@ public sealed class UserMergeService(
             ct);
 
         warnings.Add(
-            $"Both users had active quota plans; survivor plan {survivorActive.QuotaPlanId} kept, merged plan closed.");
+            $"Both users had active quota plans; survivor plan {survivorActivePlanId.QuotaPlanId} kept, merged plan closed.");
     }
 
     private async Task MergeRolesAsync(int survivorUserId, int mergedUserId, MergeUserStatsDto stats, CancellationToken ct)
     {
         var survivorRoleIds = await uow.GetQuery<UserRole>()
             .AsQueryable()
+            .AsNoTracking()
             .Where(r => r.UserId == survivorUserId)
             .Select(r => r.RoleId)
             .ToListAsync(ct);
 
-        var mergedRoles = await uow.GetQuery<UserRole>()
+        var mergedRoleIds = await uow.GetQuery<UserRole>()
             .AsQueryable()
+            .AsNoTracking()
             .Where(r => r.UserId == mergedUserId)
+            .Select(r => r.RoleId)
             .ToListAsync(ct);
 
-        foreach (var role in mergedRoles)
+        foreach (var roleId in mergedRoleIds)
         {
-            if (survivorRoleIds.Contains(role.RoleId))
+            if (survivorRoleIds.Contains(roleId))
             {
                 stats.UserRolesRemoved += await uow.GetQuery<UserRole>()
                     .AsQueryable()
-                    .Where(r => r.UserId == mergedUserId && r.RoleId == role.RoleId)
+                    .Where(r => r.UserId == mergedUserId && r.RoleId == roleId)
                     .ExecuteDeleteAsync(ct);
             }
             else
             {
                 stats.UserRolesReassigned += await uow.GetQuery<UserRole>()
                     .AsQueryable()
-                    .Where(r => r.UserId == mergedUserId && r.RoleId == role.RoleId)
+                    .Where(r => r.UserId == mergedUserId && r.RoleId == roleId)
                     .ExecuteUpdateAsync(s => s.SetProperty(r => r.UserId, survivorUserId), ct);
             }
         }

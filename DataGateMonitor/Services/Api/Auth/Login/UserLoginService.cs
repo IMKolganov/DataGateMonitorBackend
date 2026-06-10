@@ -62,6 +62,12 @@ public sealed class UserLoginService(
         if (result == PasswordVerificationResult.Failed)
             throw new UnauthorizedAccessException("Invalid login or password.");
 
+        await LocalUserIdentityLinkEnsurer.EnsureAsync(
+            user.Id,
+            userIdentityLinkQueryService,
+            userIdentityLinkCommandService,
+            ct);
+
         var (deviceId, userAgent) = GetClientInfo();
 
         return await adminTotpService.ApplyAdminTotpGateAsync(

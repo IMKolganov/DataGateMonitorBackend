@@ -337,4 +337,217 @@ public class UserServiceTests
         result.User.ExternalId.Should().Be("88888");
         _userQuotaPlanCommand.Verify(c => c.Add(It.IsAny<UserQuotaPlan>(), It.IsAny<bool>(), It.IsAny<CancellationToken>()), Times.Never);
     }
+
+    [Fact]
+    public async Task GetUsersPage_ClampsInvalidPageAndPageSize()
+    {
+        var paged = new PagedResponse<User>
+        {
+            Page = 1,
+            PageSize = 500,
+            TotalCount = 0,
+            Items = [],
+        };
+        _userQuery.Setup(q => q.GetPage(1, 500, It.IsAny<CancellationToken>())).ReturnsAsync(paged);
+
+        var result = await _sut.GetUsersPage(new GetAllUsersRequest { Page = 0, PageSize = 9999 }, CancellationToken.None);
+
+        result.PageSize.Should().Be(500);
+        _userQuery.Verify(q => q.GetPage(1, 500, It.IsAny<CancellationToken>()), Times.Once);
+    }
+
+    [Fact]
+    public async Task GetUserByExternalId_WhenLinkedUserMissing_ThrowsInvalidOperationException()
+    {
+        var link = new UserIdentityLink { Id = 1, UserId = 404, Provider = "telegram", ExternalId = "123" };
+        _userIdentityLinkQuery.Setup(q => q.GetByExternalId("123", It.IsAny<CancellationToken>())).ReturnsAsync(link);
+        _userQuery.Setup(q => q.GetById(404, It.IsAny<CancellationToken>())).ReturnsAsync((User?)null);
+
+        var act = () => _sut.GetUserByExternalId(new GetUserByExternalIdRequest { ExternalId = "123" }, CancellationToken.None);
+
+        await act.Should().ThrowAsync<InvalidOperationException>()
+            .WithMessage("*Linked user not found*404*");
+    }
+
+    [Fact]
+    public async Task RegisterUserFromTgBot_WhenLinkedUserMissing_ThrowsInvalidOperationException()
+    {
+        var ct = CancellationToken.None;
+        var tgUser = new TelegramBotUser { Id = 1, TelegramId = 555, CreateDate = DateTimeOffset.UtcNow, LastUpdate = DateTimeOffset.UtcNow };
+        var link = new UserIdentityLink { Id = 2, UserId = 999, Provider = "telegram", ExternalId = "555" };
+
+        _telegramBotUserQuery.Setup(q => q.GetByTelegramId(555, ct)).ReturnsAsync(tgUser);
+        _telegramBotUserCommand.Setup(c => c.Update(It.IsAny<TelegramBotUser>(), true, ct)).ReturnsAsync(1);
+        _userIdentityLinkQuery.Setup(q => q.GetByProviderAndExternalId("telegram", "555", ct)).ReturnsAsync(link);
+        _userQuery.Setup(q => q.GetById(999, ct)).ReturnsAsync((User?)null);
+
+        var act = () => _sut.RegisterUserFromTgBot(new RegisterUserFromTgBotRequest { TelegramId = 555 }, ct);
+
+        await act.Should().ThrowAsync<InvalidOperationException>()
+            .WithMessage("*Linked user not found*999*");
+    }
+
+    [Fact]
+    public async Task GetEmailConfirmationStatus_WhenUserExists_ReturnsStatus()
+    {
+        var user = new User { Id = 7, IsEmailConfirmed = false, CreateDate = DateTimeOffset.UtcNow, LastUpdate = DateTimeOffset.UtcNow };
+        _userQuery.Setup(q => q.GetById(7, It.IsAny<CancellationToken>())).ReturnsAsync(user);
+
+        var result = await _sut.GetEmailConfirmationStatus(new GetUserEmailConfirmationStatusRequest { Id = 7 }, CancellationToken.None);
+
+        result.IsEmailConfirmed.Should().BeFalse();
+        _userQuery.VerifyAll();
+    }
+
+    [Fact]
+    public async Task GetEmailConfirmationStatus_WhenUserMissing_ThrowsKeyNotFoundException()
+    {
+        _userQuery.Setup(q => q.GetById(404, It.IsAny<CancellationToken>())).ReturnsAsync((User?)null);
+
+        var act = () => _sut.GetEmailConfirmationStatus(new GetUserEmailConfirmationStatusRequest { Id = 404 }, CancellationToken.None);
+
+        await act.Should().ThrowAsync<KeyNotFoundException>().WithMessage("*User 404 not found*");
+    }
+
+    [Fact]
+    public async Task ConfirmEmailManually_WhenUserMissing_ThrowsKeyNotFoundException()
+    {
+        _userQuery.Setup(q => q.GetById(404, It.IsAny<CancellationToken>())).ReturnsAsync((User?)null);
+
+        var act = () => _sut.ConfirmEmailManually(new ConfirmUserEmailRequest { Id = 404 }, CancellationToken.None);
+
+        await act.Should().ThrowAsync<KeyNotFoundException>().WithMessage("*User 404 not found*");
+    }
+
+    [Fact]
+    public async Task ConfirmEmailManually_WhenUserHasNoEmail_ThrowsInvalidOperationException()
+    {
+        var user = new User { Id = 1, Email = null, CreateDate = DateTimeOffset.UtcNow, LastUpdate = DateTimeOffset.UtcNow };
+        _userQuery.Setup(q => q.GetById(1, It.IsAny<CancellationToken>())).ReturnsAsync(user);
+
+        var act = () => _sut.ConfirmEmailManually(new ConfirmUserEmailRequest { Id = 1 }, CancellationToken.None);
+
+        await act.Should().ThrowAsync<InvalidOperationException>().WithMessage("*no email*");
+    }
+
+    [Fact]
+    public async Task ConfirmEmailManually_WhenAlreadyConfirmed_ReturnsWithoutUpdate()
+    {
+        var user = new User
+        {
+            Id = 1,
+            Email = "a@b.com",
+            IsEmailConfirmed = true,
+            CreateDate = DateTimeOffset.UtcNow,
+            LastUpdate = DateTimeOffset.UtcNow,
+        };
+        _userQuery.Setup(q => q.GetById(1, It.IsAny<CancellationToken>())).ReturnsAsync(user);
+
+        var result = await _sut.ConfirmEmailManually(new ConfirmUserEmailRequest { Id = 1 }, CancellationToken.None);
+
+        result.IsEmailConfirmed.Should().BeTrue();
+        _userCommand.Verify(c => c.Update(It.IsAny<User>(), It.IsAny<bool>(), It.IsAny<CancellationToken>()), Times.Never);
+    }
+
+    [Fact]
+    public async Task ConfirmEmailManually_WhenNotConfirmed_UpdatesUser()
+    {
+        var user = new User
+        {
+            Id = 1,
+            Email = "a@b.com",
+            IsEmailConfirmed = false,
+            CreateDate = DateTimeOffset.UtcNow,
+            LastUpdate = DateTimeOffset.UtcNow,
+        };
+        _userQuery.Setup(q => q.GetById(1, It.IsAny<CancellationToken>())).ReturnsAsync(user);
+        _userCommand.Setup(c => c.Update(It.Is<User>(u => u.IsEmailConfirmed), true, It.IsAny<CancellationToken>()))
+            .ReturnsAsync(1);
+
+        var result = await _sut.ConfirmEmailManually(new ConfirmUserEmailRequest { Id = 1 }, CancellationToken.None);
+
+        result.IsEmailConfirmed.Should().BeTrue();
+        _userCommand.VerifyAll();
+    }
+
+    [Fact]
+    public async Task GetOrCreateDashboardUserForTelegramAsync_WhenTelegramBotUserMissing_ReturnsNull()
+    {
+        _telegramBotUserQuery.Setup(q => q.GetByTelegramId(123, It.IsAny<CancellationToken>()))
+            .ReturnsAsync((TelegramBotUser?)null);
+
+        var result = await _sut.GetOrCreateDashboardUserForTelegramAsync(123, CancellationToken.None);
+
+        result.Should().BeNull();
+        _userIdentityLinkQuery.Verify(
+            q => q.GetByProviderAndExternalId(It.IsAny<string>(), It.IsAny<string>(), It.IsAny<CancellationToken>()),
+            Times.Never);
+    }
+
+    [Fact]
+    public async Task GetOrCreateDashboardUserForTelegramAsync_WhenLinkExists_ReturnsExistingUser()
+    {
+        var tgUser = new TelegramBotUser { Id = 5, TelegramId = 123, Username = "tg", CreateDate = DateTimeOffset.UtcNow, LastUpdate = DateTimeOffset.UtcNow };
+        var link = new UserIdentityLink { Id = 1, UserId = 10, Provider = "telegram", ExternalId = "123" };
+        var user = new User { Id = 10, DisplayName = "existing", CreateDate = DateTimeOffset.UtcNow, LastUpdate = DateTimeOffset.UtcNow };
+
+        _telegramBotUserQuery.Setup(q => q.GetByTelegramId(123, It.IsAny<CancellationToken>())).ReturnsAsync(tgUser);
+        _userIdentityLinkQuery.Setup(q => q.GetByProviderAndExternalId("telegram", "123", It.IsAny<CancellationToken>())).ReturnsAsync(link);
+        _userQuery.Setup(q => q.GetById(10, It.IsAny<CancellationToken>())).ReturnsAsync(user);
+
+        var result = await _sut.GetOrCreateDashboardUserForTelegramAsync(123, CancellationToken.None);
+
+        result.Should().BeSameAs(user);
+        _userCommand.Verify(c => c.Add(It.IsAny<User>(), It.IsAny<bool>(), It.IsAny<CancellationToken>()), Times.Never);
+    }
+
+    [Fact]
+    public async Task GetOrCreateDashboardUserForTelegramAsync_WhenNoLink_CreatesUserLinkAndQuota()
+    {
+        var ct = CancellationToken.None;
+        var now = DateTimeOffset.UtcNow;
+        var tgUser = new TelegramBotUser { Id = 5, TelegramId = 456, Username = "newtg", CreateDate = now, LastUpdate = now };
+        var defaultPlan = new QuotaPlan { Id = 2, Name = "Default", CreateDate = now, LastUpdate = now };
+
+        _telegramBotUserQuery.Setup(q => q.GetByTelegramId(456, ct)).ReturnsAsync(tgUser);
+        _userIdentityLinkQuery.Setup(q => q.GetByProviderAndExternalId("telegram", "456", ct)).ReturnsAsync((UserIdentityLink?)null);
+        _userCommand.Setup(c => c.Add(It.IsAny<User>(), true, ct))
+            .ReturnsAsync((User u, bool _, CancellationToken _) => new User { Id = 77, DisplayName = u.DisplayName, CreateDate = u.CreateDate, LastUpdate = u.LastUpdate });
+        _userIdentityLinkCommand.Setup(c => c.Add(It.IsAny<UserIdentityLink>(), true, ct))
+            .ReturnsAsync((UserIdentityLink l, bool _, CancellationToken _) => l);
+        _quotaPlanQuery.Setup(q => q.GetDefault(ct)).ReturnsAsync(defaultPlan);
+        _userQuotaPlanCommand.Setup(c => c.Add(It.IsAny<UserQuotaPlan>(), true, ct))
+            .ReturnsAsync((UserQuotaPlan p, bool _, CancellationToken _) => p);
+
+        var result = await _sut.GetOrCreateDashboardUserForTelegramAsync(456, ct);
+
+        result.Should().NotBeNull();
+        result!.Id.Should().Be(77);
+        result.DisplayName.Should().Be("newtg");
+        _userIdentityLinkCommand.Verify(c => c.Add(It.Is<UserIdentityLink>(l => l.ExternalId == "456"), true, ct), Times.Once);
+        _userQuotaPlanCommand.Verify(c => c.Add(It.IsAny<UserQuotaPlan>(), true, ct), Times.Once);
+    }
+
+    [Fact]
+    public async Task RegisterUserFromTgBot_WhenNotificationFails_StillReturnsResponse()
+    {
+        var ct = CancellationToken.None;
+        _telegramBotUserQuery.Setup(q => q.GetByTelegramId(111, ct)).ReturnsAsync((TelegramBotUser?)null);
+        _telegramBotUserCommand.Setup(c => c.Add(It.IsAny<TelegramBotUser>(), true, ct))
+            .ReturnsAsync((TelegramBotUser e, bool _, CancellationToken _) =>
+                new TelegramBotUser { Id = 1, TelegramId = e.TelegramId, Username = e.Username, CreateDate = DateTimeOffset.UtcNow, LastUpdate = DateTimeOffset.UtcNow });
+        _userIdentityLinkQuery.Setup(q => q.GetByProviderAndExternalId("telegram", "111", ct)).ReturnsAsync((UserIdentityLink?)null);
+        _userCommand.Setup(c => c.Add(It.IsAny<User>(), true, ct))
+            .ReturnsAsync((User u, bool _, CancellationToken _) => new User { Id = 50, DisplayName = u.DisplayName ?? "x", CreateDate = u.CreateDate, LastUpdate = u.LastUpdate });
+        _userIdentityLinkCommand.Setup(c => c.Add(It.IsAny<UserIdentityLink>(), true, ct))
+            .ReturnsAsync((UserIdentityLink l, bool _, CancellationToken _) => l);
+        _quotaPlanQuery.Setup(q => q.GetDefault(ct)).ReturnsAsync((QuotaPlan?)null);
+        _userIdentityLinkQuery.Setup(q => q.GetByUserId(50, ct)).ReturnsAsync((UserIdentityLink?)null);
+        _appNotificationFacade.Setup(f => f.UserRegistered(It.IsAny<int>(), It.IsAny<string>(), It.IsAny<string?>(), It.IsAny<string?>(), It.IsAny<string?>(), ct))
+            .ThrowsAsync(new InvalidOperationException("notify failed"));
+
+        var result = await _sut.RegisterUserFromTgBot(new RegisterUserFromTgBotRequest { TelegramId = 111, Username = "x" }, ct);
+
+        result.User!.Id.Should().Be(50);
+    }
 }

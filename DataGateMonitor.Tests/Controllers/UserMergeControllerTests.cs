@@ -47,7 +47,7 @@ public class UserMergeControllerTests
 
         _userMergeServiceMock
             .Setup(s => s.MergeTelegramGoogleAsync(
-                It.Is<MergeTelegramGoogleUsersRequest>(r => r.TelegramUserId == 10 && r.GoogleUserId == 20),
+                It.Is<MergeTelegramGoogleUsersRequest>(r => r.TelegramUserId == 10 && r.GoogleUserId == 20 && r.DryRun),
                 1,
                 It.IsAny<CancellationToken>()))
             .ReturnsAsync(expected);
@@ -60,7 +60,90 @@ public class UserMergeControllerTests
         Assert.True(response.Success);
         Assert.True(response.Data!.DryRun);
         Assert.Equal(10, response.Data.SurvivorUserId);
+        Assert.Equal("123456789", response.Data.TelegramExternalId);
 
         _userMergeServiceMock.VerifyAll();
+    }
+
+    [Fact]
+    public async Task MergeTelegramGoogle_ReturnsOk_WithCommittedMergeResponse()
+    {
+        var req = new MergeTelegramGoogleUsersRequest
+        {
+            TelegramUserId = 10,
+            GoogleUserId = 20,
+            DryRun = false,
+        };
+
+        var expected = new MergeTelegramGoogleUsersResponse
+        {
+            DryRun = false,
+            SurvivorUserId = 10,
+            MergedUserId = 20,
+            ArchiveRecordId = 501,
+            Stats = new MergeUserStatsDto { IdentityLinksReassigned = 1 },
+        };
+
+        _userMergeServiceMock
+            .Setup(s => s.MergeTelegramGoogleAsync(req, 1, It.IsAny<CancellationToken>()))
+            .ReturnsAsync(expected);
+
+        var result = await _controller.MergeTelegramGoogle(req, CancellationToken.None);
+
+        var ok = Assert.IsType<OkObjectResult>(result.Result);
+        var response = Assert.IsType<ApiResponse<MergeTelegramGoogleUsersResponse>>(ok.Value);
+
+        Assert.True(response.Success);
+        Assert.False(response.Data!.DryRun);
+        Assert.Equal(501, response.Data.ArchiveRecordId);
+        Assert.Equal(1, response.Data.Stats.IdentityLinksReassigned);
+
+        _userMergeServiceMock.VerifyAll();
+    }
+
+    [Fact]
+    public async Task MergeTelegramGoogle_PassesCurrentAdminUserId_ToService()
+    {
+        _currentUserServiceMock.Setup(s => s.UserId).Returns(777);
+
+        var req = new MergeTelegramGoogleUsersRequest { TelegramUserId = 1, GoogleUserId = 2 };
+        _userMergeServiceMock
+            .Setup(s => s.MergeTelegramGoogleAsync(req, 777, It.IsAny<CancellationToken>()))
+            .ReturnsAsync(new MergeTelegramGoogleUsersResponse { SurvivorUserId = 1, MergedUserId = 2 });
+
+        await _controller.MergeTelegramGoogle(req, CancellationToken.None);
+
+        _userMergeServiceMock.VerifyAll();
+    }
+
+    [Fact]
+    public async Task MergeTelegramGoogle_Propagates_ServiceException()
+    {
+        var req = new MergeTelegramGoogleUsersRequest { TelegramUserId = 10, GoogleUserId = 20 };
+
+        _userMergeServiceMock
+            .Setup(s => s.MergeTelegramGoogleAsync(req, 1, It.IsAny<CancellationToken>()))
+            .ThrowsAsync(new InvalidOperationException("Survivor user 10 already has a different Google identity link."));
+
+        var ex = await Assert.ThrowsAsync<InvalidOperationException>(() =>
+            _controller.MergeTelegramGoogle(req, CancellationToken.None));
+
+        Assert.Contains("different Google identity link", ex.Message);
+        _userMergeServiceMock.VerifyAll();
+    }
+
+    [Fact]
+    public async Task MergeTelegramGoogle_Propagates_KeyNotFoundException()
+    {
+        var req = new MergeTelegramGoogleUsersRequest { TelegramUserId = 10, GoogleUserId = 20 };
+
+        _userMergeServiceMock
+            .Setup(s => s.MergeTelegramGoogleAsync(req, 1, It.IsAny<CancellationToken>()))
+            .ThrowsAsync(new KeyNotFoundException("Google user 20 not found."));
+
+        var ex = await Assert.ThrowsAsync<KeyNotFoundException>(() =>
+            _controller.MergeTelegramGoogle(req, CancellationToken.None));
+
+        Assert.Contains("not found", ex.Message);
     }
 }
