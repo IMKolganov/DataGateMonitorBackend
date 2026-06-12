@@ -16,4 +16,7 @@ public interface ITelegramBotUserProfilePhotoQueryService
     /// <summary>Mime, timestamps, file_unique_id — does not load <c>ImageBytes</c>.</summary>
     Task<TelegramBotUserProfilePhotoSummary?> GetSummaryNoTrackingAsync(int telegramBotUserId,
         CancellationToken cancellationToken);
+
+    /// <summary>Telegram IDs with a non-empty cached profile photo row.</summary>
+    Task<HashSet<long>> GetTelegramIdsWithProfilePhotoAsync(CancellationToken cancellationToken);
 }
