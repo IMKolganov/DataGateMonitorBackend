@@ -172,4 +172,20 @@ public class GlobalExceptionMiddlewareTests
         Assert.Equal(500, json["statusCode"]?.Value<int>());
         Assert.Equal("Boom.", json["detail"]?.Value<string>());
     }
+
+    [Fact]
+    public async Task InvokeAsync_WhenClientNavigationCancel_Returns499()
+    {
+        var context = CreateContext();
+        RequestDelegate next = _ => throw new OperationCanceledException("The operation was canceled.");
+        var (middleware, facade) = CreateMiddleware(next);
+
+        await middleware.InvokeAsync(context);
+
+        Assert.Equal(499, context.Response.StatusCode);
+        var body = await ReadResponseBodyAsync(context.Response);
+        var json = JObject.Parse(body);
+        Assert.Equal(499, json["statusCode"]?.Value<int>());
+        facade.Verify(f => f.SystemException(It.IsAny<Exception>(), It.IsAny<CancellationToken>()), Times.Never);
+    }
 }
