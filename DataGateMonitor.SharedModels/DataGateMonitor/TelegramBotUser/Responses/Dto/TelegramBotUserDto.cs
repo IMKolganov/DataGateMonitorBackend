@@ -9,6 +9,8 @@ public class TelegramBotUserDto
     public string? LastName { get; set; } = string.Empty;
     public bool IsAdmin { get; set; } = false;
     public bool IsBlocked { get; set; } = false;
+    /// <summary>Cached Telegram profile picture exists in <c>TelegramBotUserProfilePhotos</c>.</summary>
+    public bool HasProfilePhoto { get; set; }
     public DateTimeOffset CreateDate { get; set; }
     public DateTimeOffset LastUpdate { get; set; }
 }
