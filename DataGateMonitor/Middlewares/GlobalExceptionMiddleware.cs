@@ -21,11 +21,28 @@ public class GlobalExceptionMiddleware(
         {
             await HandleOperationCanceledAsync(context, ex);
         }
+        catch (UnauthorizedAccessException ex)
+        {
+            LogExpectedUnauthorizedAccess(context, ex);
+            await HandleExceptionAsync(context, ex, notifyAdmins: false);
+        }
         catch (Exception ex)
         {
             logger.LogError(ex, "Unhandled exception occurred.");
-            await HandleExceptionAsync(context, ex);
+            await HandleExceptionAsync(context, ex, notifyAdmins: true);
         }
+    }
+
+    private void LogExpectedUnauthorizedAccess(HttpContext context, UnauthorizedAccessException exception)
+    {
+        logger.LogWarning(
+            "Request was denied (401). Method: {Method}. Path: {Path}. QueryString: {QueryString}. " +
+            "Message: {AuthMessage}. TraceId: {TraceId}",
+            context.Request.Method,
+            context.Request.Path,
+            context.Request.QueryString.ToString(),
+            exception.Message,
+            context.TraceIdentifier);
     }
 
     private async Task HandleOperationCanceledAsync(HttpContext context, OperationCanceledException exception)
@@ -99,21 +116,24 @@ public class GlobalExceptionMiddleware(
         }
     }
 
-    private async Task HandleExceptionAsync(HttpContext context, Exception exception)
+    private async Task HandleExceptionAsync(HttpContext context, Exception exception, bool notifyAdmins = true)
     {
         if (context.Response.HasStarted)
             return;
 
-        // Notify admins (best-effort)
-        try
+        if (notifyAdmins)
         {
-            using var scope = serviceProvider.CreateScope();
-            var appNotifications = scope.ServiceProvider.GetRequiredService<IAppNotificationFacade>();
-            await appNotifications.SystemException(exception, CancellationToken.None);
-        }
-        catch (Exception sendEx)
-        {
-            logger.LogError(sendEx, "Failed to send system exception notification.");
+            // Notify admins (best-effort)
+            try
+            {
+                using var scope = serviceProvider.CreateScope();
+                var appNotifications = scope.ServiceProvider.GetRequiredService<IAppNotificationFacade>();
+                await appNotifications.SystemException(exception, CancellationToken.None);
+            }
+            catch (Exception sendEx)
+            {
+                logger.LogError(sendEx, "Failed to send system exception notification.");
+            }
         }
 
         var (statusCodeInt, responseMessage) = exception switch
