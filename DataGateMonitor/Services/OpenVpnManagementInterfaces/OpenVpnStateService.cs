@@ -33,10 +33,14 @@ public class OpenVpnStateService(ILogger<IOpenVpnStateService> logger,
         {
             foreach (var line in lines)
             {
-                var parts = line.Split(",");
+                if (OpenVpnManagementResponseLines.IsProtocolLine(line))
+                    continue;
+
+                var payloadLine = OpenVpnManagementResponseLines.NormalizeStateCsvLine(line);
+                var parts = payloadLine.Split(",");
                 if (parts.Length < 5)
                 {
-                    logger.LogWarning($"[STATE PARSER] Skipping malformed line: {line}");
+                    logger.LogDebug("[STATE PARSER] Skipping non-state line: {Line}", line);
                     continue;
                 }
 
