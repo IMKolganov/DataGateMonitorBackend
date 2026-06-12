@@ -32,14 +32,28 @@ public sealed class ProxyClientLookupService(
 
     private static readonly ConcurrentDictionary<int, DateTimeOffset> s_lastProxyLookupNotifyUtc = new();
 
+    /// <summary>
+    /// When false, poll upsert must not overwrite <see cref="VpnServerClient.ProxyRealIp"/> or geo columns
+    /// (loopback RealAddress but proxy lookup did not resolve — likely a lifecycle gap, keep last known values in DB).
+    /// </summary>
+    public static bool ShouldPersistProxyEnrichmentFromPoll(VpnServerClient client) =>
+        !string.IsNullOrWhiteSpace(client.ProxyRealIp)
+        || !TryParseLoopbackIpAndPort(client.RemoteIp, out _, out _);
+
     public async Task EnrichFromManagementRealAddressAsync(VpnServer server, VpnServerClient client,
         CancellationToken ct)
     {
         var lookup = await TryLookupAsync(server, client, ct).ConfigureAwait(false);
         if (lookup is null)
         {
-            client.ProxyRealIp = null;
-            await ApplyGeoFromIpAsync(client, client.RemoteIp, ct).ConfigureAwait(false);
+            // Loopback RealAddress without a resolved proxy client: leave ProxyRealIp/geo unset on this snapshot
+            // so polling does not wipe previously stored values in the database.
+            if (!TryParseLoopbackIpAndPort(client.RemoteIp, out _, out _))
+            {
+                client.ProxyRealIp = null;
+                await ApplyGeoFromIpAsync(client, client.RemoteIp, ct).ConfigureAwait(false);
+            }
+
             return;
         }
 
@@ -110,9 +124,17 @@ public sealed class ProxyClientLookupService(
             if (response.StatusCode == HttpStatusCode.NotFound)
             {
                 var responseMessage = await TryReadApiErrorMessageAsync(response.Content, ct).ConfigureAwait(false);
+                if (IsNoActiveProxySessionMessage(responseMessage))
+                {
+                    logger.LogDebug(
+                        "Proxy session not active (lifecycle gap) for VpnServerId={ServerId}, CommonName={CommonName}, LookupUrl={LookupUrl}",
+                        server.Id, client.CommonName, lookupUrl);
+                    return null;
+                }
+
                 var outcome = FormatHttpOutcome(response.StatusCode, responseMessage);
                 logger.LogWarning(
-                    "Proxy client lookup returned 404 for VpnServerId={ServerId}, CommonName={CommonName}, LookupUrl={LookupUrl}",
+                    "Proxy client lookup returned unexpected 404 for VpnServerId={ServerId}, CommonName={CommonName}, LookupUrl={LookupUrl}",
                     server.Id, client.CommonName, lookupUrl);
                 await NotifyLookupFailureAsync(server, client, realAddress, lookupUrl, outcome,
                     NotificationSeverity.Warning, ct).ConfigureAwait(false);
@@ -206,6 +228,11 @@ public sealed class ProxyClientLookupService(
 
         return string.Join("; ", parts);
     }
+
+    /// <summary>404 when the microservice has no in-memory proxy session for the loopback port (connect/disconnect race).</summary>
+    public static bool IsNoActiveProxySessionMessage(string? message) =>
+        !string.IsNullOrWhiteSpace(message)
+        && message.Contains("No active proxy session", StringComparison.OrdinalIgnoreCase);
 
     private static string FormatHttpOutcome(HttpStatusCode statusCode, string? responseMessage)
     {

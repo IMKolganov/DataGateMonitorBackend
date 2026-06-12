@@ -5,6 +5,7 @@ using DataGateMonitor.Models;
 using DataGateMonitor.Services.TelegramBot.Interfaces;
 using DataGateMonitor.SharedModels.DataGateMonitor.TelegramBotUser.Requests;
 using DataGateMonitor.SharedModels.DataGateMonitor.TelegramBotUser.Responses;
+using DataGateMonitor.SharedModels.DataGateMonitor.TelegramBotUser.Responses.Dto;
 
 namespace DataGateMonitor.Services.TelegramBot;
 
