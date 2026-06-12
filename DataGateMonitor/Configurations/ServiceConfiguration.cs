@@ -142,6 +142,7 @@ public static class ServiceConfiguration
         services.AddScoped<IVpnServerConflogService, VpnServerConflogService>();
 
         services.AddSingleton<IOpenVpnMicroserviceClientFactory, OpenVpnMicroserviceClientFactory>();
+        services.AddSingleton<IOpenVpnProxyTrafficFlowSupportChecker, OpenVpnProxyTrafficFlowSupportChecker>();
         services.AddSingleton<IOpenVpnProxyTrafficFlowClientFactory, OpenVpnProxyTrafficFlowClientFactory>();
 
         #endregion

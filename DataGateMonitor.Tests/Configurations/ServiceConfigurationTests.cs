@@ -50,6 +50,7 @@ public class ServiceConfigurationTests
         AssertRegistered(services, typeof(IMicroserviceInfoService));
         AssertRegistered(services, typeof(IVpnServerConflogService));
         AssertRegistered(services, typeof(IOpenVpnMicroserviceClientFactory));
+        AssertRegistered(services, typeof(IOpenVpnProxyTrafficFlowSupportChecker));
         AssertRegistered(services, typeof(IOpenVpnProxyTrafficFlowClientFactory));
         AssertRegistered(services, typeof(IStatusCacheGenerationService));
         AssertRegistered(services, typeof(IStatusStreamLogStore));

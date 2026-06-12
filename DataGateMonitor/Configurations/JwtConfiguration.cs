@@ -50,6 +50,14 @@ public static class JwtConfiguration
                         }
 
                         return Task.CompletedTask;
+                    },
+                    OnAuthenticationFailed = context =>
+                    {
+                        // Expired JWT on SignalR negotiate / stale dashboard tabs is normal; avoid Error-level exception logs (Wazuh).
+                        if (JwtBearerEventHandlers.IsExpectedClientTokenFailure(context.Exception))
+                            context.NoResult();
+
+                        return Task.CompletedTask;
                     }
                 };
             });
