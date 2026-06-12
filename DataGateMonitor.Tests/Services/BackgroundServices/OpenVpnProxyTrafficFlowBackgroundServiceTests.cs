@@ -46,10 +46,19 @@ public class OpenVpnProxyTrafficFlowBackgroundServiceTests
         var factory = new Mock<IOpenVpnProxyTrafficFlowClientFactory>();
         factory.Setup(f => f.Create(It.Is<VpnServer>(s => s.Id == 1))).Returns(flowClient.Object);
 
+        var supportChecker = new Mock<IOpenVpnProxyTrafficFlowSupportChecker>();
+        supportChecker
+            .Setup(c => c.ShouldListenAsync(It.Is<VpnServer>(s => s.Id == 1), It.IsAny<CancellationToken>()))
+            .ReturnsAsync(true);
+        supportChecker
+            .Setup(c => c.ShouldListenAsync(It.Is<VpnServer>(s => s.Id != 1), It.IsAny<CancellationToken>()))
+            .ReturnsAsync(false);
+
         var logger = new Mock<ILogger<OpenVpnProxyTrafficFlowBackgroundService>>();
         var service = new OpenVpnProxyTrafficFlowBackgroundService(
             logger.Object,
             factory.Object,
+            supportChecker.Object,
             scopeFactory.Object);
 
         await service.StartAsync(CancellationToken.None);
@@ -61,5 +70,47 @@ public class OpenVpnProxyTrafficFlowBackgroundServiceTests
         factory.Verify(f => f.Create(It.Is<VpnServer>(s => s.Id == 2)), Times.Never);
         factory.Verify(f => f.Create(It.Is<VpnServer>(s => s.Id == 3)), Times.Never);
         flowClient.Verify(c => c.StartListeningAsync(It.IsAny<CancellationToken>()), Times.AtLeastOnce);
+    }
+
+    [Fact]
+    public async Task ExecuteAsync_WhenServerUnsupported_RemovesClient_AndDoesNotStartListener()
+    {
+        var server = new VpnServer { Id = 4, ServerType = VpnServerType.OpenVpn, IsDisable = false, ApiUrl = "https://ovpn-old" };
+        var serverQuery = new Mock<IVpnServerQueryService>();
+        serverQuery.Setup(q => q.GetAll(
+                It.IsAny<bool>(),
+                It.IsAny<bool>(),
+                It.IsAny<int?>(),
+                It.IsAny<CancellationToken>()))
+            .ReturnsAsync(new List<VpnServer> { server });
+
+        var scopedProvider = new Mock<IServiceProvider>();
+        scopedProvider.Setup(p => p.GetService(typeof(IVpnServerQueryService))).Returns(serverQuery.Object);
+
+        var scope = new Mock<IServiceScope>();
+        scope.SetupGet(s => s.ServiceProvider).Returns(scopedProvider.Object);
+
+        var scopeFactory = new Mock<IServiceScopeFactory>();
+        scopeFactory.Setup(f => f.CreateScope()).Returns(scope.Object);
+
+        var factory = new Mock<IOpenVpnProxyTrafficFlowClientFactory>();
+        var supportChecker = new Mock<IOpenVpnProxyTrafficFlowSupportChecker>();
+        supportChecker
+            .Setup(c => c.ShouldListenAsync(server, It.IsAny<CancellationToken>()))
+            .ReturnsAsync(false);
+
+        var logger = new Mock<ILogger<OpenVpnProxyTrafficFlowBackgroundService>>();
+        var service = new OpenVpnProxyTrafficFlowBackgroundService(
+            logger.Object,
+            factory.Object,
+            supportChecker.Object,
+            scopeFactory.Object);
+
+        await service.StartAsync(CancellationToken.None);
+        await Task.Delay(TimeSpan.FromMilliseconds(200));
+        await service.StopAsync(CancellationToken.None);
+
+        factory.Verify(f => f.Remove(server.Id), Times.AtLeastOnce);
+        factory.Verify(f => f.Create(It.IsAny<VpnServer>()), Times.Never);
     }
 }

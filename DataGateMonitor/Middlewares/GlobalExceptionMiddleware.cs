@@ -34,14 +34,28 @@ public class GlobalExceptionMiddleware(
         var path = context.Request.Path;
         var queryString = context.Request.QueryString.ToString();
         var traceId = context.TraceIdentifier;
-        var wasAbortedByClient = context.RequestAborted.IsCancellationRequested;
+        var wasAbortedByClient = RequestCancellationLogging.IsClientInitiatedCancellation(context);
+        var postgresCancelled = RequestCancellationLogging.FindPostgresQueryCancelled(exception);
 
-        if (wasAbortedByClient)
+        if (postgresCancelled is not null)
         {
+            // Query timeout / statement cancel — keep visible, but without full stack trace noise.
+            logger.LogWarning(
+                "PostgreSQL query was cancelled ({SqlState}). ClientAborted: {ClientAborted}. " +
+                "Method: {Method}. Path: {Path}. QueryString: {QueryString}. Message: {PgMessage}. TraceId: {TraceId}",
+                postgresCancelled.SqlState,
+                wasAbortedByClient,
+                method,
+                path,
+                queryString,
+                postgresCancelled.MessageText,
+                traceId);
+        }
+        else if (wasAbortedByClient)
+        {
+            // Normal frontend navigation / tab close — do not attach exception (avoids Wazuh stack-trace spam).
             logger.LogInformation(
-                exception,
-                "Request was cancelled by client. " +
-                "Method: {Method}. Path: {Path}. QueryString: {QueryString}. TraceId: {TraceId}",
+                "Request was cancelled by client. Method: {Method}. Path: {Path}. QueryString: {QueryString}. TraceId: {TraceId}",
                 method,
                 path,
                 queryString,
@@ -51,8 +65,7 @@ public class GlobalExceptionMiddleware(
         {
             logger.LogWarning(
                 exception,
-                "Operation was cancelled. " +
-                "Method: {Method}. Path: {Path}. QueryString: {QueryString}. TraceId: {TraceId}",
+                "Operation was cancelled (not client-initiated). Method: {Method}. Path: {Path}. QueryString: {QueryString}. TraceId: {TraceId}",
                 method,
                 path,
                 queryString,
