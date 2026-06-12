@@ -10,6 +10,7 @@ using DataGateMonitor.Services.BackgroundServices.Interfaces;
 using DataGateMonitor.Services.Helpers;
 using DataGateMonitor.Services.Helpers.Interfaces;
 using DataGateMonitor.Services.Cache;
+using DataGateMonitor.Services.DataGateOpenVpnManager;
 using DataGateMonitor.Services.OpenVpnManagementInterfaces.Interfaces;
 
 namespace DataGateMonitor.Services.BackgroundServices;
@@ -79,28 +80,46 @@ public class VpnServerService(
                 user = await userQueryService.GetByExternalId(externalId, ct) ?? null;
                 
                 // ---- Upsert main client row ----
-                var rows = await openVpnServerClientCommandService.UpdateWhere(
-                    x => x.VpnServerId == openVpnServer.Id && x.SessionId == sessionId,
-                    s => s
-                        .SetProperty(c => c.UserId, user?.Id)
-                        .SetProperty(c => c.CommonName, m.CommonName)
-                        .SetProperty(c => c.RemoteIp, m.RemoteIp)
-                        .SetProperty(c => c.ProxyRealIp, m.ProxyRealIp)
-                        .SetProperty(c => c.LocalIp, m.LocalIp)
-                        .SetProperty(c => c.BytesReceived, m.BytesReceived)
-                        .SetProperty(c => c.BytesSent, m.BytesSent)
-                        .SetProperty(c => c.ConnectedSince, m.ConnectedSince) // idempotent
-                        .SetProperty(c => c.Username, m.Username)
-                        .SetProperty(c => c.Country, m.Country)
-                        .SetProperty(c => c.Region, m.Region)
-                        .SetProperty(c => c.City, m.City)
-                        .SetProperty(c => c.Latitude, m.Latitude)
-                        .SetProperty(c => c.Longitude, m.Longitude)
-                        .SetProperty(c => c.ExternalId, externalId)
-                        .SetProperty(c => c.IsConnected, true)
-                        .SetProperty(c => c.DisconnectedAt, _ => (DateTimeOffset?)null)
-                        .SetProperty(c => c.LastUpdate, nowUtc),
-                    ct);
+                var persistProxyEnrichment = ProxyClientLookupService.ShouldPersistProxyEnrichmentFromPoll(m);
+                var rows = persistProxyEnrichment
+                    ? await openVpnServerClientCommandService.UpdateWhere(
+                        x => x.VpnServerId == openVpnServer.Id && x.SessionId == sessionId,
+                        s => s
+                            .SetProperty(c => c.UserId, user?.Id)
+                            .SetProperty(c => c.CommonName, m.CommonName)
+                            .SetProperty(c => c.RemoteIp, m.RemoteIp)
+                            .SetProperty(c => c.ProxyRealIp, m.ProxyRealIp)
+                            .SetProperty(c => c.LocalIp, m.LocalIp)
+                            .SetProperty(c => c.BytesReceived, m.BytesReceived)
+                            .SetProperty(c => c.BytesSent, m.BytesSent)
+                            .SetProperty(c => c.ConnectedSince, m.ConnectedSince) // idempotent
+                            .SetProperty(c => c.Username, m.Username)
+                            .SetProperty(c => c.Country, m.Country)
+                            .SetProperty(c => c.Region, m.Region)
+                            .SetProperty(c => c.City, m.City)
+                            .SetProperty(c => c.Latitude, m.Latitude)
+                            .SetProperty(c => c.Longitude, m.Longitude)
+                            .SetProperty(c => c.ExternalId, externalId)
+                            .SetProperty(c => c.IsConnected, true)
+                            .SetProperty(c => c.DisconnectedAt, _ => (DateTimeOffset?)null)
+                            .SetProperty(c => c.LastUpdate, nowUtc),
+                        ct)
+                    : await openVpnServerClientCommandService.UpdateWhere(
+                        x => x.VpnServerId == openVpnServer.Id && x.SessionId == sessionId,
+                        s => s
+                            .SetProperty(c => c.UserId, user?.Id)
+                            .SetProperty(c => c.CommonName, m.CommonName)
+                            .SetProperty(c => c.RemoteIp, m.RemoteIp)
+                            .SetProperty(c => c.LocalIp, m.LocalIp)
+                            .SetProperty(c => c.BytesReceived, m.BytesReceived)
+                            .SetProperty(c => c.BytesSent, m.BytesSent)
+                            .SetProperty(c => c.ConnectedSince, m.ConnectedSince) // idempotent
+                            .SetProperty(c => c.Username, m.Username)
+                            .SetProperty(c => c.ExternalId, externalId)
+                            .SetProperty(c => c.IsConnected, true)
+                            .SetProperty(c => c.DisconnectedAt, _ => (DateTimeOffset?)null)
+                            .SetProperty(c => c.LastUpdate, nowUtc),
+                        ct);
 
                 if (rows == 0)
                 {
