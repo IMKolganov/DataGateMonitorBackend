@@ -1,4 +1,5 @@
-﻿using DataGateMonitor.Models.Helpers;
+﻿using DataGateMonitor.Middlewares;
+using DataGateMonitor.Models.Helpers;
 using Microsoft.IdentityModel.Tokens;
 using Serilog;
 using Serilog.Events;
@@ -22,6 +23,7 @@ public static class SerilogConfiguration
             .MinimumLevel.Override("Microsoft.EntityFrameworkCore", LogEventLevel.Warning)
             .MinimumLevel.Override("Microsoft.AspNetCore.Authentication", LogEventLevel.Warning)
             .Filter.ByExcluding(IsExpiredAccessTokenNoise)
+            .Filter.ByExcluding(IsBenignRequestCancellationNoise)
             .WriteTo.Console()
             .Enrich.FromLogContext();
         
@@ -78,6 +80,15 @@ public static class SerilogConfiguration
         }
 
         host.UseSerilog();
+    }
+
+    private static bool IsBenignRequestCancellationNoise(LogEvent logEvent)
+    {
+        if (logEvent.Exception is OperationCanceledException or TaskCanceledException)
+            return true;
+
+        var rendered = logEvent.RenderMessage();
+        return RequestCancellationLogging.IsBenignCancellationLogEvent(rendered);
     }
 
     private static bool IsExpiredAccessTokenNoise(LogEvent logEvent)
