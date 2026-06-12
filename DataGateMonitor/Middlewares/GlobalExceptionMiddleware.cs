@@ -34,12 +34,12 @@ public class GlobalExceptionMiddleware(
         var path = context.Request.Path;
         var queryString = context.Request.QueryString.ToString();
         var traceId = context.TraceIdentifier;
-        var wasAbortedByClient = RequestCancellationLogging.IsClientInitiatedCancellation(context);
         var postgresCancelled = RequestCancellationLogging.FindPostgresQueryCancelled(exception);
+        var wasAbortedByClient = RequestCancellationLogging.IsClientInitiatedCancellation(context, exception);
 
-        if (postgresCancelled is not null)
+        if (postgresCancelled is not null && !wasAbortedByClient)
         {
-            // Query timeout / statement cancel — keep visible, but without full stack trace noise.
+            // Server-side statement timeout — real issue; structured only (no exception object → no Wazuh stack lines).
             logger.LogWarning(
                 "PostgreSQL query was cancelled ({SqlState}). ClientAborted: {ClientAborted}. " +
                 "Method: {Method}. Path: {Path}. QueryString: {QueryString}. Message: {PgMessage}. TraceId: {TraceId}",
@@ -53,8 +53,7 @@ public class GlobalExceptionMiddleware(
         }
         else if (wasAbortedByClient)
         {
-            // Normal frontend navigation / tab close — do not attach exception (avoids Wazuh stack-trace spam).
-            logger.LogInformation(
+            logger.LogDebug(
                 "Request was cancelled by client. Method: {Method}. Path: {Path}. QueryString: {QueryString}. TraceId: {TraceId}",
                 method,
                 path,
@@ -63,32 +62,41 @@ public class GlobalExceptionMiddleware(
         }
         else
         {
+            // e.g. HttpClient.Timeout during the request — keep visible, without stack trace.
             logger.LogWarning(
-                exception,
-                "Operation was cancelled (not client-initiated). Method: {Method}. Path: {Path}. QueryString: {QueryString}. TraceId: {TraceId}",
+                "Operation was cancelled (not client-initiated). Method: {Method}. Path: {Path}. QueryString: {QueryString}. " +
+                "Message: {CancelMessage}. TraceId: {TraceId}",
                 method,
                 path,
                 queryString,
+                exception.Message,
                 traceId);
         }
 
         if (context.Response.HasStarted)
             return;
 
-        context.Response.Clear();
-        context.Response.ContentType = "application/json";
-        context.Response.StatusCode = 499;
-
-        var payload = new
+        try
         {
-            statusCode = 499,
-            message = "Request was cancelled.",
-            detail = exception.Message,
-            traceId
-        };
+            context.Response.Clear();
+            context.Response.ContentType = "application/json";
+            context.Response.StatusCode = 499;
 
-        var json = JsonConvert.SerializeObject(payload);
-        await context.Response.WriteAsync(json);
+            var payload = new
+            {
+                statusCode = 499,
+                message = "Request was cancelled.",
+                detail = exception.Message,
+                traceId
+            };
+
+            var json = JsonConvert.SerializeObject(payload);
+            await context.Response.WriteAsync(json);
+        }
+        catch (OperationCanceledException)
+        {
+            // Client already disconnected — nothing to send.
+        }
     }
 
     private async Task HandleExceptionAsync(HttpContext context, Exception exception)
