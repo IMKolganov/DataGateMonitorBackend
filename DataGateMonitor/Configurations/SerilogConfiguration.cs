@@ -1,4 +1,5 @@
 ﻿using DataGateMonitor.Models.Helpers;
+using Microsoft.IdentityModel.Tokens;
 using Serilog;
 using Serilog.Events;
 using Serilog.Sinks.Elasticsearch;
@@ -19,6 +20,8 @@ public static class SerilogConfiguration
             .MinimumLevel.Information()
             .MinimumLevel.Override("Microsoft.EntityFrameworkCore.Database.Command", LogEventLevel.Warning)
             .MinimumLevel.Override("Microsoft.EntityFrameworkCore", LogEventLevel.Warning)
+            .MinimumLevel.Override("Microsoft.AspNetCore.Authentication", LogEventLevel.Warning)
+            .Filter.ByExcluding(IsExpiredAccessTokenNoise)
             .WriteTo.Console()
             .Enrich.FromLogContext();
         
@@ -75,5 +78,16 @@ public static class SerilogConfiguration
         }
 
         host.UseSerilog();
+    }
+
+    private static bool IsExpiredAccessTokenNoise(LogEvent logEvent)
+    {
+        if (logEvent.Exception is SecurityTokenExpiredException or SecurityTokenNotYetValidException)
+            return true;
+
+        var rendered = logEvent.RenderMessage();
+        return rendered.Contains("IDX10223", StringComparison.OrdinalIgnoreCase)
+               || rendered.Contains("IDX10225", StringComparison.OrdinalIgnoreCase)
+               || rendered.Contains("SecurityTokenExpiredException", StringComparison.OrdinalIgnoreCase);
     }
 }
