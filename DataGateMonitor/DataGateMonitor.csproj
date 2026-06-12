@@ -6,9 +6,9 @@
         <DockerDefaultTargetOS>Linux</DockerDefaultTargetOS>
         <Product>DataGateMonitor</Product>
         <AssemblyTitle>DataGateMonitor</AssemblyTitle>
-        <Version>1.0.3.46</Version>
-        <AssemblyVersion>1.0.3.46</AssemblyVersion>
-        <FileVersion>1.0.3.46</FileVersion>
+        <Version>1.0.3.47</Version>
+        <AssemblyVersion>1.0.3.47</AssemblyVersion>
+        <FileVersion>1.0.3.47</FileVersion>
         <TargetFramework>net10.0</TargetFramework>
     </PropertyGroup>
 
