@@ -37,4 +37,16 @@ public sealed class TelegramBotUserProfilePhotoQueryService(IQueryService<Telegr
             .Select(x => new TelegramBotUserProfilePhotoSummary(x.TelegramFileUniqueId, x.MimeType, x.LastUpdate))
             .FirstOrDefaultAsync(cancellationToken);
     }
+
+    public async Task<HashSet<long>> GetTelegramIdsWithProfilePhotoAsync(CancellationToken cancellationToken)
+    {
+        var ids = await q.Query()
+            .AsNoTracking()
+            .Where(x => x.TelegramBotUserId > 0)
+            .Select(x => x.TelegramBotUser!.TelegramId)
+            .Distinct()
+            .ToListAsync(cancellationToken);
+
+        return ids.ToHashSet();
+    }
 }
