@@ -28,8 +28,9 @@ public sealed class AdminTotpService(
     private const string Issuer = "DataGate Monitor";
     /// <summary>Placeholder credential for admins who sign in via Google/OAuth (no password login).</summary>
     private const string ExternalAuthOnlyPasswordAlgo = "ExternalAuthOnly";
-    private static readonly TimeSpan ChallengeLifetime = TimeSpan.FromMinutes(5);
+    private static readonly TimeSpan ChallengeLifetime = TimeSpan.FromMinutes(10);
     private static readonly TimeSpan SetupSecretLifetime = TimeSpan.FromMinutes(10);
+    private const int MaxChallengeAttempts = 5;
 
     public async Task<bool> IsAdminUserAsync(int userId, CancellationToken ct)
     {
@@ -84,8 +85,6 @@ public sealed class AdminTotpService(
             throw new UnauthorizedAccessException("Login challenge expired. Sign in again.");
         }
 
-        memoryCache.Remove(ChallengeCacheKey(challengeId));
-
         var user = await userQueryService.GetById(challenge.UserId, ct)
                    ?? throw new UnauthorizedAccessException("User not found.");
 
@@ -94,10 +93,25 @@ public sealed class AdminTotpService(
 
         var credential = await credentialQueryService.GetByUserId(user.Id, ct);
         if (!IsTotpEnabled(credential))
+        {
+            memoryCache.Remove(ChallengeCacheKey(challengeId));
             throw new UnauthorizedAccessException("Two-factor authentication is not enabled.");
+        }
 
         if (!VerifyCode(credential!.TotpSecretEncrypted!, code))
+        {
+            challenge.FailedAttempts++;
+            if (challenge.FailedAttempts >= MaxChallengeAttempts)
+            {
+                memoryCache.Remove(ChallengeCacheKey(challengeId));
+                throw new UnauthorizedAccessException("Too many invalid attempts. Sign in again.");
+            }
+
+            UpdateChallengeInCache(challengeId, challenge);
             throw new UnauthorizedAccessException("Invalid verification code.");
+        }
+
+        memoryCache.Remove(ChallengeCacheKey(challengeId));
 
         var tokenPair = await tokenService.IssueAsync(
             user.Id,
@@ -287,6 +301,14 @@ public sealed class AdminTotpService(
             new MemoryCacheEntryOptions { AbsoluteExpiration = DateTimeOffset.UtcNow.Add(ChallengeLifetime) });
 
         return challengeId;
+    }
+
+    private void UpdateChallengeInCache(string challengeId, AdminLoginChallenge challenge)
+    {
+        memoryCache.Set(
+            ChallengeCacheKey(challengeId),
+            challenge,
+            new MemoryCacheEntryOptions { AbsoluteExpiration = challenge.ExpiresAtUtc });
     }
 
     private bool VerifyCode(string encryptedSecret, string code)

@@ -61,11 +61,11 @@ public class UserRolesController(IUserRoleManagementService userRoleManagementSe
         }
         catch (KeyNotFoundException ex)
         {
-            return NotFound(ApiResponse<string>.ErrorResponse(ex.Message));
+            return NotFound(ApiResponse<UserRoleAssignmentResponse>.ErrorResponse(ex.Message));
         }
         catch (InvalidOperationException ex)
         {
-            return BadRequest(ApiResponse<string>.ErrorResponse(ex.Message));
+            return BadRequest(ApiResponse<UserRoleAssignmentResponse>.ErrorResponse(ex.Message));
         }
     }
 

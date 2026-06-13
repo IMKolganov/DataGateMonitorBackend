@@ -1,6 +1,7 @@
 using Mapster;
 using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Mvc;
+using DataGateMonitor.Services.Api.CurrentUser.Interfaces;
 using DataGateMonitor.Services.Users.Interfaces;
 using DataGateMonitor.SharedModels.DataGateMonitor.User.Requests;
 using DataGateMonitor.SharedModels.DataGateMonitor.User.Responses;
@@ -12,7 +13,10 @@ namespace DataGateMonitor.Controllers;
 [Route("api/users")]
 [Authorize]
 [Authorize(Roles = "Admin,App")]
-public class UserController(IUserService userService) : BaseController
+public class UserController(
+    IUserService userService,
+    IUserMergeService userMergeService,
+    ICurrentUserService currentUserService) : BaseController
 {
     [HttpPost("register-from-tgbot")]
     public async Task<ActionResult<ApiResponse<UsersResponse>>> RegisterUser([FromBody] RegisterUserFromTgBotRequest request, 
@@ -64,5 +68,23 @@ public class UserController(IUserService userService) : BaseController
     {
         var response = await userService.ConfirmEmailManually(request, cancellationToken);
         return Ok(ApiResponse<ConfirmUserEmailResponse>.SuccessResponse(response));
+    }
+
+    /// <summary>
+    /// Merges a Google-login user into a Telegram-login user. Google account is archived then removed.
+    /// Use <paramref name="request"/>.DryRun to preview counts without writing.
+    /// </summary>
+    [HttpPost("merge-telegram-google")]
+    [ProducesResponseType(typeof(ApiResponse<MergeTelegramGoogleUsersResponse>), StatusCodes.Status200OK)]
+    public async Task<ActionResult<ApiResponse<MergeTelegramGoogleUsersResponse>>> MergeTelegramGoogle(
+        [FromBody] MergeTelegramGoogleUsersRequest request,
+        CancellationToken cancellationToken)
+    {
+        var response = await userMergeService.MergeTelegramGoogleAsync(
+            request,
+            currentUserService.UserId,
+            cancellationToken);
+
+        return Ok(ApiResponse<MergeTelegramGoogleUsersResponse>.SuccessResponse(response));
     }
 }

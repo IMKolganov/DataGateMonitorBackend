@@ -1,6 +1,7 @@
 using System.Text.RegularExpressions;
 using DataGateMonitor.DataBase.Contexts;
 using DataGateMonitor.Models;
+using DataGateMonitor.SharedModels.DataGateMonitor.MobileCrashIngest.Dto;
 using Microsoft.EntityFrameworkCore;
 
 namespace DataGateMonitor.Services.Api.MobileCrashIngest;
@@ -42,6 +43,7 @@ public sealed class MobileCrashIngestService(
             Exception = parsed.Exception,
             Message = parsed.Message,
             Tag = parsed.Tag,
+            AppVersion = parsed.AppVersion,
             Stacktrace = parsed.Stacktrace
         };
 
@@ -70,6 +72,7 @@ public sealed class MobileCrashIngestService(
                 x.Exception,
                 x.Message,
                 x.Tag,
+                x.AppVersion,
                 x.Stacktrace,
                 x.PayloadRaw
             })
@@ -92,6 +95,7 @@ public sealed class MobileCrashIngestService(
                 Exception = x.Exception,
                 Message = MaskSensitive(x.Message),
                 Tag = x.Tag,
+                AppVersion = x.AppVersion,
                 Stacktrace = Truncate(MaskSensitive(x.Stacktrace), 8000),
                 PayloadRaw = Truncate(MaskSensitive(x.PayloadRaw), 8000)
             })
@@ -115,24 +119,4 @@ public sealed class MobileCrashIngestService(
 
         return value[..maxLength] + "...[truncated]";
     }
-}
-
-public sealed class RecentCrashReportDto
-{
-    public long Id { get; set; }
-    public DateTime ReceivedAt { get; set; }
-    public string AppProcess { get; set; } = null!;
-    public string FileName { get; set; } = null!;
-    public string ParseStatus { get; set; } = null!;
-    public DateTime? TimestampUtc { get; set; }
-    public string? Process { get; set; }
-    public string? Thread { get; set; }
-    public string? Sdk { get; set; }
-    public string? Device { get; set; }
-    public string? Kind { get; set; }
-    public string? Exception { get; set; }
-    public string? Message { get; set; }
-    public string? Tag { get; set; }
-    public string? Stacktrace { get; set; }
-    public string? PayloadRaw { get; set; }
 }

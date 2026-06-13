@@ -42,5 +42,9 @@ public class MobileCrashReport : BaseEntity<long>
     [MaxLength(256)]
     public string? Tag { get; set; }
 
+    /// <summary>App release version from crash header (<c>app_version=</c>), when sent by the client.</summary>
+    [MaxLength(128)]
+    public string? AppVersion { get; set; }
+
     public string? Stacktrace { get; set; }
 }

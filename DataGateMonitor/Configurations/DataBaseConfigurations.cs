@@ -5,6 +5,7 @@ using DataGateMonitor.DataBase.Repositories.Queries;
 using DataGateMonitor.DataBase.UnitOfWork;
 using DataGateMonitor.Models.Helpers;
 using Microsoft.EntityFrameworkCore;
+using Microsoft.EntityFrameworkCore.Diagnostics;
 using Microsoft.Extensions.Hosting;
 using ILogger = Serilog.ILogger;
 
@@ -15,6 +16,23 @@ public static class DataBaseConfigurations
     public static void DataBaseServices(this IServiceCollection services, IConfiguration configuration,
         ILogger logger, DatabaseRuntimeOptions databaseRuntime)
     {
+        if (IntegrationTestDatabaseOptions.UseInMemoryDatabaseForIntegrationTests(out var inMemoryDatabaseName))
+        {
+            logger.Information("Using EF Core in-memory database for integration tests: {DatabaseName}", inMemoryDatabaseName);
+            services.AddDbContext<ApplicationDbContext>(
+                options => options.UseInMemoryDatabase(inMemoryDatabaseName),
+                ServiceLifetime.Scoped);
+            services.AddDbContextFactory<ApplicationDbContext>(
+                options => options.UseInMemoryDatabase(inMemoryDatabaseName),
+                ServiceLifetime.Scoped);
+            services.AddScoped<IRepositoryFactory, RepositoryFactory>();
+            services.AddScoped<IQueryFactory, QueryFactory>();
+            services.AddScoped<IUnitOfWork, UnitOfWork>();
+            services.AddSingleton<ApplicationDatabaseState>();
+            services.AddSingleton<IApplicationDatabaseState>(sp => sp.GetRequiredService<ApplicationDatabaseState>());
+            return;
+        }
+
         if (!databaseRuntime.IsConnectionConfigured)
         {
             logger.Error(
@@ -64,8 +82,8 @@ public static class DataBaseConfigurations
                     dbSettings.DefaultSchema ?? "public"
                 )
             );
-            
-            options.LogTo(_ => { }, LogLevel.Warning);
+
+            ApplyEfDiagnostics(options);
         }, ServiceLifetime.Scoped);
 
         // Scoped DbContextFactory
@@ -78,8 +96,8 @@ public static class DataBaseConfigurations
                     dbSettings.DefaultSchema ?? "public"
                 )
             );
-            
-            options.LogTo(_ => { }, LogLevel.Warning);
+
+            ApplyEfDiagnostics(options);
         }, ServiceLifetime.Scoped);
         
         services.AddScoped<IRepositoryFactory, RepositoryFactory>();
@@ -92,6 +110,16 @@ public static class DataBaseConfigurations
             services.AddHostedService<EfCoreMigrationHostedService>();
         else
             services.AddHostedService<MarkDatabaseUnconfiguredHostedService>();
+    }
+
+    /// <summary>
+    /// EF query-shape advisory (e.g. First without OrderBy in projections) — Debug only to avoid Wazuh WRN noise.
+    /// </summary>
+    private static void ApplyEfDiagnostics(DbContextOptionsBuilder options)
+    {
+        options.ConfigureWarnings(w =>
+            w.Log((CoreEventId.FirstWithoutOrderByAndFilterWarning, LogLevel.Debug)));
+        options.LogTo(_ => { }, LogLevel.Warning);
     }
 }
 
@@ -108,4 +136,17 @@ file sealed class MarkDatabaseUnconfiguredHostedService(ApplicationDatabaseState
     }
 
     public Task StopAsync(CancellationToken cancellationToken) => Task.CompletedTask;
+}
+
+file static class IntegrationTestDatabaseOptions
+{
+    public static bool UseInMemoryDatabaseForIntegrationTests(out string databaseName)
+    {
+        databaseName = Environment.GetEnvironmentVariable("DATAGATE_INMEMORY_DB_NAME") ?? string.Empty;
+        return string.Equals(
+                   Environment.GetEnvironmentVariable("DATAGATE_USE_INMEMORY_DB"),
+                   "true",
+                   StringComparison.OrdinalIgnoreCase)
+               && !string.IsNullOrWhiteSpace(databaseName);
+    }
 }

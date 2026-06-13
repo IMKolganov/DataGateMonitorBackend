@@ -1,5 +1,4 @@
 using System.Security.Claims;
-using DataGateMonitor.DataBase.Services.Query.VpnServerClientTable;
 using DataGateMonitor.Services.Api.Privacy;
 using DataGateMonitor.SharedModels.DataGateMonitor.VpnServerClients.Dto;
 using DataGateMonitor.SharedModels.DataGateMonitor.VpnServerClients.Responses;

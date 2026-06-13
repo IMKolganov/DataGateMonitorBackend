@@ -11,6 +11,9 @@ using DataGateMonitor.Models;
 using DataGateMonitor.Services.DataGateOpenVpnManager;
 using DataGateMonitor.Services.DataGateOpenVpnManager.Interfaces;
 using DataGateMonitor.Services.Others.Notifications.OvpnFileApi;
+using DataGateMonitor.SharedModels.DataGateMonitor.OpenVpnFiles.Requests;
+using DataGateMonitor.SharedModels.DataGateOpenVpnManager.OvpnFile.Requests;
+using DataGateMonitor.SharedModels.DataGateOpenVpnManager.OvpnFile.Responses;
 using DataGateMonitor.SharedModels.Enums;
 using Xunit;
 
@@ -80,16 +83,122 @@ public class OvpnFileApiServiceTests
             Times.Once);
     }
 
+    [Fact]
+    public async Task DownloadOvpnFileByCn_WhenDbRowMissingThenFound_RetriesAndSucceeds()
+    {
+        var server = new VpnServer
+        {
+            Id = 75,
+            ServerType = VpnServerType.OpenVpn,
+            ServerName = "s75",
+            ApiUrl = "https://vpn.test/",
+            CreateDate = DateTimeOffset.UtcNow,
+            LastUpdate = DateTimeOffset.UtcNow
+        };
+        var file = new IssuedOvpnFile
+        {
+            Id = 1369,
+            VpnServerId = 75,
+            CommonName = "adg-75-local:232-test",
+            FileName = "adg-75-local:232-test.ovpn",
+            FilePath = "/pki/ovpn_files/adg-75-local:232-test.ovpn",
+            ExternalId = "local:232",
+            CreateDate = DateTimeOffset.UtcNow,
+            LastUpdate = DateTimeOffset.UtcNow
+        };
+
+        var serverQuery = new Mock<IVpnServerQueryService>(MockBehavior.Strict);
+        serverQuery.Setup(q => q.GetById(75, It.IsAny<CancellationToken>())).ReturnsAsync(server);
+
+        var fileQuery = new Mock<IIssuedOvpnFileQueryService>(MockBehavior.Strict);
+        fileQuery.SetupSequence(q => q.GetByCommonNameAndVpnServerIdAndIsRevoked(
+                "adg-75-local:232-test", 75, false, It.IsAny<CancellationToken>()))
+            .ReturnsAsync((IssuedOvpnFile?)null)
+            .ReturnsAsync(file);
+
+        var ovpnClient = new Mock<IOvpnFileApiClient>(MockBehavior.Strict);
+        ovpnClient.Setup(c => c.DownloadOvpnFile(
+                75,
+                It.Is<DownloadOvpnFileRequest>(r => r.CommonName == file.CommonName),
+                It.IsAny<CancellationToken>()))
+            .ReturnsAsync(new OvpnFileDownload
+            {
+                CommonName = file.CommonName,
+                FileName = file.FileName,
+                Content = new byte[] { 1, 2, 3 }
+            });
+
+        var notification = new Mock<IOvpnFileNotificationService>(MockBehavior.Strict);
+        notification.Setup(n => n.NotifyDownloaded(
+                75, file.FileName, file.ExternalId, false, It.IsAny<CancellationToken>()))
+            .Returns(Task.CompletedTask);
+
+        var sut = CreateService(
+            ovpnClient: ovpnClient,
+            fileQuery: fileQuery,
+            serverQuery: serverQuery,
+            notification: notification);
+
+        var result = await sut.DownloadOvpnFileByCn(
+            new DownloadFileByCnRequest { VpnServerId = 75, CommonName = "adg-75-local:232-test" },
+            CancellationToken.None);
+
+        result.Content.Should().BeEquivalentTo(new byte[] { 1, 2, 3 });
+        fileQuery.Verify(
+            q => q.GetByCommonNameAndVpnServerIdAndIsRevoked(
+                "adg-75-local:232-test", 75, false, It.IsAny<CancellationToken>()),
+            Times.Exactly(2));
+        ovpnClient.Verify(
+            c => c.DownloadOvpnFile(75, It.IsAny<DownloadOvpnFileRequest>(), It.IsAny<CancellationToken>()),
+            Times.Once);
+    }
+
+    [Fact]
+    public async Task DownloadOvpnFileByCn_WhenAllAttemptsFail_ThrowsAfterFiveDbLookups()
+    {
+        var server = new VpnServer
+        {
+            Id = 75,
+            ServerType = VpnServerType.OpenVpn,
+            ServerName = "s75",
+            ApiUrl = "https://vpn.test/",
+            CreateDate = DateTimeOffset.UtcNow,
+            LastUpdate = DateTimeOffset.UtcNow
+        };
+
+        var serverQuery = new Mock<IVpnServerQueryService>(MockBehavior.Strict);
+        serverQuery.Setup(q => q.GetById(75, It.IsAny<CancellationToken>())).ReturnsAsync(server);
+
+        var fileQuery = new Mock<IIssuedOvpnFileQueryService>(MockBehavior.Strict);
+        fileQuery.Setup(q => q.GetByCommonNameAndVpnServerIdAndIsRevoked(
+                "missing-cn", 75, false, It.IsAny<CancellationToken>()))
+            .ReturnsAsync((IssuedOvpnFile?)null);
+
+        var sut = CreateService(fileQuery: fileQuery, serverQuery: serverQuery);
+        var act = () => sut.DownloadOvpnFileByCn(
+            new DownloadFileByCnRequest { VpnServerId = 75, CommonName = "missing-cn" },
+            CancellationToken.None);
+
+        await act.Should().ThrowAsync<InvalidOperationException>()
+            .WithMessage("*Issued OVPN file not found*");
+        fileQuery.Verify(
+            q => q.GetByCommonNameAndVpnServerIdAndIsRevoked(
+                "missing-cn", 75, false, It.IsAny<CancellationToken>()),
+            Times.Exactly(5));
+    }
+
     private static OvpnFileApiService CreateService(
+        Mock<IOvpnFileApiClient>? ovpnClient = null,
         Mock<IIssuedOvpnFileTokenQueryService>? tokenQuery = null,
         Mock<IIssuedOvpnFileQueryService>? fileQuery = null,
+        Mock<IVpnServerQueryService>? serverQuery = null,
         Mock<IOvpnFileNotificationService>? notification = null)
     {
-        var ovpnClient = new Mock<IOvpnFileApiClient>(MockBehavior.Loose);
-        var logger = Mock.Of<ILogger<OvpnFileApiClient>>();
+        ovpnClient ??= new Mock<IOvpnFileApiClient>(MockBehavior.Loose);
+        var logger = Mock.Of<ILogger<OvpnFileApiService>>();
         var config = new ConfigurationBuilder().Build();
         var configQuery = new Mock<IVpnServerOvpnFileConfigQueryService>(MockBehavior.Loose);
-        var serverQuery = new Mock<IVpnServerQueryService>(MockBehavior.Loose);
+        serverQuery ??= new Mock<IVpnServerQueryService>(MockBehavior.Loose);
         var fileCommand = new Mock<ICommandService<IssuedOvpnFile, int>>(MockBehavior.Loose);
         var tokenCommand = new Mock<ICommandService<IssuedOvpnFileToken, int>>(MockBehavior.Loose);
 

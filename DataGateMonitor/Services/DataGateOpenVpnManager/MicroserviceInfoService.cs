@@ -1,8 +1,10 @@
 using System.Net.Http.Headers;
-using System.Text.Json;
 using DataGateMonitor.DataBase.Services.Query.VpnServerTable;
+using DataGateMonitor.Serialization;
+using Newtonsoft.Json.Linq;
 using DataGateMonitor.Services.Api.Auth.Registers.Interfaces;
 using DataGateMonitor.Services.DataGateOpenVpnManager.Interfaces;
+using DataGateMonitor.Services.Helpers;
 using DataGateMonitor.SharedModels.DataGateMonitor.VpnServers.Dto;
 using DataGateMonitor.SharedModels.Enums;
 using DataGateMonitor.SharedModels.DataGateOpenVpnManager.Info;
@@ -19,11 +21,6 @@ public class MicroserviceInfoService(
     private const string EndpointInfo = "api/info";
     private const string AudienceOpenVpnManager = "DataGateOpenVpnManager";
     private const string AudienceXRayManager = "DataGateXRayManager";
-
-    private static readonly JsonSerializerOptions InfoJsonOptions = new()
-    {
-        PropertyNameCaseInsensitive = true,
-    };
 
     public async Task<VpnMicroserviceDiagnosticsDto> GetInfoAsync(int vpnServerId, CancellationToken cancellationToken)
     {
@@ -43,8 +40,9 @@ public class MicroserviceInfoService(
         using var response = await client.GetAsync(EndpointInfo, cancellationToken);
         response.EnsureSuccessStatusCode();
 
-        var json = await response.Content.ReadAsStringAsync(cancellationToken);
-        var dto = DeserializeDiagnostics(json, server.ServerType);
+            var json = MicroserviceApiResponseHelper.UnwrapSuccessPayloadJson(
+                await response.Content.ReadAsStringAsync(cancellationToken));
+            var dto = DeserializeDiagnostics(json, server.ServerType);
 
         logger.LogDebug("Retrieved microservice info for VpnServerId={VpnServerId}, Stack={Stack}",
             vpnServerId, dto.ServerType);
@@ -102,7 +100,8 @@ public class MicroserviceInfoService(
                 response.EnsureSuccessStatusCode();
             }
 
-            var json = await response.Content.ReadAsStringAsync(cancellationToken);
+            var json = MicroserviceApiResponseHelper.UnwrapSuccessPayloadJson(
+                await response.Content.ReadAsStringAsync(cancellationToken));
             var effectiveStack = serverTypeHint ?? InferStackFromApplicationJson(json);
             var dto = DeserializeDiagnostics(json, effectiveStack);
 
@@ -127,12 +126,12 @@ public class MicroserviceInfoService(
     {
         if (stack == VpnServerType.Xray)
         {
-            var xray = JsonSerializer.Deserialize<RootXrayInfoResponse>(json, InfoJsonOptions)
+            var xray = ProjectJson.Deserialize<RootXrayInfoResponse>(json)
                        ?? throw new InvalidOperationException("Microservice returned empty info response");
             return new VpnMicroserviceDiagnosticsDto { ServerType = VpnServerType.Xray, Xray = xray };
         }
 
-        var openVpn = JsonSerializer.Deserialize<RootOpenVpnInfoResponse>(json, InfoJsonOptions)
+        var openVpn = ProjectJson.Deserialize<RootOpenVpnInfoResponse>(json)
                       ?? throw new InvalidOperationException("Microservice returned empty info response");
         return new VpnMicroserviceDiagnosticsDto { ServerType = VpnServerType.OpenVpn, OpenVpn = openVpn };
     }
@@ -141,10 +140,10 @@ public class MicroserviceInfoService(
     {
         try
         {
-            using var doc = JsonDocument.Parse(json);
-            if (!doc.RootElement.TryGetProperty("application", out var appEl))
+            var root = JObject.Parse(json);
+            var app = root["application"]?.ToString();
+            if (string.IsNullOrEmpty(app))
                 return VpnServerType.OpenVpn;
-            var app = appEl.GetString();
             if (string.Equals(app, "DataGateXRayManager", StringComparison.Ordinal))
                 return VpnServerType.Xray;
         }

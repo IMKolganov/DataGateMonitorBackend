@@ -32,7 +32,7 @@ public class SettingsControllerTests
         var result = await _controller.Get(req, CancellationToken.None);
 
         var notFound = Assert.IsType<NotFoundObjectResult>(result.Result);
-        var response = Assert.IsType<ApiResponse<string>>(notFound.Value);
+        var response = Assert.IsType<ApiResponse<SettingResponse>>(notFound.Value);
 
         Assert.False(response.Success);
         Assert.Equal("Setting 'MyKey' not found.", response.Message);
@@ -52,7 +52,7 @@ public class SettingsControllerTests
         var result = await _controller.Get(req, CancellationToken.None);
 
         var notFound = Assert.IsType<NotFoundObjectResult>(result.Result);
-        var response = Assert.IsType<ApiResponse<string>>(notFound.Value);
+        var response = Assert.IsType<ApiResponse<SettingResponse>>(notFound.Value);
 
         Assert.False(response.Success);
         Assert.Equal("Setting 'WeirdKey' not found.", response.Message);
@@ -76,7 +76,7 @@ public class SettingsControllerTests
         var result = await _controller.Get(req, CancellationToken.None);
 
         var notFound = Assert.IsType<NotFoundObjectResult>(result.Result);
-        var response = Assert.IsType<ApiResponse<string>>(notFound.Value);
+        var response = Assert.IsType<ApiResponse<SettingResponse>>(notFound.Value);
 
         Assert.False(response.Success);
         Assert.Equal("Setting 'EmptyString' not found.", response.Message);
@@ -222,7 +222,7 @@ public class SettingsControllerTests
         var result = await _controller.Set(req, CancellationToken.None);
 
         var bad = Assert.IsType<BadRequestObjectResult>(result.Result);
-        var response = Assert.IsType<ApiResponse<string>>(bad.Value);
+        var response = Assert.IsType<ApiResponse<SettingResponse>>(bad.Value);
 
         Assert.False(response.Success);
         Assert.Equal("Invalid value 'abc' for type 'int'.", response.Message);
@@ -238,7 +238,7 @@ public class SettingsControllerTests
         var result = await _controller.Set(req, CancellationToken.None);
 
         var bad = Assert.IsType<BadRequestObjectResult>(result.Result);
-        var response = Assert.IsType<ApiResponse<string>>(bad.Value);
+        var response = Assert.IsType<ApiResponse<SettingResponse>>(bad.Value);
 
         Assert.False(response.Success);
         Assert.Equal("Invalid value '123' for type 'unknown'.", response.Message);

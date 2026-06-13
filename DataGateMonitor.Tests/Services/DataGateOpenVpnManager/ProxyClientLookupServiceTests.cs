@@ -1,3 +1,4 @@
+using DataGateMonitor.Models;
 using DataGateMonitor.Services.DataGateOpenVpnManager;
 using DataGateMonitor.SharedModels.DataGateOpenVpnManager.Proxy.Responses;
 
@@ -57,5 +58,51 @@ public class ProxyClientLookupServiceTests
             RealClientPort = 443
         });
         Assert.Null(s);
+    }
+
+    [Theory]
+    [InlineData("No active proxy session for the given local port.", true)]
+    [InlineData("no active proxy session", true)]
+    [InlineData("Not found", false)]
+    [InlineData(null, false)]
+    public void IsNoActiveProxySessionMessage_DetectsLifecycle404Body(string? message, bool expected)
+    {
+        Assert.Equal(expected, ProxyClientLookupService.IsNoActiveProxySessionMessage(message));
+    }
+
+    [Fact]
+    public void ShouldPersistProxyEnrichmentFromPoll_TrueWhenProxyRealIpResolved()
+    {
+        var client = new VpnServerClient
+        {
+            RemoteIp = "127.0.0.1:55664",
+            ProxyRealIp = "198.51.100.1:8443"
+        };
+
+        Assert.True(ProxyClientLookupService.ShouldPersistProxyEnrichmentFromPoll(client));
+    }
+
+    [Fact]
+    public void ShouldPersistProxyEnrichmentFromPoll_FalseWhenLoopbackWithoutProxyRealIp()
+    {
+        var client = new VpnServerClient
+        {
+            RemoteIp = "127.0.0.1:55664",
+            ProxyRealIp = null
+        };
+
+        Assert.False(ProxyClientLookupService.ShouldPersistProxyEnrichmentFromPoll(client));
+    }
+
+    [Fact]
+    public void ShouldPersistProxyEnrichmentFromPoll_TrueForDirectNonLoopbackConnection()
+    {
+        var client = new VpnServerClient
+        {
+            RemoteIp = "203.0.113.5:443",
+            ProxyRealIp = null
+        };
+
+        Assert.True(ProxyClientLookupService.ShouldPersistProxyEnrichmentFromPoll(client));
     }
 }

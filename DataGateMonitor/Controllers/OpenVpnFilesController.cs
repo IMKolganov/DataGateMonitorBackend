@@ -70,7 +70,7 @@ public class OpenVpnFilesController(
         catch (Exception ex)
         {
             logger.LogError(ex, "Failed to get all ovpn files on server {VpnServerId}", request.VpnServerId);
-            return BadRequest(ApiResponse<string>.ErrorResponse(ex.Message));
+            return BadRequest(ApiResponse<OvpnFilesResponse>.ErrorResponse(ex.Message));
         }
     }
 
@@ -95,7 +95,7 @@ public class OpenVpnFilesController(
         {
             logger.LogError(ex, "Failed to get all ovpn files on server {VpnServerId} and {ExternalId}",
                 request.VpnServerId, request.ExternalId);
-            return BadRequest(ApiResponse<string>.ErrorResponse(ex.Message));
+            return BadRequest(ApiResponse<OvpnFilesResponse>.ErrorResponse(ex.Message));
         }
     }
 
@@ -119,7 +119,7 @@ public class OpenVpnFilesController(
         {
             logger.LogError(ex, "Failed to get all ovpn files with token on server {VpnServerId}",
                 request.VpnServerId);
-            return BadRequest(ApiResponse<string>.ErrorResponse(ex.Message));
+            return BadRequest(ApiResponse<OvpnFilesWithTokensResponse>.ErrorResponse(ex.Message));
         }
     }
 
@@ -145,7 +145,7 @@ public class OpenVpnFilesController(
             logger.LogError(ex, "Failed to get all ovpn files with token on server " +
                                 "{VpnServerId} and {ExternalId}",
                 request.VpnServerId, request.ExternalId);
-            return BadRequest(ApiResponse<string>.ErrorResponse(ex.Message));
+            return BadRequest(ApiResponse<OvpnFilesWithTokensResponse>.ErrorResponse(ex.Message));
         }
     }
 
@@ -166,7 +166,7 @@ public class OpenVpnFilesController(
         catch (Exception ex)
         {
             logger.LogError(ex, "Failed to get all ovpn files {ExternalId}", request.ExternalId);
-            return BadRequest(ApiResponse<string>.ErrorResponse(ex.Message));
+            return BadRequest(ApiResponse<OvpnFilesResponse>.ErrorResponse(ex.Message));
         }
     }
 
@@ -188,7 +188,7 @@ public class OpenVpnFilesController(
         {
             logger.LogError(ex, "Failed to add OVPN file for {CommonName} on server {VpnServerId}",
                 request.CommonName, request.VpnServerId);
-            return BadRequest(ApiResponse<string>.ErrorResponse(ex.Message));
+            return BadRequest(ApiResponse<OvpnFileResponse>.ErrorResponse(ex.Message));
         }
     }
 
@@ -212,7 +212,7 @@ public class OpenVpnFilesController(
         {
             logger.LogError(ex, "Failed to add OVPN file for {CommonName} on server {VpnServerId}",
                 request.CommonName, request.VpnServerId);
-            return BadRequest(ApiResponse<string>.ErrorResponse(ex.Message));
+            return BadRequest(ApiResponse<OvpnFileWithTokenResponse>.ErrorResponse(ex.Message));
         }
     }
 
@@ -234,7 +234,7 @@ public class OpenVpnFilesController(
         {
             logger.LogError(ex, "Failed to revoke OVPN for {CommonName} on server {VpnServerId}",
                 request.CommonName, request.VpnServerId);
-            return BadRequest(ApiResponse<string>.ErrorResponse(ex.Message));
+            return BadRequest(ApiResponse<OvpnFileResponse>.ErrorResponse(ex.Message));
         }
     }
 
@@ -256,7 +256,7 @@ public class OpenVpnFilesController(
         {
             logger.LogError(ex, "Failed to download OVPN file {IssuedOvpnFileId} for {VpnServerId}",
                 request.IssuedOvpnFileId, request.VpnServerId);
-            return BadRequest(ApiResponse<string>.ErrorResponse(ex.Message));
+            return BadRequest(ApiResponse<DownloadFileResponse>.ErrorResponse(ex.Message));
         }
     }
 
@@ -278,7 +278,7 @@ public class OpenVpnFilesController(
         {
             logger.LogError(ex, "Failed to download OVPN file {CommonName} for {VpnServerId}",
                 request.CommonName, request.VpnServerId);
-            return BadRequest(ApiResponse<string>.ErrorResponse(ex.Message));
+            return BadRequest(ApiResponse<DownloadFileResponse>.ErrorResponse(ex.Message));
         }
     }
 

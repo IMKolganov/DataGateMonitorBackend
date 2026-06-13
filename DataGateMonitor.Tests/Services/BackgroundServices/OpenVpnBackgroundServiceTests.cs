@@ -1,5 +1,5 @@
 using System.Reflection;
-using System.Text.Json;
+using Newtonsoft.Json.Linq;
 using Microsoft.Extensions.Configuration;
 using Microsoft.Extensions.DependencyInjection;
 using Microsoft.Extensions.Logging;
@@ -79,13 +79,12 @@ public class OpenVpnBackgroundServiceTests
         Assert.DoesNotContain("server-timeout", eventTypes);
 
         var cycleCompleted = entries.First(x => GetEventType(x) == "cycle-completed");
-        using var doc = JsonDocument.Parse(cycleCompleted.PayloadJson);
-        var root = doc.RootElement;
-        var metrics = root.GetProperty("metrics");
-        Assert.Equal(1, metrics.GetProperty("processedServers").GetInt32());
-        Assert.Equal(1, metrics.GetProperty("successServers").GetInt32());
-        Assert.Equal(0, metrics.GetProperty("timeoutServers").GetInt32());
-        Assert.Equal(0, metrics.GetProperty("failedServers").GetInt32());
+        var root = JObject.Parse(cycleCompleted.PayloadJson);
+        var metrics = root["metrics"]!;
+        Assert.Equal(1, metrics["processedServers"]!.Value<int>());
+        Assert.Equal(1, metrics["successServers"]!.Value<int>());
+        Assert.Equal(0, metrics["timeoutServers"]!.Value<int>());
+        Assert.Equal(0, metrics["failedServers"]!.Value<int>());
         Assert.Equal("service", cycleCompleted.Source);
 
         cacheGeneration.Verify(x => x.Bump(), Times.Once);
@@ -181,12 +180,8 @@ public class OpenVpnBackgroundServiceTests
 
     private static string? GetEventType(StatusStreamLogEntry entry)
     {
-        using var doc = JsonDocument.Parse(entry.PayloadJson);
-        var root = doc.RootElement;
-        if (!root.TryGetProperty("eventType", out var eventType))
-            return null;
-
-        return eventType.GetString();
+        var root = JObject.Parse(entry.PayloadJson);
+        return root["eventType"]?.Value<string>();
     }
 
     private static void InjectProcessor(

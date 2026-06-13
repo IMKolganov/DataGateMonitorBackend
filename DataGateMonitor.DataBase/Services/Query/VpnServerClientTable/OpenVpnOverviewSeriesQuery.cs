@@ -1,4 +1,3 @@
-using System.Runtime.InteropServices;
 using Microsoft.EntityFrameworkCore;
 using DataGateMonitor.DataBase.UnitOfWork;
 using DataGateMonitor.Models;
@@ -9,16 +8,12 @@ using DataGateMonitor.SharedModels.Enums;
 namespace DataGateMonitor.DataBase.Services.Query.VpnServerClientTable;
 
 /// <summary>
-/// Overview series over traffic samples:
-/// - Uses VpnServerClientTraffic (cumulative counters).
-/// - Per session, computes deltas between consecutive samples inside [from;to).
-/// - Aggregates deltas into time buckets (Hours/Days/Months/Years) using the offset of 'fromUtc'.
-/// - ActiveClients per bucket = number of distinct sessions that had at least one sample in that bucket.
-/// - Always returns a continuous (gap-filled) series.
+/// Overview series over traffic samples (aggregated in PostgreSQL or in-memory for tests).
 /// </summary>
-public sealed class OpenVpnOverviewSeriesQuery(IUnitOfWork uow) : IOpenVpnOverviewSeriesQuery
+public sealed class OpenVpnOverviewSeriesQuery(
+    IUnitOfWork uow,
+    IOverviewTrafficAggregator trafficAggregator) : IOpenVpnOverviewSeriesQuery
 {
-    // Backward-compatible signature (no externalId)
     public Task<OverviewSeriesResponse> GetOverviewSeriesFromSessionsAsync(
         DateTimeOffset fromUtc,
         DateTimeOffset toUtc,
@@ -27,7 +22,6 @@ public sealed class OpenVpnOverviewSeriesQuery(IUnitOfWork uow) : IOpenVpnOvervi
         CancellationToken ct = default)
         => GetOverviewSeriesFromSessionsAsync(fromUtc, toUtc, grouping, vpnServerId, externalId: null, ct);
 
-    // New signature with optional externalId filter
     public async Task<OverviewSeriesResponse> GetOverviewSeriesFromSessionsAsync(
         DateTimeOffset fromUtc,
         DateTimeOffset toUtc,
@@ -39,104 +33,40 @@ public sealed class OpenVpnOverviewSeriesQuery(IUnitOfWork uow) : IOpenVpnOvervi
         if (toUtc < fromUtc) (fromUtc, toUtc) = (toUtc, fromUtc);
 
         var offset = fromUtc.Offset;
-        var span = toUtc - fromUtc;
-        var mode = grouping == OverviewGrouping.Auto
-            ? span <= TimeSpan.FromDays(2)       ? OverviewGrouping.Hours
-            : span <= TimeSpan.FromDays(180)     ? OverviewGrouping.Days
-            : span <= TimeSpan.FromDays(36 * 30) ? OverviewGrouping.Months
-            : OverviewGrouping.Years
-            : grouping;
+        var mode = ResolveGrouping(fromUtc, toUtc, grouping);
 
-        // ---- Query traffic samples inside window ----
-        var q = uow.GetQuery<VpnServerClientTraffic>().AsQueryable();
+        var buckets = await trafficAggregator.GetTrafficSeriesBucketsAsync(
+            fromUtc, toUtc, mode, vpnServerId, externalId, ct);
 
-        if (vpnServerId.HasValue)
-            q = q.Where(s => s.VpnServerId == vpnServerId.Value);
-
-        if (!string.IsNullOrWhiteSpace(externalId))
-            q = q.Where(s => s.ExternalId == externalId!);
-
-        // Important: compare DateTimeOffset to DateTimeOffset (keep tz info)
-        q = q.Where(s => s.MeasuredAt >= fromUtc && s.MeasuredAt < toUtc)
-             .AsNoTracking();
-
-        var samples = await q
-            .Select(s => new TrafficSampleRow
-            {
-                VpnServerId = s.VpnServerId,
-                SessionId   = s.SessionId,
-                MeasuredAt  = s.MeasuredAt,                 // timestamptz -> DateTimeOffset
-                BytesIn     = s.BytesReceived,
-                BytesOut    = s.BytesSent
-            })
-            .OrderBy(s => s.SessionId)
-            .ThenBy(s => s.MeasuredAt)
-            .ToListAsync(ct);
-
-        // ---- Aggregate deltas into buckets ----
-        var buckets = new Dictionary<DateTimeOffset, Accum>(capacity: 1024);
-
-        // Keep previous sample per session to compute deltas
-        var lastBySession = new Dictionary<Guid, (DateTimeOffset ts, long inTot, long outTot)>(capacity: 1024);
-
-        foreach (var s in samples)
-        {
-            var tsUtc = s.MeasuredAt.ToOffset(TimeSpan.Zero);
-            var bucket = AlignToBucketStartWithOffset(mode, tsUtc, offset);
-
-            ref var acc = ref GetOrAddRef(buckets, bucket);
-            acc.SeenSessions ??= new HashSet<Guid>();
-            acc.SeenSessions.Add(s.SessionId);
-
-            if (lastBySession.TryGetValue(s.SessionId, out var prev))
-            {
-                // cumulative -> delta (protect against resets)
-                var dIn  = s.BytesIn  >= prev.inTot  ? (s.BytesIn  - prev.inTot)  : s.BytesIn;
-                var dOut = s.BytesOut >= prev.outTot ? (s.BytesOut - prev.outTot) : s.BytesOut;
-
-                if (dIn  < 0) dIn  = 0;
-                if (dOut < 0) dOut = 0;
-
-                acc.In  += dIn;
-                acc.Out += dOut;
-            }
-
-            // move window
-            lastBySession[s.SessionId] = (s.MeasuredAt, s.BytesIn, s.BytesOut);
-        }
-
-        // ---- Build series rows ----
         var series = buckets
-            .OrderBy(kv => kv.Key)
-            .Select(kv => new OverviewSeriesRowDto
+            .Select(b => new OverviewSeriesRowDto
             {
-                Ts                = kv.Key,
-                ActiveClients     = kv.Value.SeenSessions?.Count ?? 0,
-                TrafficInBytes    = kv.Value.In,
-                TrafficOutBytes   = kv.Value.Out,
-                TrafficTotalBytes = kv.Value.In + kv.Value.Out
+                Ts = b.BucketTs,
+                ActiveClients = b.ActiveClients,
+                TrafficInBytes = b.TrafficInBytes,
+                TrafficOutBytes = b.TrafficOutBytes,
+                TrafficTotalBytes = b.TrafficInBytes + b.TrafficOutBytes
             })
             .ToList();
 
-        // Zero-fill to continuous X-axis
         series = FillMissingBuckets(series, fromUtc, toUtc, mode, offset);
 
         return new OverviewSeriesResponse
         {
             Meta = new OverviewMetaDto
             {
-                From        = fromUtc,
-                To          = toUtc,
-                Grouping    = mode.ToString().ToLowerInvariant(),
-                Timezone    = "UTC",   // timestamps are UTC; grid is aligned by 'offset'
+                From = fromUtc,
+                To = toUtc,
+                Grouping = mode.ToString().ToLowerInvariant(),
+                Timezone = "UTC",
                 TrafficUnit = "bytes",
                 VpnServerId = vpnServerId
             },
             Summary = new OverviewSummaryDto
             {
-                TotalTrafficInBytes  = series.Sum(r => r.TrafficInBytes),
+                TotalTrafficInBytes = series.Sum(r => r.TrafficInBytes),
                 TotalTrafficOutBytes = series.Sum(r => r.TrafficOutBytes),
-                PeakActiveClients    = series.Count == 0 ? 0 : series.Max(r => r.ActiveClients)
+                PeakActiveClients = series.Count == 0 ? 0 : series.Max(r => r.ActiveClients)
             },
             OverviewSeriesRows = series
         };
@@ -151,72 +81,11 @@ public sealed class OpenVpnOverviewSeriesQuery(IUnitOfWork uow) : IOpenVpnOvervi
     {
         if (toUtc < fromUtc) (fromUtc, toUtc) = (toUtc, fromUtc);
 
-        var q = uow.GetQuery<VpnServerClientTraffic>().AsQueryable();
+        var rows = await trafficAggregator.GetUserTrafficRowsAsync(
+            fromUtc, toUtc, vpnServerId, externalId, ct);
 
-        if (vpnServerId.HasValue)
-            q = q.Where(s => s.VpnServerId == vpnServerId.Value);
-
-        if (!string.IsNullOrWhiteSpace(externalId))
-            q = q.Where(s => s.ExternalId == externalId!);
-
-        q = q.Where(s => s.MeasuredAt >= fromUtc && s.MeasuredAt < toUtc)
-            .AsNoTracking();
-
-        var rows = await q
-            .Select(s => new
-            {
-                s.VpnServerId,
-                s.ExternalId,
-                s.SessionId,
-                s.MeasuredAt,
-                BytesIn = s.BytesReceived,
-                BytesOut = s.BytesSent
-            })
-            .OrderBy(s => s.ExternalId)
-            .ThenBy(s => s.SessionId)
-            .ThenBy(s => s.MeasuredAt)
-            .ToListAsync(ct);
-
-        // Accumulators per user
-        var users =
-            new Dictionary<string, (long In, long Out, HashSet<Guid> Sessions, DateTimeOffset First, DateTimeOffset
-                Last, int? SingleServerId)>();
-
-        // Last cumulative totals per session to compute deltas
-        var lastBySession = new Dictionary<Guid, (long In, long Out)>();
-
-        foreach (var r in rows)
-        {
-            if (!users.TryGetValue(r.ExternalId, out var acc))
-            {
-                acc = (0, 0, new HashSet<Guid>(), r.MeasuredAt, r.MeasuredAt, r.VpnServerId);
-            }
-
-            acc.Sessions.Add(r.SessionId);
-            if (r.MeasuredAt < acc.First) acc.First = r.MeasuredAt;
-            if (r.MeasuredAt > acc.Last) acc.Last = r.MeasuredAt;
-
-            // Track whether all samples come from the same serverId
-            if (acc.SingleServerId.HasValue && acc.SingleServerId.Value != r.VpnServerId)
-                acc.SingleServerId = null;
-
-            if (lastBySession.TryGetValue(r.SessionId, out var prev))
-            {
-                var dIn = r.BytesIn >= prev.In ? (r.BytesIn - prev.In) : r.BytesIn;
-                var dOut = r.BytesOut >= prev.Out ? (r.BytesOut - prev.Out) : r.BytesOut;
-
-                if (dIn < 0) dIn = 0;
-                if (dOut < 0) dOut = 0;
-
-                acc.In += dIn;
-                acc.Out += dOut;
-            }
-
-            lastBySession[r.SessionId] = (r.BytesIn, r.BytesOut);
-            users[r.ExternalId] = acc;
-        }
-        
-        var externalIds = users.Keys
+        var externalIds = rows
+            .Select(x => x.ExternalId)
             .Where(x => !string.IsNullOrWhiteSpace(x))
             .Distinct()
             .ToList();
@@ -228,7 +97,6 @@ public sealed class OpenVpnOverviewSeriesQuery(IUnitOfWork uow) : IOpenVpnOvervi
             .Select(l => new { l.ExternalId, l.UserId })
             .ToListAsync(ct);
 
-        // 2) UserId -> DisplayName
         var userIds = links.Select(l => l.UserId).Distinct().ToList();
 
         var displayByUserId = await uow.GetQuery<User>()
@@ -238,7 +106,6 @@ public sealed class OpenVpnOverviewSeriesQuery(IUnitOfWork uow) : IOpenVpnOvervi
             .Select(u => new { u.Id, u.DisplayName })
             .ToDictionaryAsync(x => x.Id, ct);
 
-        // 3) ExternalId -> DisplayName (pick the first UserId if multiple)
         var displayByExternalId = links
             .GroupBy(l => l.ExternalId)
             .ToDictionary(
@@ -247,31 +114,25 @@ public sealed class OpenVpnOverviewSeriesQuery(IUnitOfWork uow) : IOpenVpnOvervi
                 {
                     var firstUserId = g.Select(x => x.UserId).First();
                     return displayByUserId.TryGetValue(firstUserId, out var u) ? u.DisplayName : string.Empty;
-                }
-            );
+                });
 
-        var result = users
-            .Select(kv => new OverviewUserDto
+        var result = rows
+            .Select(row => new OverviewUserDto
             {
-                ExternalId        = kv.Key,
-                DisplayName       = displayByExternalId.TryGetValue(kv.Key, out var dn) ? dn : string.Empty,
-                VpnServerId       = kv.Value.SingleServerId,
-                Sessions          = kv.Value.Sessions.Count,
-                TrafficInBytes    = kv.Value.In,
-                TrafficOutBytes   = kv.Value.Out,
-                FirstSeen         = kv.Value.First,
-                LastSeen          = kv.Value.Last
+                ExternalId = row.ExternalId,
+                DisplayName = displayByExternalId.TryGetValue(row.ExternalId, out var dn) ? dn : string.Empty,
+                VpnServerId = row.VpnServerId,
+                Sessions = row.Sessions,
+                TrafficInBytes = row.TrafficInBytes,
+                TrafficOutBytes = row.TrafficOutBytes,
+                FirstSeen = row.FirstSeen,
+                LastSeen = row.LastSeen
             })
-            .OrderByDescending(x => x.TrafficTotalBytes)
-            .ThenBy(x => x.ExternalId)
             .ToList();
 
-        return new OverviewUsersResponse() { OverviewUserItems = result };
+        return new OverviewUsersResponse { OverviewUserItems = result };
     }
 
-    /// <summary>
-    /// Returns time-bucketed series: per bucket, count of sessions and unique users (same data source and params as overview/series).
-    /// </summary>
     public async Task<OverviewUsersSeriesResponse> GetOverviewUsersSeriesFromSessionsAsync(
         DateTimeOffset fromUtc,
         DateTimeOffset toUtc,
@@ -283,57 +144,17 @@ public sealed class OpenVpnOverviewSeriesQuery(IUnitOfWork uow) : IOpenVpnOvervi
         if (toUtc < fromUtc) (fromUtc, toUtc) = (toUtc, fromUtc);
 
         var offset = fromUtc.Offset;
-        var span = toUtc - fromUtc;
-        var mode = grouping == OverviewGrouping.Auto
-            ? span <= TimeSpan.FromDays(2)       ? OverviewGrouping.Hours
-            : span <= TimeSpan.FromDays(180)     ? OverviewGrouping.Days
-            : span <= TimeSpan.FromDays(36 * 30) ? OverviewGrouping.Months
-            : OverviewGrouping.Years
-            : grouping;
+        var mode = ResolveGrouping(fromUtc, toUtc, grouping);
 
-        var q = uow.GetQuery<VpnServerClientTraffic>().AsQueryable();
-
-        if (vpnServerId.HasValue)
-            q = q.Where(s => s.VpnServerId == vpnServerId.Value);
-
-        if (!string.IsNullOrWhiteSpace(externalId))
-            q = q.Where(s => s.ExternalId == externalId!);
-
-        q = q.Where(s => s.MeasuredAt >= fromUtc && s.MeasuredAt < toUtc)
-             .AsNoTracking();
-
-        var samples = await q
-            .Select(s => new TrafficSampleRow
-            {
-                VpnServerId = s.VpnServerId,
-                SessionId   = s.SessionId,
-                ExternalId  = s.ExternalId ?? "",
-                MeasuredAt  = s.MeasuredAt
-            })
-            .OrderBy(s => s.SessionId)
-            .ThenBy(s => s.MeasuredAt)
-            .ToListAsync(ct);
-
-        var buckets = new Dictionary<DateTimeOffset, UsersSeriesAccum>(capacity: 1024);
-
-        foreach (var s in samples)
-        {
-            var tsUtc = s.MeasuredAt.ToOffset(TimeSpan.Zero);
-            var bucket = AlignToBucketStartWithOffset(mode, tsUtc, offset);
-
-            ref var acc = ref GetOrAddUsersSeriesAccum(buckets, bucket);
-            acc.SeenSessions.Add(s.SessionId);
-            if (!string.IsNullOrWhiteSpace(s.ExternalId))
-                acc.SeenExternalIds.Add(s.ExternalId);
-        }
+        var buckets = await trafficAggregator.GetUsersSeriesBucketsAsync(
+            fromUtc, toUtc, mode, vpnServerId, externalId, ct);
 
         var series = buckets
-            .OrderBy(kv => kv.Key)
-            .Select(kv => new OverviewUsersSeriesRowDto
+            .Select(b => new OverviewUsersSeriesRowDto
             {
-                Ts              = kv.Key,
-                ActiveSessions  = kv.Value.SeenSessions.Count,
-                ActiveUsers     = kv.Value.SeenExternalIds.Count
+                Ts = b.BucketTs,
+                ActiveSessions = b.ActiveSessions,
+                ActiveUsers = b.ActiveUsers
             })
             .ToList();
 
@@ -343,77 +164,104 @@ public sealed class OpenVpnOverviewSeriesQuery(IUnitOfWork uow) : IOpenVpnOvervi
         {
             Meta = new OverviewMetaDto
             {
-                From        = fromUtc,
-                To          = toUtc,
-                Grouping    = mode.ToString().ToLowerInvariant(),
-                Timezone    = "UTC",
+                From = fromUtc,
+                To = toUtc,
+                Grouping = mode.ToString().ToLowerInvariant(),
+                Timezone = "UTC",
                 TrafficUnit = "bytes",
                 VpnServerId = vpnServerId
             },
             Summary = new OverviewUsersSeriesSummaryDto
             {
                 PeakActiveSessions = series.Count == 0 ? 0 : series.Max(r => r.ActiveSessions),
-                PeakActiveUsers    = series.Count == 0 ? 0 : series.Max(r => r.ActiveUsers)
+                PeakActiveUsers = series.Count == 0 ? 0 : series.Max(r => r.ActiveUsers)
             },
             Rows = series
         };
     }
 
-    /* ---------- internal helpers/types ---------- */
-
-    private sealed class TrafficSampleRow
+    private static OverviewGrouping ResolveGrouping(
+        DateTimeOffset fromUtc,
+        DateTimeOffset toUtc,
+        OverviewGrouping grouping)
     {
-        public int VpnServerId { get; set; }
-        public Guid SessionId { get; set; }
-        public string ExternalId { get; set; } = "";
-        public DateTimeOffset MeasuredAt { get; set; }
-        public long BytesIn { get; set; }
-        public long BytesOut { get; set; }
+        if (grouping != OverviewGrouping.Auto)
+            return grouping;
+
+        var span = toUtc - fromUtc;
+        return span <= TimeSpan.FromDays(2) ? OverviewGrouping.Hours
+            : span <= TimeSpan.FromDays(180) ? OverviewGrouping.Days
+            : span <= TimeSpan.FromDays(36 * 30) ? OverviewGrouping.Months
+            : OverviewGrouping.Years;
     }
 
-    private sealed class UsersSeriesAccum
+    private static Dictionary<DateTimeOffset, OverviewSeriesRowDto> BuildSeriesBucketDict(
+        IEnumerable<OverviewSeriesRowDto> rows,
+        OverviewGrouping mode,
+        TimeSpan offset)
     {
-        public HashSet<Guid> SeenSessions { get; } = new();
-        public HashSet<string> SeenExternalIds { get; } = new();
-    }
-
-    private sealed class Accum
-    {
-        public long In;
-        public long Out;
-        public HashSet<Guid>? SeenSessions;
-    }
-
-    // Offset-aware helpers: align/advance using the chosen offset (bucket grid in local time)
-    private static DateTimeOffset Shift(DateTimeOffset t, TimeSpan offset) => t.ToOffset(offset);
-    private static DateTimeOffset Unshift(DateTimeOffset t) => t.ToOffset(TimeSpan.Zero);
-
-    private static DateTimeOffset AlignToBucketStartWithOffset(OverviewGrouping g, DateTimeOffset tUtc, TimeSpan offset)
-    {
-        var t = Shift(tUtc, offset);
-        var aligned = g switch
+        var dict = new Dictionary<DateTimeOffset, OverviewSeriesRowDto>();
+        foreach (var row in rows)
         {
-            OverviewGrouping.Hours  => new DateTimeOffset(t.Year, t.Month, t.Day, t.Hour, 0, 0, t.Offset),
-            OverviewGrouping.Days   => new DateTimeOffset(t.Year, t.Month, t.Day, 0, 0, 0, t.Offset),
-            OverviewGrouping.Months => new DateTimeOffset(t.Year, t.Month, 1, 0, 0, 0, t.Offset),
-            OverviewGrouping.Years  => new DateTimeOffset(t.Year, 1, 1, 0, 0, 0, t.Offset),
-            _ => new DateTimeOffset(t.Year, t.Month, t.Day, 0, 0, 0, t.Offset)
-        };
-        return Unshift(aligned);
+            var key = OverviewBucketMath.AlignToBucketStartWithOffset(mode, row.Ts, offset);
+            if (dict.TryGetValue(key, out var existing))
+            {
+                dict[key] = new OverviewSeriesRowDto
+                {
+                    Ts = key,
+                    ActiveClients = existing.ActiveClients + row.ActiveClients,
+                    TrafficInBytes = existing.TrafficInBytes + row.TrafficInBytes,
+                    TrafficOutBytes = existing.TrafficOutBytes + row.TrafficOutBytes,
+                    TrafficTotalBytes = (existing.TrafficInBytes + row.TrafficInBytes)
+                                      + (existing.TrafficOutBytes + row.TrafficOutBytes),
+                };
+            }
+            else
+            {
+                dict[key] = new OverviewSeriesRowDto
+                {
+                    Ts = key,
+                    ActiveClients = row.ActiveClients,
+                    TrafficInBytes = row.TrafficInBytes,
+                    TrafficOutBytes = row.TrafficOutBytes,
+                    TrafficTotalBytes = row.TrafficInBytes + row.TrafficOutBytes,
+                };
+            }
+        }
+
+        return dict;
     }
 
-    private static DateTimeOffset NextBucketWithOffset(OverviewGrouping g, DateTimeOffset bucketUtc, TimeSpan offset)
+    private static Dictionary<DateTimeOffset, OverviewUsersSeriesRowDto> BuildUsersSeriesBucketDict(
+        IEnumerable<OverviewUsersSeriesRowDto> rows,
+        OverviewGrouping mode,
+        TimeSpan offset)
     {
-        var t = Shift(bucketUtc, offset);
-        t = g switch
+        var dict = new Dictionary<DateTimeOffset, OverviewUsersSeriesRowDto>();
+        foreach (var row in rows)
         {
-            OverviewGrouping.Hours  => t.AddHours(1),
-            OverviewGrouping.Days   => t.AddDays(1),
-            OverviewGrouping.Months => t.AddMonths(1),
-            OverviewGrouping.Years  => t.AddYears(1),
-            _ => t.AddDays(1)
-        };
-        return Unshift(t);
+            var key = OverviewBucketMath.AlignToBucketStartWithOffset(mode, row.Ts, offset);
+            if (dict.TryGetValue(key, out var existing))
+            {
+                dict[key] = new OverviewUsersSeriesRowDto
+                {
+                    Ts = key,
+                    ActiveSessions = existing.ActiveSessions + row.ActiveSessions,
+                    ActiveUsers = existing.ActiveUsers + row.ActiveUsers,
+                };
+            }
+            else
+            {
+                dict[key] = new OverviewUsersSeriesRowDto
+                {
+                    Ts = key,
+                    ActiveSessions = row.ActiveSessions,
+                    ActiveUsers = row.ActiveUsers,
+                };
+            }
+        }
+
+        return dict;
     }
 
     private static List<OverviewSeriesRowDto> FillMissingBuckets(
@@ -423,62 +271,31 @@ public sealed class OpenVpnOverviewSeriesQuery(IUnitOfWork uow) : IOpenVpnOvervi
         OverviewGrouping mode,
         TimeSpan offset)
     {
-        var dict = rows.ToDictionary(r => r.Ts);
+        var dict = BuildSeriesBucketDict(rows, mode, offset);
         var list = new List<OverviewSeriesRowDto>();
 
-        if (mode == OverviewGrouping.Months)
+        if (mode is OverviewGrouping.Months or OverviewGrouping.Years)
         {
-            var cur = AlignToBucketStartWithOffset(OverviewGrouping.Months, fromUtc, offset);
-            var end = AlignToBucketStartWithOffset(OverviewGrouping.Months, toUtc, offset);
+            var cur = OverviewBucketMath.AlignToBucketStartWithOffset(mode, fromUtc, offset);
+            var end = OverviewBucketMath.AlignToBucketStartWithOffset(mode, toUtc, offset);
             while (cur <= end)
             {
                 if (!dict.TryGetValue(cur, out var r)) r = new OverviewSeriesRowDto { Ts = cur };
                 list.Add(r);
-                cur = NextBucketWithOffset(OverviewGrouping.Months, cur, offset);
+                cur = OverviewBucketMath.NextBucketWithOffset(mode, cur, offset);
             }
             return list;
         }
 
-        if (mode == OverviewGrouping.Years)
+        var curBucket = OverviewBucketMath.AlignToBucketStartWithOffset(mode, fromUtc, offset);
+        var endBucket = OverviewBucketMath.AlignToBucketStartWithOffset(mode, toUtc, offset);
+        while (curBucket <= endBucket)
         {
-            var cur = AlignToBucketStartWithOffset(OverviewGrouping.Years, fromUtc, offset);
-            var end = AlignToBucketStartWithOffset(OverviewGrouping.Years, toUtc, offset);
-            while (cur <= end)
-            {
-                if (!dict.TryGetValue(cur, out var r)) r = new OverviewSeriesRowDto { Ts = cur };
-                list.Add(r);
-                cur = NextBucketWithOffset(OverviewGrouping.Years, cur, offset);
-            }
-            return list;
-        }
-
-        // Hours / Days
-        var curDay = AlignToBucketStartWithOffset(mode, fromUtc, offset);
-        var endDay = AlignToBucketStartWithOffset(mode, toUtc, offset);
-        while (curDay <= endDay)
-        {
-            if (!dict.TryGetValue(curDay, out var r)) r = new OverviewSeriesRowDto { Ts = curDay };
+            if (!dict.TryGetValue(curBucket, out var r)) r = new OverviewSeriesRowDto { Ts = curBucket };
             list.Add(r);
-            curDay = NextBucketWithOffset(mode, curDay, offset);
+            curBucket = OverviewBucketMath.NextBucketWithOffset(mode, curBucket, offset);
         }
         return list;
-    }
-
-    // Fast ref access for Dictionary on modern .NET
-    private static ref Accum GetOrAddRef(Dictionary<DateTimeOffset, Accum> dict, DateTimeOffset key)
-    {
-        ref var entry = ref CollectionsMarshal.GetValueRefOrAddDefault(dict, key, out var exists);
-        if (!exists) entry = new Accum();
-        return ref entry!;
-    }
-
-    private static ref UsersSeriesAccum GetOrAddUsersSeriesAccum(
-        Dictionary<DateTimeOffset, UsersSeriesAccum> dict,
-        DateTimeOffset key)
-    {
-        ref var entry = ref CollectionsMarshal.GetValueRefOrAddDefault(dict, key, out var exists);
-        if (!exists) entry = new UsersSeriesAccum();
-        return ref entry!;
     }
 
     private static List<OverviewUsersSeriesRowDto> FillMissingBucketsForUsersSeries(
@@ -488,45 +305,31 @@ public sealed class OpenVpnOverviewSeriesQuery(IUnitOfWork uow) : IOpenVpnOvervi
         OverviewGrouping mode,
         TimeSpan offset)
     {
-        var dict = rows.ToDictionary(r => r.Ts);
+        var dict = BuildUsersSeriesBucketDict(rows, mode, offset);
         var list = new List<OverviewUsersSeriesRowDto>();
 
-        if (mode == OverviewGrouping.Months)
+        if (mode is OverviewGrouping.Months or OverviewGrouping.Years)
         {
-            var cur = AlignToBucketStartWithOffset(OverviewGrouping.Months, fromUtc, offset);
-            var end = AlignToBucketStartWithOffset(OverviewGrouping.Months, toUtc, offset);
+            var cur = OverviewBucketMath.AlignToBucketStartWithOffset(mode, fromUtc, offset);
+            var end = OverviewBucketMath.AlignToBucketStartWithOffset(mode, toUtc, offset);
             while (cur <= end)
             {
                 if (!dict.TryGetValue(cur, out var r))
                     r = new OverviewUsersSeriesRowDto { Ts = cur };
                 list.Add(r);
-                cur = NextBucketWithOffset(OverviewGrouping.Months, cur, offset);
+                cur = OverviewBucketMath.NextBucketWithOffset(mode, cur, offset);
             }
             return list;
         }
 
-        if (mode == OverviewGrouping.Years)
-        {
-            var cur = AlignToBucketStartWithOffset(OverviewGrouping.Years, fromUtc, offset);
-            var end = AlignToBucketStartWithOffset(OverviewGrouping.Years, toUtc, offset);
-            while (cur <= end)
-            {
-                if (!dict.TryGetValue(cur, out var r))
-                    r = new OverviewUsersSeriesRowDto { Ts = cur };
-                list.Add(r);
-                cur = NextBucketWithOffset(OverviewGrouping.Years, cur, offset);
-            }
-            return list;
-        }
-
-        var curBucket = AlignToBucketStartWithOffset(mode, fromUtc, offset);
-        var endBucket = AlignToBucketStartWithOffset(mode, toUtc, offset);
+        var curBucket = OverviewBucketMath.AlignToBucketStartWithOffset(mode, fromUtc, offset);
+        var endBucket = OverviewBucketMath.AlignToBucketStartWithOffset(mode, toUtc, offset);
         while (curBucket <= endBucket)
         {
             if (!dict.TryGetValue(curBucket, out var r))
                 r = new OverviewUsersSeriesRowDto { Ts = curBucket };
             list.Add(r);
-            curBucket = NextBucketWithOffset(mode, curBucket, offset);
+            curBucket = OverviewBucketMath.NextBucketWithOffset(mode, curBucket, offset);
         }
         return list;
     }
