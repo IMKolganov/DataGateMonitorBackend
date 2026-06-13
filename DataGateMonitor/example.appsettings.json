@@ -1,0 +1,53 @@
+﻿{
+  "ConnectionStrings": {
+    "DefaultConnection": "Host=localhost;Port=5432;Database=datagate_local;Username=postgres;Password=YOUR_PASSWORD;Pooling=true;Trust Server Certificate=true"
+  },
+  "DataBaseSettings":{
+    "DefaultSchema": "xgb_dashopnvpn",
+    "MigrationTable": "__EFMigrationsHistoryDashboardVpn"
+  },
+  "GoogleAuth": {
+    "ClientId": "your-google-cliend-id",
+    "DesktopClientId": "your-desktop-google-cliend-id",
+    "DesktopClientSecret": "your-desktop-google-secret",
+    "IosClientId": "your-google-ios-cliend-id"
+  },
+  "Jwt": {
+    "Secret": "super-secret-key-should-be-at-least-16-characters",
+    "RefreshPepper": "your-refresh-pepper"
+  },
+  "EmailSender": {
+    "Provider": "smtp",
+    "FromEmail": "noreply@datagateapp.com",
+    "FromName": "DataGate",
+    "ResendApiKey": "",
+    "Host": "smtp.example.com",
+    "Port": 587,
+    "UseSsl": true,
+    "Username": "smtp_user",
+    "Password": "smtp_password"
+  },
+  "CrashIngest": {
+    "MaxPayloadBytes": 1048576,
+    "RateLimitMaxRequests": 20,
+    "RateLimitWindowSeconds": 60,
+    "RequireHttps": true,
+    "RecentMaxLimit": 200,
+    "AuthToken": ""
+  },
+  "WindowsCrashIngest": {
+    "MaxPayloadBytes": 1048576,
+    "RateLimitMaxRequests": 20,
+    "RateLimitWindowSeconds": 60,
+    "RequireHttps": true,
+    "RecentMaxLimit": 200,
+    "AuthToken": ""
+  },
+  "Logging": {
+    "LogLevel": {
+      "Default": "Information",
+      "Microsoft.AspNetCore": "Warning"
+    }
+  },
+  "AllowedHosts": "*"
+}
