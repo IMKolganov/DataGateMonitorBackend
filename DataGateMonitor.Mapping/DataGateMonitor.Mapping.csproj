@@ -1,0 +1,23 @@
+<Project Sdk="Microsoft.NET.Sdk">
+
+    <PropertyGroup>
+        <ImplicitUsings>enable</ImplicitUsings>
+        <Nullable>enable</Nullable>
+        <TargetFramework>net10.0</TargetFramework>
+        <Product>DataGateMonitor</Product>
+        <AssemblyTitle>DataGateMonitor.Mapping</AssemblyTitle>
+    </PropertyGroup>
+
+    <ItemGroup>
+      <!-- SharedModels: NuGet only (never ProjectReference). Publish new package version to nuget.org after DTO changes. -->
+      <PackageReference Include="DataGateMonitor.SharedModels" Version="1.0.24" />
+      <PackageReference Include="Mapster" Version="10.0.7" />
+      <PackageReference Include="Microsoft.Extensions.Configuration.Abstractions" Version="10.0.8" />
+      <PackageReference Include="Newtonsoft.Json" Version="13.0.4" />
+    </ItemGroup>
+
+    <ItemGroup>
+      <ProjectReference Include="..\DataGateMonitor.Models\DataGateMonitor.Models.csproj" />
+    </ItemGroup>
+
+</Project>

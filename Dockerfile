@@ -4,10 +4,13 @@ FROM mcr.microsoft.com/dotnet/sdk:10.0 AS build
 # Set the working directory
 WORKDIR /src
 
-# Copy the project file and restore dependencies
-COPY ["OpenVPNGateMonitor/OpenVPNGateMonitor.csproj", "OpenVPNGateMonitor/"]
-WORKDIR /src/OpenVPNGateMonitor
-RUN dotnet restore "OpenVPNGateMonitor.csproj"
+# Copy project files for restore. SharedModels comes from NuGet (PackageReference); that package version must be published on nuget.org.
+COPY ["DataGateMonitor/DataGateMonitor.csproj", "DataGateMonitor/"]
+COPY ["DataGateMonitor.Models/DataGateMonitor.Models.csproj", "DataGateMonitor.Models/"]
+COPY ["DataGateMonitor.DataBase/DataGateMonitor.DataBase.csproj", "DataGateMonitor.DataBase/"]
+COPY ["DataGateMonitor.Mapping/DataGateMonitor.Mapping.csproj", "DataGateMonitor.Mapping/"]
+WORKDIR /src/DataGateMonitor
+RUN dotnet restore "DataGateMonitor.csproj"
 
 # Copy the rest of the application source code
 WORKDIR /src
@@ -17,7 +20,7 @@ COPY . .
 FROM build AS publish
 ARG BUILD_CONFIGURATION=Release
 RUN echo "Using build configuration: $BUILD_CONFIGURATION" && \
-    dotnet publish "OpenVPNGateMonitor/OpenVPNGateMonitor.csproj" \
+    dotnet publish "DataGateMonitor/DataGateMonitor.csproj" \
       -c $BUILD_CONFIGURATION \
       -o /app/publish
 
