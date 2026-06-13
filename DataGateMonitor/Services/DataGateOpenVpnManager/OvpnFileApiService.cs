@@ -30,8 +30,8 @@ public class OvpnFileApiService(
     IOvpnFileNotificationService ovpnFileNotificationService) : IOvpnFileApiService
 {
     private const int DefaultTokenExpireDays = 1;
-    private const int OvpnDownloadMaxAttempts = 3;
-    private static readonly TimeSpan OvpnDownloadRetryDelay = TimeSpan.FromMilliseconds(500);
+    private const int OvpnDownloadMaxAttempts = 5;
+    private static readonly TimeSpan OvpnDownloadRetryDelay = TimeSpan.FromMilliseconds(1000);
 
     private int TokenExpireDays =>
         configuration.GetValue<int?>("OvpnFileToken:ExpireDays") ?? DefaultTokenExpireDays;
@@ -464,7 +464,7 @@ public class OvpnFileApiService(
             catch (Exception ex) when (attempt < OvpnDownloadMaxAttempts && IsRetriableOvpnDownloadFailure(ex))
             {
                 lastError = ex;
-                logger.LogWarning(
+                logger.LogDebug(
                     ex,
                     "OVPN download attempt {Attempt}/{MaxAttempts} failed for VpnServerId={VpnServerId}, " +
                     "retrying in {DelayMs}ms",

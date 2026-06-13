@@ -23,6 +23,7 @@ public static class SerilogConfiguration
             .MinimumLevel.Override("Microsoft.EntityFrameworkCore", LogEventLevel.Warning)
             .MinimumLevel.Override("Microsoft.AspNetCore.Authentication", LogEventLevel.Warning)
             .Filter.ByExcluding(IsExpiredAccessTokenNoise)
+            .Filter.ByExcluding(IsExpectedAuthDenialNoise)
             .Filter.ByExcluding(IsBenignRequestCancellationNoise)
             .WriteTo.Console()
             .Enrich.FromLogContext();
@@ -89,6 +90,15 @@ public static class SerilogConfiguration
 
         var rendered = logEvent.RenderMessage();
         return RequestCancellationLogging.IsBenignCancellationLogEvent(rendered);
+    }
+
+    private static bool IsExpectedAuthDenialNoise(LogEvent logEvent)
+    {
+        var rendered = logEvent.RenderMessage();
+        return rendered.Contains("Request was denied (401)", StringComparison.OrdinalIgnoreCase)
+               || rendered.Contains("Administrator session expired due to inactivity", StringComparison.OrdinalIgnoreCase)
+               || rendered.Contains("Google ID token has expired", StringComparison.OrdinalIgnoreCase)
+               || rendered.Contains("Invalid Google ID token", StringComparison.OrdinalIgnoreCase);
     }
 
     private static bool IsExpiredAccessTokenNoise(LogEvent logEvent)
