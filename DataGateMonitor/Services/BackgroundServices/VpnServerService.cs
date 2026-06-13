@@ -11,6 +11,7 @@ using DataGateMonitor.Services.Helpers;
 using DataGateMonitor.Services.Helpers.Interfaces;
 using DataGateMonitor.Services.Cache;
 using DataGateMonitor.Services.DataGateOpenVpnManager;
+using DataGateMonitor.Services.OpenVpnManagementInterfaces;
 using DataGateMonitor.Services.OpenVpnManagementInterfaces.Interfaces;
 
 namespace DataGateMonitor.Services.BackgroundServices;
@@ -202,7 +203,8 @@ public class VpnServerService(
                     $"Success={state.Success}; " +
                     $"UpSince={state.UpSince:O}; " +
                     $"ServerLocalIp={state.ServerLocalIp ?? "<null>"}; " +
-                    $"ServerRemoteIp={state.ServerRemoteIp ?? "<null>"}";
+                    $"ServerRemoteIp={state.ServerRemoteIp ?? "<null>"}; " +
+                    $"RawStateResponse={OpenVpnStateService.FormatRawResponseForLog(state.RawResponse)}";
 
                 throw new Exception(
                     $"VpnServerId: {openVpnServer.Id}. " +
