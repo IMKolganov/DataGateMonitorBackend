@@ -1,39 +1,18 @@
 ﻿# DataGateMonitor.SharedModels
 
-Shared models for the DataGateMonitor project.  
-These models are used for API communication between backend services and consumers.
+Shared DTOs and enums for the **DataGate Monitor** API, published as the NuGet package `DataGateMonitor.SharedModels`.
 
-## Features
+Used by the backend, tests, and any external clients that need stable API contracts.
 
-- DTOs for OpenVPN Gate Monitor API
-- Simple and lightweight
-- Compatible with .NET 6 7 8 9
+## Consumption
 
-## Versioning
+Add a package reference — **never** project-reference this repo from `DataGateMonitor` backend or tests:
 
-Check the latest version on [nuget.org](https://www.nuget.org/packages/DataGateMonitor.SharedModels).
-
-After changing DTOs in this project:
-
-1. Bump `<Version>` in `DataGateMonitor.SharedModels.csproj`.
-2. `dotnet build -c Release` then `dotnet pack -c Release` and publish to nuget.org.
-3. Bump `PackageReference` `Version="…"` in all consuming projects to the same value.
-
-Do **not** use a local NuGet feed or `ProjectReference` to SharedModels — only published versions from nuget.org in `PackageReference`.
-
-## Usage
-
-Install via NuGet:
-
-```bash
-dotnet add package DataGateMonitor.SharedModels
+```xml
+<PackageReference Include="DataGateMonitor.SharedModels" Version="…" />
 ```
 
-Import in your code:
-
-```csharp
-using DataGateMonitor.SharedModels;
-```
+After adding types here: bump version in `.csproj`, publish to NuGet, then bump `Version="…"` in all consuming projects.
 
 ## License
 
