@@ -3,6 +3,7 @@ using Microsoft.AspNetCore.Http;
 using Microsoft.AspNetCore.Mvc;
 using Moq;
 using DataGateMonitor.Controllers;
+using DataGateMonitor.DataBase.Services.Query.UserIdentityLinkTable;
 using DataGateMonitor.DataBase.Services.Query.VpnServerClientTable;
 using DataGateMonitor.Services.Api.Auth.Handlers.Interfaces;
 using DataGateMonitor.SharedModels.DataGateMonitor.VpnServerClients.Requests;
@@ -17,6 +18,7 @@ public class VpnServerClientsControllerTests
     private readonly Mock<IOpenVpnGeoQueryService> _geoQuery = new();
     private readonly Mock<IOpenVpnOverviewTotalsQuery> _totalsQuery = new();
     private readonly Mock<IOpenVpnOverviewSeriesQuery> _seriesQuery = new();
+    private readonly Mock<IUserIdentityLinkQueryService> _identityLinks = new();
     private readonly Mock<IVpnServerAccessQueryService> _vpnAccess = new();
 
     private readonly VpnServerClientsController _controller;
@@ -32,6 +34,7 @@ public class VpnServerClientsControllerTests
             _geoQuery.Object,
             _totalsQuery.Object,
             _seriesQuery.Object,
+            _identityLinks.Object,
             _vpnAccess.Object);
 
         _controller.ControllerContext = new ControllerContext
@@ -50,7 +53,7 @@ public class VpnServerClientsControllerTests
     {
         _overviewQuery
             .Setup(q => q.GetAllConnectedVpnServerClientsAsync(5, 2, 25, It.IsAny<CancellationToken>()))
-            .ReturnsAsync(new DataGateMonitor.Models.Helpers.Services.VpnClientInfoResponseList { TotalCount = 0 });
+            .ReturnsAsync(new VpnClientInfoResponseList { TotalCount = 0 });
 
         var req = new GetConnectedClientsRequest { VpnServerId = 5, Page = 2, PageSize = 25 };
         var result = await _controller.GetAllConnectedClients(req, CancellationToken.None);
@@ -65,7 +68,7 @@ public class VpnServerClientsControllerTests
     {
         _overviewQuery
             .Setup(q => q.GetAllHistoryVpnServerClientsAsync(6, 1, 10, It.IsAny<CancellationToken>()))
-            .ReturnsAsync(new DataGateMonitor.Models.Helpers.Services.VpnClientInfoResponseList { TotalCount = 0 });
+            .ReturnsAsync(new VpnClientInfoResponseList { TotalCount = 0 });
 
         var req = new GetHistoryClientsRequest { VpnServerId = 6, Page = 1, PageSize = 10 };
         var result = await _controller.GetAllHistoryClients(req, CancellationToken.None);

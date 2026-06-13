@@ -5,6 +5,7 @@ using DataGateMonitor.Models;
 using DataGateMonitor.Services.TelegramBot.Interfaces;
 using DataGateMonitor.SharedModels.DataGateMonitor.TelegramBotUser.Requests;
 using DataGateMonitor.SharedModels.DataGateMonitor.TelegramBotUser.Responses;
+using DataGateMonitor.SharedModels.DataGateMonitor.TelegramBotUser.Responses.Dto;
 
 namespace DataGateMonitor.Services.TelegramBot;
 
@@ -127,5 +128,25 @@ public sealed class TelegramBotUserProfilePhotoService(
             return null;
 
         return (row.ImageBytes, row.MimeType);
+    }
+
+    public async Task<TelegramBotUserProfilePhotoIndexResponse> GetPhotoIndexAsync(CancellationToken cancellationToken)
+    {
+        var ids = await profilePhotoQuery.GetTelegramIdsWithProfilePhotoAsync(cancellationToken);
+        return new TelegramBotUserProfilePhotoIndexResponse
+        {
+            TelegramIdsWithPhoto = ids.OrderBy(x => x).ToList()
+        };
+    }
+
+    public async Task ApplyHasProfilePhotoFlagsAsync(IReadOnlyList<TelegramBotUserDto> users,
+        CancellationToken cancellationToken)
+    {
+        if (users.Count == 0)
+            return;
+
+        var withPhoto = await profilePhotoQuery.GetTelegramIdsWithProfilePhotoAsync(cancellationToken);
+        foreach (var user in users)
+            user.HasProfilePhoto = user.TelegramId > 0 && withPhoto.Contains(user.TelegramId);
     }
 }

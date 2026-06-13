@@ -119,6 +119,32 @@ public class UserIdentityLinkQueryServiceTests
     }
 
     [Fact]
+    public async Task GetListByUserIdAsync_Returns_All_Links_For_User()
+    {
+        var data = CreateSample();
+        var (q, ctx) = CreateEfBackedQuery(data);
+        var sut = new UserIdentityLinkQueryService(q.Object);
+
+        var result = await sut.GetListByUserId(100, CancellationToken.None);
+
+        Assert.Equal(2, result.Count);
+        Assert.All(result, l => Assert.Equal(100, l.UserId));
+        await ctx.DisposeAsync();
+    }
+
+    [Fact]
+    public async Task GetListByUserIdAsync_ReturnsEmpty_WhenNoLinks()
+    {
+        var (q, ctx) = CreateEfBackedQuery(Array.Empty<UserIdentityLink>());
+        var sut = new UserIdentityLinkQueryService(q.Object);
+
+        var result = await sut.GetListByUserId(404, CancellationToken.None);
+
+        Assert.Empty(result);
+        await ctx.DisposeAsync();
+    }
+
+    [Fact]
     public async Task AnyByUserIdAsync_Delegates_To_AnyAsync()
     {
         var (q, ctx) = CreateEfBackedQuery(Array.Empty<UserIdentityLink>());
@@ -131,6 +157,42 @@ public class UserIdentityLinkQueryServiceTests
 
         Assert.True(found);
         q.Verify(x => x.Any(It.IsAny<Expression<Func<UserIdentityLink, bool>>>(), It.IsAny<CancellationToken>()), Times.Once);
+        await ctx.DisposeAsync();
+    }
+
+    [Fact]
+    public async Task GetByProviderAndExternalIdAsync_ReturnsNull_WhenNotFound()
+    {
+        var (q, ctx) = CreateEfBackedQuery(CreateSample());
+        var sut = new UserIdentityLinkQueryService(q.Object);
+
+        var result = await sut.GetByProviderAndExternalId("missing", "ext", CancellationToken.None);
+
+        Assert.Null(result);
+        await ctx.DisposeAsync();
+    }
+
+    [Fact]
+    public async Task GetByExternalIdAsync_ReturnsNull_WhenNotFound()
+    {
+        var (q, ctx) = CreateEfBackedQuery(CreateSample());
+        var sut = new UserIdentityLinkQueryService(q.Object);
+
+        var result = await sut.GetByExternalId("missing-ext", CancellationToken.None);
+
+        Assert.Null(result);
+        await ctx.DisposeAsync();
+    }
+
+    [Fact]
+    public async Task GetByUserIdAsync_ReturnsNull_WhenNotFound()
+    {
+        var (q, ctx) = CreateEfBackedQuery(CreateSample());
+        var sut = new UserIdentityLinkQueryService(q.Object);
+
+        var result = await sut.GetByUserId(404, CancellationToken.None);
+
+        Assert.Null(result);
         await ctx.DisposeAsync();
     }
 

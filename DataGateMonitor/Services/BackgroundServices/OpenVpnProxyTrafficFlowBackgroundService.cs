@@ -7,6 +7,7 @@ namespace DataGateMonitor.Services.BackgroundServices;
 public sealed class OpenVpnProxyTrafficFlowBackgroundService(
     ILogger<OpenVpnProxyTrafficFlowBackgroundService> logger,
     IOpenVpnProxyTrafficFlowClientFactory trafficFlowClientFactory,
+    IOpenVpnProxyTrafficFlowSupportChecker supportChecker,
     IServiceScopeFactory scopeFactory) : BackgroundService
 {
     protected override async Task ExecuteAsync(CancellationToken cancellationToken)
@@ -28,12 +29,18 @@ public sealed class OpenVpnProxyTrafficFlowBackgroundService(
                 {
                     try
                     {
+                        if (!await supportChecker.ShouldListenAsync(server, cancellationToken))
+                        {
+                            trafficFlowClientFactory.Remove(server.Id);
+                            continue;
+                        }
+
                         var client = trafficFlowClientFactory.Create(server);
                         await client.StartListeningAsync(cancellationToken);
                     }
                     catch (Exception ex)
                     {
-                        logger.LogError(ex, "Failed to start proxy traffic flow listener for server {ServerId}", server.Id);
+                        logger.LogWarning(ex, "Failed to start proxy traffic flow listener for server {ServerId}", server.Id);
                     }
                 }
 

@@ -1,4 +1,6 @@
-﻿using DataGateMonitor.Models.Helpers;
+﻿using DataGateMonitor.Middlewares;
+using DataGateMonitor.Models.Helpers;
+using Microsoft.IdentityModel.Tokens;
 using Serilog;
 using Serilog.Events;
 using Serilog.Sinks.Elasticsearch;
@@ -19,6 +21,10 @@ public static class SerilogConfiguration
             .MinimumLevel.Information()
             .MinimumLevel.Override("Microsoft.EntityFrameworkCore.Database.Command", LogEventLevel.Warning)
             .MinimumLevel.Override("Microsoft.EntityFrameworkCore", LogEventLevel.Warning)
+            .MinimumLevel.Override("Microsoft.AspNetCore.Authentication", LogEventLevel.Warning)
+            .Filter.ByExcluding(IsExpiredAccessTokenNoise)
+            .Filter.ByExcluding(IsExpectedAuthDenialNoise)
+            .Filter.ByExcluding(IsBenignRequestCancellationNoise)
             .WriteTo.Console()
             .Enrich.FromLogContext();
         
@@ -75,5 +81,34 @@ public static class SerilogConfiguration
         }
 
         host.UseSerilog();
+    }
+
+    private static bool IsBenignRequestCancellationNoise(LogEvent logEvent)
+    {
+        if (logEvent.Exception is OperationCanceledException or TaskCanceledException)
+            return true;
+
+        var rendered = logEvent.RenderMessage();
+        return RequestCancellationLogging.IsBenignCancellationLogEvent(rendered);
+    }
+
+    private static bool IsExpectedAuthDenialNoise(LogEvent logEvent)
+    {
+        var rendered = logEvent.RenderMessage();
+        return rendered.Contains("Request was denied (401)", StringComparison.OrdinalIgnoreCase)
+               || rendered.Contains("Administrator session expired due to inactivity", StringComparison.OrdinalIgnoreCase)
+               || rendered.Contains("Google ID token has expired", StringComparison.OrdinalIgnoreCase)
+               || rendered.Contains("Invalid Google ID token", StringComparison.OrdinalIgnoreCase);
+    }
+
+    private static bool IsExpiredAccessTokenNoise(LogEvent logEvent)
+    {
+        if (logEvent.Exception is SecurityTokenExpiredException or SecurityTokenNotYetValidException)
+            return true;
+
+        var rendered = logEvent.RenderMessage();
+        return rendered.Contains("IDX10223", StringComparison.OrdinalIgnoreCase)
+               || rendered.Contains("IDX10225", StringComparison.OrdinalIgnoreCase)
+               || rendered.Contains("SecurityTokenExpiredException", StringComparison.OrdinalIgnoreCase);
     }
 }

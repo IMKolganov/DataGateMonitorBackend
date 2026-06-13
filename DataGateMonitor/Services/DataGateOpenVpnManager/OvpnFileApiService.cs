@@ -18,8 +18,8 @@ namespace DataGateMonitor.Services.DataGateOpenVpnManager;
 
 /// <inheritdoc cref="IOvpnFileApiService" />
 public class OvpnFileApiService(
-    IOvpnFileApiClient ovpnFileApiClient, 
-    ILogger<OvpnFileApiClient> logger,
+    IOvpnFileApiClient ovpnFileApiClient,
+    ILogger<OvpnFileApiService> logger,
     IConfiguration configuration,
     IVpnServerOvpnFileConfigQueryService openVpnServerOvpnFileConfigQueryService,
     IIssuedOvpnFileQueryService issuedOvpnFileQueryService,
@@ -30,6 +30,8 @@ public class OvpnFileApiService(
     IOvpnFileNotificationService ovpnFileNotificationService) : IOvpnFileApiService
 {
     private const int DefaultTokenExpireDays = 1;
+    private const int OvpnDownloadMaxAttempts = 5;
+    private static readonly TimeSpan OvpnDownloadRetryDelay = TimeSpan.FromMilliseconds(1000);
 
     private int TokenExpireDays =>
         configuration.GetValue<int?>("OvpnFileToken:ExpireDays") ?? DefaultTokenExpireDays;
@@ -327,7 +329,7 @@ public class OvpnFileApiService(
                    "(server id / common name / revoked state) are correct.");
     }
 
-    public async Task<DownloadFileResponse> DownloadOvpnFile(DownloadFileRequest request, 
+    public async Task<DownloadFileResponse> DownloadOvpnFile(DownloadFileRequest request,
         CancellationToken ct, bool isRevoked = false)
     {
         await RequireOpenVpnServerAsync(request.VpnServerId, ct);
@@ -336,55 +338,27 @@ public class OvpnFileApiService(
                               " VpnServerId={VpnServerId}, IssuedOvpnFileId={IssuedOvpnFileId}",
             request.VpnServerId, request.IssuedOvpnFileId);
 
-        var issuedOvpnFile = await issuedOvpnFileQueryService
-                .GetByIdAndVpnServerIdAndIsRevoked(
-                    request.IssuedOvpnFileId,
-                    request.VpnServerId,
-                    isRevoked,
-                    ct)
-            ?? throw new InvalidOperationException(
-                $"Issued OVPN file not found. " +
-                $"Requested IssuedOvpnFileId={request.IssuedOvpnFileId}, " +
-                $"VpnServerId={request.VpnServerId}, " +
-                $"IsRevoked={isRevoked}. " +
-                "Possible reasons: the file does not exist, belongs to another server, " +
-                "or its revoke state does not match the requested one.");
-
-        var requestApi =
-            new DownloadOvpnFileRequest()
+        return await ExecuteDownloadWithRetriesAsync(
+            request.VpnServerId,
+            async innerCt =>
             {
-                CommonName = issuedOvpnFile.CommonName,
-                FileName = issuedOvpnFile.FileName,
-                FilePath = issuedOvpnFile.FilePath
-            };
-        var result = await ovpnFileApiClient.DownloadOvpnFile(
-            request.VpnServerId, requestApi, ct);
+                var issuedOvpnFile = await issuedOvpnFileQueryService
+                        .GetByIdAndVpnServerIdAndIsRevoked(
+                            request.IssuedOvpnFileId,
+                            request.VpnServerId,
+                            isRevoked,
+                            innerCt)
+                    ?? throw new InvalidOperationException(
+                        $"Issued OVPN file not found. " +
+                        $"Requested IssuedOvpnFileId={request.IssuedOvpnFileId}, " +
+                        $"VpnServerId={request.VpnServerId}, " +
+                        $"IsRevoked={isRevoked}. " +
+                        "Possible reasons: the file does not exist, belongs to another server, " +
+                        "or its revoke state does not match the requested one.");
 
-        if (result.Content == null)
-        {
-            logger.LogError(
-                "Downloaded OVPN file content is null: FileName={FileName}, CommonName={CommonName}",
-                result.FileName,
-                result.CommonName);
-
-            throw new InvalidOperationException(
-                "Downloaded OVPN file content is null. " +
-                $"FileName={result.FileName}, CommonName={result.CommonName}.");
-        }
-
-        logger.LogInformation("Successfully downloaded OVPN file: FileName={FileName}, Size={Size} bytes",
-            result.FileName, result.Content.LongLength);
-        
-        await ovpnFileNotificationService.NotifyDownloaded(
-            issuedOvpnFile.VpnServerId, issuedOvpnFile.FileName, issuedOvpnFile.ExternalId,
-            isRevoked, /* todo: user ID*/ ct);
-
-        return new DownloadFileResponse
-        {
-            IssuedOvpn = issuedOvpnFile.Adapt<IssuedOvpnFileDto>(),
-            FileSizeBytes = result.Content.LongLength,
-            Content = result.Content
-        };
+                return await DownloadIssuedFileFromMicroserviceAsync(issuedOvpnFile, isRevoked, innerCt);
+            },
+            ct);
     }
 
     private async Task<IssuedOvpnFileToken> MakeTokenForFile(IssuedOvpnFile issuedOvpnFile, CancellationToken ct)
@@ -440,7 +414,7 @@ public class OvpnFileApiService(
         return match.Success ? match.Value : null;
     }
     
-    public async Task<DownloadFileResponse> DownloadOvpnFileByCn(DownloadFileByCnRequest request, CancellationToken ct, 
+    public async Task<DownloadFileResponse> DownloadOvpnFileByCn(DownloadFileByCnRequest request, CancellationToken ct,
         bool isRevoked = false)
     {
         await RequireOpenVpnServerAsync(request.VpnServerId, ct);
@@ -449,29 +423,80 @@ public class OvpnFileApiService(
                               " VpnServerId={VpnServerId}, CommonName={CommonName}",
             request.VpnServerId, request.CommonName);
 
-        var issuedOvpnFile = await issuedOvpnFileQueryService
-                .GetByCommonNameAndVpnServerIdAndIsRevoked(
-                    request.CommonName,
-                    request.VpnServerId,
-                    isRevoked,
-                    ct)
-            ?? throw new InvalidOperationException(
-                $"Issued OVPN file not found. " +
-                $"Requested CommonName={request.CommonName}, " +
-                $"VpnServerId={request.VpnServerId}, " +
-                $"IsRevoked={isRevoked}. " +
-                "Possible reasons: the file does not exist, belongs to another server, " +
-                "or its revoke state does not match the requested one.");
-
-        var requestApi =
-            new DownloadOvpnFileRequest()
+        return await ExecuteDownloadWithRetriesAsync(
+            request.VpnServerId,
+            async innerCt =>
             {
-                CommonName = issuedOvpnFile.CommonName,
-                FileName = issuedOvpnFile.FileName,
-                FilePath = issuedOvpnFile.FilePath
-            };
+                var issuedOvpnFile = await issuedOvpnFileQueryService
+                        .GetByCommonNameAndVpnServerIdAndIsRevoked(
+                            request.CommonName,
+                            request.VpnServerId,
+                            isRevoked,
+                            innerCt)
+                    ?? throw new InvalidOperationException(
+                        $"Issued OVPN file not found. " +
+                        $"Requested CommonName={request.CommonName}, " +
+                        $"VpnServerId={request.VpnServerId}, " +
+                        $"IsRevoked={isRevoked}. " +
+                        "Possible reasons: the file does not exist, belongs to another server, " +
+                        "or its revoke state does not match the requested one.");
+
+                return await DownloadIssuedFileFromMicroserviceAsync(issuedOvpnFile, isRevoked, innerCt);
+            },
+            ct);
+    }
+
+    private async Task<DownloadFileResponse> ExecuteDownloadWithRetriesAsync(
+        int vpnServerId,
+        Func<CancellationToken, Task<DownloadFileResponse>> downloadAttempt,
+        CancellationToken ct)
+    {
+        Exception? lastError = null;
+
+        for (var attempt = 1; attempt <= OvpnDownloadMaxAttempts; attempt++)
+        {
+            ct.ThrowIfCancellationRequested();
+
+            try
+            {
+                return await downloadAttempt(ct);
+            }
+            catch (Exception ex) when (attempt < OvpnDownloadMaxAttempts && IsRetriableOvpnDownloadFailure(ex))
+            {
+                lastError = ex;
+                logger.LogDebug(
+                    ex,
+                    "OVPN download attempt {Attempt}/{MaxAttempts} failed for VpnServerId={VpnServerId}, " +
+                    "retrying in {DelayMs}ms",
+                    attempt,
+                    OvpnDownloadMaxAttempts,
+                    vpnServerId,
+                    OvpnDownloadRetryDelay.TotalMilliseconds);
+                await Task.Delay(OvpnDownloadRetryDelay, ct);
+            }
+        }
+
+        throw lastError ?? new InvalidOperationException("OVPN download failed after all retry attempts.");
+    }
+
+    private static bool IsRetriableOvpnDownloadFailure(Exception ex) =>
+        ex is HttpRequestException or Newtonsoft.Json.JsonException
+        || ex is InvalidOperationException;
+
+    private async Task<DownloadFileResponse> DownloadIssuedFileFromMicroserviceAsync(
+        IssuedOvpnFile issuedOvpnFile,
+        bool isRevoked,
+        CancellationToken ct)
+    {
+        var requestApi = new DownloadOvpnFileRequest
+        {
+            CommonName = issuedOvpnFile.CommonName,
+            FileName = issuedOvpnFile.FileName,
+            FilePath = issuedOvpnFile.FilePath
+        };
+
         var result = await ovpnFileApiClient.DownloadOvpnFile(
-            request.VpnServerId, requestApi, ct);
+            issuedOvpnFile.VpnServerId, requestApi, ct);
 
         if (result.Content == null)
         {
@@ -487,7 +512,7 @@ public class OvpnFileApiService(
 
         logger.LogInformation("Successfully downloaded OVPN file: FileName={FileName}, Size={Size} bytes",
             result.FileName, result.Content.LongLength);
-        
+
         await ovpnFileNotificationService.NotifyDownloaded(
             issuedOvpnFile.VpnServerId, issuedOvpnFile.FileName, issuedOvpnFile.ExternalId,
             isRevoked, /* todo: user ID*/ ct);

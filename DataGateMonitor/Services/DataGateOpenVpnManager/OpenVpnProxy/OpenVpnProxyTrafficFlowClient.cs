@@ -1,8 +1,9 @@
-using System.Text.Json;
 using Microsoft.AspNetCore.SignalR;
 using Microsoft.AspNetCore.SignalR.Client;
+using Newtonsoft.Json.Linq;
 using DataGateMonitor.Hubs;
 using DataGateMonitor.Models;
+using DataGateMonitor.Serialization;
 using DataGateMonitor.Services.Api.Auth.Registers.Interfaces;
 using DataGateMonitor.Services.DataGateOpenVpnManager.OpenVpnProxy.Hubs;
 using DataGateMonitor.Services.DataGateOpenVpnManager.OpenVpnProxy.Hubs.Interfaces;
@@ -64,10 +65,14 @@ public sealed class OpenVpnProxyTrafficFlowClient(
 
                 if (!_handlersRegistered)
                 {
-                    _connection.On<JsonElement>("TrafficFlowUpdated", async payload =>
+                    _connection.On<JToken>("TrafficFlowUpdated", async payload =>
                     {
+                        var relay = ProjectJson.Deserialize<object>(payload.ToString());
+                        if (relay is null)
+                            return;
+
                         await trafficFlowHub.Clients.Group(server.Id.ToString())
-                            .SendAsync("TrafficFlowUpdated", payload);
+                            .SendAsync("TrafficFlowUpdated", relay);
                     });
 
                     _handlersRegistered = true;

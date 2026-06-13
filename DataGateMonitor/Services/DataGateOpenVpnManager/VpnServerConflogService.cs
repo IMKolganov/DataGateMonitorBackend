@@ -1,5 +1,5 @@
-using System.Text.Json;
 using DataGateMonitor.DataBase.Services.Command.Interfaces;
+using DataGateMonitor.Serialization;
 using DataGateMonitor.DataBase.Services.Query.VpnServerConflogTable;
 using DataGateMonitor.DataBase.Services.Query.VpnServerTable;
 using DataGateMonitor.Models;
@@ -14,12 +14,6 @@ public class VpnServerConflogService(
     ICommandService<VpnServerConflog, int> conflogCommandService,
     IVpnServerQueryService openVpnServerQueryService) : IVpnServerConflogService
 {
-    private static readonly JsonSerializerOptions JsonOptions = new()
-    {
-        PropertyNamingPolicy = JsonNamingPolicy.CamelCase,
-        WriteIndented = false
-    };
-
     public async Task<VpnServerConflog?> FetchAndSaveIfChangedAsync(string baseUrl, int? vpnServerId, CancellationToken ct = default)
     {
         VpnMicroserviceDiagnosticsDto? response;
@@ -36,7 +30,7 @@ public class VpnServerConflogService(
 
         if (response is null)
             return null;
-        var payloadJson = JsonSerializer.Serialize(response, JsonOptions);
+        var payloadJson = ProjectJson.Serialize(response);
         var requestUrl = baseUrl.TrimEnd('/').Trim();
 
         // When called by server id: only compare with last record for THIS server (by VpnServerId).

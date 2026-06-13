@@ -36,4 +36,20 @@ public class GoogleTokenValidatorTests
 
         Assert.Contains("GoogleAuth:ClientId", ex.Message);
     }
+
+    [Fact]
+    public async Task ValidateAsync_When_TokenMalformed_ThrowsUnauthorizedAccessException()
+    {
+        var config = new Mock<IConfiguration>();
+        config.Setup(c => c["GoogleAuth:ClientId"]).Returns("web-client");
+        config.Setup(c => c["GoogleAuth:DesktopClientId"]).Returns("desktop-client");
+        config.Setup(c => c["GoogleAuth:IosClientId"]).Returns("ios-client");
+
+        var sut = new GoogleTokenValidator(config.Object);
+
+        var ex = await Assert.ThrowsAsync<UnauthorizedAccessException>(
+            () => sut.ValidateAsync("not-a-valid-google-jwt", CancellationToken.None));
+
+        Assert.Equal("Invalid Google ID token.", ex.Message);
+    }
 }

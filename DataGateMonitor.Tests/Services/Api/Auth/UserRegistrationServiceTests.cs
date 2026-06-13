@@ -3,6 +3,7 @@ using Microsoft.Extensions.Logging;
 using Moq;
 using DataGateMonitor.DataBase.Services.Command.Interfaces;
 using DataGateMonitor.DataBase.Services.Query.UserCredentialTable;
+using DataGateMonitor.DataBase.Services.Query.UserIdentityLinkTable;
 using DataGateMonitor.DataBase.Services.Query.UserTable;
 using DataGateMonitor.Models;
 using DataGateMonitor.Services.Api.Auth.EmailConfirmation;
@@ -19,7 +20,9 @@ public class UserRegistrationServiceTests
 {
     private readonly Mock<IPasswordHasher<User>> _passwordHasher;
     private readonly Mock<ICommandService<UserCredential, int>> _credentialCommand;
+    private readonly Mock<ICommandService<UserIdentityLink, int>> _identityLinkCommand;
     private readonly Mock<IUserCredentialQueryService> _credentialQuery;
+    private readonly Mock<IUserIdentityLinkQueryService> _identityLinkQuery;
     private readonly Mock<IUserQueryService> _userQuery;
     private readonly Mock<IUserAccountService> _userAccountService;
     private readonly Mock<IEmailConfirmationService> _emailConfirmationService;
@@ -32,17 +35,28 @@ public class UserRegistrationServiceTests
     {
         _passwordHasher = new Mock<IPasswordHasher<User>>();
         _credentialCommand = new Mock<ICommandService<UserCredential, int>>();
+        _identityLinkCommand = new Mock<ICommandService<UserIdentityLink, int>>();
         _credentialQuery = new Mock<IUserCredentialQueryService>();
+        _identityLinkQuery = new Mock<IUserIdentityLinkQueryService>();
         _userQuery = new Mock<IUserQueryService>();
         _userAccountService = new Mock<IUserAccountService>();
         _emailConfirmationService = new Mock<IEmailConfirmationService>();
         _settingsService = new Mock<ISettingsService>();
         _appNotificationFacade = new Mock<IAppNotificationFacade>();
         _logger = new Mock<ILogger<UserRegistrationService>>();
+        _identityLinkQuery
+            .Setup(q => q.AnyByUserId(It.IsAny<int>(), It.IsAny<CancellationToken>()))
+            .ReturnsAsync(false);
+        _identityLinkCommand
+            .Setup(c => c.Add(It.IsAny<UserIdentityLink>(), true, It.IsAny<CancellationToken>()))
+            .ReturnsAsync((UserIdentityLink link, bool _, CancellationToken _) => link);
+
         _sut = new UserRegistrationService(
             _passwordHasher.Object,
             _credentialCommand.Object,
+            _identityLinkCommand.Object,
             _credentialQuery.Object,
+            _identityLinkQuery.Object,
             _userQuery.Object,
             _userAccountService.Object,
             _emailConfirmationService.Object,
@@ -91,6 +105,12 @@ public class UserRegistrationServiceTests
             .Setup(c => c.Add(It.IsAny<UserCredential>(), true, It.IsAny<CancellationToken>()))
             .Callback<UserCredential, bool, CancellationToken>((c, _, _) => capturedCredential = c)
             .ReturnsAsync((UserCredential c, bool _, CancellationToken _) => c);
+
+        UserIdentityLink? capturedIdentityLink = null;
+        _identityLinkCommand
+            .Setup(c => c.Add(It.IsAny<UserIdentityLink>(), true, It.IsAny<CancellationToken>()))
+            .Callback<UserIdentityLink, bool, CancellationToken>((l, _, _) => capturedIdentityLink = l)
+            .ReturnsAsync((UserIdentityLink l, bool _, CancellationToken _) => l);
         _emailConfirmationService
             .Setup(s => s.SendConfirmationAsync(42, "test@example.com", It.IsAny<CancellationToken>()))
             .Returns(Task.CompletedTask);
@@ -114,6 +134,12 @@ public class UserRegistrationServiceTests
         Assert.Equal(normalizedLogin, capturedCredential.NormalizedLogin);
         Assert.Equal("HASHED_PASSWORD", capturedCredential.PasswordHash);
         Assert.Equal("AspNetCoreV3", capturedCredential.PasswordAlgo);
+
+        Assert.NotNull(capturedIdentityLink);
+        Assert.Equal(42, capturedIdentityLink!.UserId);
+        Assert.Equal(AuthIdentityProviders.Local, capturedIdentityLink.Provider);
+        Assert.Equal("local:42", capturedIdentityLink.ExternalId);
+
         _emailConfirmationService.Verify(
             s => s.SendConfirmationAsync(42, "test@example.com", It.IsAny<CancellationToken>()),
             Times.Once);

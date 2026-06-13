@@ -1,4 +1,4 @@
-namespace DataGateMonitor.Services.Api.Auth.EmailConfirmation.Models;
+namespace DataGateMonitor.SharedModels.DataGateMonitor.Auth.Requests;
 
 public sealed class RequestEmailConfirmationRequest
 {

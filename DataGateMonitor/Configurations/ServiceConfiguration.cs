@@ -26,6 +26,7 @@ using DataGateMonitor.Services.StatusStreamLogs;
 using DataGateMonitor.Services.XrayNode;
 using System.Net;
 using System.Net.Http;
+using DataGateMonitor.Serialization;
 
 namespace DataGateMonitor.Configurations;
 
@@ -47,9 +48,10 @@ public static class ServiceConfiguration
             });
         });
         services.AddSignalR(options =>
-        {
-            options.EnableDetailedErrors = true;
-        });
+            {
+                options.EnableDetailedErrors = true;
+            })
+            .AddNewtonsoftJsonProtocol(options => options.PayloadSerializerSettings = ProjectJson.WebSettings);
         services.ConfigureHttpClientDefaults(builder =>
         {
             builder.ConfigurePrimaryHttpMessageHandler(() => new SocketsHttpHandler
@@ -96,10 +98,12 @@ public static class ServiceConfiguration
         services.AddSingleton<IOpenVpnBackgroundService>(provider => provider.GetRequiredService<OpenVpnBackgroundService>());
         if (databaseRuntime.IsConnectionConfigured)
         {
+            services.AddScoped<ITrafficDailyRollupRunner, TrafficDailyRollupRunner>();
             services.AddHostedService(provider => provider.GetRequiredService<OpenVpnBackgroundService>());
             services.AddHostedService<OpenVpnEventBackgroundService>();
             services.AddHostedService<OpenVpnStatusStreamPublisher>();
             services.AddHostedService<OpenVpnProxyTrafficFlowBackgroundService>();
+            services.AddHostedService<TrafficDailyRollupBackgroundService>();
         }
 
         services.AddScoped<IVpnEventLogService, VpnEventLogService>();
@@ -111,6 +115,7 @@ public static class ServiceConfiguration
         services.AddScoped<IExternalIpAddressService, ExternalIpAddressService>();
 
         services.AddScoped<IUserService, UserService>();
+        services.AddScoped<IUserMergeService, UserMergeService>();
         
         services.AddScoped<IQuotaPlanService, QuotaPlanService>();
         services.AddScoped<IUserRoleManagementService, UserRoleManagementService>();
@@ -137,6 +142,7 @@ public static class ServiceConfiguration
         services.AddScoped<IVpnServerConflogService, VpnServerConflogService>();
 
         services.AddSingleton<IOpenVpnMicroserviceClientFactory, OpenVpnMicroserviceClientFactory>();
+        services.AddSingleton<IOpenVpnProxyTrafficFlowSupportChecker, OpenVpnProxyTrafficFlowSupportChecker>();
         services.AddSingleton<IOpenVpnProxyTrafficFlowClientFactory, OpenVpnProxyTrafficFlowClientFactory>();
 
         #endregion

@@ -9,15 +9,32 @@ using DataGateMonitor.DataBase.Services.Query.UserTable;
 using DataGateMonitor.Models;
 using DataGateMonitor.Services.Api.Auth.Login;
 using DataGateMonitor.Services.Api.Auth.Registers.Interfaces;
+using DataGateMonitor.Services.Api.Auth.Totp;
 using DataGateMonitor.Services.Api.Auth.Users;
 using DataGateMonitor.Services.Others.Notifications;
 using DataGateMonitor.SharedModels.Auth.Google;
+using DataGateMonitor.SharedModels.DataGateMonitor.Auth.Responses;
 using Xunit;
 
 namespace DataGateMonitor.Tests.Services.Api.Auth.Login;
 
 public class UserLoginServiceGoogleTests
 {
+    private static void SetupTotpPassthrough(Mock<IAdminTotpService> adminTotpService)
+    {
+        adminTotpService
+            .Setup(s => s.ApplyAdminTotpGateAsync(
+                It.IsAny<User>(),
+                It.IsAny<UserCredential?>(),
+                It.IsAny<string?>(),
+                It.IsAny<string?>(),
+                It.IsAny<string?>(),
+                It.IsAny<Func<CancellationToken, Task<LoginResponse>>>(),
+                It.IsAny<CancellationToken>()))
+            .Returns((User _, UserCredential? _, string? _, string? _, string? _, Func<CancellationToken, Task<LoginResponse>> issue, CancellationToken ct) =>
+                issue(ct));
+    }
+
     [Fact]
     public async Task LoginWithGoogleAsync_WhenNewUser_NotifiesAdmins()
     {
@@ -30,10 +47,15 @@ public class UserLoginServiceGoogleTests
         var userIdentityLinkQuery = new Mock<IUserIdentityLinkQueryService>();
         var userAccountService = new Mock<IUserAccountService>();
         var tokenService = new Mock<ITokenService>();
-        var adminTotpService = new Mock<DataGateMonitor.Services.Api.Auth.Totp.IAdminTotpService>();
+        var adminTotpService = new Mock<IAdminTotpService>();
         var appNotificationFacade = new Mock<IAppNotificationFacade>();
         var logger = new Mock<ILogger<UserLoginService>>();
         var httpContextAccessor = new Mock<IHttpContextAccessor>();
+
+        SetupTotpPassthrough(adminTotpService);
+        credentialQuery
+            .Setup(c => c.GetByUserId(It.IsAny<int>(), It.IsAny<CancellationToken>()))
+            .ReturnsAsync((UserCredential?)null);
 
         tokenValidator
             .Setup(v => v.ValidateAsync("google-token", It.IsAny<CancellationToken>()))
@@ -105,10 +127,15 @@ public class UserLoginServiceGoogleTests
         var userIdentityLinkQuery = new Mock<IUserIdentityLinkQueryService>();
         var userAccountService = new Mock<IUserAccountService>();
         var tokenService = new Mock<ITokenService>();
-        var adminTotpService = new Mock<DataGateMonitor.Services.Api.Auth.Totp.IAdminTotpService>();
+        var adminTotpService = new Mock<IAdminTotpService>();
         var appNotificationFacade = new Mock<IAppNotificationFacade>();
         var logger = new Mock<ILogger<UserLoginService>>();
         var httpContextAccessor = new Mock<IHttpContextAccessor>();
+
+        SetupTotpPassthrough(adminTotpService);
+        credentialQuery
+            .Setup(c => c.GetByUserId(5, It.IsAny<CancellationToken>()))
+            .ReturnsAsync((UserCredential?)null);
 
         tokenValidator
             .Setup(v => v.ValidateAsync("google-token", It.IsAny<CancellationToken>()))
@@ -146,6 +173,12 @@ public class UserLoginServiceGoogleTests
         Assert.False(response.IsNewUser);
         appNotificationFacade.Verify(
             f => f.UserRegistered(It.IsAny<int>(), It.IsAny<string>(), It.IsAny<string?>(), It.IsAny<string?>(), It.IsAny<string?>(), It.IsAny<CancellationToken>()),
+            Times.Never);
+        userIdentityLinkCommand.Verify(
+            c => c.Add(
+                It.Is<UserIdentityLink>(l => l.Provider == AuthIdentityProviders.Local),
+                It.IsAny<bool>(),
+                It.IsAny<CancellationToken>()),
             Times.Never);
     }
 }

@@ -29,7 +29,10 @@ public class TelegramBotUserController(
         [FromRoute] UserRequest request, CancellationToken cancellationToken)
     {
         var telegramBotUsers = await telegramUserService.GetUserAsync(request.TelegramId,cancellationToken);
-        return Ok(ApiResponse<UserResponse>.SuccessResponse(telegramBotUsers.Adapt<UserResponse>()));
+        var response = telegramBotUsers.Adapt<UserResponse>();
+        await telegramBotUserProfilePhotoService.ApplyHasProfilePhotoFlagsAsync(
+            [response.TelegramBotUser], cancellationToken);
+        return Ok(ApiResponse<UserResponse>.SuccessResponse(response));
     }
 
     
@@ -37,7 +40,10 @@ public class TelegramBotUserController(
     public async Task<ActionResult<ApiResponse<GetAdminsResponse>>> GetAdmins(CancellationToken cancellationToken)
     {
         var telegramBotUsers = await telegramUserService.GetAdminsAsync(cancellationToken);
-        return Ok(ApiResponse<GetAdminsResponse>.SuccessResponse(telegramBotUsers.Adapt<GetAdminsResponse>()));
+        var response = telegramBotUsers.Adapt<GetAdminsResponse>();
+        await telegramBotUserProfilePhotoService.ApplyHasProfilePhotoFlagsAsync(
+            response.TelegramBotAdmins, cancellationToken);
+        return Ok(ApiResponse<GetAdminsResponse>.SuccessResponse(response));
     }
     
     [HttpGet("get-all")]
@@ -45,8 +51,18 @@ public class TelegramBotUserController(
         CancellationToken cancellationToken)
     {
         var telegramBotUsers = await telegramUserService.GetAllUsersAsync(cancellationToken);
-        return Ok(ApiResponse<GetAllTelegramUsersResponse>.SuccessResponse(
-            telegramBotUsers.Adapt<GetAllTelegramUsersResponse>()));
+        var response = telegramBotUsers.Adapt<GetAllTelegramUsersResponse>();
+        await telegramBotUserProfilePhotoService.ApplyHasProfilePhotoFlagsAsync(
+            response.TelegramBotUsers, cancellationToken);
+        return Ok(ApiResponse<GetAllTelegramUsersResponse>.SuccessResponse(response));
+    }
+
+    [HttpGet("profile-photo-index")]
+    public async Task<ActionResult<ApiResponse<TelegramBotUserProfilePhotoIndexResponse>>> GetProfilePhotoIndex(
+        CancellationToken cancellationToken)
+    {
+        var index = await telegramBotUserProfilePhotoService.GetPhotoIndexAsync(cancellationToken);
+        return Ok(ApiResponse<TelegramBotUserProfilePhotoIndexResponse>.SuccessResponse(index));
     }
 
     [HttpPost("profile-photo")]

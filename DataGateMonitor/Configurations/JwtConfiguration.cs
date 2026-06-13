@@ -50,6 +50,15 @@ public static class JwtConfiguration
                         }
 
                         return Task.CompletedTask;
+                    },
+                    OnAuthenticationFailed = context =>
+                    {
+                        if (!JwtBearerEventHandlers.IsExpectedClientTokenFailure(context.Exception))
+                            return Task.CompletedTask;
+
+                        // Fail without attaching the exception so JwtBearer/ Serilog do not emit stack traces (Wazuh).
+                        context.Fail("Access token expired.");
+                        return Task.CompletedTask;
                     }
                 };
             });

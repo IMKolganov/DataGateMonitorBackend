@@ -42,11 +42,13 @@ public class ApplicationDbContext(DbContextOptions<ApplicationDbContext> options
     public DbSet<IncomingMessageLog> IncomingMessageLogs { get; set; } = null!;
     public DbSet<VpnServerEventLog> VpnServerEventLogs { get; set; } = null!;
     public DbSet<VpnServerClientTraffic> VpnServerClientTraffics { get; set; } = null!;
+    public DbSet<VpnServerClientTrafficDaily> VpnServerClientTrafficDailies { get; set; } = null!;
     public DbSet<Notification> Notifications { get; set; } = null!;
     public DbSet<NotificationRecipient> NotificationRecipients { get; set; } = null!;
     public DbSet<User> Users { get; set; } = null!;
     public DbSet<UserCredential> UserCredentials { get; set; } = null!;
     public DbSet<UserIdentityLink> UserIdentityLinks { get; set; } = null!;
+    public DbSet<MergedUserArchive> MergedUserArchives { get; set; } = null!;
     public DbSet<QuotaPlan> QuotaPlans { get; set; } = null!;
     public DbSet<UserQuotaPlan> UserQuotaPlans { get; set; } = null!;
     public DbSet<QuotaPlanAllowedServer> QuotaPlanAllowedServers { get; set; } = null!;
@@ -81,11 +83,13 @@ public class ApplicationDbContext(DbContextOptions<ApplicationDbContext> options
         modelBuilder.ApplyConfiguration(new IncomingMessageLogConfiguration());
         modelBuilder.ApplyConfiguration(new VpnServerEventLogConfiguration());
         modelBuilder.ApplyConfiguration(new VpnServerClientTrafficConfiguration());
+        modelBuilder.ApplyConfiguration(new VpnServerClientTrafficDailyConfiguration());
         modelBuilder.ApplyConfiguration(new NotificationConfiguration());
         modelBuilder.ApplyConfiguration(new NotificationRecipientConfiguration());
         modelBuilder.ApplyConfiguration(new UserConfiguration());
         modelBuilder.ApplyConfiguration(new UserCredentialConfiguration());
         modelBuilder.ApplyConfiguration(new UserIdentityLinkConfiguration());
+        modelBuilder.ApplyConfiguration(new MergedUserArchiveConfiguration());
         modelBuilder.ApplyConfiguration(new QuotaPlanConfiguration());
         modelBuilder.ApplyConfiguration(new UserQuotaPlanConfiguration());
         modelBuilder.ApplyConfiguration(new QuotaPlanAllowedServerConfiguration());

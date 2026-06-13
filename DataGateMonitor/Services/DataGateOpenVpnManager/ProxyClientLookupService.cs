@@ -6,9 +6,11 @@ using DataGateMonitor.Models;
 using DataGateMonitor.Services.Api.Auth.Registers.Interfaces;
 using DataGateMonitor.Services.DataGateOpenVpnManager.Interfaces;
 using DataGateMonitor.Services.GeoLite.Interfaces;
+using DataGateMonitor.Serialization;
 using DataGateMonitor.Services.Others.Notifications.OpenVpnMicroserviceClient;
 using DataGateMonitor.SharedModels.DataGateOpenVpnManager.Proxy.Responses;
 using DataGateMonitor.SharedModels.Enums;
+using DataGateMonitor.SharedModels.Responses;
 
 namespace DataGateMonitor.Services.DataGateOpenVpnManager;
 
@@ -30,14 +32,28 @@ public sealed class ProxyClientLookupService(
 
     private static readonly ConcurrentDictionary<int, DateTimeOffset> s_lastProxyLookupNotifyUtc = new();
 
+    /// <summary>
+    /// When false, poll upsert must not overwrite <see cref="VpnServerClient.ProxyRealIp"/> or geo columns
+    /// (loopback RealAddress but proxy lookup did not resolve — likely a lifecycle gap, keep last known values in DB).
+    /// </summary>
+    public static bool ShouldPersistProxyEnrichmentFromPoll(VpnServerClient client) =>
+        !string.IsNullOrWhiteSpace(client.ProxyRealIp)
+        || !TryParseLoopbackIpAndPort(client.RemoteIp, out _, out _);
+
     public async Task EnrichFromManagementRealAddressAsync(VpnServer server, VpnServerClient client,
         CancellationToken ct)
     {
-        var lookup = await TryLookupAsync(server, client.RemoteIp, ct).ConfigureAwait(false);
+        var lookup = await TryLookupAsync(server, client, ct).ConfigureAwait(false);
         if (lookup is null)
         {
-            client.ProxyRealIp = null;
-            await ApplyGeoFromIpAsync(client, client.RemoteIp, ct).ConfigureAwait(false);
+            // Loopback RealAddress without a resolved proxy client: leave ProxyRealIp/geo unset on this snapshot
+            // so polling does not wipe previously stored values in the database.
+            if (!TryParseLoopbackIpAndPort(client.RemoteIp, out _, out _))
+            {
+                client.ProxyRealIp = null;
+                await ApplyGeoFromIpAsync(client, client.RemoteIp, ct).ConfigureAwait(false);
+            }
+
             return;
         }
 
@@ -81,14 +97,18 @@ public sealed class ProxyClientLookupService(
         return r.RealClientIp;
     }
 
-    private async Task<ProxyClientLookupResponse?> TryLookupAsync(VpnServer server, string realAddress,
+    private async Task<ProxyClientLookupResponse?> TryLookupAsync(VpnServer server, VpnServerClient client,
         CancellationToken ct)
     {
+        var realAddress = client.RemoteIp;
+
         if (string.IsNullOrWhiteSpace(server.ApiUrl))
             return null;
 
         if (!TryParseLoopbackIpAndPort(realAddress, out var host, out var localPort))
             return null;
+
+        var lookupUrl = BuildLookupUrl(server.ApiUrl, localPort, host);
 
         try
         {
@@ -103,41 +123,64 @@ public sealed class ProxyClientLookupService(
             var response = await http.GetAsync(url, ct).ConfigureAwait(false);
             if (response.StatusCode == HttpStatusCode.NotFound)
             {
-                logger.LogDebug(
-                    "Proxy client lookup returned 404 for VpnServerId={ServerId}, {Host}:{Port}",
-                    server.Id, host, localPort);
-                await NotifyLookupFailureAsync(server, realAddress,
-                    $"HTTP 404; localPort={localPort}; host={host}", NotificationSeverity.Warning, ct).ConfigureAwait(false);
+                var responseMessage = await TryReadApiErrorMessageAsync(response.Content, ct).ConfigureAwait(false);
+                if (IsNoActiveProxySessionMessage(responseMessage))
+                {
+                    logger.LogDebug(
+                        "Proxy session not active (lifecycle gap) for VpnServerId={ServerId}, CommonName={CommonName}, LookupUrl={LookupUrl}",
+                        server.Id, client.CommonName, lookupUrl);
+                    return null;
+                }
+
+                var outcome = FormatHttpOutcome(response.StatusCode, responseMessage);
+                logger.LogWarning(
+                    "Proxy client lookup returned unexpected 404 for VpnServerId={ServerId}, CommonName={CommonName}, LookupUrl={LookupUrl}",
+                    server.Id, client.CommonName, lookupUrl);
+                await NotifyLookupFailureAsync(server, client, realAddress, lookupUrl, outcome,
+                    NotificationSeverity.Warning, ct).ConfigureAwait(false);
                 return null;
             }
 
-            response.EnsureSuccessStatusCode();
-
-            var body = await response.Content.ReadFromJsonAsync<ProxyClientLookupResponse>(cancellationToken: ct)
-                       .ConfigureAwait(false);
-
-            if (body is null)
+            if (!response.IsSuccessStatusCode)
             {
-                await NotifyLookupFailureAsync(server, realAddress,
-                    "Empty or invalid JSON in proxy client lookup response", NotificationSeverity.Error, ct)
-                    .ConfigureAwait(false);
+                var responseMessage = await TryReadApiErrorMessageAsync(response.Content, ct).ConfigureAwait(false);
+                var outcome = FormatHttpOutcome(response.StatusCode, responseMessage);
+                logger.LogWarning(
+                    "Proxy client lookup returned {StatusCode} for VpnServerId={ServerId}, CommonName={CommonName}, LookupUrl={LookupUrl}",
+                    (int)response.StatusCode, server.Id, client.CommonName, lookupUrl);
+                await NotifyLookupFailureAsync(server, client, realAddress, lookupUrl, outcome,
+                    NotificationSeverity.Error, ct).ConfigureAwait(false);
+                return null;
             }
 
-            return body;
+            var wrapped = await ProjectJson.ReadContentAsync<ApiResponse<ProxyClientLookupResponse>>(response.Content, ct)
+                .ConfigureAwait(false);
+
+            if (wrapped is not { Success: true, Data: not null })
+            {
+                var detail = wrapped?.Message is { Length: > 0 } msg
+                    ? msg
+                    : "Empty or invalid JSON in proxy client lookup response";
+                await NotifyLookupFailureAsync(server, client, realAddress, lookupUrl, detail,
+                    NotificationSeverity.Error, ct).ConfigureAwait(false);
+                return null;
+            }
+
+            return wrapped.Data;
         }
         catch (Exception ex)
         {
             logger.LogWarning(ex,
-                "Proxy client lookup failed for VpnServerId={ServerId}, RealAddress={RealAddress}",
-                server.Id, realAddress);
-            await NotifyLookupFailureAsync(server, realAddress, ex.Message, NotificationSeverity.Error, ct)
-                .ConfigureAwait(false);
+                "Proxy client lookup failed for VpnServerId={ServerId}, CommonName={CommonName}, RealAddress={RealAddress}, LookupUrl={LookupUrl}",
+                server.Id, client.CommonName, realAddress, lookupUrl);
+            await NotifyLookupFailureAsync(server, client, realAddress, lookupUrl,
+                $"{ex.GetType().Name}: {ex.Message}", NotificationSeverity.Error, ct).ConfigureAwait(false);
             return null;
         }
     }
 
-    private async Task NotifyLookupFailureAsync(VpnServer server, string realAddress, string detail,
-        NotificationSeverity severity, CancellationToken ct)
+    private async Task NotifyLookupFailureAsync(VpnServer server, VpnServerClient client, string realAddress,
+        string lookupUrl, string outcomeDetail, NotificationSeverity severity, CancellationToken ct)
     {
         if (!TryAcquireProxyLookupNotifySlot(server.Id))
             return;
@@ -147,7 +190,7 @@ public sealed class ProxyClientLookupService(
             await microserviceNotifications.NotifyProxyClientLookupFailed(
                 server.Id,
                 server.ServerName,
-                $"RealAddress={realAddress}; {detail}",
+                BuildLookupFailureDetail(server, client, realAddress, lookupUrl, outcomeDetail),
                 severity,
                 ct).ConfigureAwait(false);
         }
@@ -156,6 +199,59 @@ public sealed class ProxyClientLookupService(
             logger.LogWarning(ex,
                 "Failed to send proxy client lookup notification for VpnServerId={ServerId}",
                 server.Id);
+        }
+    }
+
+    private static string BuildLookupUrl(string apiUrl, int localPort, string host) =>
+        $"{apiUrl.TrimEnd('/')}/{ProxyClientByLocalPortPath}?localPort={localPort.ToString(CultureInfo.InvariantCulture)}&host={Uri.EscapeDataString(host)}";
+
+    private static string BuildLookupFailureDetail(VpnServer server, VpnServerClient client, string realAddress,
+        string lookupUrl, string outcomeDetail)
+    {
+        var parts = new List<string> { $"RealAddress={realAddress}" };
+
+        if (!string.IsNullOrWhiteSpace(client.CommonName))
+            parts.Add($"CommonName={client.CommonName}");
+        if (!string.IsNullOrWhiteSpace(client.LocalIp))
+            parts.Add($"VirtualAddress={client.LocalIp}");
+        if (client.ConnectedSince > DateTimeOffset.MinValue)
+            parts.Add($"ConnectedSince={client.ConnectedSince:O}");
+        if (!string.IsNullOrWhiteSpace(client.ExternalId))
+            parts.Add($"ExternalId={client.ExternalId}");
+        if (!string.IsNullOrWhiteSpace(client.Username)
+            && !string.Equals(client.Username, client.CommonName, StringComparison.Ordinal))
+            parts.Add($"Username={client.Username}");
+        if (!string.IsNullOrWhiteSpace(server.ApiUrl))
+            parts.Add($"ApiUrl={server.ApiUrl.TrimEnd('/')}");
+        parts.Add($"LookupUrl={lookupUrl}");
+        parts.Add(outcomeDetail);
+
+        return string.Join("; ", parts);
+    }
+
+    /// <summary>404 when the microservice has no in-memory proxy session for the loopback port (connect/disconnect race).</summary>
+    public static bool IsNoActiveProxySessionMessage(string? message) =>
+        !string.IsNullOrWhiteSpace(message)
+        && message.Contains("No active proxy session", StringComparison.OrdinalIgnoreCase);
+
+    private static string FormatHttpOutcome(HttpStatusCode statusCode, string? responseMessage)
+    {
+        var outcome = $"HTTP {(int)statusCode} {statusCode}";
+        return string.IsNullOrWhiteSpace(responseMessage)
+            ? outcome
+            : $"{outcome}; Response={responseMessage}";
+    }
+
+    private static async Task<string?> TryReadApiErrorMessageAsync(HttpContent content, CancellationToken ct)
+    {
+        try
+        {
+            var wrapped = await ProjectJson.ReadContentAsync<ApiResponse<object?>>(content, ct).ConfigureAwait(false);
+            return wrapped?.Message is { Length: > 0 } msg ? msg : null;
+        }
+        catch
+        {
+            return null;
         }
     }
 

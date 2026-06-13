@@ -152,4 +152,37 @@ public class UserCredentialQueryServiceTests
         Assert.Same(paged, res);
         q.Verify();
     }
+
+    [Fact]
+    public async Task GetByLogin_NormalizesLogin()
+    {
+        var data = new List<UserCredential>
+        {
+            new() { Id = 1, Login = "User@Test.com", PasswordHash = "h", NormalizedLogin = "USER@TEST.COM", UserId = 1 },
+        };
+        var (q, ctx) = CreateEfBackedQuery(data);
+        var sut = new UserCredentialQueryService(q.Object);
+
+        var result = await sut.GetByLogin("user@test.com", CancellationToken.None);
+
+        Assert.NotNull(result);
+        Assert.Equal(1, result!.Id);
+        await ctx.DisposeAsync();
+    }
+
+    [Fact]
+    public async Task LoginExists_ReturnsTrue_WhenNormalizedMatch()
+    {
+        Expression<Func<UserCredential, bool>>? captured = null;
+        var q = new Mock<IQueryService<UserCredential, int>>();
+        q.Setup(x => x.Any(It.IsAny<Expression<Func<UserCredential, bool>>>(), It.IsAny<CancellationToken>()))
+            .Callback((Expression<Func<UserCredential, bool>> p, CancellationToken _) => captured = p)
+            .ReturnsAsync(true);
+
+        var sut = new UserCredentialQueryService(q.Object);
+        var exists = await sut.LoginExists("MyLogin", CancellationToken.None);
+
+        Assert.True(exists);
+        Assert.NotNull(captured);
+    }
 }

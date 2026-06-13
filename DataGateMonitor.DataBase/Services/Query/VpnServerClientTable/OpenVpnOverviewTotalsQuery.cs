@@ -7,13 +7,11 @@ using DataGateMonitor.SharedModels.DataGateMonitor.VpnServerClients.Responses;
 namespace DataGateMonitor.DataBase.Services.Query.VpnServerClientTable;
 
 /// <summary>
-/// Overview totals over sessions and traffic:
-/// - SessionsCount = number of records in Sessions table.
-/// - UsersCount = number of distinct ExternalIds.
-/// - TrafficIn/Out computed as deltas from cumulative counters in traffic table.
-/// - Always aggregated across the full [from;to) window.
+/// Overview totals over sessions and traffic (traffic aggregated in PostgreSQL or in-memory for tests).
 /// </summary>
-public sealed class OpenVpnOverviewTotalsQuery(IUnitOfWork uow) : IOpenVpnOverviewTotalsQuery
+public sealed class OpenVpnOverviewTotalsQuery(
+    IUnitOfWork uow,
+    IOverviewTrafficAggregator trafficAggregator) : IOpenVpnOverviewTotalsQuery
 {
     public async Task<OverviewTotalsResponse> GetOverviewTotalsAsync(
         DateTimeOffset fromUtc,
@@ -24,7 +22,6 @@ public sealed class OpenVpnOverviewTotalsQuery(IUnitOfWork uow) : IOpenVpnOvervi
     {
         if (toUtc < fromUtc) (fromUtc, toUtc) = (toUtc, fromUtc);
 
-        // ---- Sessions ----
         var sessionsQ = uow.GetQuery<VpnServerClient>().AsQueryable();
 
         if (vpnServerId.HasValue)
@@ -39,103 +36,32 @@ public sealed class OpenVpnOverviewTotalsQuery(IUnitOfWork uow) : IOpenVpnOvervi
 
         var sessionsCount = await sessionsQ.LongCountAsync(ct);
 
-        // distinct users
         var usersCount = await sessionsQ
             .Select(x => x.ExternalId)
             .Where(x => x != null && x != "")
             .Distinct()
             .LongCountAsync(ct);
 
-        // ---- Traffic ----
-        var trafficQ = uow.GetQuery<VpnServerClientTraffic>().AsQueryable();
-
-        if (vpnServerId.HasValue)
-            trafficQ = trafficQ.Where(s => s.VpnServerId == vpnServerId.Value);
-
-        if (!string.IsNullOrWhiteSpace(externalId))
-            trafficQ = trafficQ.Where(s => s.ExternalId == externalId!);
-
-        var trafficInWindowQ = trafficQ
-            .Where(s => s.MeasuredAt >= fromUtc && s.MeasuredAt < toUtc)
-            .AsNoTracking();
-
-        var samples = await trafficInWindowQ
-            .Select(s => new TrafficSampleRowDto
-            {
-                SessionId  = s.SessionId,
-                MeasuredAt = s.MeasuredAt,
-                BytesIn    = s.BytesReceived,
-                BytesOut   = s.BytesSent
-            })
-            .OrderBy(s => s.SessionId)
-            .ThenBy(s => s.MeasuredAt)
-            .ToListAsync(ct);
-
-        long totalIn = 0;
-        long totalOut = 0;
-        var lastBySession = new Dictionary<Guid, (long inTot, long outTot)>();
-
-        // Seed per-session baselines from the latest sample strictly before window start.
-        // Without this, sessions that only have one sample inside [from;to) produce zero delta.
-        var baselineRows = await trafficQ
-            .Where(s => s.MeasuredAt < fromUtc)
-            .GroupBy(s => s.SessionId)
-            .Select(g => new
-            {
-                SessionId = g.Key,
-                LastAt = g.Max(x => x.MeasuredAt)
-            })
-            .Join(
-                trafficQ,
-                k => new { k.SessionId, MeasuredAt = k.LastAt },
-                s => new { s.SessionId, s.MeasuredAt },
-                (k, s) => new TrafficSampleRowDto
-                {
-                    SessionId = s.SessionId,
-                    MeasuredAt = s.MeasuredAt,
-                    BytesIn = s.BytesReceived,
-                    BytesOut = s.BytesSent
-                })
-            .AsNoTracking()
-            .ToListAsync(ct);
-
-        foreach (var b in baselineRows)
-            lastBySession[b.SessionId] = (b.BytesIn, b.BytesOut);
-
-        foreach (var s in samples)
-        {
-            if (lastBySession.TryGetValue(s.SessionId, out var prev))
-            {
-                var dIn  = s.BytesIn  >= prev.inTot  ? (s.BytesIn  - prev.inTot)  : s.BytesIn;
-                var dOut = s.BytesOut >= prev.outTot ? (s.BytesOut - prev.outTot) : s.BytesOut;
-
-                if (dIn  < 0) dIn  = 0;
-                if (dOut < 0) dOut = 0;
-
-                totalIn  += dIn;
-                totalOut += dOut;
-            }
-
-            lastBySession[s.SessionId] = (s.BytesIn, s.BytesOut);
-        }
+        var trafficTotals = await trafficAggregator.GetTrafficTotalsAsync(
+            fromUtc, toUtc, vpnServerId, externalId, ct);
 
         return new OverviewTotalsResponse
         {
             Meta = new OverviewMetaDto
             {
-                From        = fromUtc,
-                To          = toUtc,
-                Grouping    = "none",
-                Timezone    = "UTC",
+                From = fromUtc,
+                To = toUtc,
+                Grouping = "none",
+                Timezone = "UTC",
                 TrafficUnit = "bytes",
                 VpnServerId = vpnServerId
             },
             Totals = new TotalsPayloadDto
             {
-                SessionsCount   = sessionsCount,
-                UsersCount      = usersCount,
-                TrafficInBytes  = totalIn,
-                TrafficOutBytes = totalOut
+                SessionsCount = sessionsCount,
+                UsersCount = usersCount,
+                TrafficInBytes = trafficTotals.TrafficInBytes,
+                TrafficOutBytes = trafficTotals.TrafficOutBytes
             }
         };
     }

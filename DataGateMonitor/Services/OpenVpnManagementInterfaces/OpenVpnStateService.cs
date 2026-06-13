@@ -8,6 +8,8 @@ namespace DataGateMonitor.Services.OpenVpnManagementInterfaces;
 public class OpenVpnStateService(ILogger<IOpenVpnStateService> logger, 
     IOpenVpnMicroserviceClientFactory openVpnMicroserviceClientFactory) : IOpenVpnStateService
 {
+    private const int RawResponseLogMaxLength = 1024;
+
     public async Task<OpenVpnState> GetStateAsync(VpnServer openVpnServer, CancellationToken cancellationToken)
     {
         var client = openVpnMicroserviceClientFactory.Create(openVpnServer);
@@ -15,14 +17,40 @@ public class OpenVpnStateService(ILogger<IOpenVpnStateService> logger,
 
         logger.LogDebug("Received status response:\n{Response}", response);
 
-        return ParseState(response);
+        var state = ParseState(response);
+        state.RawResponse = response;
+
+        if (state.UpSince <= DateTimeOffset.MinValue)
+        {
+            logger.LogWarning(
+                "[STATE PARSER] UpSince not set after parsing OpenVPN 'state' response. " +
+                "Connected={Connected}; Success={Success}; RawResponse={RawResponse}",
+                state.Connected,
+                state.Success,
+                FormatRawResponseForLog(response));
+        }
+
+        return state;
+    }
+
+    public static string FormatRawResponseForLog(string? rawResponse, int maxLength = RawResponseLogMaxLength)
+    {
+        if (rawResponse is null)
+            return "<null>";
+
+        if (rawResponse.Length == 0)
+            return "<empty>";
+
+        if (rawResponse.Length <= maxLength)
+            return rawResponse;
+
+        return rawResponse[..maxLength] + $"... (truncated, total {rawResponse.Length} chars)";
     }
     
     private OpenVpnState ParseState(string data)
     {
         if (string.IsNullOrWhiteSpace(data))
         {
-            logger.LogWarning("[STATE PARSER] Received empty response from OpenVPN.");
             return new OpenVpnState { Success = false };
         }
 
@@ -33,10 +61,14 @@ public class OpenVpnStateService(ILogger<IOpenVpnStateService> logger,
         {
             foreach (var line in lines)
             {
-                var parts = line.Split(",");
+                if (OpenVpnManagementResponseLines.IsProtocolLine(line))
+                    continue;
+
+                var payloadLine = OpenVpnManagementResponseLines.NormalizeStateCsvLine(line);
+                var parts = payloadLine.Split(",");
                 if (parts.Length < 5)
                 {
-                    logger.LogWarning($"[STATE PARSER] Skipping malformed line: {line}");
+                    logger.LogDebug("[STATE PARSER] Skipping non-state line: {Line}", line);
                     continue;
                 }
 

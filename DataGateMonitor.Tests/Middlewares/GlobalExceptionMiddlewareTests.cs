@@ -69,7 +69,26 @@ public class GlobalExceptionMiddlewareTests
         Assert.Equal(401, json["statusCode"]?.Value<int>());
         Assert.Equal("Invalid login or password.", json["message"]?.Value<string>());
         Assert.Equal("Invalid login or password.", json["detail"]?.Value<string>());
-        facade.Verify(f => f.SystemException(It.IsAny<UnauthorizedAccessException>(), It.IsAny<CancellationToken>()), Times.Once);
+        facade.Verify(
+            f => f.SystemException(It.IsAny<UnauthorizedAccessException>(), It.IsAny<CancellationToken>()),
+            Times.Never);
+    }
+
+    [Fact]
+    public async Task InvokeAsync_WhenAdminIdleSessionExpired_Returns401_AndDoesNotNotifyAdmins()
+    {
+        var context = CreateContext();
+        RequestDelegate next = _ => throw new UnauthorizedAccessException(
+            "Administrator session expired due to inactivity.");
+        var (middleware, facade) = CreateMiddleware(next);
+
+        await middleware.InvokeAsync(context);
+
+        Assert.Equal(StatusCodes.Status401Unauthorized, context.Response.StatusCode);
+        var body = await ReadResponseBodyAsync(context.Response);
+        var json = JObject.Parse(body);
+        Assert.Equal("Administrator session expired due to inactivity.", json["message"]?.Value<string>());
+        facade.Verify(f => f.SystemException(It.IsAny<Exception>(), It.IsAny<CancellationToken>()), Times.Never);
     }
 
     [Fact]
@@ -171,5 +190,21 @@ public class GlobalExceptionMiddlewareTests
         var json = JObject.Parse(body);
         Assert.Equal(500, json["statusCode"]?.Value<int>());
         Assert.Equal("Boom.", json["detail"]?.Value<string>());
+    }
+
+    [Fact]
+    public async Task InvokeAsync_WhenClientNavigationCancel_Returns499()
+    {
+        var context = CreateContext();
+        RequestDelegate next = _ => throw new OperationCanceledException("The operation was canceled.");
+        var (middleware, facade) = CreateMiddleware(next);
+
+        await middleware.InvokeAsync(context);
+
+        Assert.Equal(499, context.Response.StatusCode);
+        var body = await ReadResponseBodyAsync(context.Response);
+        var json = JObject.Parse(body);
+        Assert.Equal(499, json["statusCode"]?.Value<int>());
+        facade.Verify(f => f.SystemException(It.IsAny<Exception>(), It.IsAny<CancellationToken>()), Times.Never);
     }
 }

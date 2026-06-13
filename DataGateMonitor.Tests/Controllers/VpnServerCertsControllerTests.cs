@@ -116,7 +116,7 @@ public class VpnServerCertsControllerTests
 
         // Assert
         var bad = Assert.IsType<BadRequestObjectResult>(actionResult.Result);
-        var response = Assert.IsType<ApiResponse<string>>(bad.Value);
+        var response = Assert.IsType<ApiResponse<GetAllCertificatesResponse>>(bad.Value);
         Assert.False(response.Success);
         Assert.Contains("boom", response.Message, StringComparison.OrdinalIgnoreCase);
 
@@ -180,7 +180,7 @@ public class VpnServerCertsControllerTests
 
         // Assert
         var bad = Assert.IsType<BadRequestObjectResult>(actionResult.Result);
-        var response = Assert.IsType<ApiResponse<string>>(bad.Value);
+        var response = Assert.IsType<ApiResponse<BuildCertificateResponse>>(bad.Value);
         Assert.False(response.Success);
         Assert.Contains("failed", response.Message, StringComparison.OrdinalIgnoreCase);
 
@@ -247,7 +247,7 @@ public class VpnServerCertsControllerTests
 
         // Assert
         var bad = Assert.IsType<BadRequestObjectResult>(actionResult.Result);
-        var response = Assert.IsType<ApiResponse<string>>(bad.Value);
+        var response = Assert.IsType<ApiResponse<RevokeCertificateResponse>>(bad.Value);
         Assert.False(response.Success);
         Assert.Contains("revoke", response.Message, StringComparison.OrdinalIgnoreCase);
 

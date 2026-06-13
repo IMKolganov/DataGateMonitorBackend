@@ -1199,6 +1199,90 @@ namespace DataGateMonitor.DataBase.Migrations
                         });
                 });
 
+            modelBuilder.Entity("DataGateMonitor.Models.MergedUserArchive", b =>
+                {
+                    b.Property<int>("Id")
+                        .ValueGeneratedOnAdd()
+                        .HasColumnType("integer");
+
+                    NpgsqlPropertyBuilderExtensions.UseIdentityByDefaultColumn(b.Property<int>("Id"));
+
+                    b.Property<string>("AvatarUrl")
+                        .HasMaxLength(2048)
+                        .HasColumnType("character varying(2048)");
+
+                    b.Property<DateTimeOffset>("CreateDate")
+                        .ValueGeneratedOnAdd()
+                        .HasColumnType("timestamp with time zone")
+                        .HasDefaultValueSql("CURRENT_TIMESTAMP");
+
+                    b.Property<string>("DisplayName")
+                        .IsRequired()
+                        .HasMaxLength(128)
+                        .HasColumnType("character varying(128)");
+
+                    b.Property<string>("Email")
+                        .HasMaxLength(256)
+                        .HasColumnType("character varying(256)");
+
+                    b.Property<bool>("HasDashboardAccess")
+                        .HasColumnType("boolean");
+
+                    b.Property<string>("IdentityLinksJson")
+                        .IsRequired()
+                        .HasColumnType("jsonb");
+
+                    b.Property<bool>("IsAdmin")
+                        .HasColumnType("boolean");
+
+                    b.Property<bool>("IsBlocked")
+                        .HasColumnType("boolean");
+
+                    b.Property<bool>("IsEmailConfirmed")
+                        .HasColumnType("boolean");
+
+                    b.Property<DateTimeOffset>("LastUpdate")
+                        .ValueGeneratedOnAdd()
+                        .HasColumnType("timestamp with time zone")
+                        .HasDefaultValueSql("CURRENT_TIMESTAMP");
+
+                    b.Property<string>("MergeReportJson")
+                        .IsRequired()
+                        .HasColumnType("jsonb");
+
+                    b.Property<DateTimeOffset>("MergedAt")
+                        .HasColumnType("timestamp with time zone");
+
+                    b.Property<int?>("MergedByUserId")
+                        .HasColumnType("integer");
+
+                    b.Property<int>("MergedIntoUserId")
+                        .HasColumnType("integer");
+
+                    b.Property<string>("Note")
+                        .HasMaxLength(512)
+                        .HasColumnType("character varying(512)");
+
+                    b.Property<DateTimeOffset>("OriginalCreateDate")
+                        .HasColumnType("timestamp with time zone");
+
+                    b.Property<DateTimeOffset>("OriginalLastUpdate")
+                        .HasColumnType("timestamp with time zone");
+
+                    b.Property<int>("OriginalUserId")
+                        .HasColumnType("integer");
+
+                    b.HasKey("Id");
+
+                    b.HasIndex("MergedAt");
+
+                    b.HasIndex("MergedIntoUserId");
+
+                    b.HasIndex("OriginalUserId");
+
+                    b.ToTable("MergedUserArchives", "xgb_dashopnvpn");
+                });
+
             modelBuilder.Entity("DataGateMonitor.Models.MobileCrashReport", b =>
                 {
                     b.Property<long>("Id")
@@ -1211,6 +1295,10 @@ namespace DataGateMonitor.DataBase.Migrations
                         .IsRequired()
                         .HasMaxLength(256)
                         .HasColumnType("character varying(256)");
+
+                    b.Property<string>("AppVersion")
+                        .HasMaxLength(128)
+                        .HasColumnType("character varying(128)");
 
                     b.Property<DateTimeOffset>("CreateDate")
                         .ValueGeneratedOnAdd()
@@ -2682,6 +2770,22 @@ namespace DataGateMonitor.DataBase.Migrations
                             Enabled = true,
                             Kind = 28,
                             LastUpdate = new DateTimeOffset(new DateTime(1, 1, 1, 0, 0, 0, 0, DateTimeKind.Unspecified), new TimeSpan(0, 0, 0, 0, 0))
+                        },
+                        new
+                        {
+                            Id = 30,
+                            CreateDate = new DateTimeOffset(new DateTime(1, 1, 1, 0, 0, 0, 0, DateTimeKind.Unspecified), new TimeSpan(0, 0, 0, 0, 0)),
+                            Enabled = true,
+                            Kind = 29,
+                            LastUpdate = new DateTimeOffset(new DateTime(1, 1, 1, 0, 0, 0, 0, DateTimeKind.Unspecified), new TimeSpan(0, 0, 0, 0, 0))
+                        },
+                        new
+                        {
+                            Id = 31,
+                            CreateDate = new DateTimeOffset(new DateTime(1, 1, 1, 0, 0, 0, 0, DateTimeKind.Unspecified), new TimeSpan(0, 0, 0, 0, 0)),
+                            Enabled = true,
+                            Kind = 30,
+                            LastUpdate = new DateTimeOffset(new DateTime(1, 1, 1, 0, 0, 0, 0, DateTimeKind.Unspecified), new TimeSpan(0, 0, 0, 0, 0))
                         });
                 });
 
@@ -2984,7 +3088,9 @@ namespace DataGateMonitor.DataBase.Migrations
                         .HasDatabaseName("IX_ClientTraffic_External_At");
 
                     b.HasIndex("MeasuredAt", "SessionId")
-                        .HasDatabaseName("IX_ClientTraffic_At_Session");
+                        .HasDatabaseName("IX_ClientTraffic_At_Covering");
+
+                    NpgsqlIndexBuilderExtensions.IncludeProperties(b.HasIndex("MeasuredAt", "SessionId"), new[] { "ExternalId", "VpnServerId", "BytesReceived", "BytesSent" });
 
                     b.HasIndex("VpnServerId", "MeasuredAt")
                         .HasDatabaseName("IX_ClientTraffic_Server_At");
@@ -2997,6 +3103,65 @@ namespace DataGateMonitor.DataBase.Migrations
                         .HasDatabaseName("UX_ClientTraffic_Server_Session_At");
 
                     b.ToTable("VpnServerClientTraffics", "xgb_dashopnvpn");
+                });
+
+            modelBuilder.Entity("DataGateMonitor.Models.VpnServerClientTrafficDaily", b =>
+                {
+                    b.Property<int>("Id")
+                        .ValueGeneratedOnAdd()
+                        .HasColumnType("integer");
+
+                    NpgsqlPropertyBuilderExtensions.UseIdentityByDefaultColumn(b.Property<int>("Id"));
+
+                    b.Property<DateTimeOffset>("CreateDate")
+                        .ValueGeneratedOnAdd()
+                        .HasColumnType("timestamp with time zone")
+                        .HasDefaultValueSql("CURRENT_TIMESTAMP");
+
+                    b.Property<DateOnly>("DayUtc")
+                        .HasColumnType("date");
+
+                    b.Property<string>("ExternalId")
+                        .IsRequired()
+                        .HasMaxLength(255)
+                        .HasColumnType("character varying(255)");
+
+                    b.Property<DateTimeOffset>("LastUpdate")
+                        .ValueGeneratedOnAdd()
+                        .HasColumnType("timestamp with time zone")
+                        .HasDefaultValueSql("CURRENT_TIMESTAMP");
+
+                    b.Property<int>("SampleCount")
+                        .HasColumnType("integer");
+
+                    b.Property<Guid>("SessionId")
+                        .HasColumnType("uuid");
+
+                    b.Property<long>("TrafficInBytes")
+                        .HasColumnType("bigint");
+
+                    b.Property<long>("TrafficOutBytes")
+                        .HasColumnType("bigint");
+
+                    b.Property<int?>("UserId")
+                        .HasColumnType("integer");
+
+                    b.Property<int>("VpnServerId")
+                        .HasColumnType("integer");
+
+                    b.HasKey("Id");
+
+                    b.HasIndex("DayUtc", "ExternalId")
+                        .HasDatabaseName("IX_ClientTrafficDaily_Day_External");
+
+                    b.HasIndex("DayUtc", "VpnServerId")
+                        .HasDatabaseName("IX_ClientTrafficDaily_Day_Server");
+
+                    b.HasIndex("VpnServerId", "SessionId", "DayUtc")
+                        .IsUnique()
+                        .HasDatabaseName("UX_ClientTrafficDaily_Server_Session_Day");
+
+                    b.ToTable("VpnServerClientTrafficDailies", "xgb_dashopnvpn");
                 });
 
             modelBuilder.Entity("DataGateMonitor.Models.VpnServerConflog", b =>

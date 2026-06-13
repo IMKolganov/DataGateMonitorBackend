@@ -21,11 +21,29 @@ public class GlobalExceptionMiddleware(
         {
             await HandleOperationCanceledAsync(context, ex);
         }
+        catch (UnauthorizedAccessException ex)
+        {
+            LogExpectedUnauthorizedAccess(context, ex);
+            await HandleExceptionAsync(context, ex, notifyAdmins: false);
+        }
         catch (Exception ex)
         {
             logger.LogError(ex, "Unhandled exception occurred.");
-            await HandleExceptionAsync(context, ex);
+            await HandleExceptionAsync(context, ex, notifyAdmins: true);
         }
+    }
+
+    private void LogExpectedUnauthorizedAccess(HttpContext context, UnauthorizedAccessException exception)
+    {
+        // Routine auth denial (idle timeout, invalid credentials, etc.) — Debug only to avoid Wazuh WRN alerts.
+        logger.LogDebug(
+            "Request was denied (401). Method: {Method}. Path: {Path}. QueryString: {QueryString}. " +
+            "Message: {AuthMessage}. TraceId: {TraceId}",
+            context.Request.Method,
+            context.Request.Path,
+            context.Request.QueryString.ToString(),
+            exception.Message,
+            context.TraceIdentifier);
     }
 
     private async Task HandleOperationCanceledAsync(HttpContext context, OperationCanceledException exception)
@@ -34,14 +52,27 @@ public class GlobalExceptionMiddleware(
         var path = context.Request.Path;
         var queryString = context.Request.QueryString.ToString();
         var traceId = context.TraceIdentifier;
-        var wasAbortedByClient = context.RequestAborted.IsCancellationRequested;
+        var postgresCancelled = RequestCancellationLogging.FindPostgresQueryCancelled(exception);
+        var wasAbortedByClient = RequestCancellationLogging.IsClientInitiatedCancellation(context, exception);
 
-        if (wasAbortedByClient)
+        if (postgresCancelled is not null && !wasAbortedByClient)
         {
-            logger.LogInformation(
-                exception,
-                "Request was cancelled by client. " +
-                "Method: {Method}. Path: {Path}. QueryString: {QueryString}. TraceId: {TraceId}",
+            // Server-side statement timeout — real issue; structured only (no exception object → no Wazuh stack lines).
+            logger.LogWarning(
+                "PostgreSQL query was cancelled ({SqlState}). ClientAborted: {ClientAborted}. " +
+                "Method: {Method}. Path: {Path}. QueryString: {QueryString}. Message: {PgMessage}. TraceId: {TraceId}",
+                postgresCancelled.SqlState,
+                wasAbortedByClient,
+                method,
+                path,
+                queryString,
+                postgresCancelled.MessageText,
+                traceId);
+        }
+        else if (wasAbortedByClient)
+        {
+            logger.LogDebug(
+                "Request was cancelled by client. Method: {Method}. Path: {Path}. QueryString: {QueryString}. TraceId: {TraceId}",
                 method,
                 path,
                 queryString,
@@ -49,50 +80,61 @@ public class GlobalExceptionMiddleware(
         }
         else
         {
+            // e.g. HttpClient.Timeout during the request — keep visible, without stack trace.
             logger.LogWarning(
-                exception,
-                "Operation was cancelled. " +
-                "Method: {Method}. Path: {Path}. QueryString: {QueryString}. TraceId: {TraceId}",
+                "Operation was cancelled (not client-initiated). Method: {Method}. Path: {Path}. QueryString: {QueryString}. " +
+                "Message: {CancelMessage}. TraceId: {TraceId}",
                 method,
                 path,
                 queryString,
+                exception.Message,
                 traceId);
         }
 
         if (context.Response.HasStarted)
             return;
 
-        context.Response.Clear();
-        context.Response.ContentType = "application/json";
-        context.Response.StatusCode = 499;
-
-        var payload = new
+        try
         {
-            statusCode = 499,
-            message = "Request was cancelled.",
-            detail = exception.Message,
-            traceId
-        };
+            context.Response.Clear();
+            context.Response.ContentType = "application/json";
+            context.Response.StatusCode = 499;
 
-        var json = JsonConvert.SerializeObject(payload);
-        await context.Response.WriteAsync(json);
+            var payload = new
+            {
+                statusCode = 499,
+                message = "Request was cancelled.",
+                detail = exception.Message,
+                traceId
+            };
+
+            var json = JsonConvert.SerializeObject(payload);
+            await context.Response.WriteAsync(json);
+        }
+        catch (OperationCanceledException)
+        {
+            // Client already disconnected — nothing to send.
+        }
     }
 
-    private async Task HandleExceptionAsync(HttpContext context, Exception exception)
+    private async Task HandleExceptionAsync(HttpContext context, Exception exception, bool notifyAdmins = true)
     {
         if (context.Response.HasStarted)
             return;
 
-        // Notify admins (best-effort)
-        try
+        if (notifyAdmins)
         {
-            using var scope = serviceProvider.CreateScope();
-            var appNotifications = scope.ServiceProvider.GetRequiredService<IAppNotificationFacade>();
-            await appNotifications.SystemException(exception, CancellationToken.None);
-        }
-        catch (Exception sendEx)
-        {
-            logger.LogError(sendEx, "Failed to send system exception notification.");
+            // Notify admins (best-effort)
+            try
+            {
+                using var scope = serviceProvider.CreateScope();
+                var appNotifications = scope.ServiceProvider.GetRequiredService<IAppNotificationFacade>();
+                await appNotifications.SystemException(exception, CancellationToken.None);
+            }
+            catch (Exception sendEx)
+            {
+                logger.LogError(sendEx, "Failed to send system exception notification.");
+            }
         }
 
         var (statusCodeInt, responseMessage) = exception switch

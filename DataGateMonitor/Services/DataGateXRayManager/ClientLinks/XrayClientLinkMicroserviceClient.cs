@@ -1,8 +1,8 @@
 using System.Net.Http.Headers;
-using Newtonsoft.Json;
-using Newtonsoft.Json.Linq;
 using DataGateMonitor.DataBase.Services.Query.VpnServerTable;
+using DataGateMonitor.Serialization;
 using DataGateMonitor.Services.Api.Auth.Registers.Interfaces;
+using DataGateMonitor.Services.Helpers;
 
 namespace DataGateMonitor.Services.DataGateXRayManager.ClientLinks;
 
@@ -30,6 +30,17 @@ public sealed class XrayClientLinkMicroserviceClient(
         return client;
     }
 
+    private static async Task ThrowIfNotSuccessAsync(HttpResponseMessage response, string action,
+        CancellationToken cancellationToken)
+    {
+        if (response.IsSuccessStatusCode)
+            return;
+
+        var detail = await MicroserviceApiResponseHelper.ReadErrorMessageAsync(response, cancellationToken);
+        throw new InvalidOperationException(
+            $"Failed to {action}. Status: {(int)response.StatusCode} {response.ReasonPhrase}. Details: {detail}");
+    }
+
     public async Task<ClientLinkMetadataDto> AddClientLink(int vpnServerId,
         GenerateClientLinkMicroserviceRequest request, CancellationToken cancellationToken)
     {
@@ -39,13 +50,11 @@ public sealed class XrayClientLinkMicroserviceClient(
             var jwt = tokenService.GenerateToken("vpn-cert-issuer", "cert-create", "backend", Audience);
             client.DefaultRequestHeaders.Authorization = new AuthenticationHeaderValue("Bearer", jwt);
 
-            var response = await client.PostAsJsonAsync(EndpointAdd, request, cancellationToken);
-            if (!response.IsSuccessStatusCode)
-                throw await InvalidOpFromErrorBodyAsync(response, "add client link", cancellationToken);
+            var response = await client.PostAsync(EndpointAdd, ProjectJson.ToJsonContent(request), cancellationToken);
+            await ThrowIfNotSuccessAsync(response, "add client link", cancellationToken);
 
-            var result = await response.Content.ReadFromJsonAsync<ClientLinkMetadataDto>(cancellationToken);
-            if (result is null)
-                throw new InvalidOperationException("Received null response when adding client link.");
+            var result = await MicroserviceApiResponseHelper.ReadSuccessDataAsync<ClientLinkMetadataDto>(
+                response, cancellationToken);
             logger.LogInformation("Client link added for {CommonName} on server {Url}, VpnServerId={Id}",
                 request.CommonName, client.BaseAddress, vpnServerId);
             return result;
@@ -56,7 +65,7 @@ public sealed class XrayClientLinkMicroserviceClient(
                 request.CommonName, vpnServerId);
             throw;
         }
-        catch (JsonException ex)
+        catch (Newtonsoft.Json.JsonException ex)
         {
             logger.LogError(ex, "Failed to deserialize add client link response for {Cn} on server {Id}",
                 request.CommonName, vpnServerId);
@@ -73,14 +82,11 @@ public sealed class XrayClientLinkMicroserviceClient(
             var jwt = tokenService.GenerateToken("vpn-cert-issuer", "cert-create", "backend", Audience);
             client.DefaultRequestHeaders.Authorization = new AuthenticationHeaderValue("Bearer", jwt);
 
-            var response = await client.PostAsJsonAsync(EndpointRevoke, request, cancellationToken);
-            if (!response.IsSuccessStatusCode)
-                throw await InvalidOpFromErrorBodyAsync(response, "revoke client link", cancellationToken);
+            var response = await client.PostAsync(EndpointRevoke, ProjectJson.ToJsonContent(request), cancellationToken);
+            await ThrowIfNotSuccessAsync(response, "revoke client link", cancellationToken);
 
-            var result = await response.Content.ReadFromJsonAsync<ClientLinkMetadataDto>(cancellationToken);
-            if (result is null)
-                throw new InvalidOperationException(
-                    $"Revoke client link returned empty body for CommonName={request.CommonName}, VpnServerId={vpnServerId}.");
+            var result = await MicroserviceApiResponseHelper.ReadSuccessDataAsync<ClientLinkMetadataDto>(
+                response, cancellationToken);
             logger.LogInformation("Client link revoked for {CommonName} on server {Url}",
                 request.CommonName, client.BaseAddress);
             return result;
@@ -91,7 +97,7 @@ public sealed class XrayClientLinkMicroserviceClient(
                 request.CommonName, vpnServerId);
             throw;
         }
-        catch (JsonException ex)
+        catch (Newtonsoft.Json.JsonException ex)
         {
             logger.LogError(ex, "Failed to deserialize revoke client link response for {Cn} on server {Id}",
                 request.CommonName, vpnServerId);
@@ -108,15 +114,11 @@ public sealed class XrayClientLinkMicroserviceClient(
             var jwt = tokenService.GenerateToken("vpn-cert-issuer", "cert-create", "backend", Audience);
             client.DefaultRequestHeaders.Authorization = new AuthenticationHeaderValue("Bearer", jwt);
 
-            var response = await client.PostAsJsonAsync(EndpointDownload, request, cancellationToken);
-            if (!response.IsSuccessStatusCode)
-                throw await InvalidOpFromErrorBodyAsync(response, "download client link", cancellationToken);
+            var response = await client.PostAsync(EndpointDownload, ProjectJson.ToJsonContent(request), cancellationToken);
+            await ThrowIfNotSuccessAsync(response, "download client link", cancellationToken);
 
-            var content = await response.Content.ReadFromJsonAsync<ClientLinkDownloadDto>(cancellationToken);
-            if (content is null)
-                throw new InvalidOperationException(
-                    $"Failed to deserialize client link content for CommonName={request.CommonName}, FileName={request.FileName}.");
-            return content;
+            return await MicroserviceApiResponseHelper.ReadSuccessDataAsync<ClientLinkDownloadDto>(
+                response, cancellationToken);
         }
         catch (HttpRequestException ex)
         {
@@ -124,30 +126,11 @@ public sealed class XrayClientLinkMicroserviceClient(
                 request.FileName, request.CommonName, vpnServerId);
             throw;
         }
-        catch (JsonException ex)
+        catch (Newtonsoft.Json.JsonException ex)
         {
             logger.LogError(ex, "Failed to deserialize download client link for {File} on server {Id}",
                 request.FileName, vpnServerId);
             throw;
         }
-    }
-
-    private static async Task<InvalidOperationException> InvalidOpFromErrorBodyAsync(HttpResponseMessage response,
-        string action, CancellationToken cancellationToken)
-    {
-        var rawError = await response.Content.ReadAsStringAsync(cancellationToken);
-        var extracted = "Unknown error";
-        try
-        {
-            var root = JsonConvert.DeserializeObject<JObject>(rawError);
-            extracted = root?["error"]?.ToString() ?? extracted;
-        }
-        catch
-        {
-            /* ignore */
-        }
-
-        return new InvalidOperationException(
-            $"Failed to {action}. Status: {(int)response.StatusCode} {response.ReasonPhrase}. Details: {extracted}");
     }
 }

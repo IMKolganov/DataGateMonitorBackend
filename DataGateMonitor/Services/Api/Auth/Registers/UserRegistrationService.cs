@@ -2,6 +2,7 @@ using Microsoft.AspNetCore.Identity;
 using Microsoft.Extensions.Logging;
 using DataGateMonitor.DataBase.Services.Command.Interfaces;
 using DataGateMonitor.DataBase.Services.Query.UserCredentialTable;
+using DataGateMonitor.DataBase.Services.Query.UserIdentityLinkTable;
 using DataGateMonitor.DataBase.Services.Query.UserTable;
 using DataGateMonitor.Models;
 using DataGateMonitor.Services.Api.Auth.EmailConfirmation;
@@ -17,7 +18,9 @@ namespace DataGateMonitor.Services.Api.Auth.Registers;
 public sealed class UserRegistrationService(
     IPasswordHasher<User> passwordHasher,
     ICommandService<UserCredential, int> userCredentialCommandService,
+    ICommandService<UserIdentityLink, int> userIdentityLinkCommandService,
     IUserCredentialQueryService userCredentialQueryService,
+    IUserIdentityLinkQueryService userIdentityLinkQueryService,
     IUserQueryService userQueryService,
     IUserAccountService userAccountService,
     IEmailConfirmationService emailConfirmationService,
@@ -86,6 +89,12 @@ public sealed class UserRegistrationService(
         };
 
         await userCredentialCommandService.Add(credential, saveChanges: true, ct);
+
+        await LocalUserIdentityLinkEnsurer.EnsureAsync(
+            user.Id,
+            userIdentityLinkQueryService,
+            userIdentityLinkCommandService,
+            ct);
 
         if (requireEmailConfirmation && !string.IsNullOrWhiteSpace(user.Email))
             await emailConfirmationService.SendConfirmationAsync(user.Id, user.Email, ct);

@@ -1,6 +1,7 @@
 using System.Text;
 using DataGateMonitor.Configurations;
 using DataGateMonitor.Services.Api.MobileCrashIngest;
+using DataGateMonitor.SharedModels.DataGateMonitor.MobileCrashIngest.Dto;
 using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Mvc;
 using Microsoft.Extensions.Options;

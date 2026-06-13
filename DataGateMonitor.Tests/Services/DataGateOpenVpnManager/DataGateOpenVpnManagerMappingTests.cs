@@ -1,5 +1,5 @@
-using System.Text.Json;
 using Mapster;
+using DataGateMonitor.Serialization;
 using DataGateMonitor.Mapping.DataGateOpenVpnManager.Mappings;
 using DataGateMonitor.Models;
 using DataGateMonitor.SharedModels.DataGateMonitor.VpnServerConflog.Dto;
@@ -45,10 +45,7 @@ public class DataGateOpenVpnManagerMappingTests
 
         var conflog = new VpnServerConflog
         {
-            PayloadJson = JsonSerializer.Serialize(root, new JsonSerializerOptions
-            {
-                PropertyNamingPolicy = JsonNamingPolicy.CamelCase
-            })
+            PayloadJson = ProjectJson.Serialize(root)
         };
 
         // Act
@@ -94,10 +91,7 @@ public class DataGateOpenVpnManagerMappingTests
 
         var conflog = new VpnServerConflog
         {
-            PayloadJson = JsonSerializer.Serialize(diagnostics, new JsonSerializerOptions
-            {
-                PropertyNamingPolicy = JsonNamingPolicy.CamelCase
-            })
+            PayloadJson = ProjectJson.Serialize(diagnostics)
         };
 
         // Act
