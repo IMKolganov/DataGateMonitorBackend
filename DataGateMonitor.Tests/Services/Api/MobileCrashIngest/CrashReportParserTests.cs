@@ -36,7 +36,50 @@ public class CrashReportParserTests
         Assert.Equal("java.lang.RuntimeException", result.Exception);
         Assert.Equal("boom", result.Message);
         Assert.Equal("network", result.Tag);
+        Assert.Null(result.AppVersion);
         Assert.Contains("MainActivity", result.Stacktrace);
+    }
+
+    [Fact]
+    public void Parse_WithAppVersion_ReturnsAppVersion()
+    {
+        var payload = """
+                      timestamp_utc=2026-05-01T00:00:00.000Z
+                      process=com.imkolganov.datagate
+                      thread=main
+                      sdk=35
+                      device=Pixel 8
+                      app_version=1.4.2
+                      exception=java.lang.RuntimeException
+                      message=boom
+
+                      java.lang.RuntimeException: boom
+                      """;
+
+        var result = _sut.Parse(payload);
+
+        Assert.True(result.IsParsed);
+        Assert.Equal("1.4.2", result.AppVersion);
+    }
+
+    [Fact]
+    public void Parse_WithVersionNameAndCode_ReturnsCombinedAppVersion()
+    {
+        var payload = """
+                      process=com.imkolganov.datagate
+                      thread=main
+                      version_name=1.4.2
+                      version_code=142
+                      exception=java.lang.RuntimeException
+                      message=boom
+
+                      stack
+                      """;
+
+        var result = _sut.Parse(payload);
+
+        Assert.True(result.IsParsed);
+        Assert.Equal("1.4.2 (142)", result.AppVersion);
     }
 
     [Fact]

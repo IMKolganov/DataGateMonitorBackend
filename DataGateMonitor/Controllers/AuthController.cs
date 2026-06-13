@@ -8,7 +8,6 @@ using Microsoft.AspNetCore.Authorization;
 using DataGateMonitor.Services.Api.Auth.ForgotPassword;
 using DataGateMonitor.Services.Api.Auth.Login;
 using DataGateMonitor.Services.Api.Auth.EmailConfirmation;
-using DataGateMonitor.Services.Api.Auth.EmailConfirmation.Models;
 using DataGateMonitor.Services.Api.Auth.TelegramLogin;
 using DataGateMonitor.Services.Api.Auth.Totp;
 using DataGateMonitor.Services.Api.CurrentUser.Interfaces;

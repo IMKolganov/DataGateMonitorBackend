@@ -1,4 +1,4 @@
-﻿using DataGateMonitor.Models.Helpers.Services;
+﻿using DataGateMonitor.SharedModels.DataGateMonitor.VpnServerClients.Responses;
 
 namespace DataGateMonitor.DataBase.Services.Query.VpnServerClientTable;
 

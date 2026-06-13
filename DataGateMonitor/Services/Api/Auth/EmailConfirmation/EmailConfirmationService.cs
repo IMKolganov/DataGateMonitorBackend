@@ -7,7 +7,7 @@ using DataGateMonitor.Models;
 using DataGateMonitor.Services.AdminEmail;
 using DataGateMonitor.Services.EmailTemplates;
 using DataGateMonitor.Services.Others;
-using DataGateMonitor.Services.Api.Auth.EmailConfirmation.Models;
+using DataGateMonitor.SharedModels.DataGateMonitor.Auth.Responses;
 
 namespace DataGateMonitor.Services.Api.Auth.EmailConfirmation;
 

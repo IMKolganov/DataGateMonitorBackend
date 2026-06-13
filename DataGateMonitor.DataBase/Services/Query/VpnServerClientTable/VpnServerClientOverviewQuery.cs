@@ -3,7 +3,7 @@ using Microsoft.EntityFrameworkCore;
 using DataGateMonitor.DataBase.Services.Query.UserTable;
 using DataGateMonitor.DataBase.UnitOfWork;
 using DataGateMonitor.Models;
-using DataGateMonitor.Models.Helpers.Services;
+using DataGateMonitor.SharedModels.DataGateMonitor.VpnServerClients.Responses;
 using DataGateMonitor.SharedModels.DataGateMonitor.VpnServers.Dto;
 
 namespace DataGateMonitor.DataBase.Services.Query.VpnServerClientTable;
