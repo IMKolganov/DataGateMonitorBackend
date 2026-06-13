@@ -35,7 +35,8 @@ public class GlobalExceptionMiddleware(
 
     private void LogExpectedUnauthorizedAccess(HttpContext context, UnauthorizedAccessException exception)
     {
-        logger.LogWarning(
+        // Routine auth denial (idle timeout, invalid credentials, etc.) — Debug only to avoid Wazuh WRN alerts.
+        logger.LogDebug(
             "Request was denied (401). Method: {Method}. Path: {Path}. QueryString: {QueryString}. " +
             "Message: {AuthMessage}. TraceId: {TraceId}",
             context.Request.Method,

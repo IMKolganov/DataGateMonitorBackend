@@ -154,7 +154,7 @@ public class OvpnFileApiServiceTests
     }
 
     [Fact]
-    public async Task DownloadOvpnFileByCn_WhenAllAttemptsFail_ThrowsAfterThreeDbLookups()
+    public async Task DownloadOvpnFileByCn_WhenAllAttemptsFail_ThrowsAfterFiveDbLookups()
     {
         var server = new VpnServer
         {
@@ -184,7 +184,7 @@ public class OvpnFileApiServiceTests
         fileQuery.Verify(
             q => q.GetByCommonNameAndVpnServerIdAndIsRevoked(
                 "missing-cn", 75, false, It.IsAny<CancellationToken>()),
-            Times.Exactly(3));
+            Times.Exactly(5));
     }
 
     private static OvpnFileApiService CreateService(

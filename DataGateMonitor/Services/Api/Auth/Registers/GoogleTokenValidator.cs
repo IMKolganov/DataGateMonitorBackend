@@ -1,5 +1,4 @@
 using Google.Apis.Auth;
-using Microsoft.IdentityModel.Tokens;
 using DataGateMonitor.Services.Api.Auth.Registers.Interfaces;
 using DataGateMonitor.SharedModels.Auth.Google;
 
@@ -34,11 +33,11 @@ public sealed class GoogleTokenValidator(IConfiguration configuration) : IGoogle
         }
         catch (InvalidJwtException ex)
         {
-            throw new SecurityTokenException("Invalid Google ID token.", ex);
+            throw new UnauthorizedAccessException(MapGoogleJwtValidationMessage(ex));
         }
 
         if (payload == null)
-            throw new SecurityTokenException("Invalid Google ID token payload.");
+            throw new UnauthorizedAccessException("Invalid Google ID token.");
 
         return new GoogleUserInfo
         {
@@ -49,4 +48,9 @@ public sealed class GoogleTokenValidator(IConfiguration configuration) : IGoogle
             Picture = string.IsNullOrWhiteSpace(payload.Picture) ? null : payload.Picture.Trim()
         };
     }
+
+    private static string MapGoogleJwtValidationMessage(InvalidJwtException ex) =>
+        ex.Message.Contains("expired", StringComparison.OrdinalIgnoreCase)
+            ? "Google ID token has expired."
+            : "Invalid Google ID token.";
 }
