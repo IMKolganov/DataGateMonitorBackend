@@ -1,4 +1,4 @@
-using DataGateMonitor.Services.Api.Auth.EmailConfirmation.Models;
+using DataGateMonitor.SharedModels.DataGateMonitor.Auth.Responses;
 
 namespace DataGateMonitor.Services.Api.Auth.EmailConfirmation;
 

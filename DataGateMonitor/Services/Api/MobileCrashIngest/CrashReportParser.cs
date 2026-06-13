@@ -54,6 +54,9 @@ public sealed class CrashReportParser : ICrashReportParser
         parsedPairs.TryGetValue("exception", out var exception);
         parsedPairs.TryGetValue("message", out var message);
         parsedPairs.TryGetValue("tag", out var tag);
+        parsedPairs.TryGetValue("app_version", out var appVersion);
+        parsedPairs.TryGetValue("version_name", out var versionName);
+        parsedPairs.TryGetValue("version_code", out var versionCode);
 
         DateTimeOffset? timestampUtc = null;
         if (!string.IsNullOrWhiteSpace(timestampRaw) &&
@@ -74,8 +77,26 @@ public sealed class CrashReportParser : ICrashReportParser
             Exception = EmptyToNull(exception),
             Message = EmptyToNull(message),
             Tag = EmptyToNull(tag),
+            AppVersion = ResolveAppVersion(appVersion, versionName, versionCode),
             Stacktrace = string.IsNullOrWhiteSpace(stacktrace) ? null : stacktrace
         };
+    }
+
+    private static string? ResolveAppVersion(string? appVersion, string? versionName, string? versionCode)
+    {
+        if (!string.IsNullOrWhiteSpace(appVersion))
+            return appVersion.Trim();
+
+        if (!string.IsNullOrWhiteSpace(versionName) && !string.IsNullOrWhiteSpace(versionCode))
+            return $"{versionName.Trim()} ({versionCode.Trim()})";
+
+        if (!string.IsNullOrWhiteSpace(versionName))
+            return versionName.Trim();
+
+        if (!string.IsNullOrWhiteSpace(versionCode))
+            return versionCode.Trim();
+
+        return null;
     }
 
     private static string? EmptyToNull(string? value) =>

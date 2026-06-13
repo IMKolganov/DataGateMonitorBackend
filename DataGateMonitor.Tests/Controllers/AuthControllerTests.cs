@@ -3,7 +3,6 @@ using Microsoft.Extensions.Configuration;
 using Moq;
 using DataGateMonitor.Controllers;
 using DataGateMonitor.Services.Api.Auth.EmailConfirmation;
-using DataGateMonitor.Services.Api.Auth.EmailConfirmation.Models;
 using DataGateMonitor.Services.Api.Auth.ForgotPassword;
 using DataGateMonitor.Services.Api.Auth.Login;
 using DataGateMonitor.Services.Api.Auth.Registers.Interfaces;

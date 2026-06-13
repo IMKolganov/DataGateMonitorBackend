@@ -5,6 +5,7 @@ using DataGateMonitor.DataBase.Repositories.Queries;
 using DataGateMonitor.DataBase.UnitOfWork;
 using DataGateMonitor.Models.Helpers;
 using Microsoft.EntityFrameworkCore;
+using Microsoft.EntityFrameworkCore.Diagnostics;
 using Microsoft.Extensions.Hosting;
 using ILogger = Serilog.ILogger;
 
@@ -81,8 +82,8 @@ public static class DataBaseConfigurations
                     dbSettings.DefaultSchema ?? "public"
                 )
             );
-            
-            options.LogTo(_ => { }, LogLevel.Warning);
+
+            ApplyEfDiagnostics(options);
         }, ServiceLifetime.Scoped);
 
         // Scoped DbContextFactory
@@ -95,8 +96,8 @@ public static class DataBaseConfigurations
                     dbSettings.DefaultSchema ?? "public"
                 )
             );
-            
-            options.LogTo(_ => { }, LogLevel.Warning);
+
+            ApplyEfDiagnostics(options);
         }, ServiceLifetime.Scoped);
         
         services.AddScoped<IRepositoryFactory, RepositoryFactory>();
@@ -109,6 +110,16 @@ public static class DataBaseConfigurations
             services.AddHostedService<EfCoreMigrationHostedService>();
         else
             services.AddHostedService<MarkDatabaseUnconfiguredHostedService>();
+    }
+
+    /// <summary>
+    /// EF query-shape advisory (e.g. First without OrderBy in projections) — Debug only to avoid Wazuh WRN noise.
+    /// </summary>
+    private static void ApplyEfDiagnostics(DbContextOptionsBuilder options)
+    {
+        options.ConfigureWarnings(w =>
+            w.Log((CoreEventId.FirstWithoutOrderByAndFilterWarning, LogLevel.Debug)));
+        options.LogTo(_ => { }, LogLevel.Warning);
     }
 }
 

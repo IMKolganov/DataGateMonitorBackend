@@ -25,6 +25,7 @@ public class MobileCrashReportConfiguration : BaseEntityConfiguration<MobileCras
         entity.Property(e => e.Exception).HasMaxLength(512);
         entity.Property(e => e.Message).HasMaxLength(4000);
         entity.Property(e => e.Tag).HasMaxLength(256);
+        entity.Property(e => e.AppVersion).HasMaxLength(128);
         entity.Property(e => e.Stacktrace).HasColumnType("text");
 
         entity.HasIndex(e => e.CreateDate);

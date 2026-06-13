@@ -22,5 +22,7 @@ public sealed class CrashReportParseResult
 
     public string? Tag { get; init; }
 
+    public string? AppVersion { get; init; }
+
     public string? Stacktrace { get; init; }
 }

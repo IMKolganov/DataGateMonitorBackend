@@ -53,7 +53,7 @@ public class VpnServerClientsControllerTests
     {
         _overviewQuery
             .Setup(q => q.GetAllConnectedVpnServerClientsAsync(5, 2, 25, It.IsAny<CancellationToken>()))
-            .ReturnsAsync(new DataGateMonitor.Models.Helpers.Services.VpnClientInfoResponseList { TotalCount = 0 });
+            .ReturnsAsync(new VpnClientInfoResponseList { TotalCount = 0 });
 
         var req = new GetConnectedClientsRequest { VpnServerId = 5, Page = 2, PageSize = 25 };
         var result = await _controller.GetAllConnectedClients(req, CancellationToken.None);
@@ -68,7 +68,7 @@ public class VpnServerClientsControllerTests
     {
         _overviewQuery
             .Setup(q => q.GetAllHistoryVpnServerClientsAsync(6, 1, 10, It.IsAny<CancellationToken>()))
-            .ReturnsAsync(new DataGateMonitor.Models.Helpers.Services.VpnClientInfoResponseList { TotalCount = 0 });
+            .ReturnsAsync(new VpnClientInfoResponseList { TotalCount = 0 });
 
         var req = new GetHistoryClientsRequest { VpnServerId = 6, Page = 1, PageSize = 10 };
         var result = await _controller.GetAllHistoryClients(req, CancellationToken.None);
