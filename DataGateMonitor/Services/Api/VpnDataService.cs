@@ -114,9 +114,8 @@ public class VpnDataService(
             await SyncQuotaPlanLinksAsync(server.Id, quotaPlanIds, ct);
             await SyncTagLinksAsync(server.Id, tagIds, ct);
 
-            // Additional writes in the same transaction
-            if (!await CheckAndPutDefaultExpiredSettings(server, ct))
-                logger.LogWarning("Failed to add/update default settings for OpenVPN server.");
+            // Backfill export config for servers created before post-setup ran (no-op when config already exists).
+            await EnsureDefaultExportConfigIfMissingAsync(server, ct);
 
             // Return fresh snapshot
             return await openVpnServerQueryService.GetById(server.Id, ct)
@@ -152,7 +151,7 @@ public class VpnDataService(
         var server = await openVpnServerQueryService.GetById(vpnServerId, ct)
                      ?? throw new InvalidOperationException("VpnServer not found");
 
-        var createdDefaultConfig = await CheckAndPutDefaultExpiredSettings(server, ct);
+        var createdDefaultConfig = await TryCreateDefaultExportConfigIfMissingAsync(server, ct);
         return new VpnServerPostSetupExecutionResult
         {
             VpnServerId = vpnServerId,
@@ -193,18 +192,23 @@ public class VpnDataService(
         </tls-crypt>
         """;
 
-    private async Task<bool> CheckAndPutDefaultExpiredSettings(VpnServer openVpnServer, CancellationToken ct)
+    private async Task EnsureDefaultExportConfigIfMissingAsync(VpnServer server, CancellationToken ct)
     {
-        if (openVpnServer.ServerType == VpnServerType.OpenVpn)
-            return await EnsureOpenVpnDefaultExportConfigAsync(openVpnServer, ct);
+        _ = await TryCreateDefaultExportConfigIfMissingAsync(server, ct);
+    }
 
-        if (openVpnServer.ServerType == VpnServerType.Xray)
-            return await EnsureXrayDefaultExportConfigAsync(openVpnServer, ct);
+    private async Task<bool> TryCreateDefaultExportConfigIfMissingAsync(VpnServer server, CancellationToken ct)
+    {
+        if (server.ServerType == VpnServerType.OpenVpn)
+            return await TryCreateOpenVpnDefaultExportConfigAsync(server, ct);
+
+        if (server.ServerType == VpnServerType.Xray)
+            return await TryCreateXrayDefaultExportConfigAsync(server, ct);
 
         return false;
     }
 
-    private async Task<bool> EnsureOpenVpnDefaultExportConfigAsync(VpnServer server, CancellationToken ct)
+    private async Task<bool> TryCreateOpenVpnDefaultExportConfigAsync(VpnServer server, CancellationToken ct)
     {
         if (await openVpnServerOvpnFileConfigQueryService.AnyByVpnServerId(server.Id, ct))
             return false;
@@ -221,7 +225,7 @@ public class VpnDataService(
         return true;
     }
 
-    private async Task<bool> EnsureXrayDefaultExportConfigAsync(VpnServer server, CancellationToken ct)
+    private async Task<bool> TryCreateXrayDefaultExportConfigAsync(VpnServer server, CancellationToken ct)
     {
         if (await openVpnServerOvpnFileConfigQueryService.AnyByVpnServerId(server.Id, ct))
             return false;
