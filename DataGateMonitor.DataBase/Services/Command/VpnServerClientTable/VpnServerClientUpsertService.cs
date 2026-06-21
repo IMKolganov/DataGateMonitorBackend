@@ -84,7 +84,7 @@ public sealed class VpnServerClientUpsertService(
             BytesReceived = payload.BytesReceived,
             BytesSent = payload.BytesSent,
             ConnectedSince = payload.ConnectedSince,
-            DisconnectedAt = payload.DisconnectedAt,
+            DisconnectedAt = disconnectedAt,
             Username = payload.Username,
             Country = payload.Country,
             Region = payload.Region,

@@ -70,26 +70,28 @@ public sealed class XrayVpnClientSyncService(
                 var (country, region, city, lat, lon) = await ResolveGeoAsync(c.RemoteAddress, cancellationToken);
 
                 await vpnServerClientUpsertService.UpsertAsync(
-                    new VpnServerClientUpsertPayload(
-                        VpnServerId: server.Id,
-                        UserId: user?.Id,
-                        ExternalId: externalId,
-                        SessionId: sessionId,
-                        CommonName: commonName,
-                        RemoteIp: c.RemoteAddress,
-                        ProxyRealIp: null,
-                        LocalIp: UnknownLocalIpPlaceholder,
-                        BytesReceived: c.BytesReceived,
-                        BytesSent: c.BytesSent,
-                        ConnectedSince: c.ConnectedSince,
-                        DisconnectedAt: null,
-                        Username: username,
-                        Country: country,
-                        Region: region,
-                        City: city,
-                        Latitude: lat,
-                        Longitude: lon,
-                        IsConnected: true),
+                    VpnServerClientUpsertPayload.FromClient(
+                        new VpnServerClient
+                        {
+                            VpnServerId = server.Id,
+                            UserId = user?.Id,
+                            SessionId = sessionId,
+                            CommonName = commonName,
+                            RemoteIp = c.RemoteAddress,
+                            LocalIp = UnknownLocalIpPlaceholder,
+                            BytesReceived = c.BytesReceived,
+                            BytesSent = c.BytesSent,
+                            ConnectedSince = c.ConnectedSince,
+                            Username = username,
+                            Country = country,
+                            Region = region,
+                            City = city,
+                            Latitude = lat,
+                            Longitude = lon,
+                            ExternalId = externalId,
+                            IsConnected = true,
+                        },
+                        isConnected: true),
                     cancellationToken);
 
                 var measuredAt = DateTimeOffset.UtcNow;

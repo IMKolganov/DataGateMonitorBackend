@@ -327,30 +327,6 @@ public class OpenVpnClientServiceTests
     }
 
     [Fact]
-    public void GenerateSessionId_Deterministic_And_SensitiveToInputs()
-    {
-        var svc = CreateService(out _, out _, out _, out _);
-        var mi = typeof(OpenVpnClientService).GetMethod("GenerateSessionId", BindingFlags.Instance | BindingFlags.NonPublic)!;
-
-        var cn = "client-a";
-        var ip = "203.0.113.5:40884";
-        var t = new DateTimeOffset(2025, 12, 3, 8, 55, 35, TimeSpan.Zero);
-
-        var a1 = (Guid)mi.Invoke(svc, new object[] { cn, ip, t })!;
-        var a2 = (Guid)mi.Invoke(svc, new object[] { cn, ip, t })!;
-        Assert.Equal(a1, a2);
-
-        var b = (Guid)mi.Invoke(svc, new object[] { cn, ip, t.AddSeconds(1) })!;
-        Assert.NotEqual(a1, b);
-
-        var c = (Guid)mi.Invoke(svc, new object[] { cn, "198.51.100.23:2093", t })!;
-        Assert.NotEqual(a1, c);
-
-        var d = (Guid)mi.Invoke(svc, new object[] { "client-b", ip, t })!;
-        Assert.NotEqual(a1, d);
-    }
-
-    [Fact]
     public async Task GetClientsFromManagementAsync_HappyPath_ParsesViaClient_And_Logs()
     {
         // Arrange

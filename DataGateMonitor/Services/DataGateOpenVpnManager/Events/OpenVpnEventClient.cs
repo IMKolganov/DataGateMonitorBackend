@@ -310,26 +310,7 @@ public class OpenVpnEventClient(
                     openVpnServerClient.CommonName, openVpnServerClient.RemoteIp, openVpnServerClient.ConnectedSince);
 
                 await clientUpsert.UpsertAsync(
-                    new VpnServerClientUpsertPayload(
-                        VpnServerId: openVpnServerClient.VpnServerId,
-                        UserId: openVpnServerClient.UserId,
-                        ExternalId: openVpnServerClient.ExternalId,
-                        SessionId: openVpnServerClient.SessionId,
-                        CommonName: openVpnServerClient.CommonName,
-                        RemoteIp: openVpnServerClient.RemoteIp,
-                        ProxyRealIp: openVpnServerClient.ProxyRealIp,
-                        LocalIp: openVpnServerClient.LocalIp,
-                        BytesReceived: openVpnServerClient.BytesReceived,
-                        BytesSent: openVpnServerClient.BytesSent,
-                        ConnectedSince: openVpnServerClient.ConnectedSince,
-                        DisconnectedAt: openVpnServerClient.DisconnectedAt,
-                        Username: openVpnServerClient.Username,
-                        Country: openVpnServerClient.Country,
-                        Region: openVpnServerClient.Region,
-                        City: openVpnServerClient.City,
-                        Latitude: openVpnServerClient.Latitude,
-                        Longitude: openVpnServerClient.Longitude,
-                        IsConnected: openVpnServerClient.IsConnected),
+                    VpnServerClientUpsertPayload.FromClient(openVpnServerClient, isConnected: true),
                     CancellationToken.None);
                 logger.LogInformation("VpnServerId: {Id}. Upserted client session {SessionId}.",
                     _openVpnServer.Id, openVpnServerClient.SessionId);

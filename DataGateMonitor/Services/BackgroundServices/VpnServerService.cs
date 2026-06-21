@@ -83,26 +83,14 @@ public class VpnServerService(
                 
                 var persistProxyEnrichment = ProxyClientLookupService.ShouldPersistProxyEnrichmentFromPoll(m);
                 await vpnServerClientUpsertService.UpsertAsync(
-                    new VpnServerClientUpsertPayload(
-                        VpnServerId: openVpnServer.Id,
-                        UserId: user?.Id,
-                        ExternalId: externalId,
-                        SessionId: sessionId,
-                        CommonName: m.CommonName,
-                        RemoteIp: m.RemoteIp,
-                        ProxyRealIp: persistProxyEnrichment ? m.ProxyRealIp : null,
-                        LocalIp: m.LocalIp,
-                        BytesReceived: m.BytesReceived,
-                        BytesSent: m.BytesSent,
-                        ConnectedSince: m.ConnectedSince,
-                        DisconnectedAt: null,
-                        Username: m.Username,
-                        Country: persistProxyEnrichment ? m.Country : null,
-                        Region: persistProxyEnrichment ? m.Region : null,
-                        City: persistProxyEnrichment ? m.City : null,
-                        Latitude: persistProxyEnrichment ? m.Latitude : null,
-                        Longitude: persistProxyEnrichment ? m.Longitude : null,
-                        IsConnected: true),
+                    VpnServerClientUpsertPayload.FromClient(
+                        m,
+                        persistProxyEnrichment: persistProxyEnrichment,
+                        vpnServerId: openVpnServer.Id,
+                        userId: user?.Id,
+                        externalId: externalId,
+                        sessionId: sessionId,
+                        isConnected: true),
                     ct);
                 logger.LogDebug("Upserted client session {SessionId}.", sessionId);
 
