@@ -1,5 +1,6 @@
 using Microsoft.Extensions.Configuration;
 using Microsoft.Extensions.DependencyInjection;
+using Microsoft.Extensions.Hosting;
 using DataGateMonitor.Configurations;
 using DataGateMonitor.Services.GeoLite;
 using DataGateMonitor.Services.GeoLite.Interfaces;
@@ -28,6 +29,30 @@ public class GeoLiteServiceConfigurationTests
         AssertRegistered(services, typeof(IGeoLiteConfigProvider));
         AssertRegistered(services, typeof(IGeoLiteScheduledUpdateRunner));
         AssertRegistered(services, typeof(GeoLiteDatabaseFactory));
+    }
+
+    [Fact]
+    public void ConfigureGeoLiteServices_Skips_BackgroundService_When_Database_Not_Configured()
+    {
+        var previous = Environment.GetEnvironmentVariable("DB_CONNECTION_STRING_DATAGATE");
+        try
+        {
+            Environment.SetEnvironmentVariable("DB_CONNECTION_STRING_DATAGATE", null);
+            var services = new ServiceCollection();
+            var config = new ConfigurationBuilder().Build();
+            var databaseRuntime = DatabaseRuntimeOptions.FromConfiguration(config);
+
+            services.ConfigureGeoLiteServices(databaseRuntime);
+
+            Assert.DoesNotContain(
+                services,
+                d => d.ServiceType == typeof(IHostedService)
+                     && d.ImplementationType == typeof(GeoLiteAutoUpdateBackgroundService));
+        }
+        finally
+        {
+            Environment.SetEnvironmentVariable("DB_CONNECTION_STRING_DATAGATE", previous);
+        }
     }
 
     private static void AssertRegistered(IServiceCollection services, Type serviceType)

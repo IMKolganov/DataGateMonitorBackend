@@ -116,12 +116,29 @@ public static class PipelineConfiguration
         var environmentName = app.Environment.EnvironmentName;
 
         app.MapGet("/",
-            (IApplicationDatabaseState databaseState) =>
+            (IApplicationDatabaseState databaseState,
+                ApplicationRuntimeInfo runtimeInfo,
+                IApplicationStartupHistory startupHistory,
+                HttpContext context) =>
             {
                 var db = databaseState.GetDatabaseStatusLine();
-                var body =
-                    $"DataGateMonitor Application version: {version}; Environment: {environmentName};\n{db}";
-                return Results.Text(body, "text/plain; charset=utf-8", statusCode: 200);
+                var accept = context.Request.Headers.Accept.ToString();
+                if (accept.Contains("text/plain", StringComparison.OrdinalIgnoreCase)
+                    && !accept.Contains("text/html", StringComparison.OrdinalIgnoreCase))
+                {
+                    var plain =
+                        $"DataGateMonitor Application version: {version}; Environment: {environmentName};\nDatabase: {db}\nStarted: {runtimeInfo.StartedAtUtc:yyyy-MM-dd HH:mm:ss} UTC\nUptime: {RootPageHtml.FormatUptime(runtimeInfo.Uptime)}";
+                    return Results.Text(plain, "text/plain; charset=utf-8", statusCode: 200);
+                }
+
+                var html = RootPageHtml.Render(
+                    version,
+                    environmentName,
+                    db,
+                    databaseState.GetDatabaseStatusTone(),
+                    runtimeInfo,
+                    startupHistory.GetRecords());
+                return Results.Content(html, "text/html; charset=utf-8", statusCode: 200);
             });
 
         app.Logger.LogInformation($"Application version: {version}; Environment: {environmentName};");
