@@ -1,9 +1,8 @@
 using System.Globalization;
-using System.Security.Cryptography;
-using System.Text;
 using DataGateMonitor.Models;
 using DataGateMonitor.Services.DataGateOpenVpnManager.Interfaces;
 using DataGateMonitor.Services.DataGateOpenVpnManager.OpenVpnProxy;
+using DataGateMonitor.Services.Helpers;
 using DataGateMonitor.Services.OpenVpnManagementInterfaces.Interfaces;
 
 namespace DataGateMonitor.Services.OpenVpnManagementInterfaces;
@@ -58,7 +57,8 @@ public class OpenVpnClientService(
 
             await proxyClientLookupService.EnrichFromManagementRealAddressAsync(server, client, cancellationToken);
 
-            client.SessionId = GenerateSessionId(client.CommonName, client.RemoteIp, client.ConnectedSince);
+            client.SessionId = VpnSessionIdGenerator.FromCommonNameRemoteConnectedSince(
+                client.CommonName, client.RemoteIp, client.ConnectedSince);
             result.Clients.Add(client);
         }
 
@@ -149,15 +149,5 @@ public class OpenVpnClientService(
 
         logger.LogError("Failed to parse {FieldName}. Value: '{Value}'", fieldName, value);
         throw new FormatException($"Invalid instant format in field {fieldName}: '{value}'");
-    }
-
-
-
-    private Guid GenerateSessionId(string commonName, string realAddress, DateTimeOffset connectedSince)
-    {
-        var sessionString = $"{commonName}-{realAddress}-{connectedSince:o}";
-        using var sha256 = SHA256.Create();
-        var hashBytes = sha256.ComputeHash(Encoding.UTF8.GetBytes(sessionString));
-        return new Guid(hashBytes.Take(16).ToArray());
     }
 }

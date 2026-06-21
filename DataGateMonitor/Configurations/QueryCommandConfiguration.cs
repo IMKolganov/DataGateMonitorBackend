@@ -1,5 +1,6 @@
 using DataGateMonitor.DataBase.Services.Command;
 using DataGateMonitor.DataBase.Services.Command.Interfaces;
+using DataGateMonitor.DataBase.Services.Command.VpnServerClientTable;
 using DataGateMonitor.DataBase.Services.Query;
 using DataGateMonitor.DataBase.Services.Query.ClientApplicationTable;
 using DataGateMonitor.DataBase.Services.Query.DeviceTable;
@@ -41,6 +42,7 @@ public static class QueryCommandConfiguration
         services.AddScoped(typeof(IQueryService<,>), typeof(EfQueryService<,>));
         services.AddScoped(typeof(ICommandService<,>), typeof(EfCommandService<,>));
         services.AddScoped<ITransactionRunner, EfTransactionRunner>();
+        services.AddScoped<IVpnServerClientUpsertService, VpnServerClientUpsertService>();
         
         services.AddScoped<IClientApplicationQueryService, ClientApplicationQueryService>();
         services.AddScoped<IIncomingMessageLogQueryService, IncomingMessageLogQueryService>();
