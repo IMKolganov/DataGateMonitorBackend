@@ -26,6 +26,7 @@ using DataGateMonitor.Services.StatusStreamLogs;
 using DataGateMonitor.Services.XrayNode;
 using System.Net;
 using System.Net.Http;
+using System.Reflection;
 using DataGateMonitor.Serialization;
 
 namespace DataGateMonitor.Configurations;
@@ -35,6 +36,15 @@ public static class ServiceConfiguration
     public static void ConfigureServices(this IServiceCollection services, IConfiguration configuration,
         DatabaseRuntimeOptions databaseRuntime)
     {
+        services.AddSingleton<ApplicationRuntimeInfo>();
+        services.AddSingleton<IApplicationStartupHistory>(sp =>
+        {
+            var env = sp.GetRequiredService<IWebHostEnvironment>();
+            var runtimeInfo = sp.GetRequiredService<ApplicationRuntimeInfo>();
+            var version = Assembly.GetExecutingAssembly().GetName().Version?.ToString() ?? "Unknown version";
+            return new ApplicationStartupHistory(env, runtimeInfo, version, env.EnvironmentName);
+        });
+
         // var frontendSettings = configuration.GetSection("Frontend").Get<FrontendSettings>();
         services.AddCors(options =>
         {

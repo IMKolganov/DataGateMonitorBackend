@@ -341,10 +341,10 @@ public class VpnDataService(
         var root = JObject.FromObject(openVpnInfo, Newtonsoft.Json.JsonSerializer.Create(ProjectJson.WebSettings));
         if (TryGetPropertyIgnoreCase(root, "config", out var cfgToken) && cfgToken is JObject cfg)
         {
-            if (TryGetPropertyIgnoreCase(cfg, "port", out var portToken) && portToken.Type == JTokenType.Integer)
+            if (TryGetPropertyIgnoreCase(cfg, "port", out var portToken) && portToken is { Type: JTokenType.Integer })
                 port = portToken.Value<int>();
 
-            if (TryGetPropertyIgnoreCase(cfg, "proto", out var protoToken) && protoToken.Type == JTokenType.String)
+            if (TryGetPropertyIgnoreCase(cfg, "proto", out var protoToken) && protoToken is { Type: JTokenType.String })
             {
                 var p = protoToken.Value<string>()?.Trim().ToLowerInvariant();
                 if (p is "tcp" or "udp")

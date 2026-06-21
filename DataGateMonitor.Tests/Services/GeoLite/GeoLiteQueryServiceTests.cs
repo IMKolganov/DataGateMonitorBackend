@@ -71,4 +71,81 @@ public class GeoLiteQueryServiceTests
         var info = await sut.GetGeoInfoAsync(host, CancellationToken.None);
         Assert.Null(info);
     }
+
+    [Theory]
+    [InlineData("")]
+    [InlineData("   ")]
+    public async Task GetGeoInfoAsync_Returns_Null_For_Blank_Input(string host)
+    {
+        var sp = new ServiceCollection().BuildServiceProvider();
+        var factory = new GeoLiteDatabaseFactory(new NullLogger<GeoLiteDatabaseFactory>(), sp);
+        var sut = new GeoLiteQueryService(factory, new NullLogger<GeoLiteQueryService>());
+
+        var info = await sut.GetGeoInfoAsync(host, CancellationToken.None);
+        Assert.Null(info);
+    }
+
+    [Fact]
+    public async Task GetGeoInfoAsync_Returns_Rfc1918_For_Loopback()
+    {
+        var sp = new ServiceCollection().BuildServiceProvider();
+        var factory = new GeoLiteDatabaseFactory(new NullLogger<GeoLiteDatabaseFactory>(), sp);
+        var sut = new GeoLiteQueryService(factory, new NullLogger<GeoLiteQueryService>());
+
+        var info = await sut.GetGeoInfoAsync("127.0.0.1:1194", CancellationToken.None);
+
+        Assert.NotNull(info);
+        Assert.Equal("RFC1918", info!.Region);
+    }
+
+    [Fact]
+    public async Task GetGeoInfoAsync_Looks_Up_Public_Ip_In_MaxMind_Test_Database()
+    {
+        var (factory, _) = await GeoLiteTestHarness.CreateLoadedFactoryAsync();
+        var sut = new GeoLiteQueryService(factory, new NullLogger<GeoLiteQueryService>());
+
+        var info = await sut.GetGeoInfoAsync("2.125.160.216:1194", CancellationToken.None);
+
+        Assert.NotNull(info);
+        Assert.Equal("FR", info!.Country);
+        Assert.Equal("WBK", info.Region);
+        Assert.Equal("Boxford", info.City);
+        Assert.Equal(51.75, info.Latitude);
+        Assert.Equal(-1.25, info.Longitude);
+    }
+
+    [Fact]
+    public async Task GetGeoInfoAsync_Parses_Bracketed_Ipv6_With_Port()
+    {
+        var (factory, _) = await GeoLiteTestHarness.CreateLoadedFactoryAsync();
+        var sut = new GeoLiteQueryService(factory, new NullLogger<GeoLiteQueryService>());
+
+        var info = await sut.GetGeoInfoAsync("[2001:220::1]:443", CancellationToken.None);
+
+        Assert.NotNull(info);
+        Assert.Equal("KR", info!.Country);
+    }
+
+    [Fact]
+    public async Task GetGeoInfoAsync_Returns_Null_When_Ip_Not_In_Database()
+    {
+        var (factory, _) = await GeoLiteTestHarness.CreateLoadedFactoryAsync();
+        var sut = new GeoLiteQueryService(factory, new NullLogger<GeoLiteQueryService>());
+
+        var info = await sut.GetGeoInfoAsync("203.0.113.10", CancellationToken.None);
+
+        Assert.Null(info);
+    }
+
+    [Fact]
+    public async Task GetDatabaseVersionAsync_Returns_BuildDate_From_Loaded_Database()
+    {
+        var (factory, _) = await GeoLiteTestHarness.CreateLoadedFactoryAsync();
+        var sut = new GeoLiteQueryService(factory, new NullLogger<GeoLiteQueryService>());
+
+        var version = await sut.GetDatabaseVersionAsync(CancellationToken.None);
+
+        Assert.DoesNotContain("Error retrieving version.", version);
+        Assert.Matches(@"^\d{4}-\d{2}-\d{2} \d{2}:\d{2}:\d{2}$", version);
+    }
 }
