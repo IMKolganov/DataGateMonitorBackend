@@ -1,5 +1,6 @@
 ﻿using DataGateMonitor.Hubs;
 using DataGateMonitor.Models;
+using DataGateMonitor.SharedModels.Notifications.Responses;
 
 namespace DataGateMonitor.Services.Others;
 
@@ -11,7 +12,18 @@ public class WebNotifier(IAdminNotificationHub hub, ILogger<WebNotifier> logger)
     {
         try
         {
-            await hub.SendNotificationAsync(adminUserId, notification, ct);
+            var dto = new NotificationItemDto
+            {
+                Id = notification.Id,
+                Type = notification.Type,
+                Severity = notification.Severity,
+                Title = notification.Title,
+                Message = notification.Message,
+                IsRead = false,
+                CreatedAt = notification.CreateDate,
+                ReadAt = null
+            };
+            await hub.SendNotificationAsync(adminUserId, dto, ct);
         }
         catch (Exception ex)
         {

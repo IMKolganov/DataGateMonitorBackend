@@ -1,7 +1,7 @@
 using FluentAssertions;
 using Moq;
 using DataGateMonitor.Services.Others;
-using DataGateMonitor.Services.Others.Models;
+using DataGateMonitor.SharedModels.Notifications.Requests;
 using DataGateMonitor.Services.Others.Notifications;
 using DataGateMonitor.SharedModels.Enums;
 using Xunit;
@@ -26,7 +26,7 @@ public class AppNotificationFacadeTests
     {
         var ex = new InvalidOperationException("Test error");
         var env = new NotificationEnvelope(
-            new NotificationRequest { Type = "sys.ex", Title = "Error", Message = "InvalidOperationException: Test error", Severity = NotificationSeverity.Error },
+            new NotifyAdminsRequest { Type = "sys.ex", Title = "Error", Message = "InvalidOperationException: Test error", Severity = NotificationSeverity.Error },
             new[] { "web", "telegram" });
         var ct = CancellationToken.None;
 
@@ -49,7 +49,7 @@ public class AppNotificationFacadeTests
         var actorUserId = 10;
         var fileName = "config.ovpn";
         var env = new NotificationEnvelope(
-            new NotificationRequest { Type = "file.created", Title = "New file", Message = $"User #{actorUserId} created file \"{fileName}\".", Severity = NotificationSeverity.Info },
+            new NotifyAdminsRequest { Type = "file.created", Title = "New file", Message = $"User #{actorUserId} created file \"{fileName}\".", Severity = NotificationSeverity.Info },
             new[] { "web" });
         var ct = CancellationToken.None;
 
@@ -71,7 +71,7 @@ public class AppNotificationFacadeTests
         var commonName = "user@client";
         int? serverId = 5;
         var env = new NotificationEnvelope(
-            new NotificationRequest { Type = "cert.issued", Title = "Certificate issued", Message = $"Certificate for \"{commonName}\" has been issued.", Severity = NotificationSeverity.Info, ServerId = serverId },
+            new NotifyAdminsRequest { Type = "cert.issued", Title = "Certificate issued", Message = $"Certificate for \"{commonName}\" has been issued.", Severity = NotificationSeverity.Info, ServerId = serverId },
             new[] { "web", "telegram" });
         var ct = CancellationToken.None;
 
@@ -92,7 +92,7 @@ public class AppNotificationFacadeTests
         var serverId = 3;
         var serverName = "vpn-prod";
         var env = new NotificationEnvelope(
-            new NotificationRequest { Type = "server.down", Title = "Server is DOWN", Message = $"VPN server \"{serverName}\" (id={serverId}) is unreachable.", Severity = NotificationSeverity.Critical, ServerId = serverId },
+            new NotifyAdminsRequest { Type = "server.down", Title = "Server is DOWN", Message = $"VPN server \"{serverName}\" (id={serverId}) is unreachable.", Severity = NotificationSeverity.Critical, ServerId = serverId },
             new[] { "web", "telegram" });
         var ct = CancellationToken.None;
 
@@ -113,7 +113,7 @@ public class AppNotificationFacadeTests
         var serverId = 4;
         var serverName = "vpn-backup";
         var env = new NotificationEnvelope(
-            new NotificationRequest { Type = "server.up", Title = "Server is UP", Message = $"VPN server \"{serverName}\" (id={serverId}) is reachable again.", Severity = NotificationSeverity.Info, ServerId = serverId },
+            new NotifyAdminsRequest { Type = "server.up", Title = "Server is UP", Message = $"VPN server \"{serverName}\" (id={serverId}) is reachable again.", Severity = NotificationSeverity.Info, ServerId = serverId },
             new[] { "web", "telegram" });
         var ct = CancellationToken.None;
 

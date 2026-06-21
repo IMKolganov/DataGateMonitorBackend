@@ -1,4 +1,4 @@
-using DataGateMonitor.Services.Others.Models;
+using DataGateMonitor.SharedModels.Notifications.Requests;
 using DataGateMonitor.SharedModels.Enums;
 
 namespace DataGateMonitor.Services.Others.Notifications.ServerOpenVpnApiClient;
@@ -44,7 +44,7 @@ public class ServerOpenVpnNotificationService(INotificationService notifications
 
     private Task Notify(ApplicationNotificationKind preferenceKind, string type, string title, string message, int serverId, NotificationSeverity severity,
         string[] channels, CancellationToken ct)
-        => notifications.NotifyAdmins(new NotificationRequest
+        => notifications.NotifyAdmins(new NotifyAdminsRequest
         {
             Type = type,
             Title = title,

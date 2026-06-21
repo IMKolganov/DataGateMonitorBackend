@@ -1,7 +1,7 @@
 using DataGateMonitor.DataBase.Services.Query.VpnServerClientTable;
 using DataGateMonitor.Models.Helpers;
 using DataGateMonitor.Services.Others;
-using DataGateMonitor.Services.Others.Models;
+using DataGateMonitor.SharedModels.Notifications.Requests;
 using DataGateMonitor.Services.Others.Notifications.TrafficDaily;
 using DataGateMonitor.SharedModels.Enums;
 using Moq;
@@ -14,12 +14,12 @@ public class TrafficDailyRollupNotificationServiceTests
     public async Task NotifyCatchUpSucceededAsync_SendsInfoNotificationToAdmins()
     {
         var notifications = new Mock<INotificationService>();
-        NotificationRequest? captured = null;
+        NotifyAdminsRequest? captured = null;
         IEnumerable<string>? channels = null;
 
         notifications
-            .Setup(n => n.NotifyAdmins(It.IsAny<NotificationRequest>(), It.IsAny<IEnumerable<string>?>(), It.IsAny<CancellationToken>()))
-            .Callback<NotificationRequest, IEnumerable<string>?, CancellationToken>((req, ch, _) =>
+            .Setup(n => n.NotifyAdmins(It.IsAny<NotifyAdminsRequest>(), It.IsAny<IEnumerable<string>?>(), It.IsAny<CancellationToken>()))
+            .Callback<NotifyAdminsRequest, IEnumerable<string>?, CancellationToken>((req, ch, _) =>
             {
                 captured = req;
                 channels = ch;
@@ -46,11 +46,11 @@ public class TrafficDailyRollupNotificationServiceTests
     public async Task NotifyCatchUpFailedAsync_SendsErrorNotificationWithDayContext()
     {
         var notifications = new Mock<INotificationService>();
-        NotificationRequest? captured = null;
+        NotifyAdminsRequest? captured = null;
 
         notifications
-            .Setup(n => n.NotifyAdmins(It.IsAny<NotificationRequest>(), It.IsAny<IEnumerable<string>?>(), It.IsAny<CancellationToken>()))
-            .Callback<NotificationRequest, IEnumerable<string>?, CancellationToken>((req, _, _) => captured = req)
+            .Setup(n => n.NotifyAdmins(It.IsAny<NotifyAdminsRequest>(), It.IsAny<IEnumerable<string>?>(), It.IsAny<CancellationToken>()))
+            .Callback<NotifyAdminsRequest, IEnumerable<string>?, CancellationToken>((req, _, _) => captured = req)
             .ReturnsAsync(1);
 
         var sut = new TrafficDailyRollupNotificationService(notifications.Object);

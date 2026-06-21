@@ -2,7 +2,7 @@ using FluentAssertions;
 using Moq;
 using DataGateMonitor.Models.Helpers;
 using DataGateMonitor.Services.Others;
-using DataGateMonitor.Services.Others.Models;
+using DataGateMonitor.SharedModels.Notifications.Requests;
 using DataGateMonitor.Services.Others.Notifications.GeoLite;
 using DataGateMonitor.SharedModels.Enums;
 using Xunit;
@@ -26,11 +26,11 @@ public class GeoLiteNotificationServiceTests
         var path = "/data/geo-lite2-city.mmdb";
         var ct = CancellationToken.None;
 
-        NotificationRequest? captured = null;
+        NotifyAdminsRequest? captured = null;
         IEnumerable<string>? capturedChannels = null;
         _notificationService
-            .Setup(s => s.NotifyAdmins(It.IsAny<NotificationRequest>(), It.IsAny<IEnumerable<string>?>(), ct))
-            .Callback<NotificationRequest, IEnumerable<string>?, CancellationToken>((req, ch, _) =>
+            .Setup(s => s.NotifyAdmins(It.IsAny<NotifyAdminsRequest>(), It.IsAny<IEnumerable<string>?>(), ct))
+            .Callback<NotifyAdminsRequest, IEnumerable<string>?, CancellationToken>((req, ch, _) =>
             {
                 captured = req;
                 capturedChannels = ch;
@@ -53,11 +53,11 @@ public class GeoLiteNotificationServiceTests
     {
         var ct = CancellationToken.None;
 
-        NotificationRequest? captured = null;
+        NotifyAdminsRequest? captured = null;
         IEnumerable<string>? capturedChannels = null;
         _notificationService
-            .Setup(s => s.NotifyAdmins(It.IsAny<NotificationRequest>(), It.IsAny<IEnumerable<string>?>(), ct))
-            .Callback<NotificationRequest, IEnumerable<string>?, CancellationToken>((req, ch, _) =>
+            .Setup(s => s.NotifyAdmins(It.IsAny<NotifyAdminsRequest>(), It.IsAny<IEnumerable<string>?>(), ct))
+            .Callback<NotifyAdminsRequest, IEnumerable<string>?, CancellationToken>((req, ch, _) =>
             {
                 captured = req;
                 capturedChannels = ch;

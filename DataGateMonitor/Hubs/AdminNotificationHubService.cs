@@ -1,5 +1,5 @@
 ﻿using Microsoft.AspNetCore.SignalR;
-using DataGateMonitor.Models;
+using DataGateMonitor.SharedModels.Notifications.Responses;
 
 namespace DataGateMonitor.Hubs;
 
@@ -8,11 +8,10 @@ public class AdminNotificationHubService(
     ILogger<AdminNotificationHubService> logger)
     : IAdminNotificationHub
 {
-    public async Task SendNotificationAsync(int adminUserId, Notification notification, CancellationToken ct)
+    public async Task SendNotificationAsync(int adminUserId, NotificationItemDto notification, CancellationToken ct)
     {
         try
         {
-            // You can use user groups (one per AdminUserId)
             await hubContext
                 .Clients
                 .Group($"admin-{adminUserId}")

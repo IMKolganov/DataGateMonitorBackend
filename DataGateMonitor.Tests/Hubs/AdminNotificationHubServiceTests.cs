@@ -2,7 +2,8 @@ using Microsoft.AspNetCore.SignalR;
 using Microsoft.Extensions.Logging;
 using Moq;
 using DataGateMonitor.Hubs;
-using DataGateMonitor.Models;
+using DataGateMonitor.SharedModels.Enums;
+using DataGateMonitor.SharedModels.Notifications.Responses;
 
 namespace DataGateMonitor.Tests.Hubs;
 
@@ -13,7 +14,16 @@ public class AdminNotificationHubServiceTests
     {
         // Arrange
         var adminUserId = 101;
-        var notification = new Notification();
+        var notification = new NotificationItemDto
+        {
+            Id = 1,
+            Type = "server.down",
+            Severity = NotificationSeverity.Critical,
+            Title = "Server is DOWN",
+            Message = "Unreachable",
+            IsRead = false,
+            CreatedAt = DateTimeOffset.UtcNow
+        };
         var ct = CancellationToken.None;
 
         var hubContext = new Mock<IHubContext<AdminNotificationHub>>();
@@ -52,7 +62,16 @@ public class AdminNotificationHubServiceTests
     {
         // Arrange
         var adminUserId = 202;
-        var notification = new Notification();
+        var notification = new NotificationItemDto
+        {
+            Id = 2,
+            Type = "server.up",
+            Severity = NotificationSeverity.Info,
+            Title = "Server is UP",
+            Message = "Reachable",
+            IsRead = false,
+            CreatedAt = DateTimeOffset.UtcNow
+        };
         var ct = CancellationToken.None;
 
         var hubContext = new Mock<IHubContext<AdminNotificationHub>>();
