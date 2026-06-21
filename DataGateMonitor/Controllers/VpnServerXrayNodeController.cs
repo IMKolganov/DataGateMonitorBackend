@@ -6,6 +6,7 @@ using DataGateMonitor.Services.Api;
 using DataGateMonitor.Services.Api.Auth.Handlers.Interfaces;
 using DataGateMonitor.Services.XrayNode;
 using DataGateMonitor.SharedModels.DataGateMonitor.XrayNode.Requests;
+using DataGateMonitor.SharedModels.DataGateMonitor.XrayNode.Responses;
 using DataGateMonitor.SharedModels.Enums;
 using DataGateMonitor.SharedModels.Responses;
 
@@ -22,10 +23,10 @@ public sealed class VpnServerXrayNodeController(
     ILogger<VpnServerXrayNodeController> logger) : BaseController
 {
     [HttpPost("kick-user")]
-    public async Task<ActionResult<ApiResponse<object>>> KickUser(int vpnServerId,
+    public async Task<ActionResult<ApiResponse<XrayNodeUserActionResponse>>> KickUser(int vpnServerId,
         [FromBody] XrayNodeUserActionRequest request, CancellationToken cancellationToken)
     {
-        if (await VpnServerAuthorizationHelper.RequireVpnServerAccessOrForbidAsync<object>(User,
+        if (await VpnServerAuthorizationHelper.RequireVpnServerAccessOrForbidAsync<XrayNodeUserActionResponse>(User,
                 vpnServerAccessQueryService, vpnServerId, cancellationToken) is { } deny)
             return deny;
 
@@ -33,20 +34,20 @@ public sealed class VpnServerXrayNodeController(
         {
             var server = await RequireXrayServerAsync(vpnServerId, cancellationToken);
             await xrayNodeApiClient.KickUserAsync(server.ApiUrl.TrimEnd('/'), request.CommonName, cancellationToken);
-            return Ok(ApiResponse<object>.SuccessResponse(new { ok = true }));
+            return Ok(ApiResponse<XrayNodeUserActionResponse>.SuccessResponse(new XrayNodeUserActionResponse()));
         }
         catch (Exception ex)
         {
             logger.LogError(ex, "Xray kick failed for server {VpnServerId}", vpnServerId);
-            return BadRequest(ApiResponse<object>.ErrorResponse(ex.Message));
+            return BadRequest(ApiResponse<XrayNodeUserActionResponse>.ErrorResponse(ex.Message));
         }
     }
 
     [HttpPost("disable-user")]
-    public async Task<ActionResult<ApiResponse<object>>> DisableUser(int vpnServerId,
+    public async Task<ActionResult<ApiResponse<XrayNodeUserActionResponse>>> DisableUser(int vpnServerId,
         [FromBody] XrayNodeUserActionRequest request, CancellationToken cancellationToken)
     {
-        if (await VpnServerAuthorizationHelper.RequireVpnServerAccessOrForbidAsync<object>(User,
+        if (await VpnServerAuthorizationHelper.RequireVpnServerAccessOrForbidAsync<XrayNodeUserActionResponse>(User,
                 vpnServerAccessQueryService, vpnServerId, cancellationToken) is { } deny)
             return deny;
 
@@ -55,12 +56,12 @@ public sealed class VpnServerXrayNodeController(
             var server = await RequireXrayServerAsync(vpnServerId, cancellationToken);
             await xrayNodeApiClient.DisableUserAsync(server.ApiUrl.TrimEnd('/'), request.CommonName,
                 cancellationToken);
-            return Ok(ApiResponse<object>.SuccessResponse(new { ok = true }));
+            return Ok(ApiResponse<XrayNodeUserActionResponse>.SuccessResponse(new XrayNodeUserActionResponse()));
         }
         catch (Exception ex)
         {
             logger.LogError(ex, "Xray disable user failed for server {VpnServerId}", vpnServerId);
-            return BadRequest(ApiResponse<object>.ErrorResponse(ex.Message));
+            return BadRequest(ApiResponse<XrayNodeUserActionResponse>.ErrorResponse(ex.Message));
         }
     }
 

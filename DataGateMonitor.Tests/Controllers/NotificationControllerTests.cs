@@ -2,7 +2,7 @@ using Microsoft.AspNetCore.Mvc;
 using Moq;
 using DataGateMonitor.Controllers;
 using DataGateMonitor.Services.Others;
-using DataGateMonitor.Services.Others.Models;
+using DataGateMonitor.SharedModels.Notifications.Requests;
 using DataGateMonitor.SharedModels.Responses;
 
 namespace DataGateMonitor.Tests.Controllers;
@@ -22,7 +22,7 @@ public class NotificationControllerTests
     public async Task NotifyAdminsAsync_ReturnsOk_WithSuccessResponse_AndCallsService()
     {
         // Arrange
-        var request = new NotificationRequest
+        var request = new NotifyAdminsRequest
         {
             Type = "test",
             Title = "Test Title",

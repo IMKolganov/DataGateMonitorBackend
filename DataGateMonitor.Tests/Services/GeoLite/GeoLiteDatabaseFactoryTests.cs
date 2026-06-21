@@ -39,4 +39,41 @@ public class GeoLiteDatabaseFactoryTests
         Assert.Throws<InvalidOperationException>(() => sut.GetDatabasePath());
         await sut.DeleteDatabaseAsync(CancellationToken.None); // should not throw
     }
+
+    [Fact]
+    public async Task GetDatabaseAsync_Loads_MaxMind_Test_Database()
+    {
+        var (factory, dbPath) = await GeoLiteTestHarness.CreateLoadedFactoryAsync();
+
+        Assert.True(factory.IsDatabaseLoaded);
+        Assert.Equal(dbPath, factory.DatabasePath);
+        Assert.Equal(dbPath, factory.GetDatabasePath());
+
+        var reader = await factory.GetDatabaseAsync(CancellationToken.None);
+        Assert.True(reader.Metadata.BuildDate > DateTime.MinValue);
+    }
+
+    [Fact]
+    public async Task ReloadDatabaseAsync_Keeps_Reader_Available()
+    {
+        var (factory, _) = await GeoLiteTestHarness.CreateLoadedFactoryAsync();
+
+        await factory.ReloadDatabaseAsync(CancellationToken.None);
+
+        Assert.True(factory.IsDatabaseLoaded);
+        var reader = await factory.GetDatabaseAsync(CancellationToken.None);
+        Assert.NotNull(reader);
+    }
+
+    [Fact]
+    public async Task DeleteDatabaseAsync_Removes_File_When_Loaded()
+    {
+        var dbPath = Path.Combine(Path.GetTempPath(), "GeoLiteTest_" + Guid.NewGuid().ToString("N"), "GeoLite2-City-Test.mmdb");
+        var (factory, _) = await GeoLiteTestHarness.CreateLoadedFactoryAsync(dbPath);
+
+        await factory.DeleteDatabaseAsync(CancellationToken.None);
+
+        Assert.False(File.Exists(dbPath));
+        Assert.False(factory.IsDatabaseLoaded);
+    }
 }

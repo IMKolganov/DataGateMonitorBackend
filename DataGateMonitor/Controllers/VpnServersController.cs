@@ -80,26 +80,23 @@ public class VpnServersController(IVpnDataService vpnDataService,
             await FillTagsForOverviewResponse(baseResponse, token);
 
             // Legacy mobile clients parse strict camelCase + openVpn* keys.
-            var legacyItems = baseResponse.VpnServerWithStatuses.Select(item => new
+            var envelope = new LegacyVpnServerWithStatusesEnvelope
             {
-                openVpnServerResponses = new
+                Data = new LegacyVpnServerWithStatusesData
                 {
-                    openVpnServer = item.VpnServerResponses.VpnServer
-                },
-                openVpnServerStatusLogResponse = item.VpnServerStatusLogResponse,
-                countConnectedClients = item.CountConnectedClients,
-                countSessions = item.CountSessions,
-                totalBytesIn = item.TotalBytesIn,
-                totalBytesOut = item.TotalBytesOut
-            }).ToList();
-
-            var envelope = new
-            {
-                success = true,
-                message = "Success",
-                data = new
-                {
-                    openVpnServerWithStatuses = legacyItems
+                    OpenVpnServerWithStatuses = baseResponse.VpnServerWithStatuses.Select(item =>
+                        new LegacyVpnServerWithStatusItem
+                        {
+                            OpenVpnServerResponses = new LegacyVpnServerResponses
+                            {
+                                OpenVpnServer = item.VpnServerResponses.VpnServer
+                            },
+                            OpenVpnServerStatusLogResponse = item.VpnServerStatusLogResponse,
+                            CountConnectedClients = item.CountConnectedClients,
+                            CountSessions = item.CountSessions,
+                            TotalBytesIn = item.TotalBytesIn,
+                            TotalBytesOut = item.TotalBytesOut
+                        }).ToList()
                 }
             };
 

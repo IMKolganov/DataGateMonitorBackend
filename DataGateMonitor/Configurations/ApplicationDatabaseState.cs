@@ -4,6 +4,9 @@ public interface IApplicationDatabaseState
 {
     /// <summary>Human-readable database startup line for the root URL.</summary>
     string GetDatabaseStatusLine();
+
+    /// <summary>CSS tone for the root page: ok, pending, or error.</summary>
+    string GetDatabaseStatusTone();
 }
 
 /// <summary>
@@ -59,13 +62,26 @@ public sealed class ApplicationDatabaseState : IApplicationDatabaseState
             return _phase switch
             {
                 Phase.Initializing =>
-                    "Database: starting; PostgreSQL wait / EF migrations have not begun yet or are still running in the background.",
+                    "Starting; PostgreSQL wait / EF migrations have not begun yet or are still running in the background.",
                 Phase.WaitingOrMigrating =>
-                    "Database: waiting for PostgreSQL and/or applying EF Core migrations (see logs).",
-                Phase.Ready => "Database: connected and migrations are up to date.",
+                    "Waiting for PostgreSQL and/or applying EF Core migrations (see logs).",
+                Phase.Ready => "Connected and migrations are up to date.",
                 Phase.Failed =>
-                    $"Database: connection or migration failed — {_failureDetail ?? "see logs"}",
-                _ => "Database: unknown state."
+                    $"Connection or migration failed — {_failureDetail ?? "see logs"}",
+                _ => "Unknown state."
+            };
+        }
+    }
+
+    public string GetDatabaseStatusTone()
+    {
+        lock (_sync)
+        {
+            return _phase switch
+            {
+                Phase.Ready => "ok",
+                Phase.Failed => "error",
+                _ => "pending",
             };
         }
     }

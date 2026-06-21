@@ -1,4 +1,4 @@
-﻿using DataGateMonitor.Services.Others.Models;
+﻿using DataGateMonitor.SharedModels.Notifications.Requests;
 using DataGateMonitor.SharedModels.Enums;
 
 namespace DataGateMonitor.Services.Others.Notifications.OvpnFileApi;
@@ -149,7 +149,7 @@ public class OvpnFileNotificationService(INotificationService notifications) : I
         int? actorUserId = null)
     {
         var source = stack == VpnProfileNotificationStack.Xray ? "xray-client-links" : "openvpn-files";
-        return notifications.NotifyAdmins(new NotificationRequest
+        return notifications.NotifyAdmins(new NotifyAdminsRequest
         {
             Type = type,
             Title = title,

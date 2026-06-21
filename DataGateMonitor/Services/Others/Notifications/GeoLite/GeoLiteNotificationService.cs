@@ -1,5 +1,5 @@
 using DataGateMonitor.Models.Helpers;
-using DataGateMonitor.Services.Others.Models;
+using DataGateMonitor.SharedModels.Notifications.Requests;
 using DataGateMonitor.SharedModels.Enums;
 
 namespace DataGateMonitor.Services.Others.Notifications.GeoLite;
@@ -10,7 +10,7 @@ public sealed class GeoLiteNotificationService(INotificationService notification
     private const string Source = "geolite-auto-update";
 
     public Task NotifyAutoUpdateSucceededAsync(string databasePath, CancellationToken ct)
-        => notifications.NotifyAdmins(new NotificationRequest
+        => notifications.NotifyAdmins(new NotifyAdminsRequest
         {
             Type = NotificationTypes.GeoLiteAutoUpdateSucceeded,
             Title = "GeoLite database updated",
@@ -21,7 +21,7 @@ public sealed class GeoLiteNotificationService(INotificationService notification
         }, Channels, ct);
 
     public Task NotifyAutoUpdateFailedAsync(string phase, string detail, CancellationToken ct)
-        => notifications.NotifyAdmins(new NotificationRequest
+        => notifications.NotifyAdmins(new NotifyAdminsRequest
         {
             Type = NotificationTypes.GeoLiteAutoUpdateFailed,
             Title = "GeoLite automatic update failed",

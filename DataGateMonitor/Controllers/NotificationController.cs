@@ -2,7 +2,6 @@ using System.Security.Claims;
 using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Mvc;
 using DataGateMonitor.Services.Others;
-using DataGateMonitor.Services.Others.Models;
 using DataGateMonitor.SharedModels.Notifications.Requests;
 using DataGateMonitor.SharedModels.Notifications.Responses;
 using DataGateMonitor.SharedModels.Responses;
@@ -20,7 +19,7 @@ public class NotificationController(INotificationService notificationService) : 
     /// </summary>
     [HttpPost("notify-admins")]
     public async Task<ActionResult<ApiResponse<int>>> NotifyAdminsAsync(
-        [FromBody] NotificationRequest request,
+        [FromBody] NotifyAdminsRequest request,
         CancellationToken cancellationToken)
     {
         var result = await notificationService.NotifyAdmins(request, new[] { "web" }, cancellationToken);

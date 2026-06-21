@@ -1,4 +1,3 @@
-using DataGateMonitor.Services.Others.Models;
 using DataGateMonitor.SharedModels.Notifications.Requests;
 using DataGateMonitor.SharedModels.Notifications.Responses;
 
@@ -15,7 +14,7 @@ public interface INotificationService
     /// Returns the created notification ID.
     /// </summary>
     Task<int> NotifyAdmins(
-        NotificationRequest request,
+        NotifyAdminsRequest request,
         IEnumerable<string>? channels = null,
         CancellationToken ct = default);
 

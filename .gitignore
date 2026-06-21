@@ -369,6 +369,7 @@ appsettings.Development.json
 .idea
 GeoLite2-City.mmdb
 GeoLite2/
+DataGateMonitor/data/startup-history.json
 secrets/
 jwt-secret.txt
 NuGet.config
