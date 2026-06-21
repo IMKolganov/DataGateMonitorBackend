@@ -1,4 +1,4 @@
-﻿using DataGateMonitor.Services.Others.Models;
+﻿using DataGateMonitor.SharedModels.Notifications.Requests;
 using DataGateMonitor.SharedModels.DataGateOpenVpnManager.Cert.Responses;
 using DataGateMonitor.SharedModels.DataGateMonitor.VpnServerCerts.Requests;
 using DataGateMonitor.SharedModels.Enums;
@@ -52,7 +52,7 @@ public class CertificateNotificationService(INotificationService notifications)
     // ---- helper ----
     private Task Notify(ApplicationNotificationKind preferenceKind, string type, string title, string message, int serverId,
         NotificationSeverity severity, string[] channels, CancellationToken ct, int? actorUserId = null)
-        => notifications.NotifyAdmins(new NotificationRequest
+        => notifications.NotifyAdmins(new NotifyAdminsRequest
         {
             Type = type,
             Title = title,

@@ -1,6 +1,6 @@
 using Mapster;
 using DataGateMonitor.Serialization;
-using DataGateMonitor.Hubs.Models;
+using DataGateMonitor.SharedModels.DataGateMonitor.VpnServers.Hubs;
 using DataGateMonitor.Services.BackgroundServices.Interfaces;
 using DataGateMonitor.Services.StatusStreamLogs;
 using DataGateMonitor.SharedModels.DataGateMonitor.VpnServers.Responses;

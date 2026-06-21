@@ -2,11 +2,10 @@ using DataGateMonitor.DataBase.Services.Command.Interfaces;
 using DataGateMonitor.DataBase.Services.Query.NotificationRecipientTable;
 using DataGateMonitor.DataBase.Services.Query.UserRoleTable;
 using DataGateMonitor.Models;
-using DataGateMonitor.Services.Others.Models;
+using DataGateMonitor.SharedModels.Notifications.Requests;
 using DataGateMonitor.Services.Others.Notifications;
 using DataGateMonitor.SharedModels.Auth;
 using DataGateMonitor.SharedModels.Enums;
-using DataGateMonitor.SharedModels.Notifications.Requests;
 using DataGateMonitor.SharedModels.Notifications.Responses;
 using DataGateMonitor.SharedModels.Responses;
 
@@ -23,7 +22,7 @@ public class NotificationService(
 ) : INotificationService
 {
     public async Task<int> NotifyAdmins(
-        NotificationRequest request,
+        NotifyAdminsRequest request,
         IEnumerable<string>? channels = null,
         CancellationToken ct = default)
     {

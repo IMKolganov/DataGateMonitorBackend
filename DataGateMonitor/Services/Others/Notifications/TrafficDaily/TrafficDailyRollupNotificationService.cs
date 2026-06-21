@@ -1,6 +1,6 @@
 using DataGateMonitor.DataBase.Services.Query.VpnServerClientTable;
 using DataGateMonitor.Models.Helpers;
-using DataGateMonitor.Services.Others.Models;
+using DataGateMonitor.SharedModels.Notifications.Requests;
 using DataGateMonitor.SharedModels.Enums;
 
 namespace DataGateMonitor.Services.Others.Notifications.TrafficDaily;
@@ -18,7 +18,7 @@ public sealed class TrafficDailyRollupNotificationService(INotificationService n
             ? result.FirstDay!.Value.ToString("yyyy-MM-dd")
             : $"{result.FirstDay:yyyy-MM-dd} .. {result.LastDay:yyyy-MM-dd}";
 
-        return notifications.NotifyAdmins(new NotificationRequest
+        return notifications.NotifyAdmins(new NotifyAdminsRequest
         {
             Type = NotificationTypes.TrafficDailyRollupSucceeded,
             Title = "Traffic daily rollup completed",
@@ -45,7 +45,7 @@ public sealed class TrafficDailyRollupNotificationService(INotificationService n
     }
 
     public Task NotifyCatchUpFailedAsync(string phase, string detail, CancellationToken ct)
-        => notifications.NotifyAdmins(new NotificationRequest
+        => notifications.NotifyAdmins(new NotifyAdminsRequest
         {
             Type = NotificationTypes.TrafficDailyRollupFailed,
             Title = "Traffic daily rollup failed",

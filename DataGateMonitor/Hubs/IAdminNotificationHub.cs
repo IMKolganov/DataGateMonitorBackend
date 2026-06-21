@@ -1,4 +1,4 @@
-﻿using DataGateMonitor.Models;
+﻿using DataGateMonitor.SharedModels.Notifications.Responses;
 
 namespace DataGateMonitor.Hubs;
 
@@ -10,5 +10,5 @@ public interface IAdminNotificationHub
     /// <summary>
     /// Sends notification to a specific admin.
     /// </summary>
-    Task SendNotificationAsync(int adminUserId, Notification notification, CancellationToken ct);
+    Task SendNotificationAsync(int adminUserId, NotificationItemDto notification, CancellationToken ct);
 }

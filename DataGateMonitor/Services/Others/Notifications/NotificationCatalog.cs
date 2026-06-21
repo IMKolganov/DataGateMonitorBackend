@@ -1,5 +1,5 @@
 using DataGateMonitor.Models.Helpers;
-using DataGateMonitor.Services.Others.Models;
+using DataGateMonitor.SharedModels.Notifications.Requests;
 using DataGateMonitor.SharedModels.Enums;
 
 namespace DataGateMonitor.Services.Others.Notifications;
@@ -11,7 +11,7 @@ public class NotificationCatalog : INotificationCatalog
 
     public NotificationEnvelope SystemException(Exception ex)
     {
-        var req = new NotificationRequest
+        var req = new NotifyAdminsRequest
         {
             Type = NotificationTypes.SystemException,
             Title = "Unhandled exception occurred",
@@ -25,7 +25,7 @@ public class NotificationCatalog : INotificationCatalog
 
     public NotificationEnvelope FileCreated(int actorUserId, string fileName)
     {
-        var req = new NotificationRequest
+        var req = new NotifyAdminsRequest
         {
             Type = NotificationTypes.FileCreated,
             Title = "New file created",
@@ -40,7 +40,7 @@ public class NotificationCatalog : INotificationCatalog
 
     public NotificationEnvelope CertIssued(int actorUserId, string commonName, int? serverId = null)
     {
-        var req = new NotificationRequest
+        var req = new NotifyAdminsRequest
         {
             Type = NotificationTypes.CertIssued,
             Title = "Certificate issued",
@@ -56,7 +56,7 @@ public class NotificationCatalog : INotificationCatalog
 
     public NotificationEnvelope ServerDown(int serverId, string serverName)
     {
-        var req = new NotificationRequest
+        var req = new NotifyAdminsRequest
         {
             Type = NotificationTypes.ServerDown,
             Title = "Server is DOWN",
@@ -71,7 +71,7 @@ public class NotificationCatalog : INotificationCatalog
 
     public NotificationEnvelope ServerUp(int serverId, string serverName)
     {
-        var req = new NotificationRequest
+        var req = new NotifyAdminsRequest
         {
             Type = NotificationTypes.ServerUp,
             Title = "Server is UP",
@@ -89,7 +89,7 @@ public class NotificationCatalog : INotificationCatalog
         var loginPart = string.IsNullOrWhiteSpace(login) ? "" : $" Login: {login}.";
         var emailPart = string.IsNullOrWhiteSpace(email) ? "" : $" Email: {email}.";
         var sourcePart = string.IsNullOrWhiteSpace(registrationSource) ? "" : $" Via {registrationSource.Trim()}.";
-        var req = new NotificationRequest
+        var req = new NotifyAdminsRequest
         {
             Type = NotificationTypes.UserRegistered,
             Title = "New user registered",
@@ -104,7 +104,7 @@ public class NotificationCatalog : INotificationCatalog
 
     public NotificationEnvelope UserPasswordChanged(int userId, string displayName, string login, string reason)
     {
-        var req = new NotificationRequest
+        var req = new NotifyAdminsRequest
         {
             Type = NotificationTypes.UserPasswordChanged,
             Title = "User password changed",

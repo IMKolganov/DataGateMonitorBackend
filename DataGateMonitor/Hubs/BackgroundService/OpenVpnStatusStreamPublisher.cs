@@ -1,7 +1,7 @@
 using Mapster;
 using Microsoft.AspNetCore.SignalR;
 using DataGateMonitor.DataBase.Services.Query.VpnServerTable;
-using DataGateMonitor.Hubs.Models;
+using DataGateMonitor.SharedModels.DataGateMonitor.VpnServers.Hubs;
 using DataGateMonitor.Services.BackgroundServices.Interfaces;
 using DataGateMonitor.Services.Cache;
 using DataGateMonitor.SharedModels.DataGateMonitor.VpnServers.Responses;
