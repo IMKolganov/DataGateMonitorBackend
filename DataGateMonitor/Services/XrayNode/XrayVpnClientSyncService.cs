@@ -1,4 +1,5 @@
 using DataGateMonitor.DataBase.Services.Command.Interfaces;
+using DataGateMonitor.DataBase.Services.Command.VpnServerClientTable;
 using DataGateMonitor.DataBase.Services.Query.IssuedOvpnFileTable;
 using DataGateMonitor.DataBase.Services.Query.IssuedXrayClientLinkTable;
 using DataGateMonitor.DataBase.Services.Query.UserTable;
@@ -20,6 +21,7 @@ public sealed class XrayVpnClientSyncService(
     ITransactionRunner transactionRunner,
     ICommandService<VpnServerClient, int> vpnServerClientCommandService,
     ICommandService<VpnServerClientTraffic, int> vpnClientTrafficCommandService,
+    IVpnServerClientUpsertService vpnServerClientUpsertService,
     IConnectedClientsCounterStore connectedClientsCounterStore)
     : IXrayVpnClientSyncService
 {
@@ -67,58 +69,28 @@ public sealed class XrayVpnClientSyncService(
 
                 var (country, region, city, lat, lon) = await ResolveGeoAsync(c.RemoteAddress, cancellationToken);
 
-                var rows = await vpnServerClientCommandService.UpdateWhere(
-                    x => x.VpnServerId == server.Id && x.SessionId == sessionId,
-                    s => s
-                        .SetProperty(x => x.UserId, user?.Id)
-                        .SetProperty(x => x.CommonName, commonName)
-                        .SetProperty(x => x.RemoteIp, c.RemoteAddress)
-                        .SetProperty(x => x.ProxyRealIp, (string?)null)
-                        .SetProperty(x => x.LocalIp, UnknownLocalIpPlaceholder)
-                        .SetProperty(x => x.BytesReceived, c.BytesReceived)
-                        .SetProperty(x => x.BytesSent, c.BytesSent)
-                        .SetProperty(x => x.ConnectedSince, c.ConnectedSince)
-                        .SetProperty(x => x.Username, username)
-                        .SetProperty(x => x.Country, country)
-                        .SetProperty(x => x.Region, region)
-                        .SetProperty(x => x.City, city)
-                        .SetProperty(x => x.Latitude, lat)
-                        .SetProperty(x => x.Longitude, lon)
-                        .SetProperty(x => x.ExternalId, externalId)
-                        .SetProperty(x => x.IsConnected, true)
-                        .SetProperty(x => x.DisconnectedAt, _ => (DateTimeOffset?)null)
-                        .SetProperty(x => x.LastUpdate, nowUtc),
+                await vpnServerClientUpsertService.UpsertAsync(
+                    new VpnServerClientUpsertPayload(
+                        VpnServerId: server.Id,
+                        UserId: user?.Id,
+                        ExternalId: externalId,
+                        SessionId: sessionId,
+                        CommonName: commonName,
+                        RemoteIp: c.RemoteAddress,
+                        ProxyRealIp: null,
+                        LocalIp: UnknownLocalIpPlaceholder,
+                        BytesReceived: c.BytesReceived,
+                        BytesSent: c.BytesSent,
+                        ConnectedSince: c.ConnectedSince,
+                        DisconnectedAt: null,
+                        Username: username,
+                        Country: country,
+                        Region: region,
+                        City: city,
+                        Latitude: lat,
+                        Longitude: lon,
+                        IsConnected: true),
                     cancellationToken);
-
-                if (rows == 0)
-                {
-                    var newClient = new VpnServerClient
-                    {
-                        VpnServerId = server.Id,
-                        UserId = user?.Id,
-                        SessionId = sessionId,
-                        CommonName = commonName,
-                        RemoteIp = c.RemoteAddress,
-                        ProxyRealIp = null,
-                        LocalIp = UnknownLocalIpPlaceholder,
-                        BytesReceived = c.BytesReceived,
-                        BytesSent = c.BytesSent,
-                        ConnectedSince = c.ConnectedSince,
-                        Username = username,
-                        Country = country,
-                        Region = region,
-                        City = city,
-                        Latitude = lat,
-                        Longitude = lon,
-                        ExternalId = externalId,
-                        IsConnected = true,
-                        DisconnectedAt = null,
-                        LastUpdate = nowUtc,
-                        CreateDate = nowUtc,
-                    };
-
-                    await vpnServerClientCommandService.Add(newClient, saveChanges: false, cancellationToken);
-                }
 
                 var measuredAt = DateTimeOffset.UtcNow;
 

@@ -1,6 +1,6 @@
-using Mapster;
 using DataGateMonitor.DataBase.Services.Command;
 using DataGateMonitor.DataBase.Services.Command.Interfaces;
+using DataGateMonitor.DataBase.Services.Command.VpnServerClientTable;
 using DataGateMonitor.DataBase.Services.Query.IssuedOvpnFileTable;
 using DataGateMonitor.DataBase.Services.Query.VpnServerStatusLogTable;
 using DataGateMonitor.DataBase.Services.Query.UserTable;
@@ -31,6 +31,7 @@ public class VpnServerService(
     ICommandService<VpnServerClient, int> openVpnServerClientCommandService,
     ICommandService<VpnServerStatusLog, int> openVpnServerStatusLogCommandService,
     ICommandService<VpnServerClientTraffic, int> openVpnClientTrafficCommandService,
+    IVpnServerClientUpsertService vpnServerClientUpsertService,
     IConnectedClientsCounterStore connectedClientsCounterStore) : IVpnServerService
 {
     public async Task SaveConnectedClientsAsync(VpnServer openVpnServer, CancellationToken ct)
@@ -80,68 +81,30 @@ public class VpnServerService(
                     m.CommonName, openVpnServer.Id, ct) ?? string.Empty;
                 user = await userQueryService.GetByExternalId(externalId, ct) ?? null;
                 
-                // ---- Upsert main client row ----
                 var persistProxyEnrichment = ProxyClientLookupService.ShouldPersistProxyEnrichmentFromPoll(m);
-                var rows = persistProxyEnrichment
-                    ? await openVpnServerClientCommandService.UpdateWhere(
-                        x => x.VpnServerId == openVpnServer.Id && x.SessionId == sessionId,
-                        s => s
-                            .SetProperty(c => c.UserId, user?.Id)
-                            .SetProperty(c => c.CommonName, m.CommonName)
-                            .SetProperty(c => c.RemoteIp, m.RemoteIp)
-                            .SetProperty(c => c.ProxyRealIp, m.ProxyRealIp)
-                            .SetProperty(c => c.LocalIp, m.LocalIp)
-                            .SetProperty(c => c.BytesReceived, m.BytesReceived)
-                            .SetProperty(c => c.BytesSent, m.BytesSent)
-                            .SetProperty(c => c.ConnectedSince, m.ConnectedSince) // idempotent
-                            .SetProperty(c => c.Username, m.Username)
-                            .SetProperty(c => c.Country, m.Country)
-                            .SetProperty(c => c.Region, m.Region)
-                            .SetProperty(c => c.City, m.City)
-                            .SetProperty(c => c.Latitude, m.Latitude)
-                            .SetProperty(c => c.Longitude, m.Longitude)
-                            .SetProperty(c => c.ExternalId, externalId)
-                            .SetProperty(c => c.IsConnected, true)
-                            .SetProperty(c => c.DisconnectedAt, _ => (DateTimeOffset?)null)
-                            .SetProperty(c => c.LastUpdate, nowUtc),
-                        ct)
-                    : await openVpnServerClientCommandService.UpdateWhere(
-                        x => x.VpnServerId == openVpnServer.Id && x.SessionId == sessionId,
-                        s => s
-                            .SetProperty(c => c.UserId, user?.Id)
-                            .SetProperty(c => c.CommonName, m.CommonName)
-                            .SetProperty(c => c.RemoteIp, m.RemoteIp)
-                            .SetProperty(c => c.LocalIp, m.LocalIp)
-                            .SetProperty(c => c.BytesReceived, m.BytesReceived)
-                            .SetProperty(c => c.BytesSent, m.BytesSent)
-                            .SetProperty(c => c.ConnectedSince, m.ConnectedSince) // idempotent
-                            .SetProperty(c => c.Username, m.Username)
-                            .SetProperty(c => c.ExternalId, externalId)
-                            .SetProperty(c => c.IsConnected, true)
-                            .SetProperty(c => c.DisconnectedAt, _ => (DateTimeOffset?)null)
-                            .SetProperty(c => c.LastUpdate, nowUtc),
-                        ct);
-
-                if (rows == 0)
-                {
-                    var newClient = m.Adapt<VpnServerClient>();
-                    newClient.VpnServerId = openVpnServer.Id;
-                    newClient.UserId = user?.Id;
-                    newClient.SessionId = sessionId;
-                    newClient.ExternalId = externalId;
-                    newClient.IsConnected = true;
-                    newClient.DisconnectedAt = null;
-                    newClient.LastUpdate = nowUtc;
-                    newClient.CreateDate = nowUtc;
-
-                    await openVpnServerClientCommandService.Add(newClient, saveChanges: false, ct);
-                    logger.LogInformation("VpnServerId: {Id}. Added new client session {SessionId}.",
-                        openVpnServer.Id, sessionId);
-                }
-                else
-                {
-                    logger.LogDebug("Updated client session {SessionId}.", sessionId);
-                }
+                await vpnServerClientUpsertService.UpsertAsync(
+                    new VpnServerClientUpsertPayload(
+                        VpnServerId: openVpnServer.Id,
+                        UserId: user?.Id,
+                        ExternalId: externalId,
+                        SessionId: sessionId,
+                        CommonName: m.CommonName,
+                        RemoteIp: m.RemoteIp,
+                        ProxyRealIp: persistProxyEnrichment ? m.ProxyRealIp : null,
+                        LocalIp: m.LocalIp,
+                        BytesReceived: m.BytesReceived,
+                        BytesSent: m.BytesSent,
+                        ConnectedSince: m.ConnectedSince,
+                        DisconnectedAt: null,
+                        Username: m.Username,
+                        Country: persistProxyEnrichment ? m.Country : null,
+                        Region: persistProxyEnrichment ? m.Region : null,
+                        City: persistProxyEnrichment ? m.City : null,
+                        Latitude: persistProxyEnrichment ? m.Latitude : null,
+                        Longitude: persistProxyEnrichment ? m.Longitude : null,
+                        IsConnected: true),
+                    ct);
+                logger.LogDebug("Upserted client session {SessionId}.", sessionId);
 
                 // ---- Write traffic sample on every call (exact MeasuredAt)
                 var measuredAt = DateTimeOffset.UtcNow; // exact timestamp of this poll

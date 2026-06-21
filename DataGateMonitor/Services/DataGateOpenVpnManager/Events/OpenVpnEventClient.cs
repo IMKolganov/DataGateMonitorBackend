@@ -1,16 +1,16 @@
 using System.Diagnostics;
-using System.Security.Cryptography;
-using System.Text;
 using Mapster;
 using Microsoft.AspNetCore.SignalR;
 using Microsoft.AspNetCore.SignalR.Client;
 using DataGateMonitor.DataBase.Services.Command.Interfaces;
+using DataGateMonitor.DataBase.Services.Command.VpnServerClientTable;
 using DataGateMonitor.DataBase.Services.Query.IssuedOvpnFileTable;
 using DataGateMonitor.Hubs;
 using DataGateMonitor.Models;
 using DataGateMonitor.Serialization;
 using DataGateMonitor.Services.Api.Auth.Registers.Interfaces;
 using DataGateMonitor.Services.DataGateOpenVpnManager.Interfaces;
+using DataGateMonitor.Services.Helpers;
 using DataGateMonitor.Services.Others.Notifications.OpenVpnMicroserviceClient;
 using DataGateMonitor.SharedModels.DataGateOpenVpnManager.VpnEvent.Requests;
 using DataGateMonitor.SharedModels.DataGateMonitor.VpnServerEvent.Dto;
@@ -274,6 +274,7 @@ public class OpenVpnEventClient(
             var logService = scope.ServiceProvider.GetRequiredService<IVpnEventLogService>();
             var fileQuery = scope.ServiceProvider.GetRequiredService<IIssuedOvpnFileQueryService>();
             var proxyLookup = scope.ServiceProvider.GetRequiredService<IProxyClientLookupService>();
+            var clientUpsert = scope.ServiceProvider.GetRequiredService<IVpnServerClientUpsertService>();
             var clientCmd = scope.ServiceProvider.GetRequiredService<ICommandService<VpnServerClient, int>>();
 
             var req = data.Adapt<VpnEventRequest>();
@@ -305,11 +306,32 @@ public class OpenVpnEventClient(
                 await proxyLookup.EnrichFromManagementRealAddressAsync(_openVpnServer, openVpnServerClient,
                     CancellationToken.None);
 
-                openVpnServerClient.SessionId = GenerateSessionId(
+                openVpnServerClient.SessionId = VpnSessionIdGenerator.FromCommonNameRemoteConnectedSince(
                     openVpnServerClient.CommonName, openVpnServerClient.RemoteIp, openVpnServerClient.ConnectedSince);
 
-                await clientCmd.Add(openVpnServerClient, saveChanges: false, CancellationToken.None);
-                logger.LogInformation("VpnServerId: {Id}. Added new client session {SessionId}.",
+                await clientUpsert.UpsertAsync(
+                    new VpnServerClientUpsertPayload(
+                        VpnServerId: openVpnServerClient.VpnServerId,
+                        UserId: openVpnServerClient.UserId,
+                        ExternalId: openVpnServerClient.ExternalId,
+                        SessionId: openVpnServerClient.SessionId,
+                        CommonName: openVpnServerClient.CommonName,
+                        RemoteIp: openVpnServerClient.RemoteIp,
+                        ProxyRealIp: openVpnServerClient.ProxyRealIp,
+                        LocalIp: openVpnServerClient.LocalIp,
+                        BytesReceived: openVpnServerClient.BytesReceived,
+                        BytesSent: openVpnServerClient.BytesSent,
+                        ConnectedSince: openVpnServerClient.ConnectedSince,
+                        DisconnectedAt: openVpnServerClient.DisconnectedAt,
+                        Username: openVpnServerClient.Username,
+                        Country: openVpnServerClient.Country,
+                        Region: openVpnServerClient.Region,
+                        City: openVpnServerClient.City,
+                        Latitude: openVpnServerClient.Latitude,
+                        Longitude: openVpnServerClient.Longitude,
+                        IsConnected: openVpnServerClient.IsConnected),
+                    CancellationToken.None);
+                logger.LogInformation("VpnServerId: {Id}. Upserted client session {SessionId}.",
                     _openVpnServer.Id, openVpnServerClient.SessionId);
             }
             else if (eventType.Equals("ClientDisconnected", StringComparison.OrdinalIgnoreCase)
@@ -355,13 +377,5 @@ public class OpenVpnEventClient(
             logger.LogDebug("HandleEvent finished for {EventType} (ServerId={ServerId}); TotalMs={ElapsedMs}",
                 eventType, _openVpnServer.Id, swTotal.ElapsedMilliseconds);
         }
-    }
-
-    private Guid GenerateSessionId(string commonName, string realAddress, DateTimeOffset connectedSince)
-    {
-        var sessionString = $"{commonName}-{realAddress}-{connectedSince:o}";
-        using var sha256 = SHA256.Create();
-        var hashBytes = sha256.ComputeHash(Encoding.UTF8.GetBytes(sessionString));
-        return new Guid(hashBytes.Take(16).ToArray());
     }
 }
