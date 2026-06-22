@@ -38,4 +38,75 @@ public class PiHoleDiagnosticsHealthTests
         PiHoleDiagnosticsHealth.Apply(dto, serverPiHoleEnabled: true);
         Assert.Equal("Ok", dto.Health);
     }
+
+    [Fact]
+    public void Apply_MarksError_WhenLastPollFailed()
+    {
+        var dto = new PiHoleDiagnosticsResponse
+        {
+            Enabled = true,
+            Authenticated = true,
+            LastPollError = "timeout"
+        };
+        PiHoleDiagnosticsHealth.Apply(dto, serverPiHoleEnabled: true);
+        Assert.Equal("Error", dto.Health);
+        Assert.Contains("timeout", dto.HealthMessage);
+    }
+
+    [Fact]
+    public void Apply_MarksError_WhenNotAuthenticated()
+    {
+        var dto = new PiHoleDiagnosticsResponse { Enabled = true, Authenticated = false };
+        PiHoleDiagnosticsHealth.Apply(dto, serverPiHoleEnabled: true);
+        Assert.Equal("Error", dto.Health);
+        Assert.Contains("authentication", dto.HealthMessage, StringComparison.OrdinalIgnoreCase);
+    }
+
+    [Fact]
+    public void Apply_MarksWarning_WhenCollectorNotRunning()
+    {
+        var dto = new PiHoleDiagnosticsResponse
+        {
+            Enabled = true,
+            Authenticated = true,
+            CollectorRunning = false,
+            PollIntervalSeconds = 60,
+            LastSuccessfulPollAtUtc = DateTime.UtcNow
+        };
+        PiHoleDiagnosticsHealth.Apply(dto, serverPiHoleEnabled: true);
+        Assert.Equal("Warning", dto.Health);
+    }
+
+    [Fact]
+    public void Apply_MarksWarning_WhenPollStale()
+    {
+        var dto = new PiHoleDiagnosticsResponse
+        {
+            Enabled = true,
+            Authenticated = true,
+            CollectorRunning = true,
+            PollIntervalSeconds = 60,
+            LastSuccessfulPollAtUtc = DateTime.UtcNow.AddMinutes(-10)
+        };
+        PiHoleDiagnosticsHealth.Apply(dto, serverPiHoleEnabled: true);
+        Assert.Equal("Warning", dto.Health);
+        Assert.Contains("No successful Pi-hole poll", dto.HealthMessage);
+    }
+
+    [Fact]
+    public void Apply_MarksWarning_WhenNoDataYet()
+    {
+        var dto = new PiHoleDiagnosticsResponse
+        {
+            Enabled = true,
+            Authenticated = true,
+            CollectorRunning = true,
+            PollIntervalSeconds = 60,
+            LastSuccessfulPollAtUtc = DateTime.UtcNow.AddSeconds(-20),
+            StoredQueryCount = 0,
+            LastPollQueriesForwarded = 0
+        };
+        PiHoleDiagnosticsHealth.Apply(dto, serverPiHoleEnabled: true);
+        Assert.Equal("Warning", dto.Health);
+    }
 }

@@ -47,7 +47,7 @@ public class VpnServerPiHoleConfigService(
         _ = await vpnServerQueryService.GetById(request.VpnServerId, ct)
             ?? throw new InvalidOperationException("VPN server not found.");
 
-        var existing = await piHoleQuery.Query()
+        var existing = await piHoleQuery.Query(asNoTracking: false)
             .FirstOrDefaultAsync(x => x.VpnServerId == request.VpnServerId, ct);
         var now = DateTimeOffset.UtcNow;
         var isCreate = existing is null;
@@ -78,7 +78,7 @@ public class VpnServerPiHoleConfigService(
             existing.LookbackSeconds = request.LookbackSeconds;
             existing.ClientSubnetPrefix = request.ClientSubnetPrefix.Trim();
             existing.LastUpdate = now;
-            await piHoleConfigCommand.Update(existing, saveChanges: true, ct);
+            await piHoleConfigCommand.SaveChanges(ct);
         }
 
         logger.LogInformation(

@@ -78,6 +78,38 @@ public class VpnServerPiHoleConfigServiceTests
         Assert.Equal("runtime-secret", runtime.AppPassword);
     }
 
+    [Fact]
+    public async Task UpsertAsync_PreservesPassword_WhenUpdateOmitsAppPassword()
+    {
+        await using var harness = await CreateHarnessAsync();
+        await harness.Sut.UpsertAsync(new UpsertVpnServerPiHoleConfigRequest
+        {
+            VpnServerId = harness.ServerId,
+            BaseUrl = "http://pi-hole:8080",
+            AppPassword = "keep-me",
+            PollIntervalSeconds = 60,
+            BatchSize = 200,
+            LookbackSeconds = 120,
+            ClientSubnetPrefix = ""
+        }, CancellationToken.None);
+
+        await harness.Sut.UpsertAsync(new UpsertVpnServerPiHoleConfigRequest
+        {
+            VpnServerId = harness.ServerId,
+            BaseUrl = "http://pi-hole:9090",
+            AppPassword = null,
+            PollIntervalSeconds = 30,
+            BatchSize = 150,
+            LookbackSeconds = 60,
+            ClientSubnetPrefix = "10.51."
+        }, CancellationToken.None);
+
+        var runtime = await harness.Sut.GetRuntimeForMicroserviceAsync(harness.ServerId, CancellationToken.None);
+        Assert.NotNull(runtime);
+        Assert.Equal("keep-me", runtime!.AppPassword);
+        Assert.Equal("http://pi-hole:9090", runtime.BaseUrl);
+    }
+
     private static async Task<Harness> CreateHarnessAsync(bool isPiHoleEnabled = true)
     {
         var connection = new SqliteConnection("Data Source=:memory:");

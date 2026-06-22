@@ -107,6 +107,77 @@ public class VpnDnsQueryLogQueryServiceTests
         Assert.Equal(2, page.TotalCount);
     }
 
+    [Fact]
+    public async Task GetServerSummaryAsync_ReturnsZero_WhenServerIdInvalid()
+    {
+        await using var context = CreateContext();
+        var queries = new Dictionary<Type, object>
+        {
+            [typeof(VpnDnsQueryLog)] = new TestQuery<VpnDnsQueryLog>(context.VpnDnsQueryLogs)
+        };
+        var sut = new VpnDnsQueryLogQueryService(new EfQueryService<VpnDnsQueryLog, int>(new TestUnitOfWork(queries)));
+
+        var (count, lastAt) = await sut.GetServerSummaryAsync(0, CancellationToken.None);
+
+        Assert.Equal(0, count);
+        Assert.Null(lastAt);
+    }
+
+    [Fact]
+    public async Task GetServerSummaryAsync_ReturnsCountAndLatestTimestamp()
+    {
+        var older = DateTimeOffset.UtcNow.AddHours(-2);
+        var newer = DateTimeOffset.UtcNow.AddMinutes(-5);
+        await using var context = CreateContext();
+        context.VpnDnsQueryLogs.AddRange(
+            new VpnDnsQueryLog
+            {
+                VpnServerId = 7,
+                PiHoleQueryId = 1,
+                Domain = "a.example",
+                ClientIp = "10.0.0.1",
+                Status = "FORWARDED",
+                QueriedAtUtc = older,
+                CreateDate = older,
+                LastUpdate = older
+            },
+            new VpnDnsQueryLog
+            {
+                VpnServerId = 7,
+                PiHoleQueryId = 2,
+                Domain = "b.example",
+                ClientIp = "10.0.0.2",
+                Status = "FORWARDED",
+                QueriedAtUtc = newer,
+                CreateDate = newer,
+                LastUpdate = newer
+            },
+            new VpnDnsQueryLog
+            {
+                VpnServerId = 8,
+                PiHoleQueryId = 3,
+                Domain = "other.example",
+                ClientIp = "10.0.0.3",
+                Status = "FORWARDED",
+                QueriedAtUtc = newer,
+                CreateDate = newer,
+                LastUpdate = newer
+            });
+        await context.SaveChangesAsync();
+
+        var queries = new Dictionary<Type, object>
+        {
+            [typeof(VpnDnsQueryLog)] = new TestQuery<VpnDnsQueryLog>(context.VpnDnsQueryLogs)
+        };
+        var sut = new VpnDnsQueryLogQueryService(new EfQueryService<VpnDnsQueryLog, int>(new TestUnitOfWork(queries)));
+
+        var (count, lastAt) = await sut.GetServerSummaryAsync(7, CancellationToken.None);
+
+        Assert.Equal(2, count);
+        Assert.NotNull(lastAt);
+        Assert.Equal(newer, lastAt);
+    }
+
     private static ApplicationDbContext CreateContext()
     {
         var options = new DbContextOptionsBuilder<ApplicationDbContext>()

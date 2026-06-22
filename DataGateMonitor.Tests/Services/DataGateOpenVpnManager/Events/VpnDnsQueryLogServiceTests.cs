@@ -81,6 +81,51 @@ public class VpnDnsQueryLogServiceTests
         Assert.Equal(101, persisted[0].PiHoleQueryId);
     }
 
+    [Fact]
+    public async Task SaveBatchAsync_ReturnsZero_WhenAllDuplicates()
+    {
+        var existing = new VpnDnsQueryLog
+        {
+            Id = 1,
+            VpnServerId = 1,
+            PiHoleQueryId = 200,
+            ClientIp = "10.51.30.1",
+            Domain = "dup.example",
+            Status = "FORWARDED",
+            QueriedAtUtc = DateTimeOffset.UtcNow,
+            CreateDate = DateTimeOffset.UtcNow,
+            LastUpdate = DateTimeOffset.UtcNow
+        };
+
+        await using var context = CreateContext();
+        context.VpnDnsQueryLogs.Add(existing);
+        await context.SaveChangesAsync();
+
+        var query = CreateQueryService(context);
+        var command = new Mock<ICommandService<VpnDnsQueryLog, int>>();
+        var issued = new Mock<IIssuedOvpnFileQueryService>();
+        var sut = new VpnDnsQueryLogService(command.Object, query, issued.Object, NullLogger<VpnDnsQueryLogService>.Instance);
+
+        var saved = await sut.SaveBatchAsync(1, new DnsQueryBatchRequest
+        {
+            CollectedAtUtc = DateTimeOffset.UtcNow,
+            Queries =
+            [
+                new DnsQueryEventDto
+                {
+                    PiHoleQueryId = 200,
+                    ClientIp = "10.51.30.1",
+                    Domain = "dup.example",
+                    Status = "FORWARDED",
+                    QueriedAtUtc = DateTimeOffset.UtcNow
+                }
+            ]
+        }, CancellationToken.None);
+
+        Assert.Equal(0, saved);
+        command.Verify(x => x.AddRange(It.IsAny<IEnumerable<VpnDnsQueryLog>>(), It.IsAny<bool>(), It.IsAny<CancellationToken>()), Times.Never);
+    }
+
     private static IQueryService<VpnDnsQueryLog, int> CreateQueryService(ApplicationDbContext context)
     {
         var queries = new Dictionary<Type, object>
