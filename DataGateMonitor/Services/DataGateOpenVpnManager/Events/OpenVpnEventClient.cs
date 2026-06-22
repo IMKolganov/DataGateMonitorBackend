@@ -374,15 +374,32 @@ public class OpenVpnEventClient(
             using var scope = scopeFactory.CreateScope();
             var dnsLogService = scope.ServiceProvider.GetRequiredService<IVpnDnsQueryLogService>();
             var saved = await dnsLogService.SaveBatchAsync(_openVpnServer.Id, batch, CancellationToken.None);
-            logger.LogInformation(
-                "Saved {Saved}/{Total} Pi-hole DNS queries for ServerId={ServerId}",
-                saved, batch.Queries.Count, _openVpnServer.Id);
+            var skipped = batch.Queries.Count - saved;
+            if (saved == 0)
+            {
+                logger.LogDebug(
+                    "Pi-hole DNS batch for ServerId={ServerId}: nothing new to store ({Received} received, likely duplicates).",
+                    _openVpnServer.Id,
+                    batch.Queries.Count);
+            }
+            else
+            {
+                logger.LogInformation(
+                    "Pi-hole DNS batch for ServerId={ServerId}: saved={Saved}, received={Received}, skippedDuplicates={Skipped}, collectedAt={CollectedAtUtc:o}",
+                    _openVpnServer.Id,
+                    saved,
+                    batch.Queries.Count,
+                    skipped,
+                    batch.CollectedAtUtc);
+            }
         }
         catch (Exception ex)
         {
             logger.LogError(ex,
-                "Failed to save Pi-hole DNS query batch for ServerId={ServerId}",
-                _openVpnServer.Id);
+                "Failed to save Pi-hole DNS query batch for ServerId={ServerId} (received={Received}, collectedAt={CollectedAtUtc:o})",
+                _openVpnServer.Id,
+                batch.Queries.Count,
+                batch.CollectedAtUtc);
         }
     }
 }

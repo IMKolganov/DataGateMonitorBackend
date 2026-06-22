@@ -55,4 +55,20 @@ public class VpnDnsQueryLogQueryService(IQueryService<VpnDnsQueryLog, int> q) : 
             Items = items
         };
     }
+
+    public async Task<(int TotalCount, DateTimeOffset? LastQueriedAtUtc)> GetServerSummaryAsync(
+        int vpnServerId,
+        CancellationToken ct)
+    {
+        if (vpnServerId <= 0)
+            return (0, null);
+
+        var query = q.Query().Where(x => x.VpnServerId == vpnServerId);
+        var totalCount = await query.CountAsync(ct);
+        if (totalCount == 0)
+            return (0, null);
+
+        var lastAt = await query.MaxAsync(x => x.QueriedAtUtc, ct);
+        return (totalCount, lastAt);
+    }
 }

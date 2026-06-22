@@ -12,7 +12,9 @@ using Microsoft.Data.Sqlite;
 using Microsoft.EntityFrameworkCore;
 using Microsoft.EntityFrameworkCore.Diagnostics;
 using Microsoft.Extensions.Configuration;
+using DataGateMonitor.DataBase.Services.Query.VpnDnsQueryLogTable;
 using DataGateMonitor.Services.Api.Auth.Registers.Interfaces;
+using Microsoft.Extensions.Logging.Abstractions;
 using Moq;
 using DataGateMonitor.DataBase.Services.Query.VpnServerTable;
 
@@ -118,13 +120,19 @@ public class VpnServerPiHoleConfigServiceTests
         vpnServerQuery.Setup(x => x.GetById(server.Id, It.IsAny<CancellationToken>()))
             .ReturnsAsync(server);
 
+        var dnsQuery = new Mock<IVpnDnsQueryLogQueryService>();
+        dnsQuery.Setup(x => x.GetServerSummaryAsync(It.IsAny<int>(), It.IsAny<CancellationToken>()))
+            .ReturnsAsync((0, null));
+
         var sut = new VpnServerPiHoleConfigService(
             vpnServerQuery.Object,
             piHoleConfigQuery,
+            dnsQuery.Object,
             piHoleQuery,
             piHoleCommand,
             new Mock<IHttpClientFactory>().Object,
-            new Mock<IMicroserviceTokenService>().Object);
+            new Mock<IMicroserviceTokenService>().Object,
+            NullLogger<VpnServerPiHoleConfigService>.Instance);
 
         return new Harness(connection, context, server.Id, sut);
     }

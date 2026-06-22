@@ -10,7 +10,8 @@ namespace DataGateMonitor.Services.DataGateOpenVpnManager.Events;
 public class VpnDnsQueryLogService(
     ICommandService<VpnDnsQueryLog, int> cmd,
     IQueryService<VpnDnsQueryLog, int> query,
-    IIssuedOvpnFileQueryService issuedOvpnFileQueryService) : IVpnDnsQueryLogService
+    IIssuedOvpnFileQueryService issuedOvpnFileQueryService,
+    ILogger<VpnDnsQueryLogService> logger) : IVpnDnsQueryLogService
 {
     public async Task<int> SaveBatchAsync(int vpnServerId, DnsQueryBatchRequest batch, CancellationToken ct)
     {
@@ -56,9 +57,23 @@ public class VpnDnsQueryLogService(
         }
 
         if (rows.Count == 0)
+        {
+            logger.LogDebug(
+                "Pi-hole DNS batch for VpnServerId={VpnServerId}: all {Total} queries were duplicates.",
+                vpnServerId,
+                batch.Queries.Count);
             return 0;
+        }
 
         await cmd.AddRange(rows, saveChanges: true, ct);
+        var withoutExternalId = rows.Count(r => string.IsNullOrWhiteSpace(r.ExternalId));
+        logger.LogInformation(
+            "Stored Pi-hole DNS batch for VpnServerId={VpnServerId}: saved={Saved}, received={Received}, duplicates={Duplicates}, missingExternalId={MissingExternalId}",
+            vpnServerId,
+            rows.Count,
+            batch.Queries.Count,
+            batch.Queries.Count - rows.Count,
+            withoutExternalId);
         return rows.Count;
     }
 }

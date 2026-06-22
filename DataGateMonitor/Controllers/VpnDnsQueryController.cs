@@ -10,7 +10,7 @@ namespace DataGateMonitor.Controllers;
 
 [ApiController]
 [Route("api/vpn-dns-queries")]
-[Authorize(Roles = "Admin,App")]
+[Authorize(Roles = "Admin")]
 public class VpnDnsQueryController(IVpnDnsQueryLogQueryService queryService) : BaseController
 {
     [HttpGet("search")]

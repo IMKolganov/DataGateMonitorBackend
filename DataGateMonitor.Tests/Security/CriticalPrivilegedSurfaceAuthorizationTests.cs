@@ -23,6 +23,53 @@ public sealed class CriticalPrivilegedSurfaceAuthorizationTests
         { typeof(VpnServerEventController), AdminAppRoles },
     };
 
+    public static TheoryData<Type, string[]> AdminOnlyPiHoleControllers { get; } = new()
+    {
+        { typeof(VpnDnsQueryController), ["Admin"] },
+    };
+
+    private static readonly string[] PiHoleConfigAdminMethods =
+    [
+        nameof(VpnServerPiHoleConfigController.Get),
+        nameof(VpnServerPiHoleConfigController.Upsert),
+        nameof(VpnServerPiHoleConfigController.ApplyRuntime),
+        nameof(VpnServerPiHoleConfigController.GetDiagnostics),
+    ];
+
+    [Theory]
+    [MemberData(nameof(AdminOnlyPiHoleControllers))]
+    public void PiHoleSurface_RequiresAdminOnly_NotVpnUserOrApp(Type controllerType, string[] expectedRoles)
+    {
+        var roles = GetDeclaredRoleNames(controllerType);
+        Assert.NotEmpty(roles);
+        Assert.All(expectedRoles, r => Assert.Contains(r, roles));
+        Assert.DoesNotContain("VpnUser", roles);
+        Assert.DoesNotContain("App", roles);
+    }
+
+    [Fact]
+    public void VpnServerPiHoleConfig_AdminEndpoints_RequireAdminOnly()
+    {
+        foreach (var methodName in PiHoleConfigAdminMethods)
+        {
+            var method = typeof(VpnServerPiHoleConfigController).GetMethod(methodName);
+            Assert.NotNull(method);
+            var authorize = method!.GetCustomAttribute<AuthorizeAttribute>();
+            Assert.NotNull(authorize);
+            Assert.Equal("Admin", authorize!.Roles);
+        }
+    }
+
+    [Fact]
+    public void VpnServerPiHoleConfig_GetRuntime_RequiresAppRoleOnly()
+    {
+        var method = typeof(VpnServerPiHoleConfigController).GetMethod(nameof(VpnServerPiHoleConfigController.GetRuntime));
+        Assert.NotNull(method);
+        var authorize = method!.GetCustomAttribute<AuthorizeAttribute>();
+        Assert.NotNull(authorize);
+        Assert.Equal("App", authorize!.Roles);
+    }
+
     [Theory]
     [MemberData(nameof(AdminOnlyControllers))]
     public void Controller_RequiresAdminOrAppRoles_NotVpnUser(Type controllerType, string[] expectedRoles)

@@ -1,4 +1,3 @@
-using Mapster;
 using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Mvc;
 using DataGateMonitor.Services.Api.Interfaces;
@@ -11,9 +10,9 @@ namespace DataGateMonitor.Controllers;
 
 [ApiController]
 [Route("api/open-vpn-servers/pi-hole-config")]
-[Authorize(Roles = "Admin,App")]
 public class VpnServerPiHoleConfigController(IVpnServerPiHoleConfigService piHoleConfigService) : BaseController
 {
+    [Authorize(Roles = "Admin")]
     [HttpGet("{vpnServerId:int}")]
     public async Task<ActionResult<ApiResponse<VpnServerPiHoleConfigResponse>>> Get(
         [FromRoute] int vpnServerId,
@@ -23,6 +22,7 @@ public class VpnServerPiHoleConfigController(IVpnServerPiHoleConfigService piHol
         return Ok(ApiResponse<VpnServerPiHoleConfigResponse>.SuccessResponse(response));
     }
 
+    [Authorize(Roles = "Admin")]
     [HttpPut]
     public async Task<ActionResult<ApiResponse<VpnServerPiHoleConfigResponse>>> Upsert(
         [FromBody] UpsertVpnServerPiHoleConfigRequest request,
@@ -37,6 +37,7 @@ public class VpnServerPiHoleConfigController(IVpnServerPiHoleConfigService piHol
         return Ok(ApiResponse<VpnServerPiHoleConfigResponse>.SuccessResponse(response));
     }
 
+    [Authorize(Roles = "Admin")]
     [HttpPost("{vpnServerId:int}/apply-runtime")]
     public async Task<ActionResult<ApiResponse<object>>> ApplyRuntime(
         [FromRoute] int vpnServerId,
@@ -49,6 +50,7 @@ public class VpnServerPiHoleConfigController(IVpnServerPiHoleConfigService piHol
         return Ok(ApiResponse<object>.SuccessResponse(new { }));
     }
 
+    [Authorize(Roles = "Admin")]
     [HttpGet("{vpnServerId:int}/diagnostics")]
     public async Task<ActionResult<ApiResponse<PiHoleDiagnosticsResponse>>> GetDiagnostics(
         [FromRoute] int vpnServerId,
@@ -68,7 +70,8 @@ public class VpnServerPiHoleConfigController(IVpnServerPiHoleConfigService piHol
         }
     }
 
-    /// <summary>Runtime config for the OpenVPN microservice (includes app password).</summary>
+    /// <summary>Runtime config for the OpenVPN microservice (includes app password). App role only.</summary>
+    [Authorize(Roles = "App")]
     [HttpGet("runtime/{vpnServerId:int}")]
     public async Task<ActionResult<ApiResponse<VpnServerPiHoleRuntimeConfigResponse>>> GetRuntime(
         [FromRoute] int vpnServerId,

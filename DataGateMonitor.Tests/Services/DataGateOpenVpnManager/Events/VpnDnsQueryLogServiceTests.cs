@@ -9,6 +9,7 @@ using DataGateMonitor.SharedModels.DataGateOpenVpnManager.PiHole.Requests;
 using DataGateMonitor.Tests.Helpers;
 using Microsoft.EntityFrameworkCore;
 using Microsoft.Extensions.Configuration;
+using Microsoft.Extensions.Logging.Abstractions;
 using Moq;
 
 namespace DataGateMonitor.Tests.Services.DataGateOpenVpnManager.Events;
@@ -46,7 +47,7 @@ public class VpnDnsQueryLogServiceTests
         issued.Setup(x => x.GetExternalIdByCommonName("cn-new", 1, It.IsAny<CancellationToken>()))
             .ReturnsAsync("ext-42");
 
-        var sut = new VpnDnsQueryLogService(command.Object, query, issued.Object);
+        var sut = new VpnDnsQueryLogService(command.Object, query, issued.Object, NullLogger<VpnDnsQueryLogService>.Instance);
         var batch = new DnsQueryBatchRequest
         {
             CollectedAtUtc = DateTimeOffset.UtcNow,

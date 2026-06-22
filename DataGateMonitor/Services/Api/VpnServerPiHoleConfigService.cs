@@ -1,5 +1,6 @@
 using System.Net.Http.Headers;
 using DataGateMonitor.DataBase.Services.Query;
+using DataGateMonitor.DataBase.Services.Query.VpnDnsQueryLogTable;
 using DataGateMonitor.DataBase.Services.Query.VpnServerPiHoleConfigTable;
 using DataGateMonitor.DataBase.Services.Query.VpnServerTable;
 using DataGateMonitor.Models;
@@ -19,10 +20,12 @@ namespace DataGateMonitor.Services.Api;
 public class VpnServerPiHoleConfigService(
     IVpnServerQueryService vpnServerQueryService,
     IVpnServerPiHoleConfigQueryService piHoleConfigQuery,
+    IVpnDnsQueryLogQueryService dnsQueryLogQuery,
     IQueryService<VpnServerPiHoleConfig, int> piHoleQuery,
     ICommandService<VpnServerPiHoleConfig, int> piHoleConfigCommand,
     IHttpClientFactory httpClientFactory,
-    IMicroserviceTokenService tokenService) : IVpnServerPiHoleConfigService
+    IMicroserviceTokenService tokenService,
+    ILogger<VpnServerPiHoleConfigService> logger) : IVpnServerPiHoleConfigService
 {
     private const string MaskedPassword = "********";
     private const string AudienceOpenVpnManager = "DataGateOpenVpnManager";
@@ -47,6 +50,7 @@ public class VpnServerPiHoleConfigService(
         var existing = await piHoleQuery.Query()
             .FirstOrDefaultAsync(x => x.VpnServerId == request.VpnServerId, ct);
         var now = DateTimeOffset.UtcNow;
+        var isCreate = existing is null;
 
         if (existing is null)
         {
@@ -76,6 +80,15 @@ public class VpnServerPiHoleConfigService(
             existing.LastUpdate = now;
             await piHoleConfigCommand.Update(existing, saveChanges: true, ct);
         }
+
+        logger.LogInformation(
+            "Pi-hole config {Action} for VpnServerId={VpnServerId}: BaseUrl={BaseUrl}, PollIntervalSec={PollIntervalSec}, BatchSize={BatchSize}, HasPassword={HasPassword}",
+            isCreate ? "created" : "updated",
+            request.VpnServerId,
+            request.BaseUrl.Trim(),
+            request.PollIntervalSeconds,
+            request.BatchSize,
+            !string.IsNullOrWhiteSpace(request.AppPassword) || (existing?.AppPassword?.Length ?? 0) > 0);
 
         var saved = await piHoleConfigQuery.GetByVpnServerId(request.VpnServerId, ct);
         return new VpnServerPiHoleConfigResponse
@@ -117,6 +130,12 @@ public class VpnServerPiHoleConfigService(
         var runtime = await GetRuntimeForMicroserviceAsync(vpnServerId, ct)
             ?? throw new InvalidOperationException("Pi-hole integration is disabled or not configured.");
 
+        logger.LogInformation(
+            "Applying Pi-hole runtime to microservice. VpnServerId={VpnServerId}, ApiUrl={ApiUrl}, BaseUrl={BaseUrl}",
+            vpnServerId,
+            server.ApiUrl,
+            runtime.BaseUrl);
+
         using var client = httpClientFactory.CreateClient();
         client.BaseAddress = new Uri(server.ApiUrl.TrimEnd('/') + "/");
         client.DefaultRequestHeaders.Authorization = new AuthenticationHeaderValue(
@@ -142,9 +161,19 @@ public class VpnServerPiHoleConfigService(
         if (!response.IsSuccessStatusCode)
         {
             var detail = await MicroserviceApiResponseHelper.ReadErrorMessageAsync(response, ct);
+            logger.LogWarning(
+                "Pi-hole runtime apply failed. VpnServerId={VpnServerId}, Status={StatusCode}, Detail={Detail}",
+                vpnServerId,
+                (int)response.StatusCode,
+                detail);
             throw new InvalidOperationException(
                 $"Failed to apply Pi-hole config to microservice. Status: {(int)response.StatusCode}. Details: {detail}");
         }
+
+        logger.LogInformation(
+            "Pi-hole runtime applied successfully. VpnServerId={VpnServerId}, BaseUrl={BaseUrl}",
+            vpnServerId,
+            runtime.BaseUrl);
     }
 
     public async Task<PiHoleDiagnosticsResponse> GetMicroserviceDiagnosticsAsync(int vpnServerId, CancellationToken ct)
@@ -153,6 +182,11 @@ public class VpnServerPiHoleConfigService(
             ?? throw new InvalidOperationException("VPN server not found.");
         if (string.IsNullOrWhiteSpace(server.ApiUrl))
             throw new InvalidOperationException("API URL is not set for the server.");
+
+        logger.LogDebug(
+            "Fetching Pi-hole diagnostics from microservice. VpnServerId={VpnServerId}, ApiUrl={ApiUrl}",
+            vpnServerId,
+            server.ApiUrl);
 
         using var client = httpClientFactory.CreateClient();
         client.BaseAddress = new Uri(server.ApiUrl.TrimEnd('/') + "/");
@@ -164,11 +198,31 @@ public class VpnServerPiHoleConfigService(
         if (!response.IsSuccessStatusCode)
         {
             var detail = await MicroserviceApiResponseHelper.ReadErrorMessageAsync(response, ct);
+            logger.LogWarning(
+                "Pi-hole diagnostics request failed. VpnServerId={VpnServerId}, Status={StatusCode}, Detail={Detail}",
+                vpnServerId,
+                (int)response.StatusCode,
+                detail);
             throw new InvalidOperationException(
                 $"Failed to read Pi-hole diagnostics from microservice. Status: {(int)response.StatusCode}. Details: {detail}");
         }
 
-        return await MicroserviceApiResponseHelper.ReadSuccessDataAsync<PiHoleDiagnosticsResponse>(response, ct);
+        var diagnostics = await MicroserviceApiResponseHelper.ReadSuccessDataAsync<PiHoleDiagnosticsResponse>(response, ct);
+        var (storedCount, lastStoredAt) = await dnsQueryLogQuery.GetServerSummaryAsync(vpnServerId, ct);
+        diagnostics.StoredQueryCount = storedCount;
+        diagnostics.LastStoredQueryAtUtc = lastStoredAt?.UtcDateTime;
+        PiHoleDiagnosticsHealth.Apply(diagnostics, server.IsPiHoleEnabled);
+
+        logger.LogInformation(
+            "Pi-hole diagnostics for VpnServerId={VpnServerId}: Health={Health}, Authenticated={Authenticated}, CollectorRunning={CollectorRunning}, LastPollError={LastPollError}, Stored={StoredCount}",
+            vpnServerId,
+            diagnostics.Health,
+            diagnostics.Authenticated,
+            diagnostics.CollectorRunning,
+            diagnostics.LastPollError,
+            diagnostics.StoredQueryCount);
+
+        return diagnostics;
     }
 
     private static VpnServerPiHoleConfigDto ToAdminDto(int vpnServerId, VpnServerPiHoleConfig? config)
