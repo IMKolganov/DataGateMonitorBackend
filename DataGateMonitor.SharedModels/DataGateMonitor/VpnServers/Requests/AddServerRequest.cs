@@ -22,6 +22,8 @@ public class AddServerRequest
 
     public bool IsEnableWss { get; set; }
 
+    public bool IsPiHoleEnabled { get; set; }
+
     public List<int> QuotaPlanIds { get; set; } = new();
 
     public List<int> TagIds { get; set; } = new();

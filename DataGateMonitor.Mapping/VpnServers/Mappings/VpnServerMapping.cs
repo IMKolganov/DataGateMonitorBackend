@@ -21,6 +21,7 @@ public class VpnServerMapping : IRegister
             .Map(dest => dest.Latitude, src => src.Latitude)
             .Map(dest => dest.Longitude, src => src.Longitude)
             .Map(dest => dest.IsEnableWss, src => src.IsEnableWss)
+            .Map(dest => dest.IsPiHoleEnabled, src => src.IsPiHoleEnabled)
             .Map(dest => dest.CreateDate, src => src.CreateDate)
             .Map(dest => dest.LastUpdate, src => src.LastUpdate)
             .Map(dest => dest.IsDeleted, src => src.IsDeleted)

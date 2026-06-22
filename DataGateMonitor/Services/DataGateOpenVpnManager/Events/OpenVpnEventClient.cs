@@ -12,6 +12,7 @@ using DataGateMonitor.Services.Api.Auth.Registers.Interfaces;
 using DataGateMonitor.Services.DataGateOpenVpnManager.Interfaces;
 using DataGateMonitor.Services.Helpers;
 using DataGateMonitor.Services.Others.Notifications.OpenVpnMicroserviceClient;
+using DataGateMonitor.SharedModels.DataGateOpenVpnManager.PiHole.Requests;
 using DataGateMonitor.SharedModels.DataGateOpenVpnManager.VpnEvent.Requests;
 using DataGateMonitor.SharedModels.DataGateMonitor.VpnServerEvent.Dto;
 using DataGateMonitor.SharedModels.DataGateMonitor.VpnServerEvent.Responses;
@@ -166,6 +167,9 @@ public class OpenVpnEventClient(
                         async data => await HandleEvent("VerifyError", data));
                     _connection.On<VpnEventRequest>("VpnError",
                         async data => await HandleEvent("VpnError", data));
+
+                    _connection.On<DnsQueryBatchRequest>("DnsQueriesReceived",
+                        async data => await HandleDnsQueriesAsync(data));
 
                     // Optional: env dumps if you broadcast them
                     _connection.On<object>("EnvDumpReceived",
@@ -357,6 +361,28 @@ public class OpenVpnEventClient(
             swTotal.Stop();
             logger.LogDebug("HandleEvent finished for {EventType} (ServerId={ServerId}); TotalMs={ElapsedMs}",
                 eventType, _openVpnServer.Id, swTotal.ElapsedMilliseconds);
+        }
+    }
+
+    private async Task HandleDnsQueriesAsync(DnsQueryBatchRequest batch)
+    {
+        if (batch.Queries.Count == 0)
+            return;
+
+        try
+        {
+            using var scope = scopeFactory.CreateScope();
+            var dnsLogService = scope.ServiceProvider.GetRequiredService<IVpnDnsQueryLogService>();
+            var saved = await dnsLogService.SaveBatchAsync(_openVpnServer.Id, batch, CancellationToken.None);
+            logger.LogInformation(
+                "Saved {Saved}/{Total} Pi-hole DNS queries for ServerId={ServerId}",
+                saved, batch.Queries.Count, _openVpnServer.Id);
+        }
+        catch (Exception ex)
+        {
+            logger.LogError(ex,
+                "Failed to save Pi-hole DNS query batch for ServerId={ServerId}",
+                _openVpnServer.Id);
         }
     }
 }

@@ -34,6 +34,8 @@ public class VpnServerConfiguration : BaseEntityConfiguration<VpnServer, int>
             .HasPrecision(9, 6);
         
         entity.Property(e => e.IsEnableWss);
+        entity.Property(e => e.IsPiHoleEnabled)
+            .HasDefaultValue(false);
         entity.Property(e => e.IsDeleted)
             .HasDefaultValue(false);
 

@@ -117,9 +117,11 @@ public static class ServiceConfiguration
         }
 
         services.AddScoped<IVpnEventLogService, VpnEventLogService>();
+        services.AddScoped<IVpnDnsQueryLogService, VpnDnsQueryLogService>();
         services.AddSingleton<IOpenVpnEventClientFactory, OpenVpnEventClientFactory>();
 
         services.AddScoped<IVpnServerOvpnFileConfigService, VpnServerOvpnFileConfigService>();
+        services.AddScoped<IVpnServerPiHoleConfigService, VpnServerPiHoleConfigService>();
         services.AddScoped<ISettingsService, SettingsService>();
         
         services.AddScoped<IExternalIpAddressService, ExternalIpAddressService>();
