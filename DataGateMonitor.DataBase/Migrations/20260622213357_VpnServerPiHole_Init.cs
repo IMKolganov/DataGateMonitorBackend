@@ -42,30 +42,6 @@ namespace DataGateMonitor.DataBase.Migrations
                     table.PrimaryKey("PK_VpnServerPiHoleConfigs", x => x.Id);
                 });
 
-            migrationBuilder.UpdateData(
-                schema: "xgb_dashopnvpn",
-                table: "VpnServers",
-                keyColumn: "Id",
-                keyValue: 1,
-                columns: new string[0],
-                values: new object[0]);
-
-            migrationBuilder.UpdateData(
-                schema: "xgb_dashopnvpn",
-                table: "VpnServers",
-                keyColumn: "Id",
-                keyValue: 2,
-                columns: new string[0],
-                values: new object[0]);
-
-            migrationBuilder.UpdateData(
-                schema: "xgb_dashopnvpn",
-                table: "VpnServers",
-                keyColumn: "Id",
-                keyValue: 3,
-                columns: new string[0],
-                values: new object[0]);
-
             migrationBuilder.CreateIndex(
                 name: "ux_vpn_server_pihole_config_server_id",
                 schema: "xgb_dashopnvpn",
