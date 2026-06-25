@@ -29,4 +29,16 @@ public class VpnDnsQueryController(IVpnDnsQueryLogQueryService queryService) : B
 
         return Ok(ApiResponse<VpnDnsQueryPageResponse>.SuccessResponse(response));
     }
+
+    [HttpGet("top-domains")]
+    public async Task<ActionResult<ApiResponse<VpnDnsTopDomainsResponse>>> TopDomains(
+        [FromQuery] GetVpnDnsTopDomainsRequest request,
+        CancellationToken cancellationToken)
+    {
+        var items = await queryService.GetTopDomainsAsync(request, cancellationToken);
+        return Ok(ApiResponse<VpnDnsTopDomainsResponse>.SuccessResponse(new VpnDnsTopDomainsResponse
+        {
+            Items = items
+        }));
+    }
 }

@@ -178,6 +178,131 @@ public class VpnDnsQueryLogQueryServiceTests
         Assert.Equal(newer, lastAt);
     }
 
+    [Fact]
+    public async Task GetTopDomainsAsync_GroupsByDomainAndCountsDistinctUsers()
+    {
+        var now = DateTimeOffset.UtcNow;
+        await using var context = CreateContext();
+        context.VpnDnsQueryLogs.AddRange(
+            new VpnDnsQueryLog
+            {
+                VpnServerId = 1,
+                PiHoleQueryId = 1,
+                ExternalId = "user-a",
+                ClientIp = "10.51.30.1",
+                Domain = "Netflix.com",
+                Status = "FORWARDED",
+                QueriedAtUtc = now,
+                CreateDate = now,
+                LastUpdate = now
+            },
+            new VpnDnsQueryLog
+            {
+                VpnServerId = 1,
+                PiHoleQueryId = 2,
+                ExternalId = "user-a",
+                ClientIp = "10.51.30.1",
+                Domain = "netflix.com",
+                Status = "FORWARDED",
+                QueriedAtUtc = now,
+                CreateDate = now,
+                LastUpdate = now
+            },
+            new VpnDnsQueryLog
+            {
+                VpnServerId = 1,
+                PiHoleQueryId = 3,
+                ExternalId = "user-b",
+                ClientIp = "10.51.30.2",
+                Domain = "netflix.com",
+                Status = "FORWARDED",
+                QueriedAtUtc = now,
+                CreateDate = now,
+                LastUpdate = now
+            },
+            new VpnDnsQueryLog
+            {
+                VpnServerId = 1,
+                PiHoleQueryId = 4,
+                ExternalId = "user-c",
+                ClientIp = "10.51.30.3",
+                Domain = "google.com",
+                Status = "FORWARDED",
+                QueriedAtUtc = now,
+                CreateDate = now,
+                LastUpdate = now
+            });
+        await context.SaveChangesAsync();
+
+        var queries = new Dictionary<Type, object>
+        {
+            [typeof(VpnDnsQueryLog)] = new TestQuery<VpnDnsQueryLog>(context.VpnDnsQueryLogs)
+        };
+        var sut = new VpnDnsQueryLogQueryService(new EfQueryService<VpnDnsQueryLog, int>(new TestUnitOfWork(queries)));
+
+        var rows = await sut.GetTopDomainsAsync(new GetVpnDnsTopDomainsRequest
+        {
+            VpnServerId = 1,
+            Limit = 10
+        }, CancellationToken.None);
+
+        Assert.Equal(2, rows.Count);
+        Assert.Equal("netflix.com", rows[0].Domain, StringComparer.OrdinalIgnoreCase);
+        Assert.Equal(2, rows[0].UniqueUsersCount);
+        Assert.Equal(3, rows[0].QueryCount);
+        Assert.Equal("google.com", rows[1].Domain);
+        Assert.Equal(1, rows[1].UniqueUsersCount);
+    }
+
+    [Fact]
+    public async Task GetTopDomainsAsync_RespectsDateRange()
+    {
+        var inside = DateTimeOffset.UtcNow;
+        var outside = DateTimeOffset.UtcNow.AddDays(-10);
+        await using var context = CreateContext();
+        context.VpnDnsQueryLogs.AddRange(
+            new VpnDnsQueryLog
+            {
+                VpnServerId = 1,
+                PiHoleQueryId = 1,
+                ExternalId = "user-a",
+                ClientIp = "10.51.30.1",
+                Domain = "recent.example",
+                Status = "FORWARDED",
+                QueriedAtUtc = inside,
+                CreateDate = inside,
+                LastUpdate = inside
+            },
+            new VpnDnsQueryLog
+            {
+                VpnServerId = 1,
+                PiHoleQueryId = 2,
+                ExternalId = "user-b",
+                ClientIp = "10.51.30.2",
+                Domain = "old.example",
+                Status = "FORWARDED",
+                QueriedAtUtc = outside,
+                CreateDate = outside,
+                LastUpdate = outside
+            });
+        await context.SaveChangesAsync();
+
+        var queries = new Dictionary<Type, object>
+        {
+            [typeof(VpnDnsQueryLog)] = new TestQuery<VpnDnsQueryLog>(context.VpnDnsQueryLogs)
+        };
+        var sut = new VpnDnsQueryLogQueryService(new EfQueryService<VpnDnsQueryLog, int>(new TestUnitOfWork(queries)));
+
+        var rows = await sut.GetTopDomainsAsync(new GetVpnDnsTopDomainsRequest
+        {
+            FromUtc = inside.AddHours(-1),
+            ToUtc = inside.AddHours(1)
+        }, CancellationToken.None);
+
+        Assert.Single(rows);
+        Assert.Equal("recent.example", rows[0].Domain);
+    }
+
     private static ApplicationDbContext CreateContext()
     {
         var options = new DbContextOptionsBuilder<ApplicationDbContext>()

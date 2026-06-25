@@ -1,4 +1,5 @@
 using DataGateMonitor.Models;
+using DataGateMonitor.SharedModels.DataGateMonitor.VpnDnsQuery.Dto;
 using DataGateMonitor.SharedModels.DataGateMonitor.VpnDnsQuery.Requests;
 using DataGateMonitor.SharedModels.Responses;
 using Microsoft.EntityFrameworkCore;
@@ -70,5 +71,40 @@ public class VpnDnsQueryLogQueryService(IQueryService<VpnDnsQueryLog, int> q) : 
 
         var lastAt = await query.MaxAsync(x => x.QueriedAtUtc, ct);
         return (totalCount, lastAt);
+    }
+
+    public async Task<IReadOnlyList<VpnDnsTopDomainDto>> GetTopDomainsAsync(
+        GetVpnDnsTopDomainsRequest request,
+        CancellationToken ct)
+    {
+        var limit = request.Limit < 1 ? 100 : Math.Min(request.Limit, 100);
+
+        var query = q.Query().Where(x => x.Domain != "");
+
+        if (request.VpnServerId > 0)
+            query = query.Where(x => x.VpnServerId == request.VpnServerId);
+
+        if (!string.IsNullOrWhiteSpace(request.ExternalId))
+            query = query.Where(x => x.ExternalId == request.ExternalId);
+
+        if (request.FromUtc.HasValue)
+            query = query.Where(x => x.QueriedAtUtc >= request.FromUtc.Value);
+
+        if (request.ToUtc.HasValue)
+            query = query.Where(x => x.QueriedAtUtc <= request.ToUtc.Value);
+
+        return await query
+            .GroupBy(x => x.Domain.ToLower())
+            .Select(g => new VpnDnsTopDomainDto
+            {
+                Domain = g.Max(x => x.Domain),
+                UniqueUsersCount = g.Select(x => x.ExternalId ?? x.ClientIp).Distinct().Count(),
+                QueryCount = g.Count()
+            })
+            .OrderByDescending(x => x.UniqueUsersCount)
+            .ThenByDescending(x => x.QueryCount)
+            .Take(limit)
+            .AsNoTracking()
+            .ToListAsync(ct);
     }
 }
