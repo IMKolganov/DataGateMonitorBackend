@@ -7,13 +7,14 @@ namespace DataGateMonitor.Tests.Services.CertExpiry;
 
 public class CertExpiryRunMapperTests
 {
-    [Theory]
-    [InlineData(CertExpiryCheckOutcome.None, CertExpiryProfileOutcome.Healthy)]
-    [InlineData(CertExpiryCheckOutcome.ExpiringSoon, CertExpiryProfileOutcome.ExpiringSoon)]
-    [InlineData(CertExpiryCheckOutcome.Expired, CertExpiryProfileOutcome.Expired)]
-    [InlineData(CertExpiryCheckOutcome.MissingOnNode, CertExpiryProfileOutcome.MissingOnNode)]
-    public void ToProfileOutcome_MapsAllOutcomes(CertExpiryCheckOutcome input, CertExpiryProfileOutcome expected) =>
-        Assert.Equal(expected, CertExpiryRunMapper.ToProfileOutcome(input));
+    [Fact]
+    public void ToProfileOutcome_MapsAllOutcomes()
+    {
+        Assert.Equal(CertExpiryProfileOutcome.Healthy, CertExpiryRunMapper.ToProfileOutcome(CertExpiryCheckOutcome.None));
+        Assert.Equal(CertExpiryProfileOutcome.ExpiringSoon, CertExpiryRunMapper.ToProfileOutcome(CertExpiryCheckOutcome.ExpiringSoon));
+        Assert.Equal(CertExpiryProfileOutcome.Expired, CertExpiryRunMapper.ToProfileOutcome(CertExpiryCheckOutcome.Expired));
+        Assert.Equal(CertExpiryProfileOutcome.MissingOnNode, CertExpiryRunMapper.ToProfileOutcome(CertExpiryCheckOutcome.MissingOnNode));
+    }
 
     [Fact]
     public void BuildSummary_CountsProfilesAndServerFailures()
