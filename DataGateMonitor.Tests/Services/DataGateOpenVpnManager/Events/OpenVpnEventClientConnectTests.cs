@@ -27,9 +27,9 @@ public class OpenVpnEventClientConnectTests
     }
 
     [Theory]
-    [InlineData("127.0.0.1:53188")]
-    [InlineData("tcp4-server:127.0.0.1:53188")]
-    public async Task HandleEvent_ClientConnected_PassesHookRealAddressToProxyEnrichment(string realAddress)
+    [InlineData("127.0.0.1:53188", "127.0.0.1:53188")]
+    [InlineData("tcp4-server:127.0.0.1:53188", "127.0.0.1:53188")]
+    public async Task HandleEvent_ClientConnected_PassesHookRealAddressToProxyEnrichment(string realAddress, string expectedRemoteIp)
     {
         VpnServerClient? enrichedClient = null;
         VpnServerClientUpsertPayload? upsertPayload = null;
@@ -89,11 +89,11 @@ public class OpenVpnEventClientConnectTests
         });
 
         Assert.NotNull(enrichedClient);
-        Assert.Equal(realAddress, enrichedClient!.RemoteIp);
+        Assert.Equal(expectedRemoteIp, enrichedClient!.RemoteIp);
         Assert.NotNull(upsertPayload);
-        Assert.Equal(realAddress, upsertPayload!.RemoteIp);
+        Assert.Equal(expectedRemoteIp, upsertPayload!.RemoteIp);
         Assert.Equal(
-            VpnSessionIdGenerator.FromCommonNameRemoteConnectedSince("adg-75-test", realAddress, connectedSince),
+            VpnSessionIdGenerator.FromCommonNameRemoteConnectedSince("adg-75-test", expectedRemoteIp, connectedSince),
             upsertPayload.SessionId);
         proxyMock.Verify(x => x.EnrichFromManagementRealAddressAsync(It.IsAny<VpnServer>(), It.IsAny<VpnServerClient>(), It.IsAny<CancellationToken>()), Times.Once);
         upsertMock.Verify(x => x.UpsertAsync(It.IsAny<VpnServerClientUpsertPayload>(), It.IsAny<CancellationToken>()), Times.Once);

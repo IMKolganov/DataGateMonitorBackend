@@ -43,6 +43,12 @@ public static class OpenVpnRealAddressParser
         return FormatHostPort(host, port, forceLoopbackHost: true);
     }
 
+    /// <summary>Stable <c>RemoteIp</c> for session matching (loopback canonical, otherwise legacy host:port).</summary>
+    public static string NormalizeRemoteIp(string? realAddress) =>
+        CanonicalizeLoopback(realAddress)
+        ?? NormalizeEndpoint(realAddress)
+        ?? (realAddress ?? string.Empty);
+
     /// <summary>Legacy <c>host:port</c> without OpenVPN 2.7 socket prefix.</summary>
     public static string? NormalizeEndpoint(string? realAddress)
     {

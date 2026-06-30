@@ -11,6 +11,7 @@ using DataGateMonitor.Serialization;
 using DataGateMonitor.Services.Api.Auth.Registers.Interfaces;
 using DataGateMonitor.Services.DataGateOpenVpnManager.Interfaces;
 using DataGateMonitor.Services.Helpers;
+using DataGateMonitor.Services.OpenVpnManagementInterfaces;
 using DataGateMonitor.Services.Others.Notifications.OpenVpnMicroserviceClient;
 using DataGateMonitor.SharedModels.DataGateOpenVpnManager.PiHole.Requests;
 using DataGateMonitor.SharedModels.DataGateOpenVpnManager.VpnEvent.Requests;
@@ -289,13 +290,14 @@ public class OpenVpnEventClient(
             if (eventType.Equals("ClientConnected", StringComparison.OrdinalIgnoreCase)
                 && !string.IsNullOrWhiteSpace(req.CommonName))
             {
+                var remoteIp = OpenVpnRealAddressParser.NormalizeRemoteIp(req.RealAddress);
                 var openVpnServerClient = new VpnServerClient
                 {
                     VpnServerId = _openVpnServer.Id,
                     ExternalId = await fileQuery.GetExternalIdByCommonName(
                         req.CommonName, _openVpnServer.Id, CancellationToken.None) ?? string.Empty,
                     CommonName = req.CommonName!,
-                    RemoteIp = req.RealAddress ?? string.Empty,
+                    RemoteIp = remoteIp,
                     LocalIp = req.VirtualAddress ?? string.Empty,
                     BytesReceived = req.BytesReceived ?? 0,
                     BytesSent = req.BytesSent ?? 0,
@@ -323,13 +325,14 @@ public class OpenVpnEventClient(
                      && !string.IsNullOrWhiteSpace(req.CommonName))
             {
                 var nowUtc = DateTimeOffset.UtcNow;
+                var remoteIp = OpenVpnRealAddressParser.NormalizeRemoteIp(req.RealAddress);
 
                 await clientCmd.UpdateWhere(
                     x => x.VpnServerId == _openVpnServer.Id
                          && x.IsConnected
                          && x.CommonName == req.CommonName
                          && x.ConnectedSince == req.ConnectedSince
-                         && x.RemoteIp == req.RealAddress,
+                         && x.RemoteIp == remoteIp,
                     s => s
                         .SetProperty(c => c.IsConnected, false)
                         .SetProperty(c => c.DisconnectedAt, nowUtc)
