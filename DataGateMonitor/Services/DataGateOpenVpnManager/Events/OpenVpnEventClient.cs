@@ -11,7 +11,9 @@ using DataGateMonitor.Serialization;
 using DataGateMonitor.Services.Api.Auth.Registers.Interfaces;
 using DataGateMonitor.Services.DataGateOpenVpnManager.Interfaces;
 using DataGateMonitor.Services.Helpers;
+using DataGateMonitor.Services.OpenVpnManagementInterfaces;
 using DataGateMonitor.Services.Others.Notifications.OpenVpnMicroserviceClient;
+using DataGateMonitor.SharedModels.DataGateOpenVpnManager.PiHole.Requests;
 using DataGateMonitor.SharedModels.DataGateOpenVpnManager.VpnEvent.Requests;
 using DataGateMonitor.SharedModels.DataGateMonitor.VpnServerEvent.Dto;
 using DataGateMonitor.SharedModels.DataGateMonitor.VpnServerEvent.Responses;
@@ -167,6 +169,9 @@ public class OpenVpnEventClient(
                     _connection.On<VpnEventRequest>("VpnError",
                         async data => await HandleEvent("VpnError", data));
 
+                    _connection.On<DnsQueryBatchRequest>("DnsQueriesReceived",
+                        async data => await HandleDnsQueriesAsync(data));
+
                     // Optional: env dumps if you broadcast them
                     _connection.On<object>("EnvDumpReceived",
                         async _ => await Task.CompletedTask);
@@ -285,13 +290,14 @@ public class OpenVpnEventClient(
             if (eventType.Equals("ClientConnected", StringComparison.OrdinalIgnoreCase)
                 && !string.IsNullOrWhiteSpace(req.CommonName))
             {
+                var remoteIp = OpenVpnRealAddressParser.NormalizeRemoteIp(req.RealAddress);
                 var openVpnServerClient = new VpnServerClient
                 {
                     VpnServerId = _openVpnServer.Id,
                     ExternalId = await fileQuery.GetExternalIdByCommonName(
                         req.CommonName, _openVpnServer.Id, CancellationToken.None) ?? string.Empty,
                     CommonName = req.CommonName!,
-                    RemoteIp = req.RealAddress ?? string.Empty,
+                    RemoteIp = remoteIp,
                     LocalIp = req.VirtualAddress ?? string.Empty,
                     BytesReceived = req.BytesReceived ?? 0,
                     BytesSent = req.BytesSent ?? 0,
@@ -319,13 +325,14 @@ public class OpenVpnEventClient(
                      && !string.IsNullOrWhiteSpace(req.CommonName))
             {
                 var nowUtc = DateTimeOffset.UtcNow;
+                var remoteIp = OpenVpnRealAddressParser.NormalizeRemoteIp(req.RealAddress);
 
                 await clientCmd.UpdateWhere(
                     x => x.VpnServerId == _openVpnServer.Id
                          && x.IsConnected
                          && x.CommonName == req.CommonName
                          && x.ConnectedSince == req.ConnectedSince
-                         && x.RemoteIp == req.RealAddress,
+                         && x.RemoteIp == remoteIp,
                     s => s
                         .SetProperty(c => c.IsConnected, false)
                         .SetProperty(c => c.DisconnectedAt, nowUtc)
@@ -357,6 +364,45 @@ public class OpenVpnEventClient(
             swTotal.Stop();
             logger.LogDebug("HandleEvent finished for {EventType} (ServerId={ServerId}); TotalMs={ElapsedMs}",
                 eventType, _openVpnServer.Id, swTotal.ElapsedMilliseconds);
+        }
+    }
+
+    private async Task HandleDnsQueriesAsync(DnsQueryBatchRequest batch)
+    {
+        if (batch.Queries.Count == 0)
+            return;
+
+        try
+        {
+            using var scope = scopeFactory.CreateScope();
+            var dnsLogService = scope.ServiceProvider.GetRequiredService<IVpnDnsQueryLogService>();
+            var saved = await dnsLogService.SaveBatchAsync(_openVpnServer.Id, batch, CancellationToken.None);
+            var skipped = batch.Queries.Count - saved;
+            if (saved == 0)
+            {
+                logger.LogDebug(
+                    "Pi-hole DNS batch for ServerId={ServerId}: nothing new to store ({Received} received, likely duplicates).",
+                    _openVpnServer.Id,
+                    batch.Queries.Count);
+            }
+            else
+            {
+                logger.LogInformation(
+                    "Pi-hole DNS batch for ServerId={ServerId}: saved={Saved}, received={Received}, skippedDuplicates={Skipped}, collectedAt={CollectedAtUtc:o}",
+                    _openVpnServer.Id,
+                    saved,
+                    batch.Queries.Count,
+                    skipped,
+                    batch.CollectedAtUtc);
+            }
+        }
+        catch (Exception ex)
+        {
+            logger.LogError(ex,
+                "Failed to save Pi-hole DNS query batch for ServerId={ServerId} (received={Received}, collectedAt={CollectedAtUtc:o})",
+                _openVpnServer.Id,
+                batch.Queries.Count,
+                batch.CollectedAtUtc);
         }
     }
 }

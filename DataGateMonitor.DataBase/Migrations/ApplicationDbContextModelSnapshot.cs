@@ -18,7 +18,7 @@ namespace DataGateMonitor.DataBase.Migrations
 #pragma warning disable 612, 618
             modelBuilder
                 .HasDefaultSchema("xgb_dashopnvpn")
-                .HasAnnotation("ProductVersion", "10.0.8")
+                .HasAnnotation("ProductVersion", "10.0.9")
                 .HasAnnotation("Relational:MaxIdentifierLength", 63);
 
             NpgsqlModelBuilderExtensions.UseIdentityByDefaultColumns(modelBuilder);
@@ -2472,6 +2472,81 @@ namespace DataGateMonitor.DataBase.Migrations
                     b.ToTable("UserRole", "xgb_dashopnvpn");
                 });
 
+            modelBuilder.Entity("DataGateMonitor.Models.VpnDnsQueryLog", b =>
+                {
+                    b.Property<int>("Id")
+                        .ValueGeneratedOnAdd()
+                        .HasColumnType("integer");
+
+                    NpgsqlPropertyBuilderExtensions.UseIdentityByDefaultColumn(b.Property<int>("Id"));
+
+                    b.Property<string>("ClientIp")
+                        .IsRequired()
+                        .HasMaxLength(64)
+                        .HasColumnType("character varying(64)");
+
+                    b.Property<string>("CommonName")
+                        .HasMaxLength(255)
+                        .HasColumnType("character varying(255)");
+
+                    b.Property<DateTimeOffset>("CreateDate")
+                        .ValueGeneratedOnAdd()
+                        .HasColumnType("timestamp with time zone")
+                        .HasDefaultValueSql("CURRENT_TIMESTAMP");
+
+                    b.Property<string>("Domain")
+                        .IsRequired()
+                        .HasMaxLength(512)
+                        .HasColumnType("character varying(512)");
+
+                    b.Property<string>("ExternalId")
+                        .HasMaxLength(128)
+                        .HasColumnType("character varying(128)");
+
+                    b.Property<DateTimeOffset>("LastUpdate")
+                        .ValueGeneratedOnAdd()
+                        .HasColumnType("timestamp with time zone")
+                        .HasDefaultValueSql("CURRENT_TIMESTAMP");
+
+                    b.Property<long>("PiHoleQueryId")
+                        .HasColumnType("bigint");
+
+                    b.Property<DateTimeOffset>("QueriedAtUtc")
+                        .HasColumnType("timestamp with time zone");
+
+                    b.Property<string>("QueryType")
+                        .HasMaxLength(32)
+                        .HasColumnType("character varying(32)");
+
+                    b.Property<string>("Status")
+                        .IsRequired()
+                        .HasMaxLength(64)
+                        .HasColumnType("character varying(64)");
+
+                    b.Property<int?>("UserId")
+                        .HasColumnType("integer");
+
+                    b.Property<int>("VpnServerId")
+                        .HasColumnType("integer");
+
+                    b.HasKey("Id");
+
+                    b.HasIndex("VpnServerId", "PiHoleQueryId")
+                        .IsUnique()
+                        .HasDatabaseName("ux_vpn_dns_query_server_pihole_id");
+
+                    b.HasIndex("VpnServerId", "QueriedAtUtc")
+                        .HasDatabaseName("ix_vpn_dns_query_server_time");
+
+                    b.HasIndex("VpnServerId", "Domain", "QueriedAtUtc")
+                        .HasDatabaseName("ix_vpn_dns_query_server_domain_time");
+
+                    b.HasIndex("VpnServerId", "ExternalId", "QueriedAtUtc")
+                        .HasDatabaseName("ix_vpn_dns_query_server_external_time");
+
+                    b.ToTable("VpnDnsQueryLogs", "xgb_dashopnvpn");
+                });
+
             modelBuilder.Entity("DataGateMonitor.Models.VpnProfileNotificationGlobalPreference", b =>
                 {
                     b.Property<int>("Id")
@@ -2827,6 +2902,11 @@ namespace DataGateMonitor.DataBase.Migrations
                     b.Property<bool>("IsOnline")
                         .HasColumnType("boolean");
 
+                    b.Property<bool>("IsPiHoleEnabled")
+                        .ValueGeneratedOnAdd()
+                        .HasColumnType("boolean")
+                        .HasDefaultValue(false);
+
                     b.Property<DateTimeOffset>("LastUpdate")
                         .ValueGeneratedOnAdd()
                         .HasColumnType("timestamp with time zone")
@@ -2888,6 +2968,7 @@ namespace DataGateMonitor.DataBase.Migrations
                             IsDisable = false,
                             IsEnableWss = false,
                             IsOnline = false,
+                            IsPiHoleEnabled = false,
                             LastUpdate = new DateTimeOffset(new DateTime(1, 1, 1, 0, 0, 0, 0, DateTimeKind.Unspecified), new TimeSpan(0, 0, 0, 0, 0)),
                             Latitude = 35.185600000000001,
                             Longitude = 33.382300000000001,
@@ -2904,6 +2985,7 @@ namespace DataGateMonitor.DataBase.Migrations
                             IsDisable = false,
                             IsEnableWss = false,
                             IsOnline = false,
+                            IsPiHoleEnabled = false,
                             LastUpdate = new DateTimeOffset(new DateTime(1, 1, 1, 0, 0, 0, 0, DateTimeKind.Unspecified), new TimeSpan(0, 0, 0, 0, 0)),
                             Latitude = 55.755800000000001,
                             Longitude = 37.6173,
@@ -2920,6 +3002,7 @@ namespace DataGateMonitor.DataBase.Migrations
                             IsDisable = false,
                             IsEnableWss = false,
                             IsOnline = false,
+                            IsPiHoleEnabled = false,
                             LastUpdate = new DateTimeOffset(new DateTime(1, 1, 1, 0, 0, 0, 0, DateTimeKind.Unspecified), new TimeSpan(0, 0, 0, 0, 0)),
                             Latitude = 52.367600000000003,
                             Longitude = 4.9040999999999997,
@@ -3368,6 +3451,60 @@ namespace DataGateMonitor.DataBase.Migrations
                             VpnServerIp = "127.0.0.1",
                             VpnServerPort = 443
                         });
+                });
+
+            modelBuilder.Entity("DataGateMonitor.Models.VpnServerPiHoleConfig", b =>
+                {
+                    b.Property<int>("Id")
+                        .ValueGeneratedOnAdd()
+                        .HasColumnType("integer");
+
+                    NpgsqlPropertyBuilderExtensions.UseIdentityByDefaultColumn(b.Property<int>("Id"));
+
+                    b.Property<string>("AppPassword")
+                        .IsRequired()
+                        .HasMaxLength(512)
+                        .HasColumnType("character varying(512)");
+
+                    b.Property<string>("BaseUrl")
+                        .IsRequired()
+                        .HasMaxLength(512)
+                        .HasColumnType("character varying(512)");
+
+                    b.Property<int>("BatchSize")
+                        .HasColumnType("integer");
+
+                    b.Property<string>("ClientSubnetPrefix")
+                        .IsRequired()
+                        .HasMaxLength(64)
+                        .HasColumnType("character varying(64)");
+
+                    b.Property<DateTimeOffset>("CreateDate")
+                        .ValueGeneratedOnAdd()
+                        .HasColumnType("timestamp with time zone")
+                        .HasDefaultValueSql("CURRENT_TIMESTAMP");
+
+                    b.Property<DateTimeOffset>("LastUpdate")
+                        .ValueGeneratedOnAdd()
+                        .HasColumnType("timestamp with time zone")
+                        .HasDefaultValueSql("CURRENT_TIMESTAMP");
+
+                    b.Property<int>("LookbackSeconds")
+                        .HasColumnType("integer");
+
+                    b.Property<int>("PollIntervalSeconds")
+                        .HasColumnType("integer");
+
+                    b.Property<int>("VpnServerId")
+                        .HasColumnType("integer");
+
+                    b.HasKey("Id");
+
+                    b.HasIndex("VpnServerId")
+                        .IsUnique()
+                        .HasDatabaseName("ux_vpn_server_pihole_config_server_id");
+
+                    b.ToTable("VpnServerPiHoleConfigs", "xgb_dashopnvpn");
                 });
 
             modelBuilder.Entity("DataGateMonitor.Models.VpnServerStatusLog", b =>

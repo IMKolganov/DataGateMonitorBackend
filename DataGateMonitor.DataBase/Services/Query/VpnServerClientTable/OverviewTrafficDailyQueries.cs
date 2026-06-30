@@ -40,7 +40,7 @@ public static class OverviewTrafficDailyQueries
     }
 
     internal static bool SupportsDailyGrouping(OverviewGrouping grouping)
-        => grouping is not OverviewGrouping.Hours;
+        => grouping is not OverviewGrouping.Hours and not OverviewGrouping.TenMinutes;
 
     internal static async Task<bool> HasDailyRowsAsync(
         ApplicationDbContext ctx,

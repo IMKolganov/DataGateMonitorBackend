@@ -16,9 +16,7 @@
 # Mono auto generated files
 mono_crash.*
 
-# Local NuGet feed (optional: mkdir packages, pack into it, then: dotnet nuget add source ./packages -n local-packages)
 /packages/
-local-packages/
 
 # Build results
 [Dd]ebug/
@@ -346,6 +344,9 @@ ASALocalRun/
 # Local History for Visual Studio
 .localhistory/
 
+# Ad-hoc local SQL / scratch (not for commit)
+.local/
+
 # BeatPulse healthcheck temp database
 healthchecksdb
 
@@ -367,8 +368,13 @@ appsettings*
 appsettings.json
 appsettings.Development.json
 .idea
+# Runtime resources (GeoLite DB, certs, startup history — Docker volume / local dev)
+DataGateMonitor/resources/
 GeoLite2-City.mmdb
 GeoLite2/
+geo-lite2/
+GeoLite2*/
+*.mmdb
 DataGateMonitor/data/startup-history.json
 secrets/
 jwt-secret.txt

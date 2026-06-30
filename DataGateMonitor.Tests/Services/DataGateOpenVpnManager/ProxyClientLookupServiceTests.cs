@@ -8,7 +8,11 @@ public class ProxyClientLookupServiceTests
 {
     [Theory]
     [InlineData("127.0.0.1:41810", "127.0.0.1", 41810)]
+    [InlineData("tcp4-server:127.0.0.1:53188", "127.0.0.1", 53188)]
+    [InlineData("udp4-server:127.0.0.1:51932", "127.0.0.1", 51932)]
+    [InlineData("tcp6-server:[::1]:50000", "::1", 50000)]
     [InlineData("[::1]:50000", "::1", 50000)]
+    [InlineData("localhost:54321", "127.0.0.1", 54321)]
     public void TryParseLoopbackIpAndPort_AcceptsLoopbackWithPort(string input, string expectedHost, int expectedPort)
     {
         var ok = ProxyClientLookupService.TryParseLoopbackIpAndPort(input, out var host, out var port);
@@ -19,6 +23,7 @@ public class ProxyClientLookupServiceTests
 
     [Theory]
     [InlineData("203.0.113.5:443")]
+    [InlineData("tcp4-server:203.0.113.5:443")]
     [InlineData("")]
     [InlineData("not-an-endpoint")]
     public void TryParseLoopbackIpAndPort_RejectsNonLoopbackOrInvalid(string input)
@@ -87,7 +92,7 @@ public class ProxyClientLookupServiceTests
     {
         var client = new VpnServerClient
         {
-            RemoteIp = "127.0.0.1:55664",
+            RemoteIp = "tcp4-server:127.0.0.1:55664",
             ProxyRealIp = null
         };
 

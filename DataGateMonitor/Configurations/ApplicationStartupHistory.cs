@@ -18,7 +18,12 @@ public interface IApplicationStartupHistory
 }
 
 /// <summary>
-/// Persists recent process startups under <c>{ContentRootPath}/data/startup-history.json</c>.
+/// Persists recent process startups. Path resolution:
+/// <list>
+/// <item><c>STARTUP_HISTORY_PATH</c> env when set</item>
+/// <item><c>{ContentRootPath}/resources/startup-history.json</c> in containers (bind to <c>/app/resources</c> volume)</item>
+/// <item><c>{ContentRootPath}/data/startup-history.json</c> for local dev</item>
+/// </list>
 /// </summary>
 public sealed class ApplicationStartupHistory : IApplicationStartupHistory
 {
@@ -62,8 +67,17 @@ public sealed class ApplicationStartupHistory : IApplicationStartupHistory
             return _records.ToList();
     }
 
-    public static string GetHistoryFilePath(IWebHostEnvironment environment) =>
-        Path.Combine(environment.ContentRootPath, "data", "startup-history.json");
+    public static string GetHistoryFilePath(IWebHostEnvironment environment)
+    {
+        var configured = Environment.GetEnvironmentVariable("STARTUP_HISTORY_PATH");
+        if (!string.IsNullOrWhiteSpace(configured))
+            return configured.Trim();
+
+        if (Environment.GetEnvironmentVariable("DOTNET_RUNNING_IN_CONTAINER") == "true")
+            return Path.Combine(environment.ContentRootPath, "resources", "startup-history.json");
+
+        return Path.Combine(environment.ContentRootPath, "data", "startup-history.json");
+    }
 
     private static List<ApplicationStartupRecord> Load(string path)
     {

@@ -215,6 +215,54 @@ public class OpenVpnClientServiceTests
     }
 
     [Fact]
+    public async Task ParseStatus_OpenVpn27LoopbackRealAddress_IsCanonicalized_And_SessionIdMatchesLegacyFormat()
+    {
+        var svc = CreateService(out var geoMock, out _, out _, out _);
+
+        geoMock.Setup(x => x.GetGeoInfoAsync("127.0.0.1:53188", It.IsAny<CancellationToken>()))
+            .ReturnsAsync((OpenVpnGeoInfo?)null);
+
+        const string legacy =
+            "CLIENT_LIST\tadg-75-test\t127.0.0.1:53188\t10.51.15.8\t\t100\t200\t1782816170\tUNDEF\n";
+        const string openVpn27 =
+            "CLIENT_LIST\tadg-75-test\ttcp4-server:127.0.0.1:53188\t10.51.15.8\t\t100\t200\t1782816170\tUNDEF\n";
+
+        var legacyResult = await InvokeParseStatusAsync(svc, legacy);
+        var openVpn27Result = await InvokeParseStatusAsync(svc, openVpn27);
+
+        Assert.Single(legacyResult.Clients);
+        Assert.Single(openVpn27Result.Clients);
+
+        var legacyClient = legacyResult.Clients[0];
+        var openVpn27Client = openVpn27Result.Clients[0];
+
+        Assert.Equal("127.0.0.1:53188", legacyClient.RemoteIp);
+        Assert.Equal("127.0.0.1:53188", openVpn27Client.RemoteIp);
+        Assert.Equal(legacyClient.SessionId, openVpn27Client.SessionId);
+    }
+
+    [Fact]
+    public async Task ParseStatus_OpenVpn27ExternalRealAddress_IsNormalizedForGeoAndSessionId()
+    {
+        var svc = CreateService(out var geoMock, out _, out _, out _);
+
+        geoMock.Setup(x => x.GetGeoInfoAsync("203.0.113.1:443", It.IsAny<CancellationToken>()))
+            .ReturnsAsync((OpenVpnGeoInfo?)null);
+
+        const string legacy =
+            "CLIENT_LIST\tdirect-client\t203.0.113.1:443\t10.51.15.9\t\t10\t20\t1782816170\tUNDEF\n";
+        const string openVpn27 =
+            "CLIENT_LIST\tdirect-client\ttcp4-server:203.0.113.1:443\t10.51.15.9\t\t10\t20\t1782816170\tUNDEF\n";
+
+        var legacyResult = await InvokeParseStatusAsync(svc, legacy);
+        var openVpn27Result = await InvokeParseStatusAsync(svc, openVpn27);
+
+        Assert.Equal("203.0.113.1:443", legacyResult.Clients[0].RemoteIp);
+        Assert.Equal("203.0.113.1:443", openVpn27Result.Clients[0].RemoteIp);
+        Assert.Equal(legacyResult.Clients[0].SessionId, openVpn27Result.Clients[0].SessionId);
+    }
+
+    [Fact]
     public async Task ParseStatus_InsufficientColumns_IsSkipped()
     {
         var svc = CreateService(out var geoMock, out _, out _, out _);

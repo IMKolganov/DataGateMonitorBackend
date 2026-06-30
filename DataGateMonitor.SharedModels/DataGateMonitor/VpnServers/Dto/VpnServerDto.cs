@@ -22,7 +22,9 @@ public class VpnServerDto
 
 	public double? Longitude { get; set; }
 
-	public bool IsEnableWss { get; set; }
+    public bool IsEnableWss { get; set; }
+
+    public bool IsPiHoleEnabled { get; set; }
 
 	public DateTimeOffset CreateDate { get; set; }
 

@@ -1,4 +1,5 @@
 using DataGateMonitor.Services.BackgroundServices;
+using Microsoft.Extensions.DependencyInjection;
 using Microsoft.Extensions.Logging.Abstractions;
 using Moq;
 
@@ -60,11 +61,16 @@ public class TrafficDailyRollupBackgroundServiceTests
         var key = "TRAFFIC_DAILY_ROLLUP_DISABLED";
         var previous = Environment.GetEnvironmentVariable(key);
         var runner = new Mock<ITrafficDailyRollupRunner>();
+        var services = new ServiceCollection();
+        services.AddScoped(_ => runner.Object);
+        await using var provider = services.BuildServiceProvider();
 
         try
         {
             Environment.SetEnvironmentVariable(key, "true");
-            var sut = new TrafficDailyRollupBackgroundService(runner.Object, NullLogger<TrafficDailyRollupBackgroundService>.Instance);
+            var sut = new TrafficDailyRollupBackgroundService(
+                provider.GetRequiredService<IServiceScopeFactory>(),
+                NullLogger<TrafficDailyRollupBackgroundService>.Instance);
 
             using var cts = new CancellationTokenSource(TimeSpan.FromMilliseconds(50));
             await sut.StartAsync(cts.Token);
