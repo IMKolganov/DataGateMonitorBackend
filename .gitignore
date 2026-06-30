@@ -344,6 +344,9 @@ ASALocalRun/
 # Local History for Visual Studio
 .localhistory/
 
+# Ad-hoc local SQL / scratch (not for commit)
+.local/
+
 # BeatPulse healthcheck temp database
 healthchecksdb
 

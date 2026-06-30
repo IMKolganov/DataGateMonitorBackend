@@ -184,16 +184,7 @@ public sealed class OpenVpnOverviewSeriesQuery(
         DateTimeOffset fromUtc,
         DateTimeOffset toUtc,
         OverviewGrouping grouping)
-    {
-        if (grouping != OverviewGrouping.Auto)
-            return grouping;
-
-        var span = toUtc - fromUtc;
-        return span <= TimeSpan.FromDays(2) ? OverviewGrouping.Hours
-            : span <= TimeSpan.FromDays(180) ? OverviewGrouping.Days
-            : span <= TimeSpan.FromDays(36 * 30) ? OverviewGrouping.Months
-            : OverviewGrouping.Years;
-    }
+        => OverviewGroupingRules.ResolveAuto(fromUtc, toUtc, grouping);
 
     private static Dictionary<DateTimeOffset, OverviewSeriesRowDto> BuildSeriesBucketDict(
         IEnumerable<OverviewSeriesRowDto> rows,

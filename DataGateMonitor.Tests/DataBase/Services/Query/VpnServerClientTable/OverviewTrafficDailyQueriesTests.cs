@@ -66,6 +66,7 @@ public class OverviewTrafficDailyQueriesTests
     [InlineData(OverviewGrouping.Months, true)]
     [InlineData(OverviewGrouping.Years, true)]
     [InlineData(OverviewGrouping.Hours, false)]
+    [InlineData(OverviewGrouping.TenMinutes, false)]
     public void SupportsDailyGrouping_MatchesGrouping(OverviewGrouping grouping, bool expected)
     {
         Assert.Equal(expected, OverviewTrafficDailyQueries.SupportsDailyGrouping(grouping));

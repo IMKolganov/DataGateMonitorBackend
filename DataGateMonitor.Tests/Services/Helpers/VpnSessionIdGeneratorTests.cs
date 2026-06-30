@@ -1,25 +1,31 @@
 using DataGateMonitor.Services.Helpers;
-using Xunit;
 
 namespace DataGateMonitor.Tests.Services.Helpers;
 
 public class VpnSessionIdGeneratorTests
 {
     [Fact]
-    public void FromCommonNameRemoteConnectedSince_IsDeterministic()
+    public void FromCommonNameRemoteConnectedSince_LoopbackLegacyAndOpenVpn27Canonical_Match()
     {
-        var since = new DateTimeOffset(2024, 6, 1, 12, 0, 0, TimeSpan.Zero);
-        var a = VpnSessionIdGenerator.FromCommonNameRemoteConnectedSince("u1", "10.0.0.1:443", since);
-        var b = VpnSessionIdGenerator.FromCommonNameRemoteConnectedSince("u1", "10.0.0.1:443", since);
-        Assert.Equal(a, b);
+        var since = new DateTimeOffset(2026, 6, 30, 10, 42, 50, TimeSpan.Zero);
+        const string cn = "adg-75-test";
+
+        var legacy = VpnSessionIdGenerator.FromCommonNameRemoteConnectedSince(cn, "127.0.0.1:53188", since);
+        var canonical = VpnSessionIdGenerator.FromCommonNameRemoteConnectedSince(cn, "127.0.0.1:53188", since);
+
+        Assert.Equal(legacy, canonical);
+        Assert.NotEqual(Guid.Empty, legacy);
     }
 
     [Fact]
-    public void FromCommonNameRemoteConnectedSince_DiffersWhenInputsChange()
+    public void FromCommonNameRemoteConnectedSince_DifferentRemoteIp_ProducesDifferentSessionId()
     {
-        var since = new DateTimeOffset(2024, 6, 1, 12, 0, 0, TimeSpan.Zero);
-        var a = VpnSessionIdGenerator.FromCommonNameRemoteConnectedSince("u1", "10.0.0.1:443", since);
-        var b = VpnSessionIdGenerator.FromCommonNameRemoteConnectedSince("u2", "10.0.0.1:443", since);
+        var since = new DateTimeOffset(2026, 6, 30, 10, 42, 50, TimeSpan.Zero);
+        const string cn = "adg-75-test";
+
+        var a = VpnSessionIdGenerator.FromCommonNameRemoteConnectedSince(cn, "127.0.0.1:53188", since);
+        var b = VpnSessionIdGenerator.FromCommonNameRemoteConnectedSince(cn, "tcp4-server:127.0.0.1:53188", since);
+
         Assert.NotEqual(a, b);
     }
 }

@@ -7,6 +7,7 @@ using DataGateMonitor.Services.Api.Auth.Registers.Interfaces;
 using DataGateMonitor.Services.DataGateOpenVpnManager.Interfaces;
 using DataGateMonitor.Services.GeoLite.Interfaces;
 using DataGateMonitor.Serialization;
+using DataGateMonitor.Services.OpenVpnManagementInterfaces;
 using DataGateMonitor.Services.Others.Notifications.OpenVpnMicroserviceClient;
 using DataGateMonitor.SharedModels.DataGateOpenVpnManager.Proxy.Responses;
 using DataGateMonitor.SharedModels.Enums;
@@ -62,27 +63,22 @@ public sealed class ProxyClientLookupService(
         await ApplyGeoFromIpAsync(client, ipForGeo, ct).ConfigureAwait(false);
     }
 
-    /// <summary>Parses management <c>RealAddress</c> when it is loopback IP + port (e.g. <c>127.0.0.1:41810</c>).</summary>
+    /// <summary>Parses management <c>RealAddress</c> when it is loopback IP + port (e.g. <c>127.0.0.1:41810</c> or OpenVPN 2.7 <c>tcp4-server:127.0.0.1:41810</c>).</summary>
     public static bool TryParseLoopbackIpAndPort(string realAddress, out string host, out int localPort)
     {
         host = string.Empty;
         localPort = 0;
 
-        if (string.IsNullOrWhiteSpace(realAddress))
+        if (!OpenVpnRealAddressParser.TryParseHostPort(realAddress, out var parsedHost, out var port))
             return false;
 
-        if (!IPEndPoint.TryParse(realAddress.Trim(), out var ep))
+        if (!OpenVpnRealAddressParser.IsLoopbackHost(parsedHost))
             return false;
 
-        if (!IPAddress.IsLoopback(ep.Address))
-            return false;
-
-        localPort = ep.Port;
-        if (localPort is < 1 or > 65535)
-            return false;
-
-        host = ep.Address.ToString();
-
+        host = parsedHost.Equals("localhost", StringComparison.OrdinalIgnoreCase)
+            ? "127.0.0.1"
+            : IPAddress.Parse(parsedHost).ToString();
+        localPort = port;
         return true;
     }
 
