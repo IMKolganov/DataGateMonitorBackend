@@ -57,4 +57,10 @@ public enum ApplicationNotificationKind
 
     /// <summary>Daily traffic rollup failed.</summary>
     TrafficDailyRollupFailed = 30,
+
+    /// <summary>Issued OpenVPN client certificate expires within the configured warning window.</summary>
+    OvpnCertExpiryWarning = 31,
+
+    /// <summary>Issued OpenVPN client certificate has expired on the node PKI.</summary>
+    OvpnCertExpired = 32,
 }

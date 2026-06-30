@@ -31,5 +31,9 @@ public interface IIssuedOvpnFileQueryService
     
     Task<bool> ExistsActiveByVpnServerIdAndCommonName(int vpnServerId, string commonName, CancellationToken ct);
 
+    Task<List<IssuedOvpnFile>> GetAllActive(CancellationToken ct);
+
+    Task<List<IssuedOvpnFile>> GetAllActiveByVpnServerIds(IReadOnlyCollection<int> vpnServerIds, CancellationToken ct);
+
     Task<IPagedResult<IssuedOvpnFile>> GetPage(int page, int pageSize, CancellationToken ct);
 }

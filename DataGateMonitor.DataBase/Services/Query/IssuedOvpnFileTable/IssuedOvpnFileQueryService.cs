@@ -91,6 +91,18 @@ public class IssuedOvpnFileQueryService(IQueryService<IssuedOvpnFile, int> q) : 
                 x.VpnServerId == vpnServerId
                 && x.CommonName == commonName
                 && !x.IsRevoked, ct);
+
+    public Task<List<IssuedOvpnFile>> GetAllActive(CancellationToken ct)
+        => q.Where(x => !x.IsRevoked, ct: ct);
+
+    public Task<List<IssuedOvpnFile>> GetAllActiveByVpnServerIds(IReadOnlyCollection<int> vpnServerIds, CancellationToken ct)
+    {
+        if (vpnServerIds.Count == 0)
+            return Task.FromResult(new List<IssuedOvpnFile>());
+
+        var ids = vpnServerIds.Distinct().ToList();
+        return q.Where(x => !x.IsRevoked && ids.Contains(x.VpnServerId), ct: ct);
+    }
     
     public Task<IPagedResult<IssuedOvpnFile>> GetPage(int page, int pageSize, CancellationToken ct)
         => q.Page(page, pageSize, ct: ct);

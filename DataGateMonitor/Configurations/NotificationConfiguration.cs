@@ -6,6 +6,7 @@ using DataGateMonitor.Services.Others.Notifications.ServerOpenVpnApiClient;
 using DataGateMonitor.Services.Others.Notifications.OpenVpnMicroserviceClient;
 using DataGateMonitor.Services.Others.Notifications.GeoLite;
 using DataGateMonitor.Services.Others.Notifications.TrafficDaily;
+using DataGateMonitor.Services.Others.Notifications.CertExpiry;
 using DataGateMonitor.Hubs;
 
 namespace DataGateMonitor.Configurations;
@@ -29,6 +30,7 @@ public static class NotificationConfiguration
         services.AddScoped<IOpenVpnMicroserviceNotificationService, OpenVpnMicroserviceNotificationService>();
         services.AddScoped<IGeoLiteNotificationService, GeoLiteNotificationService>();
         services.AddScoped<ITrafficDailyRollupNotificationService, TrafficDailyRollupNotificationService>();
+        services.AddScoped<ICertExpiryNotificationService, CertExpiryNotificationService>();
 
         // Admin hub adapter for WebNotifier
         services.AddSingleton<IAdminNotificationHub, AdminNotificationHubService>(); // <— ADD THIS
