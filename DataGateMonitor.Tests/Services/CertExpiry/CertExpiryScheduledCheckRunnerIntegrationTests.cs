@@ -22,6 +22,7 @@ public sealed class CertExpiryScheduledCheckRunnerIntegrationTests : IDisposable
     private readonly Mock<ICertExpiryNotificationService> _notifier = new();
     private readonly Mock<ISettingsService> _settings = new();
     private readonly CertExpiryNotificationTracker _tracker = new();
+    private readonly CertExpiryRunHistoryStore _history = new();
 
     public CertExpiryScheduledCheckRunnerIntegrationTests()
     {
@@ -325,7 +326,8 @@ public sealed class CertExpiryScheduledCheckRunnerIntegrationTests : IDisposable
         return new CertExpiryScheduledCheckRunner(
             NullLogger<CertExpiryScheduledCheckRunner>.Instance,
             provider.GetRequiredService<IServiceScopeFactory>(),
-            _tracker);
+            _tracker,
+            _history);
     }
 
     private void SetupServer(int serverId)
