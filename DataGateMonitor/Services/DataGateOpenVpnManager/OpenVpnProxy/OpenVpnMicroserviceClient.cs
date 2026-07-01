@@ -23,8 +23,8 @@ public class OpenVpnMicroserviceClient(
     private IHubConnectionProxy? _connection;
     private readonly SemaphoreSlim _connectionLock = new(1, 1);
     private bool _handlersRegistered = false;
-    private string? _lastApiUrl;
     private bool _disposed;
+    public string RegisteredApiUrl { get; } = server.ApiUrl;
     public string CurrentApiUrl => server.ApiUrl;
     private readonly IHubConnectionFactory _hubFactory = hubConnectionFactory ?? new DefaultHubConnectionFactory();
 
@@ -150,9 +150,13 @@ public class OpenVpnMicroserviceClient(
         await _connectionLock.WaitAsync(cancellationToken);
         try
         {
-            if (_connection is not null && server.ApiUrl != _lastApiUrl)
+            if (_connection is not null
+                && !VpnServerApiUrlNormalizer.Equals(server.ApiUrl, RegisteredApiUrl))
             {
                 logger.LogWarning("Detected API URL change for server {ServerId}. Recreating SignalR connection...", server.Id);
+                logger.LogDebug(
+                    "Microservice hub URL change for server {ServerId}: RegisteredApiUrl={RegisteredApiUrl}, CurrentApiUrl={CurrentApiUrl}",
+                    server.Id, RegisteredApiUrl, server.ApiUrl);
                 await _connection.DisposeAsync();
                 _connection = null;
                 _handlersRegistered = false;
@@ -164,7 +168,6 @@ public class OpenVpnMicroserviceClient(
                 logger.LogInformation(
                     "Creating SignalR connection for server {ServerId}, Url={Url}",
                     server.Id, fullUrl);
-                _lastApiUrl = server.ApiUrl;
 
                 _connection = _hubFactory.Create(fullUrl, () =>
                     Task.FromResult<string?>(tokenService.GenerateToken("vpn-cert-issuer", "cert-create", "backend", "DataGateOpenVpnManager")));
@@ -195,7 +198,14 @@ public class OpenVpnMicroserviceClient(
 
             if (_connection.State != HubConnectionState.Connected)
             {
-                await _connection.StartAsync(cancellationToken);
+                logger.LogDebug(
+                    "Microservice hub StartWhenReady: ServerId={ServerId}, CurrentState={State}, TargetUrl={Url}",
+                    server.Id, _connection.State, $"{server.ApiUrl.TrimEnd('/')}/hubs/openvpn");
+                await HubConnectionStartup.StartWhenReadyAsync(
+                    () => _connection.State,
+                    ct => _connection.StartAsync(ct),
+                    cancellationToken,
+                    logger: logger);
                 logger.LogInformation("Started SignalR connection for server {ServerId}", server.Id);
             }
 
@@ -212,7 +222,12 @@ public class OpenVpnMicroserviceClient(
         try
         {
             await connection.StopAsync();
-            await connection.StartAsync();
+            logger.LogDebug("Microservice hub ReconnectAsync StopAsync completed for server {ServerId}, State={State}", server.Id, connection.State);
+            await HubConnectionStartup.StartWhenReadyAsync(
+                () => connection.State,
+                ct => connection.StartAsync(ct),
+                CancellationToken.None,
+                logger: logger);
             logger.LogInformation("Reconnected to SignalR for server {ServerId}", server.Id);
         }
         catch (Exception ex)

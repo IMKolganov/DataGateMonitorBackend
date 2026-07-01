@@ -5,6 +5,7 @@ using DataGateMonitor.DataBase.Services.Query.VpnServerTable;
 using DataGateMonitor.Hubs;
 using DataGateMonitor.Models;
 using DataGateMonitor.Services.Api.Auth.Registers.Interfaces;
+using DataGateMonitor.Services.DataGateOpenVpnManager.OpenVpnProxy.Hubs.Interfaces;
 using DataGateMonitor.SharedModels.Enums;
 
 namespace DataGateMonitor.Services.DataGateOpenVpnManager.OpenVpnProxy;
@@ -12,6 +13,9 @@ namespace DataGateMonitor.Services.DataGateOpenVpnManager.OpenVpnProxy;
 public class OpenVpnMicroserviceClientFactory(IServiceProvider serviceProvider) : IOpenVpnMicroserviceClientFactory
 {
     private readonly ConcurrentDictionary<int, IOpenVpnMicroserviceClient> _clientCache = new();
+
+    private ILogger<OpenVpnMicroserviceClientFactory> Logger =>
+        serviceProvider.GetRequiredService<ILogger<OpenVpnMicroserviceClientFactory>>();
 
     public IOpenVpnMicroserviceClient Create(VpnServer server)
     {
@@ -21,19 +25,29 @@ public class OpenVpnMicroserviceClientFactory(IServiceProvider serviceProvider) 
                 $"OpenVPN microservice client is only for OpenVPN servers (server {server.Id} is {server.ServerType}).");
         }
 
-        var normalizedUrl = NormalizeUrl(server.ApiUrl);
+        var normalizedUrl = VpnServerApiUrlNormalizer.Normalize(server.ApiUrl);
 
         return _clientCache.AddOrUpdate(
             server.Id,
-            _ => CreateNew(server),
+            _ =>
+            {
+                Logger.LogDebug("Creating new microservice client for server {ServerId}, ApiUrl={ApiUrl}", server.Id, server.ApiUrl);
+                return CreateNew(server);
+            },
             (_, existing) =>
             {
-                // compare normalized
-                if (!UrlsEqual(existing.CurrentApiUrl, normalizedUrl))
+                if (!VpnServerApiUrlNormalizer.Equals(existing.RegisteredApiUrl, normalizedUrl))
                 {
+                    Logger.LogDebug(
+                        "Recreating microservice client for server {ServerId}: RegisteredApiUrl={RegisteredApiUrl} -> ApiUrl={ApiUrl}",
+                        server.Id, existing.RegisteredApiUrl, server.ApiUrl);
                     DisposeClient(existing);
                     return CreateNew(server);
                 }
+
+                Logger.LogDebug(
+                    "Reusing cached microservice client for server {ServerId}, RegisteredApiUrl={RegisteredApiUrl}",
+                    server.Id, existing.RegisteredApiUrl);
                 return existing;
             });
     }
@@ -67,7 +81,8 @@ public class OpenVpnMicroserviceClientFactory(IServiceProvider serviceProvider) 
         var frontendHub = scope.ServiceProvider.GetRequiredService<IHubContext<OpenVpnFrontendHub>>();
         var tokenService = scope.ServiceProvider.GetRequiredService<IMicroserviceTokenService>();
         var scopeFactory = scope.ServiceProvider.GetRequiredService<IServiceScopeFactory>();
-        return new OpenVpnMicroserviceClient(server, logger, frontendHub, tokenService, scopeFactory);
+        var hubConnectionFactory = scope.ServiceProvider.GetService<IHubConnectionFactory>();
+        return new OpenVpnMicroserviceClient(server, logger, frontendHub, tokenService, scopeFactory, hubConnectionFactory);
     }
 
     private static void DisposeClient(IOpenVpnMicroserviceClient client)
@@ -76,21 +91,4 @@ public class OpenVpnMicroserviceClientFactory(IServiceProvider serviceProvider) 
         (client as IAsyncDisposable)?.DisposeAsync().AsTask().GetAwaiter().GetResult();
         (client as IDisposable)?.Dispose();
     }
-
-    private static string NormalizeUrl(string? url)
-    {
-        if (string.IsNullOrWhiteSpace(url)) return string.Empty;
-        try
-        {
-            var uri = new Uri(url, UriKind.Absolute);
-            var left = uri.GetLeftPart(UriPartial.Authority) + uri.AbsolutePath;
-            return left.TrimEnd('/').ToLowerInvariant();
-        }
-        catch
-        {
-            return url.Trim().TrimEnd('/').ToLowerInvariant();
-        }
-    }
-
-    private static bool UrlsEqual(string? a, string? b) => NormalizeUrl(a) == NormalizeUrl(b);
 }

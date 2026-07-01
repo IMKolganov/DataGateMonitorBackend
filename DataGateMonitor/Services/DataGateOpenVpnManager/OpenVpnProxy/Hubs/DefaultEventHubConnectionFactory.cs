@@ -2,11 +2,11 @@ using DataGateMonitor.Services.DataGateOpenVpnManager.OpenVpnProxy.Hubs.Interfac
 
 namespace DataGateMonitor.Services.DataGateOpenVpnManager.OpenVpnProxy.Hubs;
 
-internal sealed class DefaultHubConnectionFactory : IHubConnectionFactory
+internal sealed class DefaultEventHubConnectionFactory : IEventHubConnectionFactory
 {
     public IHubConnectionProxy Create(string fullUrl, Func<Task<string?>> accessTokenProvider)
     {
-        var connection = OpenVpnHubConnectionBuilder.Build(fullUrl, accessTokenProvider, suppressSignalRInfoLogs: true);
+        var connection = OpenVpnHubConnectionBuilder.Build(fullUrl, accessTokenProvider);
         return new HubConnectionProxy(connection);
     }
 }

@@ -1,0 +1,36 @@
+using DataGateMonitor.Services.DataGateOpenVpnManager.OpenVpnProxy;
+
+namespace DataGateMonitor.Tests.Services.DataGateOpenVpnManager.OpenVpnProxy;
+
+public class VpnServerApiUrlNormalizerTests
+{
+    [Theory]
+    [InlineData("https://A.example.com/", "https://a.example.com")]
+    [InlineData("https://a.example.com", "https://a.example.com")]
+    [InlineData("https://a.example.com/path/", "https://a.example.com/path")]
+    public void Normalize_IsCaseInsensitive_AndTrimsTrailingSlash(string input, string expected)
+    {
+        Assert.Equal(expected, VpnServerApiUrlNormalizer.Normalize(input));
+    }
+
+    [Fact]
+    public void Equals_TreatsEquivalentUrlsAsEqual()
+    {
+        Assert.True(VpnServerApiUrlNormalizer.Equals("https://Host.example.com/", "https://host.example.com"));
+    }
+
+    [Theory]
+    [InlineData(null, "")]
+    [InlineData("", "")]
+    [InlineData("   ", "")]
+    public void Normalize_ReturnsEmpty_ForBlankInput(string? input, string expected)
+    {
+        Assert.Equal(expected, VpnServerApiUrlNormalizer.Normalize(input));
+    }
+
+    [Fact]
+    public void Normalize_FallsBack_WhenUrlIsNotAbsolute()
+    {
+        Assert.Equal("not-a-uri", VpnServerApiUrlNormalizer.Normalize("NOT-A-URI"));
+    }
+}
