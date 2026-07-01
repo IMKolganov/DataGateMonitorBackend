@@ -39,15 +39,15 @@ public class VpnServerPiHoleConfigController(IVpnServerPiHoleConfigService piHol
 
     [Authorize(Roles = "Admin")]
     [HttpPost("{vpnServerId:int}/apply-runtime")]
-    public async Task<ActionResult<ApiResponse<object>>> ApplyRuntime(
+    public async Task<ActionResult<ApiResponse<ApplyVpnServerPiHoleRuntimeResponse>>> ApplyRuntime(
         [FromRoute] int vpnServerId,
         CancellationToken ct)
     {
         if (vpnServerId <= 0)
-            return BadRequest(ApiResponse<object>.ErrorResponse("VpnServerId must be greater than 0."));
+            return BadRequest(ApiResponse<ApplyVpnServerPiHoleRuntimeResponse>.ErrorResponse("VpnServerId must be greater than 0."));
 
         await piHoleConfigService.ApplyRuntimeToMicroserviceAsync(vpnServerId, ct);
-        return Ok(ApiResponse<object>.SuccessResponse(new { }));
+        return Ok(ApiResponse<ApplyVpnServerPiHoleRuntimeResponse>.SuccessResponse(new ApplyVpnServerPiHoleRuntimeResponse()));
     }
 
     [Authorize(Roles = "Admin")]

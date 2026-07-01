@@ -3,7 +3,7 @@ using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Mvc;
 using DataGateMonitor.DataBase.Services.Query.IssuedOvpnFileTable;
 using DataGateMonitor.DataBase.Services.Query.VpnDnsQueryLogTable;
-using DataGateMonitor.Models;
+using DataGateMonitor.SharedModels.DataGateMonitor.VpnDnsQuery.Dto;
 using DataGateMonitor.SharedModels.DataGateMonitor.VpnDnsQuery.Requests;
 using DataGateMonitor.SharedModels.DataGateMonitor.VpnDnsQuery.Responses;
 using DataGateMonitor.SharedModels.Responses;
@@ -37,7 +37,7 @@ public class VpnDnsQueryController(
     }
 
     [HttpGet("profile-summary")]
-    public async Task<ActionResult<ApiResponse<IReadOnlyList<VpnDnsProfileSummaryResponseItem>>>> ProfileSummary(
+    public async Task<ActionResult<ApiResponse<IReadOnlyList<VpnDnsProfileSummaryItemDto>>>> ProfileSummary(
         [FromQuery] string externalId,
         [FromQuery] int vpnServerId = 0,
         [FromQuery] DateTimeOffset? fromUtc = null,
@@ -74,7 +74,7 @@ public class VpnDnsQueryController(
             {
                 var sample = g.First();
                 dnsLookup.TryGetValue(ProfileKey(sample.CommonName, sample.VpnServerId), out var dns);
-                return new VpnDnsProfileSummaryResponseItem
+                return new VpnDnsProfileSummaryItemDto
                 {
                     CommonName = sample.CommonName,
                     VpnServerId = sample.VpnServerId,
@@ -93,7 +93,7 @@ public class VpnDnsQueryController(
             if (items.Any(x => ProfileKey(x.CommonName, x.VpnServerId) == key))
                 continue;
 
-            items.Add(new VpnDnsProfileSummaryResponseItem
+            items.Add(new VpnDnsProfileSummaryItemDto
             {
                 CommonName = dns.CommonName,
                 VpnServerId = dns.VpnServerId,
@@ -103,7 +103,7 @@ public class VpnDnsQueryController(
             });
         }
 
-        return Ok(ApiResponse<IReadOnlyList<VpnDnsProfileSummaryResponseItem>>.SuccessResponse(items));
+        return Ok(ApiResponse<IReadOnlyList<VpnDnsProfileSummaryItemDto>>.SuccessResponse(items));
     }
 
     [HttpGet("top-domains")]
@@ -138,17 +138,4 @@ public class VpnDnsQueryController(
 
     private static string ProfileKey(string commonName, int vpnServerId) =>
         $"{vpnServerId}|{commonName}";
-}
-
-public sealed class VpnDnsProfileSummaryResponseItem
-{
-    public string CommonName { get; set; } = string.Empty;
-
-    public int VpnServerId { get; set; }
-
-    public bool IsRevoked { get; set; }
-
-    public int QueryCount { get; set; }
-
-    public DateTimeOffset? LastQueriedAtUtc { get; set; }
 }

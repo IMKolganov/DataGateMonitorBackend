@@ -12,7 +12,7 @@ public interface IVpnDnsQueryLogQueryService
         CancellationToken ct,
         IReadOnlyList<string>? profileCommonNames = null);
 
-    Task<IReadOnlyList<VpnDnsProfileSummaryItem>> GetProfileSummaryAsync(
+    Task<IReadOnlyList<VpnDnsProfileSummaryItemDto>> GetProfileSummaryAsync(
         string externalId,
         IReadOnlyList<string> profileCommonNames,
         int vpnServerId,
