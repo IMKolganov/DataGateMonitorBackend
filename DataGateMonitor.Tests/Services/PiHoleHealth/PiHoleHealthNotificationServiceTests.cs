@@ -27,4 +27,21 @@ public class PiHoleHealthNotificationServiceTests
         Assert.Equal(ApplicationNotificationKind.OpenVpnServerSyncError, captured.PreferenceKind);
         Assert.Equal(NotificationSeverity.Warning, captured.Severity);
     }
+
+    [Fact]
+    public async Task NotifyRecoveredAsync_UsesPiHoleRecoveredNotificationType()
+    {
+        var notifications = new Mock<INotificationService>();
+        NotifyAdminsRequest? captured = null;
+        notifications.Setup(x => x.NotifyAdmins(It.IsAny<NotifyAdminsRequest>(), It.IsAny<IEnumerable<string>>(), It.IsAny<CancellationToken>()))
+            .Callback<NotifyAdminsRequest, IEnumerable<string>, CancellationToken>((req, _, _) => captured = req)
+            .ReturnsAsync(1);
+
+        var sut = new PiHoleHealthNotificationService(notifications.Object);
+        await sut.NotifyRecoveredAsync(75, "Norway", CancellationToken.None);
+
+        Assert.NotNull(captured);
+        Assert.Equal(NotificationTypes.PiHoleCollectorRecovered, captured!.Type);
+        Assert.Equal(NotificationSeverity.Info, captured.Severity);
+    }
 }

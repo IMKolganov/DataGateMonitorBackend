@@ -41,6 +41,20 @@ public sealed class PiHoleHealthCheckRunner(
 
             if (IsHealthy(diagnostics.Health))
             {
+                if (notificationTracker.HasUnhealthyNotification(server.Id)
+                    && notificationTracker.TryMarkRecoveredNotified(server.Id))
+                {
+                    logger.LogInformation(
+                        "Pi-hole recovered on VpnServerId={VpnServerId} ({ServerName})",
+                        server.Id,
+                        server.ServerName);
+
+                    await notificationService.NotifyRecoveredAsync(
+                        server.Id,
+                        server.ServerName,
+                        ct).ConfigureAwait(false);
+                }
+
                 notificationTracker.ClearUnhealthy(server.Id);
                 return;
             }

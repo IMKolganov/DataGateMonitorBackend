@@ -13,6 +13,9 @@ public sealed class PiHoleHealthNotificationTracker
     public bool TryMarkRecoveredNotified(int vpnServerId) =>
         _recoveredSent.TryAdd(vpnServerId, 0);
 
+    public bool HasUnhealthyNotification(int vpnServerId) =>
+        _unhealthySent.Keys.Any(k => k.StartsWith($"{vpnServerId}|", StringComparison.Ordinal));
+
     public void ClearUnhealthy(int vpnServerId)
     {
         foreach (var key in _unhealthySent.Keys.Where(k => k.StartsWith($"{vpnServerId}|", StringComparison.Ordinal)))
