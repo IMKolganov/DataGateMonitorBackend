@@ -88,7 +88,7 @@ public class CertApiClient(
     }
 
     public async Task<List<ServerCertificate>> GetAllCertificatesAsync(int vpnServerId,
-        CancellationToken cancellationToken)
+        CancellationToken cancellationToken, bool notifyRead = true)
     {
         try
         {
@@ -114,8 +114,12 @@ public class CertApiClient(
                     await MicroserviceApiResponseHelper.ReadSuccessDataAsync<List<ServerCertificate>>(
                         response, cancellationToken);
 
-                await certificateNotificationService.NotifyReadAllAsync(vpnServerId, certificates.Count,
-                    cancellationToken);
+                if (notifyRead)
+                {
+                    await certificateNotificationService.NotifyReadAllAsync(vpnServerId, certificates.Count,
+                        cancellationToken);
+                }
+
                 return certificates;
             }
         }

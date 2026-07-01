@@ -7,7 +7,18 @@ namespace DataGateMonitor.DataBase.Services.Query.VpnDnsQueryLogTable;
 
 public interface IVpnDnsQueryLogQueryService
 {
-    Task<IPagedResult<VpnDnsQueryLog>> SearchAsync(GetVpnDnsQueryRequest request, CancellationToken ct);
+    Task<IPagedResult<VpnDnsQueryLog>> SearchAsync(
+        GetVpnDnsQueryRequest request,
+        CancellationToken ct,
+        IReadOnlyList<string>? profileCommonNames = null);
+
+    Task<IReadOnlyList<VpnDnsProfileSummaryItem>> GetProfileSummaryAsync(
+        string externalId,
+        IReadOnlyList<string> profileCommonNames,
+        int vpnServerId,
+        DateTimeOffset? fromUtc,
+        DateTimeOffset? toUtc,
+        CancellationToken ct);
 
     Task<(int TotalCount, DateTimeOffset? LastQueriedAtUtc)> GetServerSummaryAsync(int vpnServerId, CancellationToken ct);
 

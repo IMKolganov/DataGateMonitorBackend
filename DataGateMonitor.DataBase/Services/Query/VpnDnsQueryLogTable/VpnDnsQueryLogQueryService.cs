@@ -8,7 +8,10 @@ namespace DataGateMonitor.DataBase.Services.Query.VpnDnsQueryLogTable;
 
 public class VpnDnsQueryLogQueryService(IQueryService<VpnDnsQueryLog, int> q) : IVpnDnsQueryLogQueryService
 {
-    public async Task<IPagedResult<VpnDnsQueryLog>> SearchAsync(GetVpnDnsQueryRequest request, CancellationToken ct)
+    public async Task<IPagedResult<VpnDnsQueryLog>> SearchAsync(
+        GetVpnDnsQueryRequest request,
+        CancellationToken ct,
+        IReadOnlyList<string>? profileCommonNames = null)
     {
         var page = request.Page < 1 ? 1 : request.Page;
         var pageSize = request.PageSize < 1 ? 50 : Math.Min(request.PageSize, 500);
@@ -18,11 +21,7 @@ public class VpnDnsQueryLogQueryService(IQueryService<VpnDnsQueryLog, int> q) : 
         if (request.VpnServerId > 0)
             query = query.Where(x => x.VpnServerId == request.VpnServerId);
 
-        if (!string.IsNullOrWhiteSpace(request.ExternalId))
-            query = query.Where(x => x.ExternalId == request.ExternalId);
-
-        if (!string.IsNullOrWhiteSpace(request.CommonName))
-            query = query.Where(x => x.CommonName == request.CommonName);
+        query = ApplyIdentityFilter(query, request.ExternalId, request.CommonName, profileCommonNames);
 
         if (!string.IsNullOrWhiteSpace(request.ClientIp))
             query = query.Where(x => x.ClientIp == request.ClientIp);
@@ -55,6 +54,48 @@ public class VpnDnsQueryLogQueryService(IQueryService<VpnDnsQueryLog, int> q) : 
             TotalCount = totalCount,
             Items = items
         };
+    }
+
+    public async Task<IReadOnlyList<VpnDnsProfileSummaryItem>> GetProfileSummaryAsync(
+        string externalId,
+        IReadOnlyList<string> profileCommonNames,
+        int vpnServerId,
+        DateTimeOffset? fromUtc,
+        DateTimeOffset? toUtc,
+        CancellationToken ct)
+    {
+        if (string.IsNullOrWhiteSpace(externalId) && profileCommonNames.Count == 0)
+            return Array.Empty<VpnDnsProfileSummaryItem>();
+
+        var query = q.Query();
+        if (vpnServerId > 0)
+            query = query.Where(x => x.VpnServerId == vpnServerId);
+
+        if (fromUtc.HasValue)
+            query = query.Where(x => x.QueriedAtUtc >= fromUtc.Value);
+
+        if (toUtc.HasValue)
+            query = query.Where(x => x.QueriedAtUtc <= toUtc.Value);
+
+        query = ApplyIdentityFilter(query, externalId, commonName: null, profileCommonNames);
+
+        var grouped = await query
+            .GroupBy(x => new { x.CommonName, x.VpnServerId })
+            .Select(g => new VpnDnsProfileSummaryItem
+            {
+                CommonName = g.Key.CommonName ?? string.Empty,
+                VpnServerId = g.Key.VpnServerId,
+                QueryCount = g.Count(),
+                LastQueriedAtUtc = g.Max(x => x.QueriedAtUtc)
+            })
+            .AsNoTracking()
+            .ToListAsync(ct);
+
+        return grouped
+            .Where(x => !string.IsNullOrWhiteSpace(x.CommonName))
+            .OrderByDescending(x => x.QueryCount)
+            .ThenBy(x => x.CommonName, StringComparer.Ordinal)
+            .ToList();
     }
 
     public async Task<(int TotalCount, DateTimeOffset? LastQueriedAtUtc)> GetServerSummaryAsync(
@@ -106,5 +147,37 @@ public class VpnDnsQueryLogQueryService(IQueryService<VpnDnsQueryLog, int> q) : 
             .Take(limit)
             .AsNoTracking()
             .ToListAsync(ct);
+    }
+
+    internal static IQueryable<VpnDnsQueryLog> ApplyIdentityFilter(
+        IQueryable<VpnDnsQueryLog> query,
+        string? externalId,
+        string? commonName,
+        IReadOnlyList<string>? profileCommonNames)
+    {
+        if (!string.IsNullOrWhiteSpace(commonName))
+            return query.Where(x => x.CommonName == commonName);
+
+        var ext = string.IsNullOrWhiteSpace(externalId) ? null : externalId.Trim();
+        var cns = profileCommonNames?
+            .Where(c => !string.IsNullOrWhiteSpace(c))
+            .Select(c => c.Trim())
+            .Distinct(StringComparer.Ordinal)
+            .ToList();
+
+        if (!string.IsNullOrWhiteSpace(ext) && cns is { Count: > 0 })
+        {
+            return query.Where(x =>
+                x.ExternalId == ext
+                || (x.CommonName != null && cns.Contains(x.CommonName)));
+        }
+
+        if (!string.IsNullOrWhiteSpace(ext))
+            return query.Where(x => x.ExternalId == ext);
+
+        if (cns is { Count: > 0 })
+            return query.Where(x => x.CommonName != null && cns.Contains(x.CommonName));
+
+        return query;
     }
 }
