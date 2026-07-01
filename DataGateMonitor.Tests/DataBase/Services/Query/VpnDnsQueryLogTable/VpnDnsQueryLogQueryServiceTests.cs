@@ -61,6 +61,123 @@ public class VpnDnsQueryLogQueryServiceTests
     }
 
     [Fact]
+    public async Task SearchAsync_WithProfileCommonNames_MatchesExternalIdOrCommonName()
+    {
+        var now = DateTimeOffset.UtcNow;
+        await using var context = CreateContext();
+        context.VpnDnsQueryLogs.AddRange(
+            new VpnDnsQueryLog
+            {
+                VpnServerId = 1,
+                PiHoleQueryId = 1,
+                ExternalId = "ext-a",
+                CommonName = "cn-a",
+                ClientIp = "10.51.30.1",
+                Domain = "mapped.example",
+                Status = "FORWARDED",
+                QueriedAtUtc = now,
+                CreateDate = now,
+                LastUpdate = now
+            },
+            new VpnDnsQueryLog
+            {
+                VpnServerId = 1,
+                PiHoleQueryId = 2,
+                ExternalId = null,
+                CommonName = "cn-b",
+                ClientIp = "10.51.30.2",
+                Domain = "unmapped.example",
+                Status = "FORWARDED",
+                QueriedAtUtc = now,
+                CreateDate = now,
+                LastUpdate = now
+            },
+            new VpnDnsQueryLog
+            {
+                VpnServerId = 1,
+                PiHoleQueryId = 3,
+                ExternalId = "ext-other",
+                CommonName = "cn-other",
+                ClientIp = "10.51.30.3",
+                Domain = "other.example",
+                Status = "FORWARDED",
+                QueriedAtUtc = now,
+                CreateDate = now,
+                LastUpdate = now
+            });
+        await context.SaveChangesAsync();
+
+        var queries = new Dictionary<Type, object>
+        {
+            [typeof(VpnDnsQueryLog)] = new TestQuery<VpnDnsQueryLog>(context.VpnDnsQueryLogs)
+        };
+        var sut = new VpnDnsQueryLogQueryService(new EfQueryService<VpnDnsQueryLog, int>(new TestUnitOfWork(queries)));
+
+        var page = await sut.SearchAsync(new GetVpnDnsQueryRequest
+        {
+            ExternalId = "ext-a",
+            VpnServerId = 1
+        }, CancellationToken.None, ["cn-b"]);
+
+        Assert.Equal(2, page.TotalCount);
+        Assert.Contains(page.Items, x => x.Domain == "mapped.example");
+        Assert.Contains(page.Items, x => x.Domain == "unmapped.example");
+    }
+
+    [Fact]
+    public async Task GetProfileSummaryAsync_GroupsByCommonName()
+    {
+        var now = DateTimeOffset.UtcNow;
+        await using var context = CreateContext();
+        context.VpnDnsQueryLogs.AddRange(
+            new VpnDnsQueryLog
+            {
+                VpnServerId = 75,
+                PiHoleQueryId = 1,
+                ExternalId = "ext-a",
+                CommonName = "cn-a",
+                ClientIp = "10.51.15.1",
+                Domain = "one.example",
+                Status = "FORWARDED",
+                QueriedAtUtc = now,
+                CreateDate = now,
+                LastUpdate = now
+            },
+            new VpnDnsQueryLog
+            {
+                VpnServerId = 75,
+                PiHoleQueryId = 2,
+                ExternalId = "ext-a",
+                CommonName = "cn-a",
+                ClientIp = "10.51.15.1",
+                Domain = "two.example",
+                Status = "FORWARDED",
+                QueriedAtUtc = now.AddMinutes(1),
+                CreateDate = now,
+                LastUpdate = now
+            });
+        await context.SaveChangesAsync();
+
+        var queries = new Dictionary<Type, object>
+        {
+            [typeof(VpnDnsQueryLog)] = new TestQuery<VpnDnsQueryLog>(context.VpnDnsQueryLogs)
+        };
+        var sut = new VpnDnsQueryLogQueryService(new EfQueryService<VpnDnsQueryLog, int>(new TestUnitOfWork(queries)));
+
+        var rows = await sut.GetProfileSummaryAsync(
+            "ext-a",
+            ["cn-a"],
+            vpnServerId: 75,
+            fromUtc: null,
+            toUtc: null,
+            CancellationToken.None);
+
+        Assert.Single(rows);
+        Assert.Equal("cn-a", rows[0].CommonName);
+        Assert.Equal(2, rows[0].QueryCount);
+    }
+
+    [Fact]
     public async Task SearchAsync_WithoutVpnServerId_ReturnsAcrossServers()
     {
         var now = DateTimeOffset.UtcNow;
