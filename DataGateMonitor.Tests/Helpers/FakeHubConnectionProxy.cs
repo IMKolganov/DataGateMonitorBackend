@@ -109,6 +109,14 @@ internal class FakeHubConnectionProxy : IHubConnectionProxy
         return Task.CompletedTask;
     }
 
+    public Task RaiseClosedAsync(Exception? ex = null)
+    {
+        _state = HubConnectionState.Disconnected;
+        if (_handlers.TryGetValue("__Closed", out var handler) && handler is Func<Exception?, Task> closedHandler)
+            return closedHandler(ex);
+        return Task.CompletedTask;
+    }
+
     public async Task SimulateReconnectingThenConnectedAsync(TimeSpan reconnectDuration)
     {
         _state = HubConnectionState.Reconnecting;

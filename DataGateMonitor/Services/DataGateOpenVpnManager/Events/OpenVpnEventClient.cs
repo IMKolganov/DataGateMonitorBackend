@@ -28,11 +28,17 @@ public class OpenVpnEventClient(
     IHubContext<OpenVpnEventHub> eventHub,
     IMicroserviceTokenService tokenService,
     IServiceScopeFactory scopeFactory,
-    IEventHubConnectionFactory? eventHubConnectionFactory = null)
+    IEventHubConnectionFactory? eventHubConnectionFactory = null,
+    TimeSpan? startRetryDelay = null,
+    Func<TimeSpan, CancellationToken, Task>? retryDelayAsync = null)
 {
     private readonly VpnServer _openVpnServer = openVpnServer;
     private readonly IEventHubConnectionFactory _eventHubFactory =
         eventHubConnectionFactory ?? new DefaultEventHubConnectionFactory();
+    private readonly TimeSpan _startRetryDelay =
+        startRetryDelay ?? OpenVpnHubConnectionDefaults.StartFailureRetryDelay;
+    private readonly Func<TimeSpan, CancellationToken, Task> _retryDelayAsync =
+        retryDelayAsync ?? ((delay, ct) => Task.Delay(delay, ct));
 
     public string RegisteredApiUrl { get; } = openVpnServer.ApiUrl;
 
@@ -127,12 +133,20 @@ public class OpenVpnEventClient(
                 logger.LogWarning(
                     "Detected API URL change for server {ServerId}. Recreating SignalR event connection...",
                     _openVpnServer.Id);
+                logger.LogDebug(
+                    "Event hub URL change for server {ServerId}: RegisteredApiUrl={RegisteredApiUrl}, CurrentApiUrl={CurrentApiUrl}",
+                    _openVpnServer.Id, RegisteredApiUrl, _openVpnServer.ApiUrl);
                 await DisposeConnectionAsync();
                 _fullUrl = "";
             }
 
             if (_connection is not null && _connection.State == HubConnectionState.Connected)
+            {
+                logger.LogDebug(
+                    "Event hub already Connected for server {ServerId}, ConnId={ConnId}",
+                    _openVpnServer.Id, _connection.ConnectionId);
                 return _connection;
+            }
 
             if (_connection == null)
             {
@@ -174,6 +188,10 @@ public class OpenVpnEventClient(
                     _connection.OnReconnecting(ex =>
                     {
                         Stamp(HubConnectionState.Reconnecting, ex);
+                        logger.LogDebug(
+                            ex,
+                            "SignalR Reconnecting event (ServerId={ServerId}, State={State}, ConnId={ConnId})",
+                            _openVpnServer.Id, _connection?.State, _connection?.ConnectionId);
                         logger.LogWarning(ex,
                             "SignalR reconnecting (ServerId={ServerId}, Host={Host}, Port={Port})",
                             _openVpnServer.Id, _host, _port);
@@ -182,6 +200,9 @@ public class OpenVpnEventClient(
                     _connection.OnReconnected(connId =>
                     {
                         Stamp(HubConnectionState.Connected);
+                        logger.LogDebug(
+                            "SignalR Reconnected event (ServerId={ServerId}, ConnId={ConnId}, State={State})",
+                            _openVpnServer.Id, connId, _connection?.State);
                         logger.LogInformation(
                             "SignalR reconnected (ServerId={ServerId}, ConnId={ConnId}, Host={Host}, Port={Port})",
                             _openVpnServer.Id, connId, _host, _port);
@@ -190,6 +211,10 @@ public class OpenVpnEventClient(
                     _connection.OnClosed(ex =>
                     {
                         Stamp(HubConnectionState.Disconnected, ex);
+                        logger.LogDebug(
+                            ex,
+                            "SignalR Closed event (ServerId={ServerId}, State={State}) — manual StartAsync required after auto-reconnect gives up",
+                            _openVpnServer.Id, _connection?.State);
                         logger.LogError(ex,
                             "SignalR closed (ServerId={ServerId}, Host={Host}, Port={Port})",
                             _openVpnServer.Id, _host, _port);
@@ -213,10 +238,14 @@ public class OpenVpnEventClient(
                         logger.LogInformation(
                             "Attempting SignalR connect: ServerId={ServerId}, Attempt={Attempt}, Url={Url}, Host={Host}, Port={Port}",
                             _openVpnServer.Id, attempt, _fullUrl, _host, _port);
+                        logger.LogDebug(
+                            "Event hub StartWhenReady: ServerId={ServerId}, Attempt={Attempt}, CurrentState={State}",
+                            _openVpnServer.Id, attempt, _connection.State);
                         await HubConnectionStartup.StartWhenReadyAsync(
                             () => _connection.State,
                             ct => _connection.StartAsync(ct),
-                            cancellationToken);
+                            cancellationToken,
+                            logger: logger);
                         _notifiedEventHubConnectionFailed = false;
                         Stamp(HubConnectionState.Connected);
                         logger.LogInformation(
@@ -228,8 +257,8 @@ public class OpenVpnEventClient(
                     {
                         var innerMsg = ex.InnerException?.Message ?? ex.Message;
                         logger.LogWarning(ex,
-                            "SignalR start failed (attempt {Attempt}) for server {ServerId}, Url={Url}. Inner={Inner}. Retrying in 5s...",
-                            attempt, _openVpnServer.Id, _fullUrl, innerMsg);
+                            "SignalR start failed (attempt {Attempt}) for server {ServerId}, Url={Url}. Inner={Inner}. Retrying in {RetryDelay}s...",
+                            attempt, _openVpnServer.Id, _fullUrl, innerMsg, _startRetryDelay.TotalSeconds);
 
                         if (!_notifiedEventHubConnectionFailed)
                         {
@@ -246,7 +275,7 @@ public class OpenVpnEventClient(
                             }
                         }
 
-                        await Task.Delay(TimeSpan.FromSeconds(5), cancellationToken);
+                        await _retryDelayAsync(_startRetryDelay, cancellationToken);
                     }
                 }
             }

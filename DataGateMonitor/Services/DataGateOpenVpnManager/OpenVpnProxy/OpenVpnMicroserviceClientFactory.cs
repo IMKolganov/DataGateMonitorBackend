@@ -14,6 +14,9 @@ public class OpenVpnMicroserviceClientFactory(IServiceProvider serviceProvider) 
 {
     private readonly ConcurrentDictionary<int, IOpenVpnMicroserviceClient> _clientCache = new();
 
+    private ILogger<OpenVpnMicroserviceClientFactory> Logger =>
+        serviceProvider.GetRequiredService<ILogger<OpenVpnMicroserviceClientFactory>>();
+
     public IOpenVpnMicroserviceClient Create(VpnServer server)
     {
         if (server.ServerType != VpnServerType.OpenVpn)
@@ -26,14 +29,25 @@ public class OpenVpnMicroserviceClientFactory(IServiceProvider serviceProvider) 
 
         return _clientCache.AddOrUpdate(
             server.Id,
-            _ => CreateNew(server),
+            _ =>
+            {
+                Logger.LogDebug("Creating new microservice client for server {ServerId}, ApiUrl={ApiUrl}", server.Id, server.ApiUrl);
+                return CreateNew(server);
+            },
             (_, existing) =>
             {
                 if (!VpnServerApiUrlNormalizer.Equals(existing.RegisteredApiUrl, normalizedUrl))
                 {
+                    Logger.LogDebug(
+                        "Recreating microservice client for server {ServerId}: RegisteredApiUrl={RegisteredApiUrl} -> ApiUrl={ApiUrl}",
+                        server.Id, existing.RegisteredApiUrl, server.ApiUrl);
                     DisposeClient(existing);
                     return CreateNew(server);
                 }
+
+                Logger.LogDebug(
+                    "Reusing cached microservice client for server {ServerId}, RegisteredApiUrl={RegisteredApiUrl}",
+                    server.Id, existing.RegisteredApiUrl);
                 return existing;
             });
     }

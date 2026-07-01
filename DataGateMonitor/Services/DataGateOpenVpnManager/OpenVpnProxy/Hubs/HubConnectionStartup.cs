@@ -16,14 +16,21 @@ internal static class HubConnectionStartup
         Func<HubConnectionState> getState,
         Func<CancellationToken, Task> startAsync,
         CancellationToken cancellationToken,
-        TimeSpan? transitionTimeout = null)
-        => StartWhenReadyAsync(getState, startAsync, cancellationToken, transitionTimeout ?? DefaultTransitionTimeout);
+        TimeSpan? transitionTimeout = null,
+        ILogger? logger = null)
+        => StartWhenReadyAsync(
+            getState,
+            startAsync,
+            cancellationToken,
+            transitionTimeout ?? DefaultTransitionTimeout,
+            logger);
 
     private static async Task StartWhenReadyAsync(
         Func<HubConnectionState> getState,
         Func<CancellationToken, Task> startAsync,
         CancellationToken cancellationToken,
-        TimeSpan transitionTimeout)
+        TimeSpan transitionTimeout,
+        ILogger? logger)
     {
         var deadline = DateTime.UtcNow + transitionTimeout;
 
@@ -33,10 +40,18 @@ internal static class HubConnectionStartup
             var state = getState();
 
             if (state == HubConnectionState.Connected)
+            {
+                logger?.LogDebug("HubConnectionStartup: already Connected, skipping StartAsync");
                 return;
+            }
 
             if (state is HubConnectionState.Connecting or HubConnectionState.Reconnecting)
             {
+                logger?.LogDebug(
+                    "HubConnectionStartup: waiting for {State} to finish (deadline in {RemainingMs} ms)",
+                    state,
+                    (deadline - DateTime.UtcNow).TotalMilliseconds);
+
                 if (DateTime.UtcNow >= deadline)
                 {
                     throw new TimeoutException(
@@ -49,9 +64,13 @@ internal static class HubConnectionStartup
 
             if (state == HubConnectionState.Disconnected)
             {
+                logger?.LogDebug("HubConnectionStartup: Disconnected, calling StartAsync");
                 await startAsync(cancellationToken);
+                logger?.LogDebug("HubConnectionStartup: StartAsync completed, state={State}", getState());
                 return;
             }
+
+            logger?.LogDebug("HubConnectionStartup: unexpected state {State}, polling until deadline", state);
 
             if (DateTime.UtcNow >= deadline)
             {

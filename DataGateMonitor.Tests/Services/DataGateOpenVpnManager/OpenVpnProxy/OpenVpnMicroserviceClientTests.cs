@@ -186,6 +186,64 @@ public class OpenVpnMicroserviceClientTests
     }
 
     [Fact]
+    public async Task SendCommandAsync_RestartsHub_AfterClosedEvent()
+    {
+        var server = OpenVpnHubTestHelpers.OpenVpnServer();
+        var proxy = new FakeHubConnectionProxy();
+        var sut = CreateClient(server, new SingleProxyHubConnectionFactory(proxy), out _);
+
+        await sut.SendCommandAsync("ping", CancellationToken.None);
+        Assert.Equal(1, proxy.StartCallCount);
+
+        await proxy.RaiseClosedAsync(new InvalidOperationException("auto-reconnect exhausted"));
+
+        await sut.SendCommandAsync("status", CancellationToken.None);
+        Assert.Equal(2, proxy.StartCallCount);
+    }
+
+    [Fact]
+    public async Task SendCommandToMicroserviceAsync_OnFailure_NotifiesAndBroadcastsError()
+    {
+        var server = OpenVpnHubTestHelpers.OpenVpnServer();
+        var proxy = new FakeHubConnectionProxy
+        {
+            InvokeOneArgHandler = (_, _, _) => throw new InvalidOperationException("invoke failed")
+        };
+        var notifications = new Mock<IOpenVpnMicroserviceNotificationService>();
+        notifications
+            .Setup(x => x.NotifySendCommandFailed(server.Id, server.ServerName, It.IsAny<string?>(), It.IsAny<CancellationToken>()))
+            .Returns(Task.CompletedTask);
+
+        var sut = CreateClient(server, new SingleProxyHubConnectionFactory(proxy), out var frontendClient, notifications);
+
+        await sut.SendCommandToMicroserviceAsync("status", CancellationToken.None);
+
+        frontendClient.Verify(
+            c => c.SendCoreAsync("ReceiveCommandResult", It.IsAny<object?[]>(), It.IsAny<CancellationToken>()),
+            Times.Once);
+        notifications.Verify(
+            x => x.NotifySendCommandFailed(server.Id, server.ServerName, It.IsAny<string?>(), It.IsAny<CancellationToken>()),
+            Times.Once);
+    }
+
+    [Fact]
+    public async Task SendCommandWithResponseAsync_CancelledToken_CancelsTask()
+    {
+        var server = OpenVpnHubTestHelpers.OpenVpnServer();
+        var proxy = new FakeHubConnectionProxy
+        {
+            InvokeTwoArgHandler = (_, _, _, _) => Task.CompletedTask
+        };
+        var sut = CreateClient(server, new SingleProxyHubConnectionFactory(proxy), out _);
+
+        using var cts = new CancellationTokenSource();
+        var task = sut.SendCommandWithResponseAsync("status", cts.Token);
+        cts.Cancel();
+
+        await Assert.ThrowsAnyAsync<OperationCanceledException>(() => task);
+    }
+
+    [Fact]
     public async Task DisposeAsync_CancelsPendingCommandWaiters()
     {
         var server = OpenVpnHubTestHelpers.OpenVpnServer();

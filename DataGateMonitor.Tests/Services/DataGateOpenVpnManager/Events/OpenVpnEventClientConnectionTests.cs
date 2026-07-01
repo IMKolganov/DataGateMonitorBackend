@@ -83,4 +83,51 @@ public class OpenVpnEventClientConnectionTests
         Assert.Equal(2, hubFactory.Created.Count);
         Assert.True(hubFactory.Created[0].Disposed);
     }
+
+    [Fact]
+    public async Task StartListeningAsync_OnReconnecting_UpdatesDiagnosticsState()
+    {
+        var server = OpenVpnHubTestHelpers.OpenVpnServer();
+        var proxy = new FakeHubConnectionProxy();
+        var client = new OpenVpnEventClient(
+            server,
+            NullLogger<OpenVpnEventClient>.Instance,
+            Mock.Of<IHubContext<OpenVpnEventHub>>(),
+            OpenVpnHubTestHelpers.CreateTokenService(),
+            Mock.Of<IServiceScopeFactory>(),
+            new SingleProxyEventHubConnectionFactory(proxy));
+
+        await client.StartListeningAsync(CancellationToken.None);
+        await proxy.RaiseReconnectingAsync(new InvalidOperationException("reconnecting"));
+
+        Assert.Equal("Reconnecting", client.GetStatus().ConnectionStatus.State);
+    }
+
+    /// <summary>
+    /// Microsoft docs: after WithAutomaticReconnect gives up, Closed fires and the app must call StartAsync again.
+    /// Background service does that on the next poll via StartListeningAsync.
+    /// </summary>
+    [Fact]
+    public async Task StartListeningAsync_RestartsHub_AfterClosedEvent()
+    {
+        var server = OpenVpnHubTestHelpers.OpenVpnServer();
+        var proxy = new FakeHubConnectionProxy();
+        var client = new OpenVpnEventClient(
+            server,
+            NullLogger<OpenVpnEventClient>.Instance,
+            Mock.Of<IHubContext<OpenVpnEventHub>>(),
+            OpenVpnHubTestHelpers.CreateTokenService(),
+            Mock.Of<IServiceScopeFactory>(),
+            new SingleProxyEventHubConnectionFactory(proxy));
+
+        await client.StartListeningAsync(CancellationToken.None);
+        Assert.Equal(1, proxy.StartCallCount);
+
+        await proxy.RaiseClosedAsync(new InvalidOperationException("auto-reconnect exhausted"));
+        Assert.Equal(HubConnectionState.Disconnected, proxy.State);
+        Assert.Equal("Disconnected", client.GetStatus().ConnectionStatus.State);
+
+        await client.StartListeningAsync(CancellationToken.None);
+        Assert.Equal(2, proxy.StartCallCount);
+    }
 }

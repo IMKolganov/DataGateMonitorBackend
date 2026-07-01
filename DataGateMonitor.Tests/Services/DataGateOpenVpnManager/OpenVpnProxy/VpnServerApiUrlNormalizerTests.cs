@@ -18,4 +18,19 @@ public class VpnServerApiUrlNormalizerTests
     {
         Assert.True(VpnServerApiUrlNormalizer.Equals("https://Host.example.com/", "https://host.example.com"));
     }
+
+    [Theory]
+    [InlineData(null, "")]
+    [InlineData("", "")]
+    [InlineData("   ", "")]
+    public void Normalize_ReturnsEmpty_ForBlankInput(string? input, string expected)
+    {
+        Assert.Equal(expected, VpnServerApiUrlNormalizer.Normalize(input));
+    }
+
+    [Fact]
+    public void Normalize_FallsBack_WhenUrlIsNotAbsolute()
+    {
+        Assert.Equal("not-a-uri", VpnServerApiUrlNormalizer.Normalize("NOT-A-URI"));
+    }
 }

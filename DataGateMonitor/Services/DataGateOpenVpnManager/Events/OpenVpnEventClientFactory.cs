@@ -15,6 +15,9 @@ public class OpenVpnEventClientFactory(IServiceProvider rootProvider) : IOpenVpn
 {
     private readonly ConcurrentDictionary<int, OpenVpnEventClient> _clientCache = new();
 
+    private ILogger<OpenVpnEventClientFactory> Logger =>
+        rootProvider.GetRequiredService<ILogger<OpenVpnEventClientFactory>>();
+
     public OpenVpnEventClient Create(VpnServer server)
     {
         if (server.ServerType != VpnServerType.OpenVpn)
@@ -27,24 +30,31 @@ public class OpenVpnEventClientFactory(IServiceProvider rootProvider) : IOpenVpn
 
         return _clientCache.AddOrUpdate(
             server.Id,
-            _ => CreateNew(server),
+            _ =>
+            {
+                Logger.LogDebug("Creating new event client for server {ServerId}, ApiUrl={ApiUrl}", server.Id, server.ApiUrl);
+                return CreateNew(server);
+            },
             (_, existing) =>
             {
                 if (!VpnServerApiUrlNormalizer.Equals(existing.RegisteredApiUrl, normalizedUrl))
                 {
+                    Logger.LogDebug(
+                        "Recreating event client for server {ServerId}: RegisteredApiUrl={RegisteredApiUrl} -> ApiUrl={ApiUrl}",
+                        server.Id, existing.RegisteredApiUrl, server.ApiUrl);
                     StopClient(existing, server.Id);
                     return CreateNew(server);
                 }
 
+                Logger.LogDebug(
+                    "Reusing cached event client for server {ServerId}, RegisteredApiUrl={RegisteredApiUrl}",
+                    server.Id, existing.RegisteredApiUrl);
                 return existing;
             });
     }
 
     public async Task<OpenVpnEventClient?> TryCreateByServerIdAsync(int serverId, CancellationToken cancellationToken)
     {
-        if (_clientCache.TryGetValue(serverId, out var cached))
-            return cached;
-
         using var scope = rootProvider.CreateScope();
         var serverQuery = scope.ServiceProvider.GetRequiredService<IVpnServerQueryService>();
         var server = await serverQuery.GetById(serverId, cancellationToken);
@@ -54,6 +64,7 @@ public class OpenVpnEventClientFactory(IServiceProvider rootProvider) : IOpenVpn
         if (server.ServerType != VpnServerType.OpenVpn)
             return null;
 
+        // Always route through Create so URL changes from DB invalidate the cached client.
         return Create(server);
     }
 

@@ -68,6 +68,28 @@ public class OpenVpnProxyTrafficFlowClientTests
     }
 
     [Fact]
+    public async Task StartListeningAsync_RecreatesConnection_WhenServerApiUrlChanges()
+    {
+        var server = OpenVpnHubTestHelpers.OpenVpnServer();
+        var hubFactory = new FakeHubConnectionFactory();
+        var sut = new OpenVpnProxyTrafficFlowClient(
+            server,
+            NullLogger<OpenVpnProxyTrafficFlowClient>.Instance,
+            OpenVpnHubTestHelpers.CreateTrafficFlowHubMock(server.Id).Hub.Object,
+            OpenVpnHubTestHelpers.CreateTokenService(),
+            hubFactory);
+
+        await sut.StartListeningAsync(CancellationToken.None);
+        Assert.Single(hubFactory.Created);
+
+        server.ApiUrl = "https://mutated.datagateapp.com/";
+        await sut.StartListeningAsync(CancellationToken.None);
+
+        Assert.Equal(2, hubFactory.Created.Count);
+        Assert.True(hubFactory.Created[0].Disposed);
+    }
+
+    [Fact]
     public async Task StopAsync_DisposesConnection()
     {
         var server = OpenVpnHubTestHelpers.OpenVpnServer();
@@ -83,6 +105,27 @@ public class OpenVpnProxyTrafficFlowClientTests
         await sut.StopAsync();
 
         Assert.True(hubFactory.LastCreated!.Disposed);
+    }
+
+    [Fact]
+    public async Task StartListeningAsync_RestartsHub_AfterClosedEvent()
+    {
+        var server = OpenVpnHubTestHelpers.OpenVpnServer();
+        var proxy = new FakeHubConnectionProxy();
+        var sut = new OpenVpnProxyTrafficFlowClient(
+            server,
+            NullLogger<OpenVpnProxyTrafficFlowClient>.Instance,
+            OpenVpnHubTestHelpers.CreateTrafficFlowHubMock(server.Id).Hub.Object,
+            OpenVpnHubTestHelpers.CreateTokenService(),
+            new SingleProxyHubConnectionFactory(proxy));
+
+        await sut.StartListeningAsync(CancellationToken.None);
+        Assert.Equal(1, proxy.StartCallCount);
+
+        await proxy.RaiseClosedAsync(new InvalidOperationException("auto-reconnect exhausted"));
+
+        await sut.StartListeningAsync(CancellationToken.None);
+        Assert.Equal(2, proxy.StartCallCount);
     }
 
     [Fact]
