@@ -139,7 +139,8 @@ public static class PipelineConfiguration
                     runtimeInfo,
                     startupHistory.GetRecords());
                 return Results.Content(html, "text/html; charset=utf-8", statusCode: 200);
-            });
+            })
+            .ExcludeFromDescription();
 
         app.Logger.LogInformation($"Application version: {version}; Environment: {environmentName};");
 

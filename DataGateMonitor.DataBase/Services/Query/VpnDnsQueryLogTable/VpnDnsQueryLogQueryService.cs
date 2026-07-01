@@ -56,7 +56,7 @@ public class VpnDnsQueryLogQueryService(IQueryService<VpnDnsQueryLog, int> q) : 
         };
     }
 
-    public async Task<IReadOnlyList<VpnDnsProfileSummaryItem>> GetProfileSummaryAsync(
+    public async Task<IReadOnlyList<VpnDnsProfileSummaryItemDto>> GetProfileSummaryAsync(
         string externalId,
         IReadOnlyList<string> profileCommonNames,
         int vpnServerId,
@@ -65,7 +65,7 @@ public class VpnDnsQueryLogQueryService(IQueryService<VpnDnsQueryLog, int> q) : 
         CancellationToken ct)
     {
         if (string.IsNullOrWhiteSpace(externalId) && profileCommonNames.Count == 0)
-            return Array.Empty<VpnDnsProfileSummaryItem>();
+            return Array.Empty<VpnDnsProfileSummaryItemDto>();
 
         var query = q.Query();
         if (vpnServerId > 0)
@@ -81,7 +81,7 @@ public class VpnDnsQueryLogQueryService(IQueryService<VpnDnsQueryLog, int> q) : 
 
         var grouped = await query
             .GroupBy(x => new { x.CommonName, x.VpnServerId })
-            .Select(g => new VpnDnsProfileSummaryItem
+            .Select(g => new VpnDnsProfileSummaryItemDto
             {
                 CommonName = g.Key.CommonName ?? string.Empty,
                 VpnServerId = g.Key.VpnServerId,

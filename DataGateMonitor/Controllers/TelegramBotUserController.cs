@@ -25,7 +25,7 @@ public class TelegramBotUserController(
     }
 
     [HttpGet("get/{telegramId}")]
-    public async Task<ActionResult<ApiResponse<UserRequest>>> GetUser(
+    public async Task<ActionResult<ApiResponse<UserResponse>>> GetUser(
         [FromRoute] UserRequest request, CancellationToken cancellationToken)
     {
         var telegramBotUsers = await telegramUserService.GetUserAsync(request.TelegramId,cancellationToken);

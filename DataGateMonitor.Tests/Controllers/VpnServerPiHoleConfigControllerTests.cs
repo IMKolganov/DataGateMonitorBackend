@@ -77,7 +77,7 @@ public class VpnServerPiHoleConfigControllerTests
         var result = await controller.ApplyRuntime(0, CancellationToken.None);
 
         var bad = Assert.IsType<BadRequestObjectResult>(result.Result);
-        Assert.False(((ApiResponse<object>)bad.Value!).Success);
+        Assert.False(((ApiResponse<ApplyVpnServerPiHoleRuntimeResponse>)bad.Value!).Success);
     }
 
     [Fact]
@@ -91,7 +91,7 @@ public class VpnServerPiHoleConfigControllerTests
         var result = await controller.ApplyRuntime(4, CancellationToken.None);
 
         var ok = Assert.IsType<OkObjectResult>(result.Result);
-        Assert.True(((ApiResponse<object>)ok.Value!).Success);
+        Assert.True(((ApiResponse<ApplyVpnServerPiHoleRuntimeResponse>)ok.Value!).Success);
     }
 
     [Fact]
