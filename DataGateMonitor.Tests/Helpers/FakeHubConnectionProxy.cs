@@ -13,6 +13,8 @@ internal class FakeHubConnectionProxy : IHubConnectionProxy
     public int StopCallCount { get; private set; }
     public bool Disposed { get; private set; }
 
+    public string? ConnectionId { get; set; } = "fake-conn";
+
     public Func<CancellationToken, Task>? StartAsyncOverride { get; set; }
 
     public Func<string, object?, CancellationToken, Task>? InvokeOneArgHandler { get; set; }
@@ -94,6 +96,19 @@ internal class FakeHubConnectionProxy : IHubConnectionProxy
         return Task.CompletedTask;
     }
 
+    public void OnReconnecting(Func<Exception?, Task> handler) => _handlers["__Reconnecting"] = handler;
+
+    public void OnReconnected(Func<string?, Task> handler) => _handlers["__Reconnected"] = handler;
+
+    public void OnClosed(Func<Exception?, Task> handler) => _handlers["__Closed"] = handler;
+
+    public Task RaiseReconnectingAsync(Exception? ex = null)
+    {
+        if (_handlers["__Reconnecting"] is Func<Exception?, Task> handler)
+            return handler(ex);
+        return Task.CompletedTask;
+    }
+
     public async Task SimulateReconnectingThenConnectedAsync(TimeSpan reconnectDuration)
     {
         _state = HubConnectionState.Reconnecting;
@@ -103,6 +118,11 @@ internal class FakeHubConnectionProxy : IHubConnectionProxy
 }
 
 internal sealed class SingleProxyHubConnectionFactory(FakeHubConnectionProxy proxy) : IHubConnectionFactory
+{
+    public IHubConnectionProxy Create(string fullUrl, Func<Task<string?>> accessTokenProvider) => proxy;
+}
+
+internal sealed class SingleProxyEventHubConnectionFactory(FakeHubConnectionProxy proxy) : IEventHubConnectionFactory
 {
     public IHubConnectionProxy Create(string fullUrl, Func<Task<string?>> accessTokenProvider) => proxy;
 }

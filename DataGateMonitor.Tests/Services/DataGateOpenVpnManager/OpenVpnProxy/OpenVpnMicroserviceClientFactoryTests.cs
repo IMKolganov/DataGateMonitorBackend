@@ -41,7 +41,7 @@ public class OpenVpnMicroserviceClientFactoryTests
     [Fact]
     public void Create_RecreatesClient_WhenApiUrlChanges()
     {
-        var (sp, hubFactory) = CreateServices();
+        var (sp, _) = CreateServices();
         var factory = sp.GetRequiredService<OpenVpnMicroserviceClientFactory>();
         var firstServer = OpenVpnHubTestHelpers.OpenVpnServer();
         var changedServer = OpenVpnHubTestHelpers.OpenVpnServer(apiUrl: "https://changed.datagateapp.com/");
@@ -50,6 +50,24 @@ public class OpenVpnMicroserviceClientFactoryTests
         var second = factory.Create(changedServer);
 
         Assert.NotSame(first, second);
+        Assert.Equal("https://s5.datagateapp.com/", first.RegisteredApiUrl);
+        Assert.Equal("https://changed.datagateapp.com/", second.RegisteredApiUrl);
+    }
+
+    [Fact]
+    public void Create_RecreatesClient_WhenSameServerObjectApiUrlIsMutated()
+    {
+        var (sp, _) = CreateServices();
+        var factory = sp.GetRequiredService<OpenVpnMicroserviceClientFactory>();
+        var server = OpenVpnHubTestHelpers.OpenVpnServer();
+
+        var first = factory.Create(server);
+        server.ApiUrl = "https://mutated.datagateapp.com/";
+        var second = factory.Create(server);
+
+        Assert.NotSame(first, second);
+        Assert.Equal("https://s5.datagateapp.com/", first.RegisteredApiUrl);
+        Assert.Equal("https://mutated.datagateapp.com/", second.RegisteredApiUrl);
     }
 
     [Fact]

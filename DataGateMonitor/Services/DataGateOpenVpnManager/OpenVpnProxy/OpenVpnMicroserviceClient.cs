@@ -25,6 +25,7 @@ public class OpenVpnMicroserviceClient(
     private bool _handlersRegistered = false;
     private string? _lastApiUrl;
     private bool _disposed;
+    public string RegisteredApiUrl { get; } = server.ApiUrl;
     public string CurrentApiUrl => server.ApiUrl;
     private readonly IHubConnectionFactory _hubFactory = hubConnectionFactory ?? new DefaultHubConnectionFactory();
 
@@ -150,7 +151,7 @@ public class OpenVpnMicroserviceClient(
         await _connectionLock.WaitAsync(cancellationToken);
         try
         {
-            if (_connection is not null && server.ApiUrl != _lastApiUrl)
+            if (_connection is not null && !VpnServerApiUrlNormalizer.Equals(server.ApiUrl, _lastApiUrl))
             {
                 logger.LogWarning("Detected API URL change for server {ServerId}. Recreating SignalR connection...", server.Id);
                 await _connection.DisposeAsync();

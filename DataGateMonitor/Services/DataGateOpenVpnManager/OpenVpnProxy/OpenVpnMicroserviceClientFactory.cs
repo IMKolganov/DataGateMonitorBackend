@@ -22,15 +22,14 @@ public class OpenVpnMicroserviceClientFactory(IServiceProvider serviceProvider) 
                 $"OpenVPN microservice client is only for OpenVPN servers (server {server.Id} is {server.ServerType}).");
         }
 
-        var normalizedUrl = NormalizeUrl(server.ApiUrl);
+        var normalizedUrl = VpnServerApiUrlNormalizer.Normalize(server.ApiUrl);
 
         return _clientCache.AddOrUpdate(
             server.Id,
             _ => CreateNew(server),
             (_, existing) =>
             {
-                // compare normalized
-                if (!UrlsEqual(existing.CurrentApiUrl, normalizedUrl))
+                if (!VpnServerApiUrlNormalizer.Equals(existing.RegisteredApiUrl, normalizedUrl))
                 {
                     DisposeClient(existing);
                     return CreateNew(server);
@@ -78,21 +77,4 @@ public class OpenVpnMicroserviceClientFactory(IServiceProvider serviceProvider) 
         (client as IAsyncDisposable)?.DisposeAsync().AsTask().GetAwaiter().GetResult();
         (client as IDisposable)?.Dispose();
     }
-
-    private static string NormalizeUrl(string? url)
-    {
-        if (string.IsNullOrWhiteSpace(url)) return string.Empty;
-        try
-        {
-            var uri = new Uri(url, UriKind.Absolute);
-            var left = uri.GetLeftPart(UriPartial.Authority) + uri.AbsolutePath;
-            return left.TrimEnd('/').ToLowerInvariant();
-        }
-        catch
-        {
-            return url.Trim().TrimEnd('/').ToLowerInvariant();
-        }
-    }
-
-    private static bool UrlsEqual(string? a, string? b) => NormalizeUrl(a) == NormalizeUrl(b);
 }

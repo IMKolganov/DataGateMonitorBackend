@@ -6,6 +6,7 @@ namespace DataGateMonitor.Services.DataGateOpenVpnManager.OpenVpnProxy.Hubs;
 internal sealed class HubConnectionProxy(HubConnection inner) : IHubConnectionProxy
 {
     public HubConnectionState State => inner.State;
+    public string? ConnectionId => inner.ConnectionId;
 
     public Task StartAsync(CancellationToken cancellationToken = default)
         => inner.StartAsync(cancellationToken);
@@ -39,4 +40,13 @@ internal sealed class HubConnectionProxy(HubConnection inner) : IHubConnectionPr
             return Task.CompletedTask;
         });
     }
+
+    public void OnReconnecting(Func<Exception?, Task> handler)
+        => inner.Reconnecting += ex => handler(ex);
+
+    public void OnReconnected(Func<string?, Task> handler)
+        => inner.Reconnected += connId => handler(connId);
+
+    public void OnClosed(Func<Exception?, Task> handler)
+        => inner.Closed += ex => handler(ex);
 }

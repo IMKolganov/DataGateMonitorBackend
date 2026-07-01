@@ -2,7 +2,7 @@ using DataGateMonitor.Services.DataGateOpenVpnManager.OpenVpnProxy.Hubs.Interfac
 
 namespace DataGateMonitor.Tests.Helpers;
 
-internal sealed class FakeHubConnectionFactory : IHubConnectionFactory
+internal sealed class FakeHubConnectionFactory : IHubConnectionFactory, IEventHubConnectionFactory
 {
     public FakeHubConnectionProxy? LastCreated { get; private set; }
     public List<FakeHubConnectionProxy> Created { get; } = [];

@@ -4,6 +4,8 @@ using DataGateMonitor.DataBase.Services.Query.VpnServerTable;
 using DataGateMonitor.Hubs;
 using DataGateMonitor.Models;
 using DataGateMonitor.Services.Api.Auth.Registers.Interfaces;
+using DataGateMonitor.Services.DataGateOpenVpnManager.OpenVpnProxy;
+using DataGateMonitor.Services.DataGateOpenVpnManager.OpenVpnProxy.Hubs.Interfaces;
 using DataGateMonitor.SharedModels.DataGateMonitor.VpnServerEvent.Responses;
 using DataGateMonitor.SharedModels.Enums;
 
@@ -21,15 +23,21 @@ public class OpenVpnEventClientFactory(IServiceProvider rootProvider) : IOpenVpn
                 $"OpenVPN event client is only for OpenVPN servers (server {server.Id} is {server.ServerType}).");
         }
 
-        return _clientCache.GetOrAdd(server.Id, _ =>
-        {
-            var logger       = rootProvider.GetRequiredService<ILogger<OpenVpnEventClient>>();
-            var eventHub     = rootProvider.GetRequiredService<IHubContext<OpenVpnEventHub>>();
-            var tokenService = rootProvider.GetRequiredService<IMicroserviceTokenService>();
-            var scopeFactory = rootProvider.GetRequiredService<IServiceScopeFactory>();
+        var normalizedUrl = VpnServerApiUrlNormalizer.Normalize(server.ApiUrl);
 
-            return new OpenVpnEventClient(server, logger, eventHub, tokenService, scopeFactory);
-        });
+        return _clientCache.AddOrUpdate(
+            server.Id,
+            _ => CreateNew(server),
+            (_, existing) =>
+            {
+                if (!VpnServerApiUrlNormalizer.Equals(existing.RegisteredApiUrl, normalizedUrl))
+                {
+                    StopClient(existing, server.Id);
+                    return CreateNew(server);
+                }
+
+                return existing;
+            });
     }
 
     public async Task<OpenVpnEventClient?> TryCreateByServerIdAsync(int serverId, CancellationToken cancellationToken)
@@ -53,21 +61,14 @@ public class OpenVpnEventClientFactory(IServiceProvider rootProvider) : IOpenVpn
     {
         if (!_clientCache.TryRemove(serverId, out var client))
             return false;
-        try
-        {
-            client.StopAsync().GetAwaiter().GetResult();
-        }
-        catch (Exception ex)
-        {
-            // Log but do not rethrow; client is already removed from cache
-            var logger = rootProvider.GetRequiredService<ILogger<OpenVpnEventClientFactory>>();
-            logger.LogWarning(ex, "Error stopping event client for server {ServerId}", serverId);
-        }
+
+        StopClient(client, serverId);
         return true;
     }
-    
+
     public IReadOnlyCollection<OpenVpnEventClient> GetAllClients()
         => _clientCache.Values.ToArray();
+
     public ConnectionStatusesResponse GetAllClientStatuses()
     {
         var items = _clientCache.Values
@@ -87,5 +88,28 @@ public class OpenVpnEventClientFactory(IServiceProvider rootProvider) : IOpenVpn
 
         status = null;
         return false;
+    }
+
+    private OpenVpnEventClient CreateNew(VpnServer server)
+    {
+        var logger = rootProvider.GetRequiredService<ILogger<OpenVpnEventClient>>();
+        var eventHub = rootProvider.GetRequiredService<IHubContext<OpenVpnEventHub>>();
+        var tokenService = rootProvider.GetRequiredService<IMicroserviceTokenService>();
+        var scopeFactory = rootProvider.GetRequiredService<IServiceScopeFactory>();
+        var eventHubConnectionFactory = rootProvider.GetService<IEventHubConnectionFactory>();
+        return new OpenVpnEventClient(server, logger, eventHub, tokenService, scopeFactory, eventHubConnectionFactory);
+    }
+
+    private void StopClient(OpenVpnEventClient client, int serverId)
+    {
+        try
+        {
+            client.StopAsync().GetAwaiter().GetResult();
+        }
+        catch (Exception ex)
+        {
+            var logger = rootProvider.GetRequiredService<ILogger<OpenVpnEventClientFactory>>();
+            logger.LogWarning(ex, "Error stopping event client for server {ServerId}", serverId);
+        }
     }
 }
