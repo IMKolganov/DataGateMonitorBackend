@@ -1,0 +1,3 @@
+namespace DataGateMonitor.SharedModels.DataGateMonitor.VpnServerPiHole.Responses;
+
+public sealed class ApplyVpnServerPiHoleRuntimeResponse;
