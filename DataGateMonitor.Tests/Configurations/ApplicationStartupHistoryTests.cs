@@ -63,4 +63,43 @@ public class ApplicationStartupHistoryTests : IDisposable
 
         path.Should().Be(Path.Combine(_tempRoot, "data", "startup-history.json"));
     }
+
+    [Fact]
+    public void GetHistoryFilePath_UsesResourcesDirectoryInContainer()
+    {
+        var previousContainer = Environment.GetEnvironmentVariable("DOTNET_RUNNING_IN_CONTAINER");
+        var previousPath = Environment.GetEnvironmentVariable("STARTUP_HISTORY_PATH");
+        try
+        {
+            Environment.SetEnvironmentVariable("DOTNET_RUNNING_IN_CONTAINER", "true");
+            Environment.SetEnvironmentVariable("STARTUP_HISTORY_PATH", null);
+
+            var path = ApplicationStartupHistory.GetHistoryFilePath(_environmentMock.Object);
+
+            path.Should().Be(Path.Combine(_tempRoot, "resources", "startup-history.json"));
+        }
+        finally
+        {
+            Environment.SetEnvironmentVariable("DOTNET_RUNNING_IN_CONTAINER", previousContainer);
+            Environment.SetEnvironmentVariable("STARTUP_HISTORY_PATH", previousPath);
+        }
+    }
+
+    [Fact]
+    public void GetHistoryFilePath_UsesConfiguredPathWhenSet()
+    {
+        var previousPath = Environment.GetEnvironmentVariable("STARTUP_HISTORY_PATH");
+        try
+        {
+            Environment.SetEnvironmentVariable("STARTUP_HISTORY_PATH", "/var/lib/datagate/startup-history.json");
+
+            var path = ApplicationStartupHistory.GetHistoryFilePath(_environmentMock.Object);
+
+            path.Should().Be("/var/lib/datagate/startup-history.json");
+        }
+        finally
+        {
+            Environment.SetEnvironmentVariable("STARTUP_HISTORY_PATH", previousPath);
+        }
+    }
 }

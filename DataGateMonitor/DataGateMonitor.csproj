@@ -6,9 +6,9 @@
         <DockerDefaultTargetOS>Linux</DockerDefaultTargetOS>
         <Product>DataGateMonitor</Product>
         <AssemblyTitle>DataGateMonitor</AssemblyTitle>
-        <Version>1.0.3.52</Version>
-        <AssemblyVersion>1.0.3.52</AssemblyVersion>
-        <FileVersion>1.0.3.52</FileVersion>
+        <Version>1.0.3.60</Version>
+        <AssemblyVersion>1.0.3.60</AssemblyVersion>
+        <FileVersion>1.0.3.60</FileVersion>
         <TargetFramework>net10.0</TargetFramework>
     </PropertyGroup>
 
@@ -17,8 +17,8 @@
         <PackageReference Include="BCrypt.Net-Next" Version="4.2.0" />
         <PackageReference Include="Elastic.Clients.Elasticsearch" Version="9.4.2" />
         <PackageReference Include="Google.Apis.Auth" Version="1.75.0" />
-        <PackageReference Include="Mapster" Version="10.0.8" />
-        <PackageReference Include="Mapster.DependencyInjection" Version="10.0.8" />
+        <PackageReference Include="Mapster" Version="10.0.10" />
+        <PackageReference Include="Mapster.DependencyInjection" Version="10.0.10" />
         <PackageReference Include="MaxMind.GeoIP2" Version="6.0.0" />
         <PackageReference Include="Microsoft.AspNetCore.Authentication.JwtBearer" Version="10.0.9" />
         <PackageReference Include="Microsoft.AspNetCore.Mvc.NewtonsoftJson" Version="10.0.9" />
@@ -37,7 +37,7 @@
         <PackageReference Include="Microsoft.IdentityModel.Tokens" Version="8.19.1" />
         <PackageReference Include="Newtonsoft.Json" Version="13.0.4" />
         <!-- SharedModels: NuGet only. Latest on nuget.org: https://www.nuget.org/packages/DataGateMonitor.SharedModels -->
-        <PackageReference Include="DataGateMonitor.SharedModels" Version="1.0.25" />
+        <PackageReference Include="DataGateMonitor.SharedModels" Version="1.0.34" />
         <PackageReference Include="Otp.NET" Version="1.4.1" />
         <PackageReference Include="Npgsql.EntityFrameworkCore.PostgreSQL" Version="10.0.2" />
         <PackageReference Include="Serilog" Version="4.3.1" />
@@ -46,9 +46,9 @@
         <PackageReference Include="Serilog.Sinks.Console" Version="6.1.1" />
         <PackageReference Include="Serilog.Sinks.Elasticsearch" Version="10.0.0" />
         <PackageReference Include="Resend" Version="0.5.1" />
-        <PackageReference Include="StackExchange.Redis" Version="3.0.0" />
-        <PackageReference Include="Swashbuckle.AspNetCore" Version="10.2.2" />
-        <PackageReference Include="Swashbuckle.AspNetCore.Newtonsoft" Version="10.2.2" />
+        <PackageReference Include="StackExchange.Redis" Version="3.0.11" />
+        <PackageReference Include="Swashbuckle.AspNetCore" Version="10.2.3" />
+        <PackageReference Include="Swashbuckle.AspNetCore.Newtonsoft" Version="10.2.3" />
         <PackageReference Include="System.IdentityModel.Tokens.Jwt" Version="8.19.1" />
     </ItemGroup>
 
@@ -62,6 +62,13 @@
       <None Update="GeoLite2\GeoLite2-City.mmdb">
         <CopyToOutputDirectory>PreserveNewest</CopyToOutputDirectory>
       </None>
+      <Content Update="data/startup-history.json">
+        <CopyToPublishDirectory>Never</CopyToPublishDirectory>
+      </Content>
+    </ItemGroup>
+
+    <ItemGroup>
+        <InternalsVisibleTo Include="DataGateMonitor.Tests" />
     </ItemGroup>
 
 </Project>

@@ -100,17 +100,8 @@ public sealed class OverviewTrafficAggregator(
     private static string BuildFilteredTrafficCte(string table)
         => OverviewTrafficPostgresSql.BuildFilteredTrafficCte(table);
 
-    private static string BucketStartSql(string truncUnit)
-        => OverviewTrafficPostgresSql.BucketStartSql(truncUnit);
-
-    private static string ResolveTruncUnit(OverviewGrouping grouping) => grouping switch
-    {
-        OverviewGrouping.Hours => "hour",
-        OverviewGrouping.Days => "day",
-        OverviewGrouping.Months => "month",
-        OverviewGrouping.Years => "year",
-        _ => "day",
-    };
+    private static string BucketStartSql(OverviewGrouping grouping)
+        => OverviewTrafficPostgresSql.BucketStartSql(grouping);
 
     private async Task<IReadOnlyList<OverviewTrafficBucketRow>> QueryTrafficSeriesHybridAsync(
         ApplicationDbContext ctx,
@@ -243,8 +234,7 @@ public sealed class OverviewTrafficAggregator(
         if (toUtc < fromUtc) (fromUtc, toUtc) = (toUtc, fromUtc);
 
         var table = ResolveTrafficTable(ctx);
-        var trunc = ResolveTruncUnit(grouping);
-        var bucketExpr = BucketStartSql(trunc);
+        var bucketExpr = BucketStartSql(grouping);
         var sql = $"""
                    WITH {BuildFilteredTrafficCte(table)},
                    with_prev AS (
@@ -305,8 +295,7 @@ public sealed class OverviewTrafficAggregator(
         if (toUtc < fromUtc) (fromUtc, toUtc) = (toUtc, fromUtc);
 
         var table = ResolveTrafficTable(ctx);
-        var trunc = ResolveTruncUnit(grouping);
-        var bucketExpr = BucketStartSql(trunc);
+        var bucketExpr = BucketStartSql(grouping);
         var sql = $"""
                    WITH {BuildFilteredTrafficCte(table)},
                    bucketed AS (
@@ -713,16 +702,7 @@ public sealed class OverviewTrafficAggregator(
         DateTimeOffset fromUtc,
         DateTimeOffset toUtc,
         OverviewGrouping grouping)
-    {
-        if (grouping != OverviewGrouping.Auto)
-            return grouping;
-
-        var span = toUtc - fromUtc;
-        return span <= TimeSpan.FromDays(2) ? OverviewGrouping.Hours
-            : span <= TimeSpan.FromDays(180) ? OverviewGrouping.Days
-            : span <= TimeSpan.FromDays(36 * 30) ? OverviewGrouping.Months
-            : OverviewGrouping.Years;
-    }
+        => OverviewGroupingRules.ResolveAuto(fromUtc, toUtc, grouping);
 }
 
 internal static class OverviewBucketMath
@@ -735,6 +715,7 @@ internal static class OverviewBucketMath
         var t = Shift(tUtc, offset);
         var aligned = g switch
         {
+            OverviewGrouping.TenMinutes => AlignTenMinuteBucket(t),
             OverviewGrouping.Hours => new DateTimeOffset(t.Year, t.Month, t.Day, t.Hour, 0, 0, t.Offset),
             OverviewGrouping.Days => new DateTimeOffset(t.Year, t.Month, t.Day, 0, 0, 0, t.Offset),
             OverviewGrouping.Months => new DateTimeOffset(t.Year, t.Month, 1, 0, 0, 0, t.Offset),
@@ -749,6 +730,7 @@ internal static class OverviewBucketMath
         var t = Shift(bucketUtc, offset);
         t = g switch
         {
+            OverviewGrouping.TenMinutes => t.AddMinutes(10),
             OverviewGrouping.Hours => t.AddHours(1),
             OverviewGrouping.Days => t.AddDays(1),
             OverviewGrouping.Months => t.AddMonths(1),
@@ -756,5 +738,11 @@ internal static class OverviewBucketMath
             _ => t.AddDays(1)
         };
         return Unshift(t);
+    }
+
+    private static DateTimeOffset AlignTenMinuteBucket(DateTimeOffset t)
+    {
+        var minute = t.Minute - (t.Minute % 10);
+        return new DateTimeOffset(t.Year, t.Month, t.Day, t.Hour, minute, 0, t.Offset);
     }
 }

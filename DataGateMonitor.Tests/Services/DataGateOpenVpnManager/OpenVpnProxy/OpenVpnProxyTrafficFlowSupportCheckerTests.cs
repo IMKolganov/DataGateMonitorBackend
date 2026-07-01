@@ -1,111 +1,117 @@
-using FluentAssertions;
-using Microsoft.Extensions.DependencyInjection;
-using Microsoft.Extensions.Logging;
-using Moq;
 using DataGateMonitor.Models;
 using DataGateMonitor.Services.DataGateOpenVpnManager.Interfaces;
 using DataGateMonitor.Services.DataGateOpenVpnManager.OpenVpnProxy;
 using DataGateMonitor.SharedModels.DataGateMonitor.VpnServers.Dto;
 using DataGateMonitor.SharedModels.DataGateOpenVpnManager.Info;
 using DataGateMonitor.SharedModels.Enums;
+using Microsoft.Extensions.DependencyInjection;
+using Microsoft.Extensions.Logging.Abstractions;
+using Moq;
 
 namespace DataGateMonitor.Tests.Services.DataGateOpenVpnManager.OpenVpnProxy;
 
 public class OpenVpnProxyTrafficFlowSupportCheckerTests
 {
-    [Fact]
-    public async Task ShouldListenAsync_WhenApiUrlMissing_ReturnsFalse()
-    {
-        var checker = CreateChecker(out var infoService);
-
-        var supported = await checker.ShouldListenAsync(
-            new VpnServer { Id = 1, ApiUrl = " ", ServerType = VpnServerType.OpenVpn },
-            CancellationToken.None);
-
-        supported.Should().BeFalse();
-        infoService.Verify(
-            s => s.GetInfoByUrlAsync(It.IsAny<string>(), It.IsAny<VpnServerType?>(), It.IsAny<CancellationToken>()),
-            Times.Never);
-    }
-
-    [Fact]
-    public async Task ShouldListenAsync_WhenMicroserviceVersionTooOld_ReturnsFalse()
-    {
-        var checker = CreateChecker(out var infoService, CreateInfo("1.2.5.53"));
-
-        var supported = await checker.ShouldListenAsync(
-            new VpnServer { Id = 7, ApiUrl = "https://ovpn-old", ServerType = VpnServerType.OpenVpn },
-            CancellationToken.None);
-
-        supported.Should().BeFalse();
-    }
-
-    [Fact]
-    public async Task ShouldListenAsync_WhenMicroserviceVersionSupported_ReturnsTrue()
-    {
-        var checker = CreateChecker(out var infoService, CreateInfo("1.2.5.54"));
-
-        var supported = await checker.ShouldListenAsync(
-            new VpnServer { Id = 8, ApiUrl = "https://ovpn-new", ServerType = VpnServerType.OpenVpn },
-            CancellationToken.None);
-
-        supported.Should().BeTrue();
-    }
-
-    [Fact]
-    public async Task ShouldListenAsync_WhenInfoUnavailable_ReturnsFalse()
-    {
-        var checker = CreateChecker(out var infoService, null);
-
-        var supported = await checker.ShouldListenAsync(
-            new VpnServer { Id = 9, ApiUrl = "https://ovpn-missing", ServerType = VpnServerType.OpenVpn },
-            CancellationToken.None);
-
-        supported.Should().BeFalse();
-    }
-
-    [Fact]
-    public async Task ShouldListenAsync_CachesResult_ForSameServerAndApiUrl()
-    {
-        var checker = CreateChecker(out var infoService, CreateInfo("1.2.5.55"));
-        var server = new VpnServer { Id = 10, ApiUrl = "https://ovpn-cache", ServerType = VpnServerType.OpenVpn };
-
-        (await checker.ShouldListenAsync(server, CancellationToken.None)).Should().BeTrue();
-        (await checker.ShouldListenAsync(server, CancellationToken.None)).Should().BeTrue();
-
-        infoService.Verify(
-            s => s.GetInfoByUrlAsync(server.ApiUrl, VpnServerType.OpenVpn, It.IsAny<CancellationToken>()),
-            Times.Once);
-    }
-
     private static OpenVpnProxyTrafficFlowSupportChecker CreateChecker(
-        out Mock<IMicroserviceInfoService> infoService,
-        VpnMicroserviceDiagnosticsDto? info = null)
+        Mock<IMicroserviceInfoService> infoMock)
     {
-        infoService = new Mock<IMicroserviceInfoService>();
-        infoService
-            .Setup(s => s.GetInfoByUrlAsync(It.IsAny<string>(), It.IsAny<VpnServerType?>(), It.IsAny<CancellationToken>()))
-            .ReturnsAsync(info);
-
         var services = new ServiceCollection();
-        services.AddSingleton(infoService.Object);
-        var provider = services.BuildServiceProvider();
-
-        var scope = new Mock<IServiceScope>();
-        scope.SetupGet(s => s.ServiceProvider).Returns(provider);
-
-        var scopeFactory = new Mock<IServiceScopeFactory>();
-        scopeFactory.Setup(f => f.CreateScope()).Returns(scope.Object);
-
-        return new OpenVpnProxyTrafficFlowSupportChecker(
-            scopeFactory.Object,
-            Mock.Of<ILogger<OpenVpnProxyTrafficFlowSupportChecker>>());
+        services.AddSingleton(infoMock.Object);
+        var sp = services.BuildServiceProvider();
+        var scopeFactory = sp.GetRequiredService<IServiceScopeFactory>();
+        return new OpenVpnProxyTrafficFlowSupportChecker(scopeFactory, NullLogger<OpenVpnProxyTrafficFlowSupportChecker>.Instance);
     }
 
-    private static VpnMicroserviceDiagnosticsDto CreateInfo(string version) =>
+    private static VpnServer Server(string? apiUrl = "https://vpn.example.com/") =>
+        new()
+        {
+            Id = 75,
+            ApiUrl = apiUrl ?? string.Empty,
+            ServerType = VpnServerType.OpenVpn,
+        };
+
+    private static VpnMicroserviceDiagnosticsDto Diagnostics(string version) =>
         new()
         {
             ServerType = VpnServerType.OpenVpn,
             OpenVpn = new RootOpenVpnInfoResponse { Version = version }
         };
+
+    [Fact]
+    public async Task ShouldListenAsync_ReturnsFalse_WhenApiUrlMissing()
+    {
+        var info = new Mock<IMicroserviceInfoService>(MockBehavior.Strict);
+        var sut = CreateChecker(info);
+
+        var result = await sut.ShouldListenAsync(Server(apiUrl: null), CancellationToken.None);
+
+        Assert.False(result);
+    }
+
+    [Theory]
+    [InlineData("1.2.5.54", true)]
+    [InlineData("1.2.5.55", true)]
+    [InlineData("1.2.5.53", false)]
+    [InlineData("", false)]
+    public async Task ShouldListenAsync_ComparesMicroserviceVersion(string version, bool expected)
+    {
+        var info = new Mock<IMicroserviceInfoService>();
+        info.Setup(x => x.GetInfoByUrlAsync(It.IsAny<string>(), VpnServerType.OpenVpn, It.IsAny<CancellationToken>()))
+            .ReturnsAsync(Diagnostics(version));
+
+        var sut = CreateChecker(info);
+        var result = await sut.ShouldListenAsync(Server(), CancellationToken.None);
+
+        Assert.Equal(expected, result);
+    }
+
+    [Fact]
+    public async Task ShouldListenAsync_UsesCache_OnSecondCall()
+    {
+        var info = new Mock<IMicroserviceInfoService>();
+        info.Setup(x => x.GetInfoByUrlAsync(It.IsAny<string>(), VpnServerType.OpenVpn, It.IsAny<CancellationToken>()))
+            .ReturnsAsync(Diagnostics("1.2.5.54"));
+
+        var sut = CreateChecker(info);
+        var server = Server();
+
+        Assert.True(await sut.ShouldListenAsync(server, CancellationToken.None));
+        Assert.True(await sut.ShouldListenAsync(server, CancellationToken.None));
+
+        info.Verify(
+            x => x.GetInfoByUrlAsync(It.IsAny<string>(), VpnServerType.OpenVpn, It.IsAny<CancellationToken>()),
+            Times.Once);
+    }
+
+    [Fact]
+    public async Task ShouldListenAsync_ReturnsFalse_WhenInfoLookupFails()
+    {
+        var info = new Mock<IMicroserviceInfoService>();
+        info.Setup(x => x.GetInfoByUrlAsync(It.IsAny<string>(), VpnServerType.OpenVpn, It.IsAny<CancellationToken>()))
+            .ThrowsAsync(new HttpRequestException("offline"));
+
+        var sut = CreateChecker(info);
+        var result = await sut.ShouldListenAsync(Server(), CancellationToken.None);
+
+        Assert.False(result);
+    }
+
+    [Fact]
+    public async Task ShouldListenAsync_Reevaluates_WhenApiUrlChanges()
+    {
+        var info = new Mock<IMicroserviceInfoService>();
+        info.Setup(x => x.GetInfoByUrlAsync(It.IsAny<string>(), VpnServerType.OpenVpn, It.IsAny<CancellationToken>()))
+            .ReturnsAsync(Diagnostics("1.2.5.54"));
+
+        var sut = CreateChecker(info);
+        var server = Server("https://a.example.com/");
+
+        Assert.True(await sut.ShouldListenAsync(server, CancellationToken.None));
+        server.ApiUrl = "https://b.example.com/";
+        Assert.True(await sut.ShouldListenAsync(server, CancellationToken.None));
+
+        info.Verify(
+            x => x.GetInfoByUrlAsync(It.IsAny<string>(), VpnServerType.OpenVpn, It.IsAny<CancellationToken>()),
+            Times.Exactly(2));
+    }
 }

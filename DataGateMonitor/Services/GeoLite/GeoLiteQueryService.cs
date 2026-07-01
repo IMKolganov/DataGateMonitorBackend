@@ -1,6 +1,7 @@
 ﻿using System.Net;
 using MaxMind.GeoIP2.Exceptions;
 using DataGateMonitor.Services.GeoLite.Interfaces;
+using DataGateMonitor.Services.OpenVpnManagementInterfaces;
 using DataGateMonitor.SharedModels.DataGateMonitor.GeoLite.Dto;
 
 namespace DataGateMonitor.Services.GeoLite;
@@ -84,10 +85,14 @@ public class GeoLiteQueryService(GeoLiteDatabaseFactory dbFactory, ILogger<GeoLi
             return null;
         }
     }
-    // Extract host from "real address" handling IPv4, [IPv6]:port, and bare IPv6.
+    // Extract host from management RealAddress / endpoint strings (legacy and OpenVPN 2.7+).
     private static string ExtractIpHost(string realAddress)
     {
-        if (string.IsNullOrWhiteSpace(realAddress)) return realAddress;
+        if (string.IsNullOrWhiteSpace(realAddress))
+            return realAddress;
+
+        if (OpenVpnRealAddressParser.TryParseHostPort(realAddress, out var host, out _))
+            return host.Equals("localhost", StringComparison.OrdinalIgnoreCase) ? "127.0.0.1" : host;
 
         var s = realAddress.Trim();
 

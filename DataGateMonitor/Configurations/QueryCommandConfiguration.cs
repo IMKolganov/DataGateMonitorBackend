@@ -12,6 +12,8 @@ using DataGateMonitor.DataBase.Services.Query.IssuedXrayClientLinkTokenTable;
 using DataGateMonitor.DataBase.Services.Query.LocalizationTextTable;
 using DataGateMonitor.DataBase.Services.Query.NotificationRecipientTable;
 using DataGateMonitor.DataBase.Services.Query.VpnServerClientTable;
+using DataGateMonitor.DataBase.Services.Query.VpnDnsQueryLogTable;
+using DataGateMonitor.DataBase.Services.Query.VpnServerPiHoleConfigTable;
 using DataGateMonitor.DataBase.Services.Query.VpnServerEventLogTable;
 using DataGateMonitor.DataBase.Services.Query.VpnServerOvpnFileConfigTable;
 using DataGateMonitor.DataBase.Services.Query.VpnServerStatusLogTable;
@@ -61,6 +63,8 @@ public static class QueryCommandConfiguration
         services.AddScoped<IVpnServerClientOverviewQuery, VpnServerClientOverviewQuery>();
         services.AddScoped<IVpnServerClientQueryService, VpnServerClientQueryService>();
         services.AddScoped<IVpnServerEventLogQueryService, VpnServerEventLogQueryService>();
+        services.AddScoped<IVpnDnsQueryLogQueryService, VpnDnsQueryLogQueryService>();
+        services.AddScoped<IVpnServerPiHoleConfigQueryService, VpnServerPiHoleConfigQueryService>();
         services.AddScoped<IVpnServerOvpnFileConfigQueryService, VpnServerOvpnFileConfigQueryService>();
         services.AddScoped<IVpnServerStatusLogQueryService, VpnServerStatusLogQueryService>();
         services.AddScoped<IVpnServerQueryService, VpnServerQueryService>();

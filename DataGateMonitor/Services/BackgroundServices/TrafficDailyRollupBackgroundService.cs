@@ -5,7 +5,7 @@ namespace DataGateMonitor.Services.BackgroundServices;
 /// Optional one-time backfill: set TRAFFIC_DAILY_BACKFILL_ON_START=true.
 /// </summary>
 public sealed class TrafficDailyRollupBackgroundService(
-    ITrafficDailyRollupRunner runner,
+    IServiceScopeFactory scopeFactory,
     ILogger<TrafficDailyRollupBackgroundService> logger) : BackgroundService
 {
     private static readonly TimeSpan PollInterval = TimeSpan.FromHours(1);
@@ -37,6 +37,8 @@ public sealed class TrafficDailyRollupBackgroundService(
     {
         try
         {
+            await using var scope = scopeFactory.CreateAsyncScope();
+            var runner = scope.ServiceProvider.GetRequiredService<ITrafficDailyRollupRunner>();
             await runner.RunCatchUpThroughYesterdayAsync(ct);
         }
         catch (OperationCanceledException)

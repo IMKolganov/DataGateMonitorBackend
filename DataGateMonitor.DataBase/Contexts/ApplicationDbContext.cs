@@ -41,6 +41,8 @@ public class ApplicationDbContext(DbContextOptions<ApplicationDbContext> options
     public DbSet<LocalizationText> LocalizationTexts { get; set; } = null!;
     public DbSet<IncomingMessageLog> IncomingMessageLogs { get; set; } = null!;
     public DbSet<VpnServerEventLog> VpnServerEventLogs { get; set; } = null!;
+    public DbSet<VpnDnsQueryLog> VpnDnsQueryLogs { get; set; } = null!;
+    public DbSet<VpnServerPiHoleConfig> VpnServerPiHoleConfigs { get; set; } = null!;
     public DbSet<VpnServerClientTraffic> VpnServerClientTraffics { get; set; } = null!;
     public DbSet<VpnServerClientTrafficDaily> VpnServerClientTrafficDailies { get; set; } = null!;
     public DbSet<Notification> Notifications { get; set; } = null!;
@@ -82,6 +84,8 @@ public class ApplicationDbContext(DbContextOptions<ApplicationDbContext> options
         modelBuilder.ApplyConfiguration(new LocalizationTextConfiguration());
         modelBuilder.ApplyConfiguration(new IncomingMessageLogConfiguration());
         modelBuilder.ApplyConfiguration(new VpnServerEventLogConfiguration());
+        modelBuilder.ApplyConfiguration(new VpnDnsQueryLogConfiguration());
+        modelBuilder.ApplyConfiguration(new VpnServerPiHoleConfigConfiguration());
         modelBuilder.ApplyConfiguration(new VpnServerClientTrafficConfiguration());
         modelBuilder.ApplyConfiguration(new VpnServerClientTrafficDailyConfiguration());
         modelBuilder.ApplyConfiguration(new NotificationConfiguration());

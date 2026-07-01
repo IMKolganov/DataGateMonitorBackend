@@ -1,46 +1,71 @@
-using Microsoft.EntityFrameworkCore.Query;
-using Microsoft.Extensions.DependencyInjection;
-using Moq;
 using DataGateMonitor.DataBase.Services.Command.Interfaces;
 using DataGateMonitor.Models;
 using DataGateMonitor.Services.BackgroundServices;
 using DataGateMonitor.Services.BackgroundServices.Interfaces;
 using DataGateMonitor.Services.DataGateOpenVpnManager.Interfaces;
-using Xunit;
+using DataGateMonitor.Tests.Helpers;
+using Microsoft.Extensions.DependencyInjection;
+using Microsoft.Extensions.Logging.Abstractions;
+using Moq;
 
 namespace DataGateMonitor.Tests.Services.BackgroundServices;
 
 public class OpenVpnServerProcessorTests
 {
-    [Fact]
-    public async Task ProcessServerAsync_CallsConflogService_FetchAndSaveIfChangedByServerId()
+    private static (OpenVpnServerProcessor Processor, Mock<IVpnServerService> VpnService, Mock<ICommandService<VpnServer, int>> ServerCmd)
+        CreateProcessor()
     {
-        var conflogService = new Mock<IVpnServerConflogService>();
-        conflogService.Setup(s => s.FetchAndSaveIfChangedByServerIdAsync(It.IsAny<int>(), It.IsAny<CancellationToken>()))
+        var vpnService = new Mock<IVpnServerService>();
+        var serverCmd = new Mock<ICommandService<VpnServer, int>>();
+        serverCmd.Setup(x => x.UpdateWhere(
+                It.IsAny<System.Linq.Expressions.Expression<Func<VpnServer, bool>>>(),
+                It.IsAny<Action<Microsoft.EntityFrameworkCore.Query.UpdateSettersBuilder<VpnServer>>>(),
+                It.IsAny<CancellationToken>()))
+            .ReturnsAsync(1);
+
+        var conflog = new Mock<IVpnServerConflogService>();
+        conflog.Setup(x => x.FetchAndSaveIfChangedByServerIdAsync(It.IsAny<int>(), It.IsAny<CancellationToken>()))
             .ReturnsAsync((VpnServerConflog?)null);
 
-        var openVpnServerService = new Mock<IVpnServerService>();
-        openVpnServerService.Setup(s => s.SaveVpnServerStatusLogAsync(It.IsAny<VpnServer>(), It.IsAny<CancellationToken>())).Returns(Task.CompletedTask);
-        openVpnServerService.Setup(s => s.SaveConnectedClientsAsync(It.IsAny<VpnServer>(), It.IsAny<CancellationToken>())).Returns(Task.CompletedTask);
-
-        var serverCmd = new Mock<ICommandService<VpnServer, int>>();
-        serverCmd.Setup(c => c.UpdateWhere(It.IsAny<System.Linq.Expressions.Expression<Func<VpnServer, bool>>>(), It.IsAny<Action<Microsoft.EntityFrameworkCore.Query.UpdateSettersBuilder<VpnServer>>>(), It.IsAny<CancellationToken>())).Returns(Task.FromResult(1));
-
         var services = new ServiceCollection();
-        services.AddSingleton(openVpnServerService.Object);
+        services.AddSingleton(vpnService.Object);
         services.AddSingleton(serverCmd.Object);
-        services.AddSingleton(conflogService.Object);
+        services.AddSingleton(conflog.Object);
         var sp = services.BuildServiceProvider();
 
-        var logger = new Mock<Microsoft.Extensions.Logging.ILogger<OpenVpnServerProcessor>>();
-        var processor = new OpenVpnServerProcessor(logger.Object, sp);
+        return (new OpenVpnServerProcessor(NullLogger<OpenVpnServerProcessor>.Instance, sp), vpnService, serverCmd);
+    }
 
-        var server = new VpnServer { Id = 42, ServerName = "Test", ApiUrl = "https://test" };
+    [Fact]
+    public async Task ProcessServerAsync_OnSuccess_SetsServerOnline()
+    {
+        var (processor, vpnService, serverCmd) = CreateProcessor();
+        vpnService.Setup(x => x.SaveVpnServerStatusLogAsync(It.IsAny<VpnServer>(), It.IsAny<CancellationToken>()))
+            .Returns(Task.CompletedTask);
+        vpnService.Setup(x => x.SaveConnectedClientsAsync(It.IsAny<VpnServer>(), It.IsAny<CancellationToken>()))
+            .Returns(Task.CompletedTask);
 
-        await processor.ProcessServerAsync(server, CancellationToken.None);
+        await processor.ProcessServerAsync(OpenVpnHubTestHelpers.OpenVpnServer(), CancellationToken.None);
 
-        conflogService.Verify(s => s.FetchAndSaveIfChangedByServerIdAsync(42, It.IsAny<CancellationToken>()), Times.Once);
-        openVpnServerService.Verify(s => s.SaveVpnServerStatusLogAsync(server, It.IsAny<CancellationToken>()), Times.Once);
-        openVpnServerService.Verify(s => s.SaveConnectedClientsAsync(server, It.IsAny<CancellationToken>()), Times.Once);
+        serverCmd.Verify(x => x.UpdateWhere(
+            It.IsAny<System.Linq.Expressions.Expression<Func<VpnServer, bool>>>(),
+            It.IsAny<Action<Microsoft.EntityFrameworkCore.Query.UpdateSettersBuilder<VpnServer>>>(),
+            It.IsAny<CancellationToken>()), Times.Once);
+    }
+
+    [Fact]
+    public async Task ProcessServerAsync_OnFailure_SetsServerOfflineAndRethrows()
+    {
+        var (processor, vpnService, serverCmd) = CreateProcessor();
+        vpnService.Setup(x => x.SaveVpnServerStatusLogAsync(It.IsAny<VpnServer>(), It.IsAny<CancellationToken>()))
+            .ThrowsAsync(new InvalidOperationException("hub down"));
+
+        await Assert.ThrowsAsync<InvalidOperationException>(() =>
+            processor.ProcessServerAsync(OpenVpnHubTestHelpers.OpenVpnServer(), CancellationToken.None));
+
+        serverCmd.Verify(x => x.UpdateWhere(
+            It.IsAny<System.Linq.Expressions.Expression<Func<VpnServer, bool>>>(),
+            It.IsAny<Action<Microsoft.EntityFrameworkCore.Query.UpdateSettersBuilder<VpnServer>>>(),
+            It.IsAny<CancellationToken>()), Times.Once);
     }
 }

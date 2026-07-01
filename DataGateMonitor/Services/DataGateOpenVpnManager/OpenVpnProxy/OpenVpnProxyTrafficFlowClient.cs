@@ -22,6 +22,8 @@ public sealed class OpenVpnProxyTrafficFlowClient(
     private bool _handlersRegistered;
     private readonly IHubConnectionFactory _hubFactory = hubConnectionFactory ?? new DefaultHubConnectionFactory();
 
+    public string RegisteredApiUrl { get; } = server.ApiUrl;
+
     public async Task StartListeningAsync(CancellationToken cancellationToken)
     {
         await EnsureConnectionAsync(cancellationToken);
@@ -51,8 +53,28 @@ public sealed class OpenVpnProxyTrafficFlowClient(
         await _connectionLock.WaitAsync(cancellationToken);
         try
         {
+            if (_connection is not null
+                && !VpnServerApiUrlNormalizer.Equals(server.ApiUrl, RegisteredApiUrl))
+            {
+                logger.LogWarning(
+                    "Detected API URL change for server {ServerId}. Recreating proxy traffic flow connection...",
+                    server.Id);
+                logger.LogDebug(
+                    "Traffic flow hub URL change for server {ServerId}: RegisteredApiUrl={RegisteredApiUrl}, CurrentApiUrl={CurrentApiUrl}",
+                    server.Id, RegisteredApiUrl, server.ApiUrl);
+                try { await _connection.StopAsync(CancellationToken.None); } catch { /* ignore */ }
+                try { await _connection.DisposeAsync(); } catch { /* ignore */ }
+                _connection = null;
+                _handlersRegistered = false;
+            }
+
             if (_connection is not null && _connection.State == HubConnectionState.Connected)
+            {
+                logger.LogDebug(
+                    "Traffic flow hub already Connected for server {ServerId}, ConnId={ConnId}",
+                    server.Id, _connection.ConnectionId);
                 return _connection;
+            }
 
             if (_connection is null)
             {
@@ -81,7 +103,14 @@ public sealed class OpenVpnProxyTrafficFlowClient(
 
             if (_connection.State != HubConnectionState.Connected)
             {
-                await _connection.StartAsync(cancellationToken);
+                logger.LogDebug(
+                    "Traffic flow hub StartWhenReady: ServerId={ServerId}, CurrentState={State}",
+                    server.Id, _connection.State);
+                await HubConnectionStartup.StartWhenReadyAsync(
+                    () => _connection.State,
+                    ct => _connection.StartAsync(ct),
+                    cancellationToken,
+                    logger: logger);
                 logger.LogInformation("Started proxy traffic flow listener for server {ServerId}", server.Id);
             }
 

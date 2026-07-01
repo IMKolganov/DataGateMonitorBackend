@@ -7,11 +7,15 @@ using DataGateMonitor.DataBase.Services.Command.VpnServerClientTable;
 using DataGateMonitor.DataBase.Services.Query.IssuedOvpnFileTable;
 using DataGateMonitor.Hubs;
 using DataGateMonitor.Models;
-using DataGateMonitor.Serialization;
 using DataGateMonitor.Services.Api.Auth.Registers.Interfaces;
 using DataGateMonitor.Services.DataGateOpenVpnManager.Interfaces;
 using DataGateMonitor.Services.Helpers;
+using DataGateMonitor.Services.OpenVpnManagementInterfaces;
+using DataGateMonitor.Services.DataGateOpenVpnManager.OpenVpnProxy;
+using DataGateMonitor.Services.DataGateOpenVpnManager.OpenVpnProxy.Hubs;
+using DataGateMonitor.Services.DataGateOpenVpnManager.OpenVpnProxy.Hubs.Interfaces;
 using DataGateMonitor.Services.Others.Notifications.OpenVpnMicroserviceClient;
+using DataGateMonitor.SharedModels.DataGateOpenVpnManager.PiHole.Requests;
 using DataGateMonitor.SharedModels.DataGateOpenVpnManager.VpnEvent.Requests;
 using DataGateMonitor.SharedModels.DataGateMonitor.VpnServerEvent.Dto;
 using DataGateMonitor.SharedModels.DataGateMonitor.VpnServerEvent.Responses;
@@ -23,11 +27,22 @@ public class OpenVpnEventClient(
     ILogger<OpenVpnEventClient> logger,
     IHubContext<OpenVpnEventHub> eventHub,
     IMicroserviceTokenService tokenService,
-    IServiceScopeFactory scopeFactory)
+    IServiceScopeFactory scopeFactory,
+    IEventHubConnectionFactory? eventHubConnectionFactory = null,
+    TimeSpan? startRetryDelay = null,
+    Func<TimeSpan, CancellationToken, Task>? retryDelayAsync = null)
 {
     private readonly VpnServer _openVpnServer = openVpnServer;
+    private readonly IEventHubConnectionFactory _eventHubFactory =
+        eventHubConnectionFactory ?? new DefaultEventHubConnectionFactory();
+    private readonly TimeSpan _startRetryDelay =
+        startRetryDelay ?? OpenVpnHubConnectionDefaults.StartFailureRetryDelay;
+    private readonly Func<TimeSpan, CancellationToken, Task> _retryDelayAsync =
+        retryDelayAsync ?? ((delay, ct) => Task.Delay(delay, ct));
 
-    private HubConnection? _connection;
+    public string RegisteredApiUrl { get; } = openVpnServer.ApiUrl;
+
+    private IHubConnectionProxy? _connection;
     private readonly SemaphoreSlim _connectionLock = new(1, 1);
     private bool _handlersRegistered;
 
@@ -42,7 +57,7 @@ public class OpenVpnEventClient(
     private string? _lastError;
     private bool _notifiedEventHubConnectionFailed;
 
-    public async Task StartListeningAsync(CancellationToken cancellationToken)
+    public virtual async Task StartListeningAsync(CancellationToken cancellationToken)
     {
         await EnsureConnectionAsync(cancellationToken);
         // var s = GetStatus();
@@ -59,10 +74,7 @@ public class OpenVpnEventClient(
         {
             if (_connection is not null)
             {
-                try { await _connection.StopAsync(CancellationToken.None); } catch { /* ignore */ }
-                try { await _connection.DisposeAsync(); } catch { /* ignore */ }
-                _connection = null;
-                _handlersRegistered = false;
+                await DisposeConnectionAsync();
                 logger.LogInformation("Stopped OpenVpnEventClient for server {ServerId}", _openVpnServer.Id);
             }
         }
@@ -110,13 +122,31 @@ public class OpenVpnEventClient(
         if (error != null) _lastClosedUtc = _lastStateChangedUtc;
     }
 
-    private async Task<HubConnection> EnsureConnectionAsync(CancellationToken cancellationToken)
+    private async Task<IHubConnectionProxy> EnsureConnectionAsync(CancellationToken cancellationToken)
     {
         await _connectionLock.WaitAsync(cancellationToken);
         try
         {
+            if (_connection is not null
+                && !VpnServerApiUrlNormalizer.Equals(_openVpnServer.ApiUrl, RegisteredApiUrl))
+            {
+                logger.LogWarning(
+                    "Detected API URL change for server {ServerId}. Recreating SignalR event connection...",
+                    _openVpnServer.Id);
+                logger.LogDebug(
+                    "Event hub URL change for server {ServerId}: RegisteredApiUrl={RegisteredApiUrl}, CurrentApiUrl={CurrentApiUrl}",
+                    _openVpnServer.Id, RegisteredApiUrl, _openVpnServer.ApiUrl);
+                await DisposeConnectionAsync();
+                _fullUrl = "";
+            }
+
             if (_connection is not null && _connection.State == HubConnectionState.Connected)
+            {
+                logger.LogDebug(
+                    "Event hub already Connected for server {ServerId}, ConnId={ConnId}",
+                    _openVpnServer.Id, _connection.ConnectionId);
                 return _connection;
+            }
 
             if (_connection == null)
             {
@@ -125,27 +155,13 @@ public class OpenVpnEventClient(
                     "Creating SignalR connection for server {ServerId} (Url={Url}, Host={Host}, Port={Port})",
                     _openVpnServer.Id, _fullUrl, _host, _port);
 
-                _connection = new HubConnectionBuilder()
-                    .WithUrl(_fullUrl, options =>
-                    {
-                        options.AccessTokenProvider = () =>
-                            Task.FromResult<string?>(tokenService.GenerateToken(
-                                "vpn-cert-issuer", "cert-create", "backend", "DataGateOpenVpnManager"));
-                    })
-                    .AddNewtonsoftJsonProtocol(options => options.PayloadSerializerSettings = ProjectJson.WebSettings)
-                    .WithAutomaticReconnect([
-                        TimeSpan.Zero, TimeSpan.FromSeconds(2),
-                        TimeSpan.FromSeconds(5), TimeSpan.FromSeconds(15),
-                        TimeSpan.FromSeconds(30), TimeSpan.FromSeconds(60)
-                    ])
-                    .Build();
-
-                _connection.ServerTimeout = TimeSpan.FromSeconds(30);
-                _connection.KeepAliveInterval = TimeSpan.FromSeconds(15);
+                _connection = _eventHubFactory.Create(
+                    _fullUrl,
+                    () => Task.FromResult<string?>(tokenService.GenerateToken(
+                        "vpn-cert-issuer", "cert-create", "backend", "DataGateOpenVpnManager")));
 
                 if (!_handlersRegistered)
                 {
-                    // --- Register all handlers using the new payload type VpnEventRequest ---
                     _connection.On<VpnEventRequest>("ClientConnected",
                         async data => await HandleEvent("ClientConnected", data));
                     _connection.On<VpnEventRequest>("ClientDisconnected",
@@ -154,8 +170,6 @@ public class OpenVpnEventClient(
                         async data => await HandleEvent("ClientAttempted", data));
                     _connection.On<VpnEventRequest>("TlsVerified",
                         async data => await HandleEvent("TlsVerified", data));
-
-                    // New unified/typed error channels
                     _connection.On<VpnEventRequest>("ErrorEvent",
                         async data => await HandleEvent("ErrorEvent", data));
                     _connection.On<VpnEventRequest>("AuthFailed",
@@ -166,41 +180,51 @@ public class OpenVpnEventClient(
                         async data => await HandleEvent("VerifyError", data));
                     _connection.On<VpnEventRequest>("VpnError",
                         async data => await HandleEvent("VpnError", data));
-
-                    // Optional: env dumps if you broadcast them
+                    _connection.On<DnsQueryBatchRequest>("DnsQueriesReceived",
+                        async data => await HandleDnsQueriesAsync(data));
                     _connection.On<object>("EnvDumpReceived",
                         async _ => await Task.CompletedTask);
 
-                    _connection.Reconnecting += ex =>
+                    _connection.OnReconnecting(ex =>
                     {
                         Stamp(HubConnectionState.Reconnecting, ex);
+                        logger.LogDebug(
+                            ex,
+                            "SignalR Reconnecting event (ServerId={ServerId}, State={State}, ConnId={ConnId})",
+                            _openVpnServer.Id, _connection?.State, _connection?.ConnectionId);
                         logger.LogWarning(ex,
                             "SignalR reconnecting (ServerId={ServerId}, Host={Host}, Port={Port})",
                             _openVpnServer.Id, _host, _port);
                         return Task.CompletedTask;
-                    };
-                    _connection.Reconnected += connId =>
+                    });
+                    _connection.OnReconnected(connId =>
                     {
                         Stamp(HubConnectionState.Connected);
+                        logger.LogDebug(
+                            "SignalR Reconnected event (ServerId={ServerId}, ConnId={ConnId}, State={State})",
+                            _openVpnServer.Id, connId, _connection?.State);
                         logger.LogInformation(
                             "SignalR reconnected (ServerId={ServerId}, ConnId={ConnId}, Host={Host}, Port={Port})",
                             _openVpnServer.Id, connId, _host, _port);
                         return Task.CompletedTask;
-                    };
-                    _connection.Closed += ex =>
+                    });
+                    _connection.OnClosed(ex =>
                     {
                         Stamp(HubConnectionState.Disconnected, ex);
+                        logger.LogDebug(
+                            ex,
+                            "SignalR Closed event (ServerId={ServerId}, State={State}) — manual StartAsync required after auto-reconnect gives up",
+                            _openVpnServer.Id, _connection?.State);
                         logger.LogError(ex,
                             "SignalR closed (ServerId={ServerId}, Host={Host}, Port={Port})",
                             _openVpnServer.Id, _host, _port);
                         return Task.CompletedTask;
-                    };
+                    });
 
                     _handlersRegistered = true;
                 }
             }
 
-            // First connect retry loop
             if (_connection.State != HubConnectionState.Connected)
             {
                 var attempt = 0;
@@ -214,7 +238,14 @@ public class OpenVpnEventClient(
                         logger.LogInformation(
                             "Attempting SignalR connect: ServerId={ServerId}, Attempt={Attempt}, Url={Url}, Host={Host}, Port={Port}",
                             _openVpnServer.Id, attempt, _fullUrl, _host, _port);
-                        await _connection.StartAsync(cancellationToken);
+                        logger.LogDebug(
+                            "Event hub StartWhenReady: ServerId={ServerId}, Attempt={Attempt}, CurrentState={State}",
+                            _openVpnServer.Id, attempt, _connection.State);
+                        await HubConnectionStartup.StartWhenReadyAsync(
+                            () => _connection.State,
+                            ct => _connection.StartAsync(ct),
+                            cancellationToken,
+                            logger: logger);
                         _notifiedEventHubConnectionFailed = false;
                         Stamp(HubConnectionState.Connected);
                         logger.LogInformation(
@@ -226,8 +257,8 @@ public class OpenVpnEventClient(
                     {
                         var innerMsg = ex.InnerException?.Message ?? ex.Message;
                         logger.LogWarning(ex,
-                            "SignalR start failed (attempt {Attempt}) for server {ServerId}, Url={Url}. Inner={Inner}. Retrying in 5s...",
-                            attempt, _openVpnServer.Id, _fullUrl, innerMsg);
+                            "SignalR start failed (attempt {Attempt}) for server {ServerId}, Url={Url}. Inner={Inner}. Retrying in {RetryDelay}s...",
+                            attempt, _openVpnServer.Id, _fullUrl, innerMsg, _startRetryDelay.TotalSeconds);
 
                         if (!_notifiedEventHubConnectionFailed)
                         {
@@ -244,7 +275,7 @@ public class OpenVpnEventClient(
                             }
                         }
 
-                        await Task.Delay(TimeSpan.FromSeconds(5), cancellationToken);
+                        await _retryDelayAsync(_startRetryDelay, cancellationToken);
                     }
                 }
             }
@@ -255,6 +286,17 @@ public class OpenVpnEventClient(
         {
             _connectionLock.Release();
         }
+    }
+
+    private async Task DisposeConnectionAsync()
+    {
+        if (_connection is null)
+            return;
+
+        try { await _connection.StopAsync(CancellationToken.None); } catch { /* ignore */ }
+        try { await _connection.DisposeAsync(); } catch { /* ignore */ }
+        _connection = null;
+        _handlersRegistered = false;
     }
 
     private async Task HandleEvent(string eventType, VpnEventRequest data)
@@ -285,13 +327,14 @@ public class OpenVpnEventClient(
             if (eventType.Equals("ClientConnected", StringComparison.OrdinalIgnoreCase)
                 && !string.IsNullOrWhiteSpace(req.CommonName))
             {
+                var remoteIp = OpenVpnRealAddressParser.NormalizeRemoteIp(req.RealAddress);
                 var openVpnServerClient = new VpnServerClient
                 {
                     VpnServerId = _openVpnServer.Id,
                     ExternalId = await fileQuery.GetExternalIdByCommonName(
                         req.CommonName, _openVpnServer.Id, CancellationToken.None) ?? string.Empty,
                     CommonName = req.CommonName!,
-                    RemoteIp = req.RealAddress ?? string.Empty,
+                    RemoteIp = remoteIp,
                     LocalIp = req.VirtualAddress ?? string.Empty,
                     BytesReceived = req.BytesReceived ?? 0,
                     BytesSent = req.BytesSent ?? 0,
@@ -319,13 +362,14 @@ public class OpenVpnEventClient(
                      && !string.IsNullOrWhiteSpace(req.CommonName))
             {
                 var nowUtc = DateTimeOffset.UtcNow;
+                var remoteIp = OpenVpnRealAddressParser.NormalizeRemoteIp(req.RealAddress);
 
                 await clientCmd.UpdateWhere(
                     x => x.VpnServerId == _openVpnServer.Id
                          && x.IsConnected
                          && x.CommonName == req.CommonName
                          && x.ConnectedSince == req.ConnectedSince
-                         && x.RemoteIp == req.RealAddress,
+                         && x.RemoteIp == remoteIp,
                     s => s
                         .SetProperty(c => c.IsConnected, false)
                         .SetProperty(c => c.DisconnectedAt, nowUtc)
@@ -357,6 +401,45 @@ public class OpenVpnEventClient(
             swTotal.Stop();
             logger.LogDebug("HandleEvent finished for {EventType} (ServerId={ServerId}); TotalMs={ElapsedMs}",
                 eventType, _openVpnServer.Id, swTotal.ElapsedMilliseconds);
+        }
+    }
+
+    private async Task HandleDnsQueriesAsync(DnsQueryBatchRequest batch)
+    {
+        if (batch.Queries.Count == 0)
+            return;
+
+        try
+        {
+            using var scope = scopeFactory.CreateScope();
+            var dnsLogService = scope.ServiceProvider.GetRequiredService<IVpnDnsQueryLogService>();
+            var saved = await dnsLogService.SaveBatchAsync(_openVpnServer.Id, batch, CancellationToken.None);
+            var skipped = batch.Queries.Count - saved;
+            if (saved == 0)
+            {
+                logger.LogDebug(
+                    "Pi-hole DNS batch for ServerId={ServerId}: nothing new to store ({Received} received, likely duplicates).",
+                    _openVpnServer.Id,
+                    batch.Queries.Count);
+            }
+            else
+            {
+                logger.LogInformation(
+                    "Pi-hole DNS batch for ServerId={ServerId}: saved={Saved}, received={Received}, skippedDuplicates={Skipped}, collectedAt={CollectedAtUtc:o}",
+                    _openVpnServer.Id,
+                    saved,
+                    batch.Queries.Count,
+                    skipped,
+                    batch.CollectedAtUtc);
+            }
+        }
+        catch (Exception ex)
+        {
+            logger.LogError(ex,
+                "Failed to save Pi-hole DNS query batch for ServerId={ServerId} (received={Received}, collectedAt={CollectedAtUtc:o})",
+                _openVpnServer.Id,
+                batch.Queries.Count,
+                batch.CollectedAtUtc);
         }
     }
 }

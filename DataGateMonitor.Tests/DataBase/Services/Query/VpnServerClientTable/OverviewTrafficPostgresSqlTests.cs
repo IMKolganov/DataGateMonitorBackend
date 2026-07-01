@@ -1,6 +1,7 @@
 using Npgsql;
 using NpgsqlTypes;
 using DataGateMonitor.DataBase.Services.Query.VpnServerClientTable;
+using DataGateMonitor.SharedModels.Enums;
 
 namespace DataGateMonitor.Tests.DataBase.Services.Query.VpnServerClientTable;
 
@@ -54,5 +55,22 @@ public class OverviewTrafficPostgresSqlTests
         var aggregator = OverviewQueryTestHelper.CreateTrafficAggregator(uow);
 
         Assert.IsType<OverviewTrafficAggregator>(aggregator);
+    }
+
+    [Fact]
+    public void BucketStartSql_TenMinutes_UsesFloorOnEpochSeconds()
+    {
+        var sql = OverviewTrafficPostgresSql.BucketStartSql(OverviewGrouping.TenMinutes);
+
+        Assert.Contains("/ 600", sql, StringComparison.Ordinal);
+        Assert.Contains("@offset", sql, StringComparison.Ordinal);
+    }
+
+    [Fact]
+    public void BucketStartSql_Hours_UsesDateTrunc()
+    {
+        var sql = OverviewTrafficPostgresSql.BucketStartSql(OverviewGrouping.Hours);
+
+        Assert.Contains("date_trunc('hour'", sql, StringComparison.Ordinal);
     }
 }

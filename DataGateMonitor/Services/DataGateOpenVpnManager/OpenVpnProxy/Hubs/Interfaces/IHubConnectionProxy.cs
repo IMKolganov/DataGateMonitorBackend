@@ -5,6 +5,7 @@ namespace DataGateMonitor.Services.DataGateOpenVpnManager.OpenVpnProxy.Hubs.Inte
 public interface IHubConnectionProxy : IAsyncDisposable
 {
     HubConnectionState State { get; }
+    string? ConnectionId { get; }
     Task StartAsync(CancellationToken cancellationToken = default);
     Task StopAsync(CancellationToken cancellationToken = default);
 
@@ -21,4 +22,7 @@ public interface IHubConnectionProxy : IAsyncDisposable
 
     void On<T>(string methodName, Func<T, Task> handler);
     void On<T1, T2>(string methodName, Action<T1, T2> handler);
+    void OnReconnecting(Func<Exception?, Task> handler);
+    void OnReconnected(Func<string?, Task> handler);
+    void OnClosed(Func<Exception?, Task> handler);
 }

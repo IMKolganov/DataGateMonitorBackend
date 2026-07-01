@@ -99,6 +99,31 @@ public class GeoLiteQueryServiceTests
     }
 
     [Fact]
+    public async Task GetGeoInfoAsync_Returns_Rfc1918_For_OpenVpn27LoopbackPrefix()
+    {
+        var sp = new ServiceCollection().BuildServiceProvider();
+        var factory = new GeoLiteDatabaseFactory(new NullLogger<GeoLiteDatabaseFactory>(), sp);
+        var sut = new GeoLiteQueryService(factory, new NullLogger<GeoLiteQueryService>());
+
+        var info = await sut.GetGeoInfoAsync("tcp4-server:127.0.0.1:53188", CancellationToken.None);
+
+        Assert.NotNull(info);
+        Assert.Equal("RFC1918", info!.Region);
+    }
+
+    [Fact]
+    public async Task GetGeoInfoAsync_Looks_Up_Public_Ip_From_OpenVpn27PrefixedEndpoint()
+    {
+        var (factory, _) = await GeoLiteTestHarness.CreateLoadedFactoryAsync();
+        var sut = new GeoLiteQueryService(factory, new NullLogger<GeoLiteQueryService>());
+
+        var info = await sut.GetGeoInfoAsync("tcp4-server:2.125.160.216:1194", CancellationToken.None);
+
+        Assert.NotNull(info);
+        Assert.Equal("FR", info!.Country);
+    }
+
+    [Fact]
     public async Task GetGeoInfoAsync_Looks_Up_Public_Ip_In_MaxMind_Test_Database()
     {
         var (factory, _) = await GeoLiteTestHarness.CreateLoadedFactoryAsync();

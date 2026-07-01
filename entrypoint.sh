@@ -2,15 +2,11 @@
 
 echo "[entrypoint] Current UID: $(id -u), GID: $(id -g)"
 
-# ✅ Ensure resources/geo-lite2 directory exists
-echo "[entrypoint] Ensuring /app/resources/geo-lite2 directory exists..."
+# ✅ Ensure resources directory exists (GeoLite, certs, startup history, …)
+echo "[entrypoint] Ensuring /app/resources directory exists..."
 mkdir -p /app/resources/geo-lite2
-chown -R app:app /app/resources/geo-lite2 || echo "[entrypoint] chown failed on geo-lite2"
-
-# ✅ Ensure resources/certs directory exists
-echo "[entrypoint] Ensuring /app/resources/certs directory exists..."
 mkdir -p /app/resources/certs
-chown -R app:app /app/resources/certs || echo "[entrypoint] chown failed on certs"
+chown -R app:app /app/resources || echo "[entrypoint] chown failed on resources"
 
 echo "[entrypoint] Starting application..."
 exec dotnet DataGateMonitor.dll

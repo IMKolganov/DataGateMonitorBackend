@@ -1,5 +1,6 @@
 using Npgsql;
 using NpgsqlTypes;
+using DataGateMonitor.SharedModels.Enums;
 
 namespace DataGateMonitor.DataBase.Services.Query.VpnServerClientTable;
 
@@ -47,6 +48,26 @@ public static class OverviewTrafficPostgresSql
            )
            """;
 
-    public static string BucketStartSql(string truncUnit)
+    public static string BucketStartSql(OverviewGrouping grouping)
+    {
+        if (grouping == OverviewGrouping.TenMinutes)
+            return TenMinuteBucketStartSql();
+
+        var truncUnit = grouping switch
+        {
+            OverviewGrouping.Hours => "hour",
+            OverviewGrouping.Days => "day",
+            OverviewGrouping.Months => "month",
+            OverviewGrouping.Years => "year",
+            _ => "day",
+        };
+
+        return DateTruncBucketStartSql(truncUnit);
+    }
+
+    private static string DateTruncBucketStartSql(string truncUnit)
         => $"""((date_trunc('{truncUnit}', ("MeasuredAt" AT TIME ZONE 'UTC') + @offset::interval) AT TIME ZONE 'UTC') - @offset::interval)::timestamptz""";
+
+    private static string TenMinuteBucketStartSql()
+        => $"""((to_timestamp(floor(extract(epoch from ("MeasuredAt" AT TIME ZONE 'UTC') + @offset::interval) / {OverviewGroupingRules.TenMinuteBucketSeconds}) * {OverviewGroupingRules.TenMinuteBucketSeconds}) AT TIME ZONE 'UTC') - @offset::interval)::timestamptz""";
 }

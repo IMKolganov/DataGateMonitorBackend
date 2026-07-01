@@ -1,6 +1,7 @@
+using System.Linq;
 using System.Security.Cryptography;
 using System.Text;
-using System.Linq;
+using DataGateMonitor.Services.OpenVpnManagementInterfaces;
 
 namespace DataGateMonitor.Services.Helpers;
 
@@ -14,7 +15,8 @@ public static class VpnSessionIdGenerator
         string remoteAddress,
         DateTimeOffset connectedSince)
     {
-        var sessionString = $"{commonName}-{remoteAddress}-{connectedSince:o}";
+        var normalizedRemote = OpenVpnRealAddressParser.NormalizeRemoteIp(remoteAddress);
+        var sessionString = $"{commonName}-{normalizedRemote}-{connectedSince:o}";
         using var sha256 = SHA256.Create();
         var hashBytes = sha256.ComputeHash(Encoding.UTF8.GetBytes(sessionString));
         return new Guid(hashBytes.Take(16).ToArray());

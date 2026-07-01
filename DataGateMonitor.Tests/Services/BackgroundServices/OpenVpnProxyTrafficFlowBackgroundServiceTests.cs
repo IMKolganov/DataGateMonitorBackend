@@ -1,116 +1,83 @@
-using Microsoft.Extensions.DependencyInjection;
-using Microsoft.Extensions.Logging;
-using Moq;
 using DataGateMonitor.DataBase.Services.Query.VpnServerTable;
-using DataGateMonitor.Models;
 using DataGateMonitor.Services.BackgroundServices;
 using DataGateMonitor.Services.DataGateOpenVpnManager.OpenVpnProxy;
-using DataGateMonitor.SharedModels.Enums;
+using DataGateMonitor.Tests.Helpers;
+using Microsoft.Extensions.DependencyInjection;
+using Microsoft.Extensions.Logging.Abstractions;
+using Moq;
 
 namespace DataGateMonitor.Tests.Services.BackgroundServices;
 
 public class OpenVpnProxyTrafficFlowBackgroundServiceTests
 {
     [Fact]
-    public async Task ExecuteAsync_StartsListeners_OnlyForEnabledOpenVpnServers()
+    public async Task ExecuteAsync_StartsListenerWhenServerSupportsTrafficFlow()
     {
-        var serverQuery = new Mock<IVpnServerQueryService>();
-        serverQuery.Setup(q => q.GetAll(
-                It.IsAny<bool>(),
-                It.IsAny<bool>(),
-                It.IsAny<int?>(),
-                It.IsAny<CancellationToken>()))
-            .ReturnsAsync(new List<VpnServer>
-            {
-                new() { Id = 1, ServerType = VpnServerType.OpenVpn, IsDisable = false, ApiUrl = "https://ovpn-1" },
-                new() { Id = 2, ServerType = VpnServerType.OpenVpn, IsDisable = true, ApiUrl = "https://ovpn-2" },
-                new() { Id = 3, ServerType = VpnServerType.Xray, IsDisable = false, ApiUrl = "https://xray-1" }
-            });
-
-        var scopedProvider = new Mock<IServiceProvider>();
-        scopedProvider.Setup(p => p.GetService(typeof(IVpnServerQueryService))).Returns(serverQuery.Object);
-
-        var scope = new Mock<IServiceScope>();
-        scope.SetupGet(s => s.ServiceProvider).Returns(scopedProvider.Object);
-
-        var scopeFactory = new Mock<IServiceScopeFactory>();
-        scopeFactory.Setup(f => f.CreateScope()).Returns(scope.Object);
-
-        var started = new TaskCompletionSource<bool>(TaskCreationOptions.RunContinuationsAsynchronously);
-        var flowClient = new Mock<IOpenVpnProxyTrafficFlowClient>();
-        flowClient
-            .Setup(c => c.StartListeningAsync(It.IsAny<CancellationToken>()))
-            .Returns(Task.CompletedTask)
-            .Callback(() => started.TrySetResult(true));
+        var server = OpenVpnHubTestHelpers.OpenVpnServer();
+        var client = new Mock<IOpenVpnProxyTrafficFlowClient>();
+        client.Setup(x => x.StartListeningAsync(It.IsAny<CancellationToken>())).Returns(Task.CompletedTask);
 
         var factory = new Mock<IOpenVpnProxyTrafficFlowClientFactory>();
-        factory.Setup(f => f.Create(It.Is<VpnServer>(s => s.Id == 1))).Returns(flowClient.Object);
+        factory.Setup(x => x.Create(server)).Returns(client.Object);
 
-        var supportChecker = new Mock<IOpenVpnProxyTrafficFlowSupportChecker>();
-        supportChecker
-            .Setup(c => c.ShouldListenAsync(It.Is<VpnServer>(s => s.Id == 1), It.IsAny<CancellationToken>()))
-            .ReturnsAsync(true);
-        supportChecker
-            .Setup(c => c.ShouldListenAsync(It.Is<VpnServer>(s => s.Id != 1), It.IsAny<CancellationToken>()))
-            .ReturnsAsync(false);
+        var checker = new Mock<IOpenVpnProxyTrafficFlowSupportChecker>();
+        checker.Setup(x => x.ShouldListenAsync(server, It.IsAny<CancellationToken>())).ReturnsAsync(true);
 
-        var logger = new Mock<ILogger<OpenVpnProxyTrafficFlowBackgroundService>>();
-        var service = new OpenVpnProxyTrafficFlowBackgroundService(
-            logger.Object,
+        var query = new Mock<IVpnServerQueryService>();
+        query.Setup(x => x.GetAll(false, false, null, It.IsAny<CancellationToken>())).ReturnsAsync([server]);
+
+        var services = new ServiceCollection();
+        services.AddSingleton(query.Object);
+        var sp = services.BuildServiceProvider();
+
+        using var cts = new CancellationTokenSource(TimeSpan.FromSeconds(2));
+        var sut = new OpenVpnProxyTrafficFlowBackgroundService(
+            NullLogger<OpenVpnProxyTrafficFlowBackgroundService>.Instance,
             factory.Object,
-            supportChecker.Object,
-            scopeFactory.Object);
+            checker.Object,
+            sp.GetRequiredService<IServiceScopeFactory>());
 
-        await service.StartAsync(CancellationToken.None);
-        var completed = await Task.WhenAny(started.Task, Task.Delay(TimeSpan.FromSeconds(2)));
-        await service.StopAsync(CancellationToken.None);
+        await sut.StartAsync(cts.Token);
+        await Task.Delay(200, CancellationToken.None);
+        await cts.CancelAsync();
+        await sut.StopAsync(CancellationToken.None);
 
-        Assert.Same(started.Task, completed);
-        factory.Verify(f => f.Create(It.Is<VpnServer>(s => s.Id == 1)), Times.AtLeastOnce);
-        factory.Verify(f => f.Create(It.Is<VpnServer>(s => s.Id == 2)), Times.Never);
-        factory.Verify(f => f.Create(It.Is<VpnServer>(s => s.Id == 3)), Times.Never);
-        flowClient.Verify(c => c.StartListeningAsync(It.IsAny<CancellationToken>()), Times.AtLeastOnce);
+        factory.Verify(x => x.Create(server), Times.AtLeastOnce);
+        client.Verify(x => x.StartListeningAsync(It.IsAny<CancellationToken>()), Times.AtLeastOnce);
+        factory.Verify(x => x.Remove(It.IsAny<int>()), Times.Never);
     }
 
     [Fact]
-    public async Task ExecuteAsync_WhenServerUnsupported_RemovesClient_AndDoesNotStartListener()
+    public async Task ExecuteAsync_RemovesClientWhenTrafficFlowUnsupported()
     {
-        var server = new VpnServer { Id = 4, ServerType = VpnServerType.OpenVpn, IsDisable = false, ApiUrl = "https://ovpn-old" };
-        var serverQuery = new Mock<IVpnServerQueryService>();
-        serverQuery.Setup(q => q.GetAll(
-                It.IsAny<bool>(),
-                It.IsAny<bool>(),
-                It.IsAny<int?>(),
-                It.IsAny<CancellationToken>()))
-            .ReturnsAsync(new List<VpnServer> { server });
-
-        var scopedProvider = new Mock<IServiceProvider>();
-        scopedProvider.Setup(p => p.GetService(typeof(IVpnServerQueryService))).Returns(serverQuery.Object);
-
-        var scope = new Mock<IServiceScope>();
-        scope.SetupGet(s => s.ServiceProvider).Returns(scopedProvider.Object);
-
-        var scopeFactory = new Mock<IServiceScopeFactory>();
-        scopeFactory.Setup(f => f.CreateScope()).Returns(scope.Object);
+        var server = OpenVpnHubTestHelpers.OpenVpnServer();
 
         var factory = new Mock<IOpenVpnProxyTrafficFlowClientFactory>();
-        var supportChecker = new Mock<IOpenVpnProxyTrafficFlowSupportChecker>();
-        supportChecker
-            .Setup(c => c.ShouldListenAsync(server, It.IsAny<CancellationToken>()))
-            .ReturnsAsync(false);
+        factory.Setup(x => x.Remove(server.Id)).Returns(true);
 
-        var logger = new Mock<ILogger<OpenVpnProxyTrafficFlowBackgroundService>>();
-        var service = new OpenVpnProxyTrafficFlowBackgroundService(
-            logger.Object,
+        var checker = new Mock<IOpenVpnProxyTrafficFlowSupportChecker>();
+        checker.Setup(x => x.ShouldListenAsync(server, It.IsAny<CancellationToken>())).ReturnsAsync(false);
+
+        var query = new Mock<IVpnServerQueryService>();
+        query.Setup(x => x.GetAll(false, false, null, It.IsAny<CancellationToken>())).ReturnsAsync([server]);
+
+        var services = new ServiceCollection();
+        services.AddSingleton(query.Object);
+        var sp = services.BuildServiceProvider();
+
+        using var cts = new CancellationTokenSource(TimeSpan.FromSeconds(2));
+        var sut = new OpenVpnProxyTrafficFlowBackgroundService(
+            NullLogger<OpenVpnProxyTrafficFlowBackgroundService>.Instance,
             factory.Object,
-            supportChecker.Object,
-            scopeFactory.Object);
+            checker.Object,
+            sp.GetRequiredService<IServiceScopeFactory>());
 
-        await service.StartAsync(CancellationToken.None);
-        await Task.Delay(TimeSpan.FromMilliseconds(200));
-        await service.StopAsync(CancellationToken.None);
+        await sut.StartAsync(cts.Token);
+        await Task.Delay(200, CancellationToken.None);
+        await cts.CancelAsync();
+        await sut.StopAsync(CancellationToken.None);
 
-        factory.Verify(f => f.Remove(server.Id), Times.AtLeastOnce);
-        factory.Verify(f => f.Create(It.IsAny<VpnServer>()), Times.Never);
+        factory.Verify(x => x.Remove(server.Id), Times.AtLeastOnce);
+        factory.Verify(x => x.Create(It.IsAny<Models.VpnServer>()), Times.Never);
     }
 }
