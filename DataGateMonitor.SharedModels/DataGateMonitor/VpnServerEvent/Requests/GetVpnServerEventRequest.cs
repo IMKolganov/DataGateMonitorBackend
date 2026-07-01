@@ -13,4 +13,10 @@ public class GetVpnServerEventRequest
 
     [Range(1, int.MaxValue, ErrorMessage = "pageSize must be greater than 0.")]
     public int PageSize { get; set; } = 10;
+
+    /// <summary>Optional filter: single OpenVPN common name (CN).</summary>
+    public string? CommonName { get; set; }
+
+    /// <summary>Optional filter: resolve all issued profile CNs for this external id on the server.</summary>
+    public string? ExternalId { get; set; }
 }
