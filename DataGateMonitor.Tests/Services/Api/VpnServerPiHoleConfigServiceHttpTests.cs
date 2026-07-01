@@ -19,6 +19,7 @@ using Microsoft.EntityFrameworkCore;
 using Microsoft.EntityFrameworkCore.Diagnostics;
 using Microsoft.Extensions.Configuration;
 using Microsoft.Extensions.Logging.Abstractions;
+using DataGateMonitor.Tests.Helpers;
 using Moq;
 
 namespace DataGateMonitor.Tests.Services.Api;
@@ -88,7 +89,7 @@ public class VpnServerPiHoleConfigServiceHttpTests
         {
             VpnServerId = harness.ServerId,
             BaseUrl = "http://pi-hole:8080",
-            AppPassword = "runtime-secret",
+            AppPassword = PiHoleTestFixtures.AppCredential,
             PollIntervalSeconds = 45,
             BatchSize = 100,
             LookbackSeconds = 90,

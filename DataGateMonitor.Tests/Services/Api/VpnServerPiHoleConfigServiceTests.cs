@@ -17,6 +17,7 @@ using DataGateMonitor.Services.Api.Auth.Registers.Interfaces;
 using Microsoft.Extensions.Logging.Abstractions;
 using Moq;
 using DataGateMonitor.DataBase.Services.Query.VpnServerTable;
+using DataGateMonitor.Tests.Helpers;
 
 namespace DataGateMonitor.Tests.Services.Api;
 
@@ -32,7 +33,7 @@ public class VpnServerPiHoleConfigServiceTests
         {
             VpnServerId = harness.ServerId,
             BaseUrl = "http://pi-hole:8080",
-            AppPassword = "app-secret",
+            AppPassword = PiHoleTestFixtures.AppCredential,
             PollIntervalSeconds = 45,
             BatchSize = 300,
             LookbackSeconds = 90,
@@ -57,14 +58,14 @@ public class VpnServerPiHoleConfigServiceTests
     }
 
     [Fact]
-    public async Task GetRuntimeForMicroserviceAsync_ReturnsSecrets_WhenEnabledAndConfigured()
+    public async Task GetRuntimeForMicroserviceAsync_ReturnsAppCredential_WhenEnabledAndConfigured()
     {
         await using var harness = await CreateHarnessAsync();
         await harness.Sut.UpsertAsync(new UpsertVpnServerPiHoleConfigRequest
         {
             VpnServerId = harness.ServerId,
             BaseUrl = "http://pi-hole:8080",
-            AppPassword = "runtime-secret",
+            AppPassword = PiHoleTestFixtures.AppCredential,
             PollIntervalSeconds = 60,
             BatchSize = 200,
             LookbackSeconds = 120,
@@ -75,7 +76,7 @@ public class VpnServerPiHoleConfigServiceTests
 
         Assert.NotNull(runtime);
         Assert.True(runtime!.IsPiHoleEnabled);
-        Assert.Equal("runtime-secret", runtime.AppPassword);
+        Assert.Equal(PiHoleTestFixtures.AppCredential, runtime.AppPassword);
     }
 
     [Fact]
@@ -86,7 +87,7 @@ public class VpnServerPiHoleConfigServiceTests
         {
             VpnServerId = harness.ServerId,
             BaseUrl = "http://pi-hole:8080",
-            AppPassword = "keep-me",
+            AppPassword = PiHoleTestFixtures.AppCredential,
             PollIntervalSeconds = 60,
             BatchSize = 200,
             LookbackSeconds = 120,
@@ -106,7 +107,7 @@ public class VpnServerPiHoleConfigServiceTests
 
         var runtime = await harness.Sut.GetRuntimeForMicroserviceAsync(harness.ServerId, CancellationToken.None);
         Assert.NotNull(runtime);
-        Assert.Equal("keep-me", runtime!.AppPassword);
+        Assert.Equal(PiHoleTestFixtures.AppCredential, runtime!.AppPassword);
         Assert.Equal("http://pi-hole:9090", runtime.BaseUrl);
     }
 
