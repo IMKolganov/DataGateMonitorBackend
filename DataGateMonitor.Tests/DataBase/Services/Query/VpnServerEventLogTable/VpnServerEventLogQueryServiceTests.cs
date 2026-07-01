@@ -1,139 +1,101 @@
-using System.Linq.Expressions;
-using Microsoft.EntityFrameworkCore;
-using Moq;
+using DataGateMonitor.DataBase.Contexts;
+using DataGateMonitor.DataBase.Services.Query;
 using DataGateMonitor.DataBase.Services.Query.VpnServerEventLogTable;
 using DataGateMonitor.Models;
-using DataGateMonitor.SharedModels.Responses;
+using DataGateMonitor.Tests.Helpers;
+using Microsoft.EntityFrameworkCore;
+using Microsoft.Extensions.Configuration;
 
 namespace DataGateMonitor.Tests.DataBase.Services.Query.VpnServerEventLogTable;
 
 public class VpnServerEventLogQueryServiceTests
 {
-    private sealed class TestDbContext : DbContext
+    [Fact]
+    public async Task GetAppVersionSummaryAsync_GroupsByIvGuiVer_AndReturnsLastConnectTime()
     {
-        public TestDbContext(DbContextOptions<TestDbContext> options) : base(options) { }
-        public DbSet<VpnServerEventLog> VpnServerEventLogs => Set<VpnServerEventLog>();
-    }
+        var t1 = new DateTimeOffset(2026, 6, 1, 10, 0, 0, TimeSpan.Zero);
+        var t2 = new DateTimeOffset(2026, 6, 2, 12, 0, 0, TimeSpan.Zero);
+        var t3 = new DateTimeOffset(2026, 6, 3, 8, 0, 0, TimeSpan.Zero);
 
-    private static List<VpnServerEventLog> CreateSample()
-    {
-        return new List<VpnServerEventLog>
+        await using var context = CreateContext();
+        context.VpnServerEventLogs.AddRange(
+            Event(1, "cn-a", "ClientConnected", "3.12_datagate_android_1.0.7", t1),
+            Event(2, "cn-a", "ClientConnected", "3.12_datagate_android_1.0.7", t2),
+            Event(3, "cn-b", "ClientConnected", "3.12_datagate_windows_1.0.6", t3),
+            Event(4, "cn-a", "ClientDisconnect", "3.12_datagate_android_1.0.7", t2),
+            Event(5, "cn-a", "ClientConnected", null, t2),
+            Event(6, "cn-other", "ClientConnected", "3.12_datagate_android_1.0.7", t2));
+
+        await context.SaveChangesAsync();
+
+        var queries = new Dictionary<Type, object>
         {
-            new() { Id = 1, VpnServerId = 10, EventType = "ClientConnect" },
-            new() { Id = 2, VpnServerId = 10, EventType = "ClientConnect" },
-            new() { Id = 3, VpnServerId = 20, EventType = "ClientConnect" },
-            new() { Id = 4, VpnServerId = 10, EventType = "ClientDisconnect" },
-            new() { Id = 5, VpnServerId = 10, EventType = "ClientDisconnect" },
+            [typeof(VpnServerEventLog)] = new TestQuery<VpnServerEventLog>(context.VpnServerEventLogs),
         };
+        var sut = new VpnServerEventLogQueryService(new EfQueryService<VpnServerEventLog, int>(new TestUnitOfWork(queries)));
+
+        var items = await sut.GetAppVersionSummaryAsync(75, ["cn-a", "cn-b"], CancellationToken.None);
+
+        Assert.Equal(2, items.Count);
+        Assert.Equal("3.12_datagate_windows_1.0.6", items[0].IvGuiVer);
+        Assert.Equal(t3, items[0].LastConnectedAtUtc);
+        Assert.Equal(1, items[0].ConnectionCount);
+        Assert.Equal("3.12_datagate_android_1.0.7", items[1].IvGuiVer);
+        Assert.Equal(t2, items[1].LastConnectedAtUtc);
+        Assert.Equal(2, items[1].ConnectionCount);
     }
 
-    private static (Mock<IQueryService<VpnServerEventLog, int>> q, TestDbContext ctx, List<VpnServerEventLog> data) CreateEfBackedQuery()
+    [Fact]
+    public async Task GetAppVersionSummaryAsync_WithSingleCommonName_FiltersProfiles()
     {
-        var data = CreateSample();
-        var options = new DbContextOptionsBuilder<TestDbContext>()
+        var t1 = new DateTimeOffset(2026, 6, 1, 10, 0, 0, TimeSpan.Zero);
+        var t2 = new DateTimeOffset(2026, 6, 2, 12, 0, 0, TimeSpan.Zero);
+
+        await using var context = CreateContext();
+        context.VpnServerEventLogs.AddRange(
+            Event(1, "cn-a", "ClientConnect", "3.12_datagate_android_1.0.7", t1),
+            Event(2, "cn-b", "ClientConnect", "3.12_datagate_windows_1.0.6", t2));
+
+        await context.SaveChangesAsync();
+
+        var queries = new Dictionary<Type, object>
+        {
+            [typeof(VpnServerEventLog)] = new TestQuery<VpnServerEventLog>(context.VpnServerEventLogs),
+        };
+        var sut = new VpnServerEventLogQueryService(new EfQueryService<VpnServerEventLog, int>(new TestUnitOfWork(queries)));
+
+        var items = await sut.GetAppVersionSummaryAsync(75, ["cn-a"], CancellationToken.None);
+
+        Assert.Single(items);
+        Assert.Equal("3.12_datagate_android_1.0.7", items[0].IvGuiVer);
+    }
+
+    private static VpnServerEventLog Event(
+        int id,
+        string commonName,
+        string eventType,
+        string? ivGuiVer,
+        DateTimeOffset eventTimeUtc)
+        => new()
+        {
+            Id = id,
+            VpnServerId = 75,
+            CommonName = commonName,
+            EventType = eventType,
+            IvGuiVer = ivGuiVer,
+            EventTimeUtc = eventTimeUtc,
+            CreateDate = eventTimeUtc,
+            LastUpdate = eventTimeUtc,
+        };
+
+    private static ApplicationDbContext CreateContext()
+    {
+        var options = new DbContextOptionsBuilder<ApplicationDbContext>()
             .UseInMemoryDatabase(Guid.NewGuid().ToString())
             .Options;
-        var ctx = new TestDbContext(options);
-        ctx.VpnServerEventLogs.AddRange(data);
-        ctx.SaveChanges();
-
-        var mock = new Mock<IQueryService<VpnServerEventLog, int>>();
-        mock
-            .Setup(q => q.Query(It.IsAny<bool>(), It.IsAny<Expression<Func<VpnServerEventLog, object>>[]>()))
-            .Returns(ctx.VpnServerEventLogs);
-        return (mock, ctx, data);
-    }
-
-    [Fact]
-    public async Task GetAllAsync_Delegates_To_IQueryService()
-    {
-        var (q, ctx, data) = CreateEfBackedQuery();
-        q.Setup(x => x.GetAll(true, It.IsAny<CancellationToken>()))
-         .ReturnsAsync(data)
-         .Verifiable();
-
-        var sut = new VpnServerEventLogQueryService(q.Object);
-        var result = await sut.GetAll(CancellationToken.None);
-
-        Assert.Equal(data.Count, result.Count);
-        Assert.True(result.SequenceEqual(data));
-        q.Verify(x => x.GetAll(true, It.IsAny<CancellationToken>()), Times.Once);
-        await ctx.DisposeAsync();
-    }
-
-    [Fact]
-    public async Task GetByIdAsync_Delegates_To_FindByIdAsync()
-    {
-        var (q, ctx, _) = CreateEfBackedQuery();
-        var expected = new VpnServerEventLog { Id = 42, VpnServerId = 99 };
-        q.Setup(x => x.FindById(42, true, It.IsAny<CancellationToken>(), It.IsAny<Expression<Func<VpnServerEventLog, object>>[]>()))
-         .ReturnsAsync(expected)
-         .Verifiable();
-
-        var sut = new VpnServerEventLogQueryService(q.Object);
-        var result = await sut.GetById(42, CancellationToken.None);
-
-        Assert.Same(expected, result);
-        q.Verify(x => x.FindById(42, true, It.IsAny<CancellationToken>(), It.IsAny<Expression<Func<VpnServerEventLog, object>>[]>()), Times.Once);
-        await ctx.DisposeAsync();
-    }
-
-    [Fact]
-    public async Task GetByVpnServerIdAsync_Normalizes_And_Paginates_Descending_By_Id()
-    {
-        var (q, ctx, data) = CreateEfBackedQuery();
-        var sut = new VpnServerEventLogQueryService(q.Object);
-
-        // Pass invalid page/pageSize to test normalization to 1 and 10
-        var pageResult = await sut.GetByVpnServerId(10, 0, 0, CancellationToken.None);
-
-        Assert.Equal(1, pageResult.Page);
-        Assert.Equal(10, pageResult.PageSize);
-
-        // Now request page 1 size 2 to test ordering and paging
-        var result = await sut.GetByVpnServerId(10, 1, 2, CancellationToken.None);
-
-        var expectedAll = data.Where(x => x.VpnServerId == 10).OrderByDescending(x => x.Id).ToList();
-        Assert.Equal(expectedAll.Count, result.TotalCount);
-        Assert.Equal(1, result.Page);
-        Assert.Equal(2, result.PageSize);
-        Assert.Equal(2, result.Items.Count);
-        // Expect top two by Id desc for serverId 10 are Id=5 and Id=4
-        Assert.Collection(result.Items,
-            i => Assert.Equal(5, i.Id),
-            i => Assert.Equal(4, i.Id));
-
-        // Next page should contain next two items: Id=2 and Id=1 (only those with serverId 10)
-        var result2 = await sut.GetByVpnServerId(10, 2, 2, CancellationToken.None);
-        Assert.Collection(result2.Items,
-            i => Assert.Equal(2, i.Id),
-            i => Assert.Equal(1, i.Id));
-
-        await ctx.DisposeAsync();
-    }
-
-    [Fact]
-    public async Task GetPageAsync_Delegates_To_PageAsync()
-    {
-        var (q, ctx, data) = CreateEfBackedQuery();
-
-        var paged = new PagedResponse<VpnServerEventLog>
-        {
-            Page = 2,
-            PageSize = 2,
-            TotalCount = data.Count,
-            Items = data.Skip(2).Take(2).ToList()
-        } as IPagedResult<VpnServerEventLog>;
-
-        q.Setup(x => x.Page(2, 2, null, null, true, It.IsAny<CancellationToken>(), It.IsAny<Expression<Func<VpnServerEventLog, object>>[]>()))
-         .ReturnsAsync(paged)
-         .Verifiable();
-
-        var sut = new VpnServerEventLogQueryService(q.Object);
-        var result = await sut.GetPage(2, 2, CancellationToken.None);
-
-        Assert.Same(paged, result);
-        q.Verify(x => x.Page(2, 2, null, null, true, It.IsAny<CancellationToken>(), It.IsAny<Expression<Func<VpnServerEventLog, object>>[]>()), Times.Once);
-        await ctx.DisposeAsync();
+        var configuration = new ConfigurationBuilder()
+            .AddInMemoryCollection(new Dictionary<string, string?> { ["DataBaseSettings:DefaultSchema"] = "test_schema" })
+            .Build();
+        return new ApplicationDbContext(options, configuration);
     }
 }
