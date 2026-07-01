@@ -1,0 +1,9 @@
+title = "DataGate Monitor backend gitleaks config"
+
+[allowlist]
+description = "Synthetic Pi-hole credentials in unit tests (not real secrets)"
+paths = [
+  '''DataGateMonitor\.Tests/Services/Api/VpnServerPiHoleConfigServiceTests\.cs''',
+  '''DataGateMonitor\.Tests/Services/Api/VpnServerPiHoleConfigServiceHttpTests\.cs''',
+  '''DataGateMonitor\.Tests/Helpers/PiHoleTestFixtures\.cs''',
+]
