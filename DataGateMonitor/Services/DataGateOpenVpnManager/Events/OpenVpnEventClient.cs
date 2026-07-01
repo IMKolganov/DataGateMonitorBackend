@@ -12,6 +12,7 @@ using DataGateMonitor.Services.Api.Auth.Registers.Interfaces;
 using DataGateMonitor.Services.DataGateOpenVpnManager.Interfaces;
 using DataGateMonitor.Services.Helpers;
 using DataGateMonitor.Services.OpenVpnManagementInterfaces;
+using DataGateMonitor.Services.DataGateOpenVpnManager.OpenVpnProxy.Hubs;
 using DataGateMonitor.Services.Others.Notifications.OpenVpnMicroserviceClient;
 using DataGateMonitor.SharedModels.DataGateOpenVpnManager.PiHole.Requests;
 using DataGateMonitor.SharedModels.DataGateOpenVpnManager.VpnEvent.Requests;
@@ -44,7 +45,7 @@ public class OpenVpnEventClient(
     private string? _lastError;
     private bool _notifiedEventHubConnectionFailed;
 
-    public async Task StartListeningAsync(CancellationToken cancellationToken)
+    public virtual async Task StartListeningAsync(CancellationToken cancellationToken)
     {
         await EnsureConnectionAsync(cancellationToken);
         // var s = GetStatus();
@@ -219,7 +220,10 @@ public class OpenVpnEventClient(
                         logger.LogInformation(
                             "Attempting SignalR connect: ServerId={ServerId}, Attempt={Attempt}, Url={Url}, Host={Host}, Port={Port}",
                             _openVpnServer.Id, attempt, _fullUrl, _host, _port);
-                        await _connection.StartAsync(cancellationToken);
+                        await HubConnectionStartup.StartWhenReadyAsync(
+                            () => _connection.State,
+                            ct => _connection.StartAsync(ct),
+                            cancellationToken);
                         _notifiedEventHubConnectionFailed = false;
                         Stamp(HubConnectionState.Connected);
                         logger.LogInformation(

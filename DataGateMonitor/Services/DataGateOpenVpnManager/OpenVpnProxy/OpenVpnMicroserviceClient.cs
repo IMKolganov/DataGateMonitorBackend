@@ -195,7 +195,10 @@ public class OpenVpnMicroserviceClient(
 
             if (_connection.State != HubConnectionState.Connected)
             {
-                await _connection.StartAsync(cancellationToken);
+                await HubConnectionStartup.StartWhenReadyAsync(
+                    () => _connection.State,
+                    ct => _connection.StartAsync(ct),
+                    cancellationToken);
                 logger.LogInformation("Started SignalR connection for server {ServerId}", server.Id);
             }
 
@@ -212,7 +215,10 @@ public class OpenVpnMicroserviceClient(
         try
         {
             await connection.StopAsync();
-            await connection.StartAsync();
+            await HubConnectionStartup.StartWhenReadyAsync(
+                () => connection.State,
+                ct => connection.StartAsync(ct),
+                CancellationToken.None);
             logger.LogInformation("Reconnected to SignalR for server {ServerId}", server.Id);
         }
         catch (Exception ex)

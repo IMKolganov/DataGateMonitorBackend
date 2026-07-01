@@ -61,7 +61,9 @@ public class VpnServerEventLogQueryService(IQueryService<VpnServerEventLog, int>
         var baseQuery = q.Query()
             .Where(x => x.VpnServerId == vpnServerId)
             .Where(x => ConnectEventTypes.Contains(x.EventType))
-            .Where(x => x.IvGuiVer != null && x.IvGuiVer != "");
+            .Where(x =>
+                (x.IvGuiVer != null && x.IvGuiVer != "")
+                || (x.IvVer != null && x.IvVer != ""));
 
         if (commonNames is { Count: > 0 })
         {
@@ -70,10 +72,13 @@ public class VpnServerEventLogQueryService(IQueryService<VpnServerEventLog, int>
         }
 
         return await baseQuery
-            .GroupBy(x => x.IvGuiVer!)
+            .GroupBy(x =>
+                x.IvGuiVer != null && x.IvGuiVer != ""
+                    ? x.IvGuiVer
+                    : x.IvVer!)
             .Select(g => new VpnClientAppVersionSummaryItemDto
             {
-                IvGuiVer = g.Key,
+                IvGuiVer = g.Key!,
                 LastConnectedAtUtc = g.Max(x => x.EventTimeUtc ?? x.CreateDate),
                 ConnectionCount = g.Count(),
             })

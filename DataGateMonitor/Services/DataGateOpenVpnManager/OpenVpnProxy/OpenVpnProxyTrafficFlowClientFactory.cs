@@ -3,6 +3,7 @@ using Microsoft.AspNetCore.SignalR;
 using DataGateMonitor.Hubs;
 using DataGateMonitor.Models;
 using DataGateMonitor.Services.Api.Auth.Registers.Interfaces;
+using DataGateMonitor.Services.DataGateOpenVpnManager.OpenVpnProxy.Hubs.Interfaces;
 using DataGateMonitor.SharedModels.Enums;
 
 namespace DataGateMonitor.Services.DataGateOpenVpnManager.OpenVpnProxy;
@@ -24,7 +25,8 @@ public sealed class OpenVpnProxyTrafficFlowClientFactory(IServiceProvider rootPr
             var logger = rootProvider.GetRequiredService<ILogger<OpenVpnProxyTrafficFlowClient>>();
             var trafficHub = rootProvider.GetRequiredService<IHubContext<OpenVpnProxyTrafficFlowHub>>();
             var tokenService = rootProvider.GetRequiredService<IMicroserviceTokenService>();
-            return new OpenVpnProxyTrafficFlowClient(server, logger, trafficHub, tokenService);
+            var hubConnectionFactory = rootProvider.GetService<IHubConnectionFactory>();
+            return new OpenVpnProxyTrafficFlowClient(server, logger, trafficHub, tokenService, hubConnectionFactory);
         });
     }
 

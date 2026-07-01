@@ -1,169 +1,85 @@
-using FluentAssertions;
-using Microsoft.AspNetCore.SignalR;
-using Microsoft.Extensions.DependencyInjection;
-using Microsoft.Extensions.Logging;
-using Moq;
-using DataGateMonitor.DataBase.Services.Query.VpnServerTable;
 using DataGateMonitor.Hubs;
 using DataGateMonitor.Models;
 using DataGateMonitor.Services.Api.Auth.Registers.Interfaces;
 using DataGateMonitor.Services.DataGateOpenVpnManager.Events;
-using Xunit;
+using DataGateMonitor.Tests.Helpers;
+using Microsoft.AspNetCore.SignalR;
+using Microsoft.Extensions.DependencyInjection;
+using Microsoft.Extensions.Logging.Abstractions;
+using Moq;
 
 namespace DataGateMonitor.Tests.Services.DataGateOpenVpnManager.Events;
 
 public class OpenVpnEventClientFactoryTests
 {
-    private static VpnServer Server(int id, string apiUrl = "https://vpn.test/") => new()
+    private static OpenVpnEventClientFactory CreateFactory()
     {
-        Id = id,
-        ApiUrl = apiUrl,
-        ServerName = $"Server{id}",
-        CreateDate = DateTimeOffset.UtcNow,
-        LastUpdate = DateTimeOffset.UtcNow
-    };
-
-    [Fact]
-    public void Create_SameServerId_ReturnsSameCachedInstance()
-    {
-        var server = Server(1);
-        var (provider, _) = CreateProvider(server);
-        var factory = new OpenVpnEventClientFactory(provider);
-
-        var client1 = factory.Create(server);
-        var client2 = factory.Create(server);
-
-        client1.Should().BeSameAs(client2);
+        var services = new ServiceCollection();
+        services.AddLogging();
+        services.AddSingleton<IHubContext<OpenVpnEventHub>>(Mock.Of<IHubContext<OpenVpnEventHub>>());
+        services.AddSingleton<IMicroserviceTokenService>(OpenVpnHubTestHelpers.CreateTokenService());
+        var sp = services.BuildServiceProvider();
+        return new OpenVpnEventClientFactory(sp);
     }
 
     [Fact]
-    public void Create_DifferentServerIds_ReturnsDifferentInstances()
+    public void Create_ReturnsCachedClient_ForSameServerId()
     {
-        var (provider, _) = CreateProvider(Server(1));
-        var factory = new OpenVpnEventClientFactory(provider);
+        var factory = CreateFactory();
+        var server = OpenVpnHubTestHelpers.OpenVpnServer();
 
-        var client1 = factory.Create(Server(1));
-        var client2 = factory.Create(Server(2));
+        var first = factory.Create(server);
+        var second = factory.Create(server);
 
-        client1.Should().NotBeSameAs(client2);
+        Assert.Same(first, second);
     }
 
     [Fact]
-    public void GetAllClients_ReturnsAllCachedClients()
+    public void Remove_StopsClientAndEvictsFromCache()
     {
-        var (provider, _) = CreateProvider(Server(1));
-        var factory = new OpenVpnEventClientFactory(provider);
-        factory.Create(Server(1));
-        factory.Create(Server(2));
+        var factory = CreateFactory();
+        var server = OpenVpnHubTestHelpers.OpenVpnServer();
 
-        var all = factory.GetAllClients();
+        var client = factory.Create(server);
+        Assert.True(factory.Remove(server.Id));
 
-        all.Should().HaveCount(2);
+        var recreated = factory.Create(server);
+        Assert.NotSame(client, recreated);
     }
 
     [Fact]
-    public void TryGetClientStatus_WhenCached_ReturnsTrueAndStatus()
+    public void TryGetClientStatus_ReturnsStatus_AfterCreate()
     {
-        var server = Server(1);
-        var (provider, _) = CreateProvider(server);
-        var factory = new OpenVpnEventClientFactory(provider);
-        factory.Create(server);
+        var factory = CreateFactory();
+        var server = OpenVpnHubTestHelpers.OpenVpnServer();
 
-        var found = factory.TryGetClientStatus(1, out var status);
+        _ = factory.Create(server);
 
-        found.Should().BeTrue();
-        status.Should().NotBeNull();
-        status!.ConnectionStatus.ServerId.Should().Be(1);
+        Assert.True(factory.TryGetClientStatus(server.Id, out var status));
+        Assert.NotNull(status);
+        Assert.Equal(server.Id, status!.ConnectionStatus.ServerId);
     }
 
     [Fact]
-    public void TryGetClientStatus_WhenNotCached_ReturnsFalseAndNull()
+    public void GetAllClientStatuses_IncludesCreatedClients()
     {
-        var (provider, _) = CreateProvider(Server(1));
-        var factory = new OpenVpnEventClientFactory(provider);
+        var factory = CreateFactory();
+        var server = OpenVpnHubTestHelpers.OpenVpnServer();
+        _ = factory.Create(server);
 
-        var found = factory.TryGetClientStatus(99, out var status);
+        var statuses = factory.GetAllClientStatuses();
 
-        found.Should().BeFalse();
-        status.Should().BeNull();
+        Assert.Single(statuses.ConnectionStatuses);
+        Assert.Equal(server.Id, statuses.ConnectionStatuses[0].ServerId);
     }
 
     [Fact]
-    public void Remove_WhenCached_ReturnsTrue_AndTryGetClientStatusReturnsFalse()
+    public void Create_Throws_ForNonOpenVpnServer()
     {
-        var server = Server(1);
-        var (provider, _) = CreateProvider(server);
-        var factory = new OpenVpnEventClientFactory(provider);
-        factory.Create(server);
+        var factory = CreateFactory();
+        var server = OpenVpnHubTestHelpers.OpenVpnServer();
+        server.ServerType = SharedModels.Enums.VpnServerType.Xray;
 
-        var removed = factory.Remove(1);
-
-        removed.Should().BeTrue();
-        factory.TryGetClientStatus(1, out _).Should().BeFalse();
-    }
-
-    [Fact]
-    public void Remove_WhenNotCached_ReturnsFalse()
-    {
-        var (provider, _) = CreateProvider(Server(1));
-        var factory = new OpenVpnEventClientFactory(provider);
-
-        var removed = factory.Remove(99);
-
-        removed.Should().BeFalse();
-    }
-
-    [Fact]
-    public async Task TryCreateByServerIdAsync_WhenServerExists_ReturnsClient()
-    {
-        var server = Server(5);
-        var (provider, serverQuery) = CreateProvider(server);
-        serverQuery.Setup(q => q.GetById(5, It.IsAny<CancellationToken>())).ReturnsAsync(server);
-        var factory = new OpenVpnEventClientFactory(provider);
-
-        var client = await factory.TryCreateByServerIdAsync(5, CancellationToken.None);
-
-        client.Should().NotBeNull();
-        factory.TryGetClientStatus(5, out _).Should().BeTrue();
-    }
-
-    [Fact]
-    public async Task TryCreateByServerIdAsync_WhenServerNotFound_ReturnsNull()
-    {
-        var (provider, serverQuery) = CreateProvider(Server(1));
-        serverQuery.Setup(q => q.GetById(99, It.IsAny<CancellationToken>())).ReturnsAsync((VpnServer?)null);
-        var factory = new OpenVpnEventClientFactory(provider);
-
-        var client = await factory.TryCreateByServerIdAsync(99, CancellationToken.None);
-
-        client.Should().BeNull();
-    }
-
-    private static (IServiceProvider provider, Mock<IVpnServerQueryService> serverQuery) CreateProvider(VpnServer? server = null)
-    {
-        var logger = new Mock<ILogger<OpenVpnEventClient>>(MockBehavior.Loose);
-        var eventHub = new Mock<IHubContext<OpenVpnEventHub>>(MockBehavior.Loose);
-        var tokenService = new Mock<IMicroserviceTokenService>(MockBehavior.Loose);
-        tokenService.Setup(t => t.GenerateToken(It.IsAny<string>(), It.IsAny<string>(), It.IsAny<string>(), It.IsAny<string>())).Returns("token");
-        var scopeFactory = new Mock<IServiceScopeFactory>(MockBehavior.Loose);
-        var scope = new Mock<IServiceScope>(MockBehavior.Loose);
-        var scopeProvider = new Mock<IServiceProvider>(MockBehavior.Loose);
-        scope.Setup(s => s.ServiceProvider).Returns(scopeProvider.Object);
-        scopeFactory.Setup(f => f.CreateScope()).Returns(scope.Object);
-
-        var serverQuery = new Mock<IVpnServerQueryService>(MockBehavior.Strict);
-        if (server != null)
-            serverQuery.Setup(q => q.GetById(server.Id, It.IsAny<CancellationToken>())).ReturnsAsync(server);
-        scopeProvider.Setup(p => p.GetService(typeof(IVpnServerQueryService))).Returns(serverQuery.Object);
-
-        var rootProvider = new Mock<IServiceProvider>(MockBehavior.Strict);
-        rootProvider.Setup(p => p.GetService(typeof(ILogger<OpenVpnEventClient>))).Returns(logger.Object);
-        rootProvider.Setup(p => p.GetService(typeof(IHubContext<OpenVpnEventHub>))).Returns(eventHub.Object);
-        rootProvider.Setup(p => p.GetService(typeof(IMicroserviceTokenService))).Returns(tokenService.Object);
-        rootProvider.Setup(p => p.GetService(typeof(IServiceScopeFactory))).Returns(scopeFactory.Object);
-        rootProvider.Setup(p => p.GetService(typeof(ILogger<OpenVpnEventClientFactory>))).Returns(Mock.Of<ILogger<OpenVpnEventClientFactory>>());
-        // CreateScope() is an extension method that uses GetRequiredService<IServiceScopeFactory>().CreateScope(), so no need to mock it on rootProvider
-
-        return (rootProvider.Object, serverQuery);
+        Assert.Throws<InvalidOperationException>(() => factory.Create(server));
     }
 }

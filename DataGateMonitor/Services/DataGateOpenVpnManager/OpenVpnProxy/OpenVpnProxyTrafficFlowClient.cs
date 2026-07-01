@@ -81,7 +81,10 @@ public sealed class OpenVpnProxyTrafficFlowClient(
 
             if (_connection.State != HubConnectionState.Connected)
             {
-                await _connection.StartAsync(cancellationToken);
+                await HubConnectionStartup.StartWhenReadyAsync(
+                    () => _connection.State,
+                    ct => _connection.StartAsync(ct),
+                    cancellationToken);
                 logger.LogInformation("Started proxy traffic flow listener for server {ServerId}", server.Id);
             }
 

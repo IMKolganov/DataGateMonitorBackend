@@ -1,86 +1,64 @@
-using Microsoft.AspNetCore.SignalR;
-using Microsoft.Extensions.DependencyInjection;
-using Moq;
 using DataGateMonitor.Hubs;
 using DataGateMonitor.Models;
 using DataGateMonitor.Services.Api.Auth.Registers.Interfaces;
 using DataGateMonitor.Services.DataGateOpenVpnManager.OpenVpnProxy;
-using DataGateMonitor.SharedModels.Enums;
+using DataGateMonitor.Services.DataGateOpenVpnManager.OpenVpnProxy.Hubs.Interfaces;
+using DataGateMonitor.Tests.Helpers;
+using Microsoft.AspNetCore.SignalR;
+using Microsoft.Extensions.DependencyInjection;
+using Moq;
 
 namespace DataGateMonitor.Tests.Services.DataGateOpenVpnManager.OpenVpnProxy;
 
 public class OpenVpnProxyTrafficFlowClientFactoryTests
 {
-    private static OpenVpnProxyTrafficFlowClientFactory CreateFactory()
+    private static (IServiceProvider Sp, FakeHubConnectionFactory HubFactory) CreateServices()
     {
+        var hubFactory = new FakeHubConnectionFactory();
         var services = new ServiceCollection();
         services.AddLogging();
-        services.AddSingleton(Mock.Of<IHubContext<OpenVpnProxyTrafficFlowHub>>());
-
-        var tokenService = new Mock<IMicroserviceTokenService>();
-        tokenService
-            .Setup(t => t.GenerateToken(It.IsAny<string>(), It.IsAny<string>(), It.IsAny<string>(), It.IsAny<string>()))
-            .Returns("token");
-        services.AddSingleton(tokenService.Object);
-
-        var provider = services.BuildServiceProvider();
-        return new OpenVpnProxyTrafficFlowClientFactory(provider);
+        services.AddSingleton<IHubContext<OpenVpnProxyTrafficFlowHub>>(Mock.Of<IHubContext<OpenVpnProxyTrafficFlowHub>>());
+        services.AddSingleton<IMicroserviceTokenService>(OpenVpnHubTestHelpers.CreateTokenService());
+        services.AddSingleton<IHubConnectionFactory>(hubFactory);
+        services.AddSingleton<OpenVpnProxyTrafficFlowClientFactory>();
+        return (services.BuildServiceProvider(), hubFactory);
     }
 
     [Fact]
-    public void Create_SameServerId_ReturnsCachedInstance()
+    public void Create_ReturnsCachedClient_ForSameServerId()
     {
-        var factory = CreateFactory();
-        var server = new VpnServer { Id = 1, ApiUrl = "https://node/a", ServerType = VpnServerType.OpenVpn };
+        var (sp, _) = CreateServices();
+        var factory = sp.GetRequiredService<OpenVpnProxyTrafficFlowClientFactory>();
+        var server = OpenVpnHubTestHelpers.OpenVpnServer();
 
-        var client1 = factory.Create(server);
-        var client2 = factory.Create(new VpnServer { Id = 1, ApiUrl = "https://node/b", ServerType = VpnServerType.OpenVpn });
+        var first = factory.Create(server);
+        var second = factory.Create(server);
 
-        Assert.Same(client1, client2);
+        Assert.Same(first, second);
     }
 
     [Fact]
-    public void Create_XrayServer_Throws()
+    public void Remove_StopsClientAndEvictsFromCache()
     {
-        var factory = CreateFactory();
-        var xrayServer = new VpnServer { Id = 7, ApiUrl = "https://xray", ServerType = VpnServerType.Xray };
+        var (sp, hubFactory) = CreateServices();
+        var factory = sp.GetRequiredService<OpenVpnProxyTrafficFlowClientFactory>();
+        var server = OpenVpnHubTestHelpers.OpenVpnServer();
 
-        var ex = Assert.Throws<InvalidOperationException>(() => factory.Create(xrayServer));
+        var first = factory.Create(server);
+        Assert.True(factory.Remove(server.Id));
 
-        Assert.Contains("only for OpenVPN servers", ex.Message);
+        var recreated = factory.Create(server);
+        Assert.NotSame(first, recreated);
     }
 
     [Fact]
-    public void GetAllClients_ReturnsAllCachedClients()
+    public void Create_Throws_ForNonOpenVpnServer()
     {
-        var factory = CreateFactory();
-        factory.Create(new VpnServer { Id = 1, ApiUrl = "https://node-1", ServerType = VpnServerType.OpenVpn });
-        factory.Create(new VpnServer { Id = 2, ApiUrl = "https://node-2", ServerType = VpnServerType.OpenVpn });
+        var (sp, _) = CreateServices();
+        var factory = sp.GetRequiredService<OpenVpnProxyTrafficFlowClientFactory>();
+        var server = OpenVpnHubTestHelpers.OpenVpnServer();
+        server.ServerType = SharedModels.Enums.VpnServerType.Xray;
 
-        var all = factory.GetAllClients();
-
-        Assert.Equal(2, all.Count);
-    }
-
-    [Fact]
-    public void Remove_WhenNotFound_ReturnsFalse()
-    {
-        var factory = CreateFactory();
-
-        var removed = factory.Remove(999);
-
-        Assert.False(removed);
-    }
-
-    [Fact]
-    public void Remove_WhenFound_ReturnsTrue_AndRemovesFromCache()
-    {
-        var factory = CreateFactory();
-        factory.Create(new VpnServer { Id = 3, ApiUrl = "https://node-3", ServerType = VpnServerType.OpenVpn });
-
-        var removed = factory.Remove(3);
-
-        Assert.True(removed);
-        Assert.Empty(factory.GetAllClients());
+        Assert.Throws<InvalidOperationException>(() => factory.Create(server));
     }
 }

@@ -5,6 +5,7 @@ using DataGateMonitor.DataBase.Services.Query.VpnServerTable;
 using DataGateMonitor.Hubs;
 using DataGateMonitor.Models;
 using DataGateMonitor.Services.Api.Auth.Registers.Interfaces;
+using DataGateMonitor.Services.DataGateOpenVpnManager.OpenVpnProxy.Hubs.Interfaces;
 using DataGateMonitor.SharedModels.Enums;
 
 namespace DataGateMonitor.Services.DataGateOpenVpnManager.OpenVpnProxy;
@@ -67,7 +68,8 @@ public class OpenVpnMicroserviceClientFactory(IServiceProvider serviceProvider) 
         var frontendHub = scope.ServiceProvider.GetRequiredService<IHubContext<OpenVpnFrontendHub>>();
         var tokenService = scope.ServiceProvider.GetRequiredService<IMicroserviceTokenService>();
         var scopeFactory = scope.ServiceProvider.GetRequiredService<IServiceScopeFactory>();
-        return new OpenVpnMicroserviceClient(server, logger, frontendHub, tokenService, scopeFactory);
+        var hubConnectionFactory = scope.ServiceProvider.GetService<IHubConnectionFactory>();
+        return new OpenVpnMicroserviceClient(server, logger, frontendHub, tokenService, scopeFactory, hubConnectionFactory);
     }
 
     private static void DisposeClient(IOpenVpnMicroserviceClient client)
