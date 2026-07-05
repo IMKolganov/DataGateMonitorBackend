@@ -3,9 +3,12 @@ using DataGateMonitor.DataBase.Services.Query.UserIdentityLinkTable;
 using DataGateMonitor.DataBase.Services.Query.UserQuotaPlanTable;
 using DataGateMonitor.Models;
 using DataGateMonitor.Models.Helpers;
+using DataGateMonitor.Services.Others;
 using DataGateMonitor.Services.Others.Notifications;
 using DataGateMonitor.Services.TelegramBot.Interfaces;
 using DataGateMonitor.Services.Users.Interfaces;
+using DataGateMonitor.SharedModels.DataGateMonitor.Auth.Responses;
+using Microsoft.Extensions.Caching.Memory;
 using Microsoft.Extensions.Options;
 
 namespace DataGateMonitor.Services.Users;
@@ -16,11 +19,28 @@ public sealed class FreeTierAccessComplianceService(
     IUserIdentityLinkQueryService userIdentityLinkQueryService,
     ITelegramChannelMembershipChecker telegramChannelMembershipChecker,
     IAppNotificationFacade appNotificationFacade,
+    ISettingsService settingsService,
+    IMemoryCache memoryCache,
     IOptions<TelegramChannelSettings> channelOptions,
     ILogger<FreeTierAccessComplianceService> logger) : IFreeTierAccessComplianceService
 {
     private const string GoogleProvider = "google";
+    private const string LocalProvider = "local";
     private const string TelegramProvider = "telegram";
+
+    public async Task<FreeTierAccessStatusResponse> GetStatusAsync(int userId, CancellationToken ct = default)
+    {
+        var evaluation = await EvaluateAccessAsync(userId, isChannelSubscribed: null, ct);
+        var result = evaluation.Result;
+        var links = evaluation.Links;
+
+        if (result is { IsApplicable: true, IsCompliant: false } && IsGraceActive(userId))
+        {
+            result = CopyResult(result, isCompliant: true, isGracePeriod: true);
+        }
+
+        return MapToStatusResponse(result, links);
+    }
 
     public async Task<FreeTierAccessComplianceResult> AuditAndNotifyIfNeededByTelegramIdAsync(
         long telegramId,
@@ -65,60 +85,31 @@ public sealed class FreeTierAccessComplianceService(
         bool? isChannelSubscribed = null,
         CancellationToken ct = default)
     {
-        var activeAssignment = await userQuotaPlanQueryService.GetActiveByUserId(userId, ct);
-        if (activeAssignment is null)
+        var evaluation = await EvaluateAccessAsync(userId, isChannelSubscribed, ct);
+        var result = evaluation.Result;
+
+        if (!result.IsApplicable || result.IsCompliant)
+            return result;
+
+        if (await TryApplyGracePeriodAsync(userId, ct))
         {
-            return new FreeTierAccessComplianceResult
-            {
-                IsApplicable = false,
-                IsCompliant = true,
-                UserId = userId,
-            };
-        }
+            logger.LogInformation(
+                "User {UserId} on plan {PlanName} allowed via grace period. Context={Context}",
+                userId,
+                result.ActivePlanName,
+                context);
 
-        var plan = await quotaPlanQueryService.GetById(activeAssignment.QuotaPlanId, ct);
-        if (plan is null || !QuotaPlanNames.IsFreeOrDefault(plan.Name))
-        {
-            return new FreeTierAccessComplianceResult
-            {
-                IsApplicable = false,
-                IsCompliant = true,
-                UserId = userId,
-                ActivePlanName = plan?.Name,
-            };
-        }
-
-        var links = await userIdentityLinkQueryService.GetListByUserId(userId, ct);
-        var isMerged = IsMergedAccount(links);
-        var telegramId = TryGetTelegramId(links);
-
-        var channelSubscribed = isChannelSubscribed;
-        if (channelSubscribed != true && telegramId is > 0)
-            channelSubscribed = await telegramChannelMembershipChecker.IsSubscribedAsync(telegramId.Value, ct);
-
-        var isCompliant = isMerged || channelSubscribed == true;
-        if (isCompliant)
-        {
-            return new FreeTierAccessComplianceResult
-            {
-                IsApplicable = true,
-                IsCompliant = true,
-                IsMergedAccount = isMerged,
-                IsChannelSubscribed = channelSubscribed == true,
-                ActivePlanName = plan.Name,
-                UserId = userId,
-                TelegramId = telegramId,
-            };
+            return CopyResult(result, isCompliant: true, isGracePeriod: true);
         }
 
         try
         {
             await appNotificationFacade.FreeTierAccessNonCompliant(
                 userId,
-                plan.Name,
-                telegramId,
-                isMerged,
-                channelSubscribed == true,
+                result.ActivePlanName ?? QuotaPlanNames.Free,
+                result.TelegramId,
+                result.IsMergedAccount,
+                result.IsChannelSubscribed,
                 context,
                 channelOptions.Value.RequiredChannelChatId,
                 ct);
@@ -131,20 +122,109 @@ public sealed class FreeTierAccessComplianceService(
         logger.LogWarning(
             "User {UserId} on plan {PlanName} is not merged and not subscribed to {Channel}. Context={Context}",
             userId,
-            plan.Name,
+            result.ActivePlanName,
             channelOptions.Value.RequiredChannelChatId,
             context);
 
-        return new FreeTierAccessComplianceResult
+        return CopyResult(result, adminsNotified: true);
+    }
+
+    private static FreeTierAccessComplianceResult CopyResult(
+        FreeTierAccessComplianceResult source,
+        bool? isCompliant = null,
+        bool? isGracePeriod = null,
+        bool? adminsNotified = null)
+        => new()
         {
-            IsApplicable = true,
-            IsCompliant = false,
-            IsMergedAccount = isMerged,
-            IsChannelSubscribed = channelSubscribed == true,
-            ActivePlanName = plan.Name,
-            UserId = userId,
-            TelegramId = telegramId,
-            AdminsNotified = true,
+            IsApplicable = source.IsApplicable,
+            IsCompliant = isCompliant ?? source.IsCompliant,
+            IsMergedAccount = source.IsMergedAccount,
+            IsChannelSubscribed = source.IsChannelSubscribed,
+            IsGracePeriod = isGracePeriod ?? source.IsGracePeriod,
+            ActivePlanName = source.ActivePlanName,
+            UserId = source.UserId,
+            TelegramId = source.TelegramId,
+            AdminsNotified = adminsNotified ?? source.AdminsNotified,
+        };
+
+    private async Task<(FreeTierAccessComplianceResult Result, IReadOnlyList<UserIdentityLink> Links)> EvaluateAccessAsync(
+        int userId,
+        bool? isChannelSubscribed,
+        CancellationToken ct)
+    {
+        var activeAssignment = await userQuotaPlanQueryService.GetActiveByUserId(userId, ct);
+        if (activeAssignment is null)
+        {
+            return (
+                new FreeTierAccessComplianceResult
+                {
+                    IsApplicable = false,
+                    IsCompliant = true,
+                    UserId = userId,
+                },
+                []);
+        }
+
+        var plan = await quotaPlanQueryService.GetById(activeAssignment.QuotaPlanId, ct);
+        if (plan is null || !QuotaPlanNames.IsFreeOrDefault(plan.Name))
+        {
+            return (
+                new FreeTierAccessComplianceResult
+                {
+                    IsApplicable = false,
+                    IsCompliant = true,
+                    UserId = userId,
+                    ActivePlanName = plan?.Name,
+                },
+                []);
+        }
+
+        var links = await userIdentityLinkQueryService.GetListByUserId(userId, ct);
+        var isMerged = IsMergedAccount(links);
+        var telegramId = TryGetTelegramId(links);
+
+        var channelSubscribed = isChannelSubscribed;
+        if (channelSubscribed != true && telegramId is > 0)
+            channelSubscribed = await telegramChannelMembershipChecker.IsSubscribedAsync(telegramId.Value, ct);
+
+        var isCompliant = isMerged || channelSubscribed == true;
+
+        return (
+            new FreeTierAccessComplianceResult
+            {
+                IsApplicable = true,
+                IsCompliant = isCompliant,
+                IsMergedAccount = isMerged,
+                IsChannelSubscribed = channelSubscribed == true,
+                ActivePlanName = plan.Name,
+                UserId = userId,
+                TelegramId = telegramId,
+            },
+            links);
+    }
+
+    private FreeTierAccessStatusResponse MapToStatusResponse(
+        FreeTierAccessComplianceResult result,
+        IReadOnlyList<UserIdentityLink> links)
+    {
+        var isLinkedToTelegram = links.Any(l =>
+            string.Equals(l.Provider, TelegramProvider, StringComparison.OrdinalIgnoreCase));
+        var hasGoogle = links.Any(l =>
+            string.Equals(l.Provider, GoogleProvider, StringComparison.OrdinalIgnoreCase));
+        var hasLocal = links.Any(l =>
+            string.Equals(l.Provider, LocalProvider, StringComparison.OrdinalIgnoreCase));
+
+        return new FreeTierAccessStatusResponse
+        {
+            IsApplicable = result.IsApplicable,
+            IsCompliant = result.IsCompliant,
+            IsMergedAccount = result.IsMergedAccount,
+            IsChannelSubscribed = result.IsChannelSubscribed,
+            IsGracePeriod = result.IsGracePeriod,
+            IsLinkedToTelegram = isLinkedToTelegram,
+            CanRequestAccountLinkCode = !isLinkedToTelegram && (hasGoogle || hasLocal),
+            ActivePlanName = result.ActivePlanName,
+            RequiredChannel = channelOptions.Value.RequiredChannelChatId,
         };
     }
 
@@ -154,7 +234,9 @@ public sealed class FreeTierAccessComplianceService(
             string.Equals(l.Provider, TelegramProvider, StringComparison.OrdinalIgnoreCase));
         var hasGoogle = links.Any(l =>
             string.Equals(l.Provider, GoogleProvider, StringComparison.OrdinalIgnoreCase));
-        return hasTelegram && hasGoogle;
+        var hasLocal = links.Any(l =>
+            string.Equals(l.Provider, LocalProvider, StringComparison.OrdinalIgnoreCase));
+        return hasTelegram && (hasGoogle || hasLocal);
     }
 
     internal static long? TryGetTelegramId(IReadOnlyCollection<UserIdentityLink> links)
@@ -164,5 +246,60 @@ public sealed class FreeTierAccessComplianceService(
             ?.ExternalId;
 
         return long.TryParse(externalId, out var telegramId) && telegramId > 0 ? telegramId : null;
+    }
+
+    internal static string BuildGraceCacheKey(int userId) => $"free-tier-grace:{userId}";
+
+    private bool IsGraceActive(int userId)
+        => memoryCache.TryGetValue(BuildGraceCacheKey(userId), out _);
+
+    private async Task<bool> TryApplyGracePeriodAsync(int userId, CancellationToken ct)
+    {
+        if (!await IsGraceEnabledAsync(ct))
+            return false;
+
+        var graceMinutes = await GetGraceMinutesAsync(ct);
+        if (graceMinutes <= 0)
+            return false;
+
+        var cacheKey = BuildGraceCacheKey(userId);
+        if (memoryCache.TryGetValue(cacheKey, out _))
+            return true;
+
+        memoryCache.Set(
+            cacheKey,
+            DateTimeOffset.UtcNow,
+            new MemoryCacheEntryOptions
+            {
+                AbsoluteExpirationRelativeToNow = TimeSpan.FromMinutes(graceMinutes),
+            });
+
+        return true;
+    }
+
+    private async Task<bool> IsGraceEnabledAsync(CancellationToken ct)
+    {
+        var typeKey = $"{FreeTierAccessSettingsKeys.AllowGraceWithoutCompliance}_Type";
+        var type = await settingsService.GetValueAsync<string>(typeKey, ct);
+        if (!string.Equals(type, "bool", StringComparison.OrdinalIgnoreCase))
+            return false;
+
+        return await settingsService.GetValueAsync<bool>(
+            FreeTierAccessSettingsKeys.AllowGraceWithoutCompliance,
+            ct);
+    }
+
+    private async Task<int> GetGraceMinutesAsync(CancellationToken ct)
+    {
+        var typeKey = $"{FreeTierAccessSettingsKeys.GracePeriodMinutes}_Type";
+        var type = await settingsService.GetValueAsync<string>(typeKey, ct);
+        if (!string.Equals(type, "int", StringComparison.OrdinalIgnoreCase))
+            return 5;
+
+        var minutes = await settingsService.GetValueAsync<int>(
+            FreeTierAccessSettingsKeys.GracePeriodMinutes,
+            ct);
+
+        return minutes > 0 ? minutes : 5;
     }
 }

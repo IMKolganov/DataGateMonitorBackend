@@ -15,6 +15,7 @@ public class UserMergeControllerTests
     private readonly Mock<IUserService> _userServiceMock = new(MockBehavior.Strict);
     private readonly Mock<IUserMergeService> _userMergeServiceMock = new(MockBehavior.Strict);
     private readonly Mock<IFreeTierAccessComplianceService> _freeTierComplianceMock = new(MockBehavior.Strict);
+    private readonly Mock<ITelegramAccountLinkService> _telegramAccountLinkMock = new(MockBehavior.Strict);
     private readonly Mock<ICurrentUserService> _currentUserServiceMock = new(MockBehavior.Strict);
     private readonly UserController _controller;
 
@@ -24,6 +25,7 @@ public class UserMergeControllerTests
         _controller = new UserController(
             _userServiceMock.Object,
             _userMergeServiceMock.Object,
+            _telegramAccountLinkMock.Object,
             _freeTierComplianceMock.Object,
             _currentUserServiceMock.Object);
     }
@@ -151,6 +153,41 @@ public class UserMergeControllerTests
     }
 
     [Fact]
+    public async Task MergeTelegramGoogleByLinkCode_WhenCodeMissing_ReturnsBadRequest()
+    {
+        var result = await _controller.MergeTelegramGoogleByLinkCode(
+            new CompleteTelegramAccountLinkRequest { Code = "  ", TelegramId = 1 },
+            CancellationToken.None);
+
+        var bad = Assert.IsType<BadRequestObjectResult>(result.Result);
+        Assert.False(((ApiResponse<CompleteTelegramAccountLinkResponse>)bad.Value!).Success);
+    }
+
+    [Fact]
+    public async Task MergeTelegramGoogleByLinkCode_ReturnsOk_WithServiceResult()
+    {
+        var req = new CompleteTelegramAccountLinkRequest { Code = "ABCD2345", TelegramId = 999 };
+        var expected = new CompleteTelegramAccountLinkResponse
+        {
+            Success = true,
+            Message = "Linked",
+            Merge = new MergeTelegramGoogleUsersResponse { SurvivorUserId = 10, MergedUserId = 20 },
+        };
+
+        _telegramAccountLinkMock
+            .Setup(s => s.CompleteLinkByCodeAsync("ABCD2345", 999, It.IsAny<CancellationToken>()))
+            .ReturnsAsync(expected);
+
+        var result = await _controller.MergeTelegramGoogleByLinkCode(req, CancellationToken.None);
+
+        var ok = Assert.IsType<OkObjectResult>(result.Result);
+        var response = Assert.IsType<ApiResponse<CompleteTelegramAccountLinkResponse>>(ok.Value);
+        Assert.True(response.Data!.Success);
+        Assert.Equal(10, response.Data.Merge!.SurvivorUserId);
+        _telegramAccountLinkMock.VerifyAll();
+    }
+
+    [Fact]
     public async Task AuditFreeTierAccessByTelegram_ReturnsOk_WhenCompliant()
     {
         _freeTierComplianceMock
@@ -165,7 +202,7 @@ public class UserMergeControllerTests
                 IsCompliant = true,
             });
 
-        var result = await _controller.AuditFreeTierAccessByTelegram(12345, true, CancellationToken.None);
+        var result = await _controller.AuditFreeTierAccessByTelegram(12345, true, "Telegram bot audit", CancellationToken.None);
 
         var ok = Assert.IsType<OkObjectResult>(result.Result);
         var response = Assert.IsType<ApiResponse<bool>>(ok.Value);

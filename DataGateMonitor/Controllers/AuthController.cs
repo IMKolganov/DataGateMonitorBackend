@@ -31,6 +31,7 @@ public class AuthController(
     IUserQueryService userQueryService,
     IEmailConfirmationService emailConfirmationService,
     ITelegramAccountLinkService telegramAccountLinkService,
+    IFreeTierAccessComplianceService freeTierAccessComplianceService,
     IGoogleAuthCodeExchangeService exchange,
     ITokenService tokenService,
     IAdminForgotPasswordService adminForgotPasswordService,
@@ -149,6 +150,20 @@ public class AuthController(
     {
         var result = await telegramAccountLinkService.RequestLinkCodeAsync(currentUserService.UserId, ct);
         return Ok(ApiResponse<RequestTelegramAccountLinkCodeResponse>.SuccessResponse(result));
+    }
+
+    /// <summary>
+    /// Client apps: read-only Free/Default access status (channel subscription or merged Telegram account).
+    /// Does not notify admins or start a grace period.
+    /// </summary>
+    [Authorize]
+    [HttpGet("free-tier-access/status")]
+    [ProducesResponseType(typeof(ApiResponse<FreeTierAccessStatusResponse>), StatusCodes.Status200OK)]
+    public async Task<ActionResult<ApiResponse<FreeTierAccessStatusResponse>>> GetFreeTierAccessStatus(
+        CancellationToken ct)
+    {
+        var status = await freeTierAccessComplianceService.GetStatusAsync(currentUserService.UserId, ct);
+        return Ok(ApiResponse<FreeTierAccessStatusResponse>.SuccessResponse(status));
     }
 
     [AllowAnonymous]

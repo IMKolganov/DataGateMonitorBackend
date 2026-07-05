@@ -17,4 +17,7 @@ public sealed class FreeTierAccessComplianceResult
     public long? TelegramId { get; set; }
 
     public bool AdminsNotified { get; init; }
+
+    /// <summary>True when access is allowed via the configurable grace window (no channel subscription / merge).</summary>
+    public bool IsGracePeriod { get; init; }
 }
