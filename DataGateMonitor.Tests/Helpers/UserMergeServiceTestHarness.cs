@@ -66,7 +66,7 @@ internal sealed class UserMergeServiceTestHarness : IAsyncDisposable
         IQueryService<User, int> userQueryCore = new EfQueryService<User, int>(unitOfWork);
         IQueryService<UserIdentityLink, int> linkQueryCore = new EfQueryService<UserIdentityLink, int>(unitOfWork);
 
-        var userQueryService = new UserQueryService(userQueryCore, linkQueryCore);
+        var userQueryService = new UserQueryService(userQueryCore, linkQueryCore, unitOfWork);
         var identityLinkQueryService = new UserIdentityLinkQueryService(linkQueryCore);
         var userCommandService = new EfCommandService<User, int>(unitOfWork);
         var archiveCommandService = new EfCommandService<MergedUserArchive, int>(unitOfWork);

@@ -52,7 +52,7 @@ public class VpnServerClientsControllerTests
     public async Task GetAllConnectedClients_Returns_Ok()
     {
         _overviewQuery
-            .Setup(q => q.GetAllConnectedVpnServerClientsAsync(5, 2, 25, It.IsAny<CancellationToken>()))
+            .Setup(q => q.GetAllConnectedVpnServerClientsAsync(It.IsAny<GetConnectedClientsRequest>(), It.IsAny<CancellationToken>()))
             .ReturnsAsync(new VpnClientInfoResponseList { TotalCount = 0 });
 
         var req = new GetConnectedClientsRequest { VpnServerId = 5, Page = 2, PageSize = 25 };
@@ -64,10 +64,36 @@ public class VpnServerClientsControllerTests
     }
 
     [Fact]
+    public async Task GetAllConnectedClients_Passes_Filter_Fields_In_Request()
+    {
+        GetConnectedClientsRequest? captured = null;
+        _overviewQuery
+            .Setup(q => q.GetAllConnectedVpnServerClientsAsync(It.IsAny<GetConnectedClientsRequest>(), It.IsAny<CancellationToken>()))
+            .Callback<GetConnectedClientsRequest, CancellationToken>((r, _) => captured = r)
+            .ReturnsAsync(new VpnClientInfoResponseList { TotalCount = 0 });
+
+        var req = new GetConnectedClientsRequest
+        {
+            VpnServerId = 5,
+            Page = 1,
+            PageSize = 10,
+            CommonName = "cn-test",
+            ExternalId = "ext-1",
+            Search = "term",
+        };
+        await _controller.GetAllConnectedClients(req, CancellationToken.None);
+
+        Assert.NotNull(captured);
+        Assert.Equal("cn-test", captured!.CommonName);
+        Assert.Equal("ext-1", captured.ExternalId);
+        Assert.Equal("term", captured.Search);
+    }
+
+    [Fact]
     public async Task GetAllHistoryClients_Returns_Ok()
     {
         _overviewQuery
-            .Setup(q => q.GetAllHistoryVpnServerClientsAsync(6, 1, 10, It.IsAny<CancellationToken>()))
+            .Setup(q => q.GetAllHistoryVpnServerClientsAsync(It.IsAny<GetHistoryClientsRequest>(), It.IsAny<CancellationToken>()))
             .ReturnsAsync(new VpnClientInfoResponseList { TotalCount = 0 });
 
         var req = new GetHistoryClientsRequest { VpnServerId = 6, Page = 1, PageSize = 10 };
@@ -170,6 +196,7 @@ public class VpnServerClientsControllerTests
             .Setup(s => s.GetOverviewUsersFromSessionsAsync(
                 It.IsAny<DateTimeOffset>(),
                 It.IsAny<DateTimeOffset>(),
+                null,
                 null,
                 null,
                 It.IsAny<CancellationToken>()))

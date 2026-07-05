@@ -218,7 +218,10 @@ public class UserService(
         if (pageSize > 500)
             pageSize = 500;
 
-        var paged = await userQueryService.GetPage(page, pageSize, cancellationToken);
+        request.Page = page;
+        request.PageSize = pageSize;
+
+        var paged = await userQueryService.GetPage(request, cancellationToken);
 
         var dtos = new List<UserDto>(paged.Items.Count);
         foreach (var u in paged.Items)

@@ -82,7 +82,7 @@ public class TelegramBotIncomingMessageLogControllerTests
         };
 
         _query
-            .Setup(q => q.GetPage(2, 5, It.IsAny<CancellationToken>()))
+            .Setup(q => q.GetPage(It.Is<GetAllMessagesRequest>(r => r.Page == 2 && r.PageSize == 5), It.IsAny<CancellationToken>()))
             .ReturnsAsync(paged);
 
         var request = new GetAllMessagesRequest { Page = 2, PageSize = 5 };
@@ -98,7 +98,7 @@ public class TelegramBotIncomingMessageLogControllerTests
         Assert.Equal(12, response.Data!.Messages.TotalCount);
         Assert.Single(response.Data!.Messages.Items);
 
-        _query.Verify(q => q.GetPage(2, 5, It.IsAny<CancellationToken>()), Times.Once);
+        _query.Verify(q => q.GetPage(It.Is<GetAllMessagesRequest>(r => r.Page == 2 && r.PageSize == 5), It.IsAny<CancellationToken>()), Times.Once);
     }
 
     [Fact]

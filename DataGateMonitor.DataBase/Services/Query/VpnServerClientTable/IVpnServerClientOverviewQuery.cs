@@ -1,12 +1,13 @@
-﻿using DataGateMonitor.SharedModels.DataGateMonitor.VpnServerClients.Responses;
+﻿using DataGateMonitor.SharedModels.DataGateMonitor.VpnServerClients.Requests;
+using DataGateMonitor.SharedModels.DataGateMonitor.VpnServerClients.Responses;
 
 namespace DataGateMonitor.DataBase.Services.Query.VpnServerClientTable;
 
 public interface IVpnServerClientOverviewQuery
 {
     Task<VpnClientInfoResponseList> GetAllConnectedVpnServerClientsAsync(
-        int vpnServerId, int page, int pageSize, CancellationToken ct);
+        GetConnectedClientsRequest request, CancellationToken ct);
 
     Task<VpnClientInfoResponseList> GetAllHistoryVpnServerClientsAsync(
-        int vpnServerId, int page, int pageSize, CancellationToken ct);
+        GetHistoryClientsRequest request, CancellationToken ct);
 }

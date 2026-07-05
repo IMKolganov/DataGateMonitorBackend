@@ -1,4 +1,5 @@
 ﻿using DataGateMonitor.Models;
+using DataGateMonitor.SharedModels.DataGateMonitor.TelegramBotUser.Requests;
 using DataGateMonitor.SharedModels.Responses;
 
 namespace DataGateMonitor.DataBase.Services.Query.TelegramBotUserTable;
@@ -7,6 +8,7 @@ public interface ITelegramBotUserQueryService
 {
     Task<List<TelegramBotUser>> GetAll(CancellationToken ct);
     Task<List<TelegramBotUser>> GetAllAdmins(CancellationToken ct);
+    Task<List<TelegramBotUser>> GetFiltered(GetAllTelegramBotUsersRequest request, CancellationToken ct);
     Task<TelegramBotUser?> GetById(int id, CancellationToken ct);
     Task<bool> AnyByTelegramId(long telegramId, CancellationToken ct);
     Task<TelegramBotUser?> GetByTelegramId(long telegramId, CancellationToken ct);

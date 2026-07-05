@@ -48,7 +48,7 @@ public class UserMergeServiceRollbackTests
         IQueryService<User, int> userQueryCore = new EfQueryService<User, int>(unitOfWork);
         IQueryService<UserIdentityLink, int> linkQueryCore = new EfQueryService<UserIdentityLink, int>(unitOfWork);
 
-        var userQueryService = new UserQueryService(userQueryCore, linkQueryCore);
+        var userQueryService = new UserQueryService(userQueryCore, linkQueryCore, unitOfWork);
         var identityLinkQueryService = new UserIdentityLinkQueryService(linkQueryCore);
         var archiveCommandService = new EfCommandService<MergedUserArchive, int>(unitOfWork);
 

@@ -3,6 +3,7 @@ using Microsoft.EntityFrameworkCore;
 using DataGateMonitor.DataBase.Services.Query.UserTable;
 using DataGateMonitor.DataBase.UnitOfWork;
 using DataGateMonitor.Models;
+using DataGateMonitor.SharedModels.DataGateMonitor.VpnServerClients.Requests;
 using DataGateMonitor.SharedModels.DataGateMonitor.VpnServerClients.Responses;
 using DataGateMonitor.SharedModels.DataGateMonitor.VpnServers.Dto;
 
@@ -39,14 +40,16 @@ public class VpnServerClientOverviewQuery(
 
     // Connected clients page
     public async Task<VpnClientInfoResponseList> GetAllConnectedVpnServerClientsAsync(
-        int vpnServerId, int page, int pageSize, CancellationToken ct)
+        GetConnectedClientsRequest request, CancellationToken ct)
     {
-        if (page < 1) page = 1;
-        if (pageSize < 1) pageSize = 10;
+        var page = request.Page < 1 ? 1 : request.Page;
+        var pageSize = request.PageSize < 1 ? 10 : request.PageSize;
 
         var q = uow.GetQuery<VpnServerClient>()
             .AsQueryable()
-            .Where(x => x.VpnServerId == vpnServerId && x.IsConnected);
+            .Where(x => x.VpnServerId == request.VpnServerId && x.IsConnected);
+
+        q = VpnClientListFilterApplier.Apply(q, request);
 
         var total = await q.CountAsync(ct);
 
@@ -69,14 +72,16 @@ public class VpnServerClientOverviewQuery(
 
     // Full history page + Telegram enrichment
     public async Task<VpnClientInfoResponseList> GetAllHistoryVpnServerClientsAsync(
-        int vpnServerId, int page, int pageSize, CancellationToken ct)
+        GetHistoryClientsRequest request, CancellationToken ct)
     {
-        if (page < 1) page = 1;
-        if (pageSize < 1) pageSize = 10;
+        var page = request.Page < 1 ? 1 : request.Page;
+        var pageSize = request.PageSize < 1 ? 10 : request.PageSize;
 
         var q = uow.GetQuery<VpnServerClient>()
             .AsQueryable()
-            .Where(x => x.VpnServerId == vpnServerId);
+            .Where(x => x.VpnServerId == request.VpnServerId);
+
+        q = VpnClientListFilterApplier.Apply(q, request);
 
         var total = await q.CountAsync(ct);
 

@@ -32,7 +32,7 @@ public class VpnServerClientsController(
     {
         var result =
             await openVpnServerClientOverviewQuery.GetAllConnectedVpnServerClientsAsync(
-            request.VpnServerId, request.Page, request.PageSize, cancellationToken);
+            request, cancellationToken);
 
         var response = result.Adapt<ConnectedClientsResponse>();
         var ownExternalId = GetCurrentUserExternalId();
@@ -53,7 +53,7 @@ public class VpnServerClientsController(
 
         var result = 
             await openVpnServerClientOverviewQuery.GetAllHistoryVpnServerClientsAsync(
-            request.VpnServerId, request.Page, request.PageSize, ct);
+            request, ct);
 
         var response = result.Adapt<ConnectedClientsResponse>();
         var ownExternalId = GetCurrentUserExternalId();
@@ -129,6 +129,7 @@ public class VpnServerClientsController(
             request.To,
             request.VpnServerId,
             externalId,
+            request.DisplayName,
             ct);
 
         var ownExternalId = GetCurrentUserExternalId();

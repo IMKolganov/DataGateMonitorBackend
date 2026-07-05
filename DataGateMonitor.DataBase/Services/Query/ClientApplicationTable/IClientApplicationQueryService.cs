@@ -1,4 +1,5 @@
 ﻿using DataGateMonitor.Models;
+using DataGateMonitor.SharedModels.DataGateMonitor.Applications.Requests;
 using DataGateMonitor.SharedModels.Responses;
 
 namespace DataGateMonitor.DataBase.Services.Query.ClientApplicationTable;
@@ -6,6 +7,7 @@ namespace DataGateMonitor.DataBase.Services.Query.ClientApplicationTable;
 public interface IClientApplicationQueryService
 {
     Task<List<ClientApplication>> GetAll(CancellationToken ct);
+    Task<List<ClientApplication>> GetFiltered(GetAllApplicationsRequest request, CancellationToken ct);
     Task<List<ClientApplication>> GetAllIsNotRevoked(CancellationToken ct);
     Task<ClientApplication?> GetById(int id, CancellationToken ct);
     Task<ClientApplication?> GetByName(string name, CancellationToken ct);
