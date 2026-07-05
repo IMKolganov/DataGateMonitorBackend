@@ -30,6 +30,7 @@ public sealed class UserPasswordHistoryService(
         var currentHash = credential?.PasswordHash;
 
         var rows = await uow.GetQuery<UserPasswordHistory>()
+            .AsQueryable()
             .AsNoTracking()
             .Where(h => h.UserId == userId)
             .OrderByDescending(h => h.RecordedAtUtc)
@@ -45,6 +46,7 @@ public sealed class UserPasswordHistoryService(
         var actorNames = actorIds.Count == 0
             ? new Dictionary<int, string>()
             : (await uow.GetQuery<User>()
+                .AsQueryable()
                 .AsNoTracking()
                 .Where(u => actorIds.Contains(u.Id))
                 .Select(u => new { u.Id, u.DisplayName })
@@ -111,6 +113,7 @@ public sealed class UserPasswordHistoryService(
         CancellationToken ct)
     {
         var entry = await uow.GetQuery<UserPasswordHistory>()
+            .AsQueryable()
             .FirstOrDefaultAsync(h => h.Id == historyId && h.UserId == targetUserId, ct);
         if (entry is null)
             return new RestoreUserPasswordResponse { Success = false, Message = "History entry not found." };
