@@ -12,6 +12,7 @@ using DataGateMonitor.Services.Api.Auth.TelegramLogin;
 using DataGateMonitor.Services.Api.Auth.Totp;
 using DataGateMonitor.Services.Api.CurrentUser.Interfaces;
 using DataGateMonitor.Services.Api.Auth.Registers.Interfaces;
+using DataGateMonitor.Services.Users.Interfaces;
 using DataGateMonitor.DataBase.Services.Query.UserTable;
 using DataGateMonitor.SharedModels.DataGateMonitor.Auth.Requests;
 using DataGateMonitor.SharedModels.DataGateMonitor.Auth.Responses;
