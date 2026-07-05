@@ -199,7 +199,7 @@ public class AuthControllerTests
     {
         _currentUserService.Setup(s => s.UserId).Returns(42);
         _telegramAccountLinkService
-            .Setup(s => s.RequestLinkCodeAsync(42, 999, It.IsAny<CancellationToken>()))
+            .Setup(s => s.RequestLinkCodeAsync(42, 999L, It.IsAny<CancellationToken>()))
             .ReturnsAsync(new RequestTelegramAccountLinkCodeResponse
             {
                 Code = "ABCD2345",
@@ -217,15 +217,23 @@ public class AuthControllerTests
     }
 
     [Fact]
-    public async Task RequestTelegramAccountLinkCode_WhenTelegramIdMissing_ReturnsBadRequest()
+    public async Task RequestTelegramAccountLinkCode_WhenTelegramIdOmitted_DelegatesWithNull()
     {
-        var controller = CreateController();
-        var result = await controller.RequestTelegramAccountLinkCode(
-            new RequestTelegramAccountLinkCodeRequest { TelegramId = 0 },
-            CancellationToken.None);
+        _currentUserService.Setup(s => s.UserId).Returns(42);
+        _telegramAccountLinkService
+            .Setup(s => s.RequestLinkCodeAsync(42, null, It.IsAny<CancellationToken>()))
+            .ReturnsAsync(new RequestTelegramAccountLinkCodeResponse
+            {
+                Code = "WXYZ5678",
+                ExpiresInSeconds = 900,
+            });
 
-        var bad = Assert.IsType<BadRequestObjectResult>(result.Result);
-        Assert.False(((ApiResponse<RequestTelegramAccountLinkCodeResponse>)bad.Value!).Success);
+        var controller = CreateController();
+        var result = await controller.RequestTelegramAccountLinkCode(null, CancellationToken.None);
+
+        var ok = Assert.IsType<OkObjectResult>(result.Result);
+        var response = Assert.IsType<ApiResponse<RequestTelegramAccountLinkCodeResponse>>(ok.Value);
+        Assert.Equal("WXYZ5678", response.Data!.Code);
     }
 
     [Fact]
@@ -233,7 +241,7 @@ public class AuthControllerTests
     {
         _currentUserService.Setup(s => s.UserId).Returns(42);
         _telegramAccountLinkService
-            .Setup(s => s.RequestLinkCodeAsync(42, 999, It.IsAny<CancellationToken>()))
+            .Setup(s => s.RequestLinkCodeAsync(42, 999L, It.IsAny<CancellationToken>()))
             .ThrowsAsync(new InvalidOperationException("already linked"));
 
         var controller = CreateController();

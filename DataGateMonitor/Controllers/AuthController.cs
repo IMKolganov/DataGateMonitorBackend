@@ -16,6 +16,7 @@ using DataGateMonitor.Services.Users.Interfaces;
 using DataGateMonitor.DataBase.Services.Query.UserTable;
 using DataGateMonitor.SharedModels.DataGateMonitor.Auth.Requests;
 using DataGateMonitor.SharedModels.DataGateMonitor.Auth.Responses;
+using DataGateMonitor.SharedModels.DataGateMonitor.User.Responses;
 using DataGateMonitor.SharedModels.Responses;
 
 namespace DataGateMonitor.Controllers;
@@ -139,9 +140,8 @@ public class AuthController(
     }
 
     /// <summary>
-    /// For the client app / dashboard: request a one-time code to enter in the Telegram bot to link accounts.
-    /// Requires a signed-in user with Google or password (local) identity, not yet linked to Telegram.
-    /// The code is bound to <paramref name="request"/>.TelegramId.
+    /// Client app (Google/local login): request a one-time code. Omit <see cref="RequestTelegramAccountLinkCodeRequest.TelegramId"/>
+    /// — user enters the code in the Telegram bot (recommended on mobile). Optional TelegramId binds the code to one account (legacy).
     /// </summary>
     [Authorize]
     [HttpPost("telegram/request-account-link-code")]
@@ -149,17 +149,14 @@ public class AuthController(
     [ProducesResponseType(typeof(ApiResponse<RequestTelegramAccountLinkCodeResponse>), StatusCodes.Status400BadRequest)]
     [ProducesResponseType(typeof(ApiResponse<RequestTelegramAccountLinkCodeResponse>), StatusCodes.Status404NotFound)]
     public async Task<ActionResult<ApiResponse<RequestTelegramAccountLinkCodeResponse>>> RequestTelegramAccountLinkCode(
-        [FromBody] RequestTelegramAccountLinkCodeRequest request,
+        [FromBody] RequestTelegramAccountLinkCodeRequest? request,
         CancellationToken ct)
     {
-        if (request is null || request.TelegramId <= 0)
-            return BadRequest(ApiResponse<RequestTelegramAccountLinkCodeResponse>.ErrorResponse("TelegramId is required."));
-
         try
         {
             var result = await telegramAccountLinkService.RequestLinkCodeAsync(
                 currentUserService.UserId,
-                request.TelegramId,
+                request?.TelegramId,
                 ct);
             return Ok(ApiResponse<RequestTelegramAccountLinkCodeResponse>.SuccessResponse(result));
         }
@@ -171,6 +168,52 @@ public class AuthController(
         {
             return BadRequest(ApiResponse<RequestTelegramAccountLinkCodeResponse>.ErrorResponse(ex.Message));
         }
+    }
+
+    /// <summary>Telegram bot: issue a link code for the sender. User enters it in the app (recommended Android flow).</summary>
+    [Authorize(Roles = "Admin,App")]
+    [HttpPost("telegram/request-account-link-code-for-bot")]
+    [ProducesResponseType(typeof(ApiResponse<RequestTelegramAccountLinkCodeResponse>), StatusCodes.Status200OK)]
+    [ProducesResponseType(typeof(ApiResponse<RequestTelegramAccountLinkCodeResponse>), StatusCodes.Status400BadRequest)]
+    public async Task<ActionResult<ApiResponse<RequestTelegramAccountLinkCodeResponse>>> RequestTelegramAccountLinkCodeForBot(
+        [FromBody] RequestTelegramAccountLinkCodeForBotRequest request,
+        CancellationToken ct)
+    {
+        if (request is null || request.TelegramId <= 0)
+            return BadRequest(ApiResponse<RequestTelegramAccountLinkCodeResponse>.ErrorResponse("TelegramId is required."));
+
+        try
+        {
+            var result = await telegramAccountLinkService.RequestLinkCodeFromBotAsync(request.TelegramId, ct);
+            return Ok(ApiResponse<RequestTelegramAccountLinkCodeResponse>.SuccessResponse(result));
+        }
+        catch (InvalidOperationException ex)
+        {
+            return BadRequest(ApiResponse<RequestTelegramAccountLinkCodeResponse>.ErrorResponse(ex.Message));
+        }
+    }
+
+    /// <summary>Client app: complete linking with a code received from the Telegram bot.</summary>
+    [Authorize]
+    [HttpPost("telegram/complete-account-link")]
+    [ProducesResponseType(typeof(ApiResponse<CompleteTelegramAccountLinkResponse>), StatusCodes.Status200OK)]
+    [ProducesResponseType(typeof(ApiResponse<CompleteTelegramAccountLinkResponse>), StatusCodes.Status400BadRequest)]
+    public async Task<ActionResult<ApiResponse<CompleteTelegramAccountLinkResponse>>> CompleteTelegramAccountLinkFromApp(
+        [FromBody] CompleteTelegramAccountLinkFromAppRequest request,
+        CancellationToken ct)
+    {
+        if (request is null || string.IsNullOrWhiteSpace(request.Code))
+            return BadRequest(ApiResponse<CompleteTelegramAccountLinkResponse>.ErrorResponse("Code is required."));
+
+        var result = await telegramAccountLinkService.CompleteLinkFromAppAsync(
+            currentUserService.UserId,
+            request.Code,
+            ct);
+
+        if (!result.Success)
+            return BadRequest(ApiResponse<CompleteTelegramAccountLinkResponse>.ErrorResponse(result.Message));
+
+        return Ok(ApiResponse<CompleteTelegramAccountLinkResponse>.SuccessResponse(result));
     }
 
     /// <summary>

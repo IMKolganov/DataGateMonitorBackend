@@ -18,6 +18,72 @@ public class TelegramAccountLinkServiceTests
     private const long DefaultTelegramId = 999;
 
     [Fact]
+    public async Task RequestLinkCodeAsync_WithoutTelegramId_ReturnsCodeForBotCompletion()
+    {
+        var merge = new Mock<IUserMergeService>();
+        merge.Setup(m => m.MergeTelegramGoogleAsync(
+                It.IsAny<MergeTelegramGoogleUsersRequest>(),
+                It.IsAny<int>(),
+                It.IsAny<CancellationToken>()))
+            .ReturnsAsync(new MergeTelegramGoogleUsersResponse { SurvivorUserId = 10, MergedUserId = 10 });
+
+        var sut = CreateSut(
+            userId: 20,
+            telegramUserId: 10,
+            links: [new UserIdentityLink { Provider = AuthIdentityProviders.Google, ExternalId = "sub" }],
+            merge: merge.Object);
+
+        var result = await sut.RequestLinkCodeAsync(20, null, CancellationToken.None);
+
+        Assert.Equal(8, result.Code.Length);
+
+        var completed = await sut.CompleteLinkByCodeAsync(result.Code, DefaultTelegramId, CancellationToken.None);
+        Assert.True(completed.Success);
+    }
+
+    [Fact]
+    public async Task RequestLinkCodeFromBot_AndCompleteFromApp_LinksAccounts()
+    {
+        var merge = new Mock<IUserMergeService>();
+        merge.Setup(m => m.MergeTelegramGoogleAsync(
+                It.Is<MergeTelegramGoogleUsersRequest>(r => r.TelegramUserId == 10 && r.GoogleUserId == 20),
+                20,
+                It.IsAny<CancellationToken>()))
+            .ReturnsAsync(new MergeTelegramGoogleUsersResponse { SurvivorUserId = 10, MergedUserId = 20 });
+
+        var sut = CreateSut(
+            userId: 20,
+            telegramUserId: 10,
+            links: [new UserIdentityLink { Provider = AuthIdentityProviders.Google, ExternalId = "g-sub" }],
+            merge: merge.Object);
+
+        var issued = await sut.RequestLinkCodeFromBotAsync(DefaultTelegramId, CancellationToken.None);
+        var result = await sut.CompleteLinkFromAppAsync(20, issued.Code, CancellationToken.None);
+
+        Assert.True(result.Success);
+        merge.Verify(
+            m => m.MergeTelegramGoogleAsync(
+                It.IsAny<MergeTelegramGoogleUsersRequest>(),
+                20,
+                It.IsAny<CancellationToken>()),
+            Times.Once);
+    }
+
+    [Fact]
+    public async Task CompleteLinkFromApp_WhenCodeWasForBot_ReturnsFailure()
+    {
+        var sut = CreateSut(
+            userId: 10,
+            links: [new UserIdentityLink { Provider = AuthIdentityProviders.Google, ExternalId = "sub" }]);
+
+        var issued = await sut.RequestLinkCodeAsync(10, null, CancellationToken.None);
+        var result = await sut.CompleteLinkFromAppAsync(10, issued.Code, CancellationToken.None);
+
+        Assert.False(result.Success);
+        Assert.Contains("Telegram bot", result.Message, StringComparison.OrdinalIgnoreCase);
+    }
+
+    [Fact]
     public async Task RequestLinkCodeAsync_WhenUserHasGoogleLink_ReturnsCode()
     {
         var sut = CreateSut(
