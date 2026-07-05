@@ -105,7 +105,8 @@ public sealed class TelegramAccountLinkService(
         if (string.IsNullOrWhiteSpace(normalizedCode))
             return Fail("Link code is required.");
 
-        if (!cache.TryGetValue(AccountLinkCacheKey(normalizedCode), out AccountLinkCacheEntry entry))
+        if (!cache.TryGetValue(AccountLinkCacheKey(normalizedCode), out AccountLinkCacheEntry? entry)
+            || entry is null)
             return Fail("Invalid or expired link code.");
 
         if (entry.ExpectedTelegramId != telegramId)
