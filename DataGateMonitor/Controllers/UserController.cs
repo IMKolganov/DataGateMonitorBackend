@@ -18,6 +18,7 @@ public class UserController(
     IUserMergeService userMergeService,
     ITelegramAccountLinkService telegramAccountLinkService,
     IFreeTierAccessComplianceService freeTierAccessComplianceService,
+    IUserPasswordHistoryService userPasswordHistoryService,
     ICurrentUserService currentUserService) : BaseController
 {
     [HttpPost("register-from-tgbot")]
@@ -135,5 +136,48 @@ public class UserController(
             cancellationToken);
 
         return Ok(ApiResponse<bool>.SuccessResponse(result.IsCompliant));
+    }
+
+    [HttpGet("{id:int}/password-history")]
+    [Authorize(Roles = "Admin")]
+    [ProducesResponseType(typeof(ApiResponse<GetUserPasswordHistoryResponse>), StatusCodes.Status200OK)]
+    public async Task<ActionResult<ApiResponse<GetUserPasswordHistoryResponse>>> GetPasswordHistory(
+        [FromRoute] int id,
+        CancellationToken cancellationToken)
+    {
+        var response = await userPasswordHistoryService.GetHistoryAsync(id, cancellationToken);
+        return Ok(ApiResponse<GetUserPasswordHistoryResponse>.SuccessResponse(response));
+    }
+
+    [HttpPost("{id:int}/set-password")]
+    [Authorize(Roles = "Admin")]
+    [ProducesResponseType(typeof(ApiResponse<AdminSetUserPasswordResponse>), StatusCodes.Status200OK)]
+    public async Task<ActionResult<ApiResponse<AdminSetUserPasswordResponse>>> AdminSetPassword(
+        [FromRoute] int id,
+        [FromBody] AdminSetUserPasswordRequest request,
+        CancellationToken cancellationToken)
+    {
+        var response = await userPasswordHistoryService.AdminSetPasswordAsync(
+            id,
+            currentUserService.UserId,
+            request,
+            cancellationToken);
+        return Ok(ApiResponse<AdminSetUserPasswordResponse>.SuccessResponse(response));
+    }
+
+    [HttpPost("{id:int}/password-history/{historyId:int}/restore")]
+    [Authorize(Roles = "Admin")]
+    [ProducesResponseType(typeof(ApiResponse<RestoreUserPasswordResponse>), StatusCodes.Status200OK)]
+    public async Task<ActionResult<ApiResponse<RestoreUserPasswordResponse>>> RestorePasswordFromHistory(
+        [FromRoute] int id,
+        [FromRoute] int historyId,
+        CancellationToken cancellationToken)
+    {
+        var response = await userPasswordHistoryService.RestoreFromHistoryAsync(
+            id,
+            historyId,
+            currentUserService.UserId,
+            cancellationToken);
+        return Ok(ApiResponse<RestoreUserPasswordResponse>.SuccessResponse(response));
     }
 }
