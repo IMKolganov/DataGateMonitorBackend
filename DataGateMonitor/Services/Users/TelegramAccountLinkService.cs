@@ -24,10 +24,18 @@ public sealed class TelegramAccountLinkService(
     private const string GoogleProvider = AuthIdentityProviders.Google;
     private const string LocalProvider = AuthIdentityProviders.Local;
 
-    public async Task<RequestTelegramAccountLinkCodeResponse> RequestLinkCodeAsync(int userId, CancellationToken ct)
+    private sealed record AccountLinkCacheEntry(int DashboardUserId, long ExpectedTelegramId);
+
+    public async Task<RequestTelegramAccountLinkCodeResponse> RequestLinkCodeAsync(
+        int userId,
+        long telegramId,
+        CancellationToken ct)
     {
         if (userId <= 0)
             throw new ArgumentException("User id is required.", nameof(userId));
+
+        if (telegramId <= 0)
+            throw new ArgumentException("Telegram id is required.", nameof(telegramId));
 
         var user = await userQueryService.GetById(userId, ct)
                    ?? throw new KeyNotFoundException("User not found.");
@@ -47,18 +55,36 @@ public sealed class TelegramAccountLinkService(
             throw new InvalidOperationException(
                 "This account has no Google or password identity to link. Sign in with Google or register with a password first.");
 
+        var existingTelegramLink = await userIdentityLinkQueryService.GetByProviderAndExternalId(
+            TelegramProvider,
+            telegramId.ToString(),
+            ct);
+
+        if (existingTelegramLink is not { UserId: > 0 })
+            throw new InvalidOperationException(
+                "Telegram account is not registered. Use /register in the bot first.");
+
+        InvalidateActiveCodeForUser(userId);
+
         var code = GenerateCode();
         var minutes = configuration.GetValue<int?>("Auth:TelegramAccountLinkCodeMinutes") ?? DefaultCodeExpirationMinutes;
         if (minutes <= 0)
             minutes = DefaultCodeExpirationMinutes;
 
         var expiry = TimeSpan.FromMinutes(minutes);
+        var cacheOptions = new MemoryCacheEntryOptions { AbsoluteExpirationRelativeToNow = expiry };
+
         cache.Set(
             AccountLinkCacheKey(code),
-            userId,
-            new MemoryCacheEntryOptions { AbsoluteExpirationRelativeToNow = expiry });
+            new AccountLinkCacheEntry(userId, telegramId),
+            cacheOptions);
+        cache.Set(UserActiveCodeKey(userId), code, cacheOptions);
 
-        logger.LogInformation("Account link code issued for user {UserId}, valid {Minutes} minutes", userId, minutes);
+        logger.LogInformation(
+            "Account link code issued for user {UserId}, TelegramId={TelegramId}, valid {Minutes} minutes",
+            userId,
+            telegramId,
+            minutes);
 
         return new RequestTelegramAccountLinkCodeResponse
         {
@@ -79,10 +105,13 @@ public sealed class TelegramAccountLinkService(
         if (string.IsNullOrWhiteSpace(normalizedCode))
             return Fail("Link code is required.");
 
-        if (!cache.TryGetValue(AccountLinkCacheKey(normalizedCode), out int dashboardUserId))
+        if (!cache.TryGetValue(AccountLinkCacheKey(normalizedCode), out AccountLinkCacheEntry entry))
             return Fail("Invalid or expired link code.");
 
-        cache.Remove(AccountLinkCacheKey(normalizedCode));
+        if (entry.ExpectedTelegramId != telegramId)
+            return Fail("This link code was issued for a different Telegram account.");
+
+        var dashboardUserId = entry.DashboardUserId;
 
         var telegramLink = await userIdentityLinkQueryService.GetByProviderAndExternalId(
             TelegramProvider,
@@ -96,6 +125,7 @@ public sealed class TelegramAccountLinkService(
 
         if (telegramUserId == dashboardUserId)
         {
+            RemoveCode(normalizedCode, dashboardUserId);
             return new CompleteTelegramAccountLinkResponse
             {
                 Success = true,
@@ -133,6 +163,8 @@ public sealed class TelegramAccountLinkService(
                 performedByUserId: telegramUserId,
                 ct);
 
+            RemoveCode(normalizedCode, dashboardUserId);
+
             return new CompleteTelegramAccountLinkResponse
             {
                 Success = true,
@@ -148,14 +180,34 @@ public sealed class TelegramAccountLinkService(
                 telegramId,
                 dashboardUserId);
 
-            return Fail(ex.Message);
+            return Fail("Account link failed. Please try again or request a new code.");
         }
+    }
+
+    private void InvalidateActiveCodeForUser(int userId)
+    {
+        if (!cache.TryGetValue(UserActiveCodeKey(userId), out string? previousCode)
+            || string.IsNullOrWhiteSpace(previousCode))
+        {
+            return;
+        }
+
+        cache.Remove(AccountLinkCacheKey(previousCode));
+        cache.Remove(UserActiveCodeKey(userId));
+    }
+
+    private void RemoveCode(string normalizedCode, int dashboardUserId)
+    {
+        cache.Remove(AccountLinkCacheKey(normalizedCode));
+        cache.Remove(UserActiveCodeKey(dashboardUserId));
     }
 
     private static CompleteTelegramAccountLinkResponse Fail(string message)
         => new() { Success = false, Message = message };
 
     private static string AccountLinkCacheKey(string code) => $"account-link:code:{code}";
+
+    private static string UserActiveCodeKey(int userId) => $"account-link:user:{userId}";
 
     private static string GenerateCode()
     {

@@ -141,15 +141,36 @@ public class AuthController(
     /// <summary>
     /// For the client app / dashboard: request a one-time code to enter in the Telegram bot to link accounts.
     /// Requires a signed-in user with Google or password (local) identity, not yet linked to Telegram.
+    /// The code is bound to <paramref name="request"/>.TelegramId.
     /// </summary>
     [Authorize]
     [HttpPost("telegram/request-account-link-code")]
     [ProducesResponseType(typeof(ApiResponse<RequestTelegramAccountLinkCodeResponse>), StatusCodes.Status200OK)]
+    [ProducesResponseType(typeof(ApiResponse<RequestTelegramAccountLinkCodeResponse>), StatusCodes.Status400BadRequest)]
+    [ProducesResponseType(typeof(ApiResponse<RequestTelegramAccountLinkCodeResponse>), StatusCodes.Status404NotFound)]
     public async Task<ActionResult<ApiResponse<RequestTelegramAccountLinkCodeResponse>>> RequestTelegramAccountLinkCode(
+        [FromBody] RequestTelegramAccountLinkCodeRequest request,
         CancellationToken ct)
     {
-        var result = await telegramAccountLinkService.RequestLinkCodeAsync(currentUserService.UserId, ct);
-        return Ok(ApiResponse<RequestTelegramAccountLinkCodeResponse>.SuccessResponse(result));
+        if (request is null || request.TelegramId <= 0)
+            return BadRequest(ApiResponse<RequestTelegramAccountLinkCodeResponse>.ErrorResponse("TelegramId is required."));
+
+        try
+        {
+            var result = await telegramAccountLinkService.RequestLinkCodeAsync(
+                currentUserService.UserId,
+                request.TelegramId,
+                ct);
+            return Ok(ApiResponse<RequestTelegramAccountLinkCodeResponse>.SuccessResponse(result));
+        }
+        catch (KeyNotFoundException ex)
+        {
+            return NotFound(ApiResponse<RequestTelegramAccountLinkCodeResponse>.ErrorResponse(ex.Message));
+        }
+        catch (InvalidOperationException ex)
+        {
+            return BadRequest(ApiResponse<RequestTelegramAccountLinkCodeResponse>.ErrorResponse(ex.Message));
+        }
     }
 
     /// <summary>

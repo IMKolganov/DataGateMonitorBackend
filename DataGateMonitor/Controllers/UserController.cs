@@ -110,6 +110,9 @@ public class UserController(
             request.TelegramId,
             ct);
 
+        if (!result.Success)
+            return BadRequest(ApiResponse<CompleteTelegramAccountLinkResponse>.ErrorResponse(result.Message));
+
         return Ok(ApiResponse<CompleteTelegramAccountLinkResponse>.SuccessResponse(result));
     }
 
@@ -131,6 +134,6 @@ public class UserController(
             channelSubscribed,
             cancellationToken);
 
-        return Ok(ApiResponse<bool>.SuccessResponse(result.IsCompliant || !result.IsApplicable));
+        return Ok(ApiResponse<bool>.SuccessResponse(result.IsCompliant));
     }
 }

@@ -199,7 +199,7 @@ public class AuthControllerTests
     {
         _currentUserService.Setup(s => s.UserId).Returns(42);
         _telegramAccountLinkService
-            .Setup(s => s.RequestLinkCodeAsync(42, It.IsAny<CancellationToken>()))
+            .Setup(s => s.RequestLinkCodeAsync(42, 999, It.IsAny<CancellationToken>()))
             .ReturnsAsync(new RequestTelegramAccountLinkCodeResponse
             {
                 Code = "ABCD2345",
@@ -207,11 +207,42 @@ public class AuthControllerTests
             });
 
         var controller = CreateController();
-        var result = await controller.RequestTelegramAccountLinkCode(CancellationToken.None);
+        var result = await controller.RequestTelegramAccountLinkCode(
+            new RequestTelegramAccountLinkCodeRequest { TelegramId = 999 },
+            CancellationToken.None);
 
         var ok = Assert.IsType<OkObjectResult>(result.Result);
         var response = Assert.IsType<ApiResponse<RequestTelegramAccountLinkCodeResponse>>(ok.Value);
         Assert.Equal("ABCD2345", response.Data!.Code);
+    }
+
+    [Fact]
+    public async Task RequestTelegramAccountLinkCode_WhenTelegramIdMissing_ReturnsBadRequest()
+    {
+        var controller = CreateController();
+        var result = await controller.RequestTelegramAccountLinkCode(
+            new RequestTelegramAccountLinkCodeRequest { TelegramId = 0 },
+            CancellationToken.None);
+
+        var bad = Assert.IsType<BadRequestObjectResult>(result.Result);
+        Assert.False(((ApiResponse<RequestTelegramAccountLinkCodeResponse>)bad.Value!).Success);
+    }
+
+    [Fact]
+    public async Task RequestTelegramAccountLinkCode_WhenBusinessRuleFails_ReturnsBadRequest()
+    {
+        _currentUserService.Setup(s => s.UserId).Returns(42);
+        _telegramAccountLinkService
+            .Setup(s => s.RequestLinkCodeAsync(42, 999, It.IsAny<CancellationToken>()))
+            .ThrowsAsync(new InvalidOperationException("already linked"));
+
+        var controller = CreateController();
+        var result = await controller.RequestTelegramAccountLinkCode(
+            new RequestTelegramAccountLinkCodeRequest { TelegramId = 999 },
+            CancellationToken.None);
+
+        var bad = Assert.IsType<BadRequestObjectResult>(result.Result);
+        Assert.False(((ApiResponse<RequestTelegramAccountLinkCodeResponse>)bad.Value!).Success);
     }
 
     [Fact]

@@ -314,4 +314,54 @@ public class FreeTierAccessComplianceServiceTests
         Assert.False(status.IsGracePeriod);
         _notifications.VerifyNoOtherCalls();
     }
+
+    [Fact]
+    public async Task GetStatusAsync_WhenGraceActive_ReportsCompliant()
+    {
+        SetupFreePlanUser(17, 777);
+        SetupGraceSettings(enabled: true, minutes: 5);
+
+        var sut = CreateSut();
+        await sut.AuditAndNotifyIfNeededAsync(17, "bot", ct: CancellationToken.None);
+        var status = await sut.GetStatusAsync(17, CancellationToken.None);
+
+        Assert.True(status.IsApplicable);
+        Assert.True(status.IsCompliant);
+        Assert.True(status.IsGracePeriod);
+    }
+
+    [Fact]
+    public async Task AuditByTelegramId_WhenNoIdentityLink_IsNotCompliant()
+    {
+        _identityLinkQuery
+            .Setup(q => q.GetByProviderAndExternalId("telegram", "55555", It.IsAny<CancellationToken>()))
+            .ReturnsAsync((UserIdentityLink?)null);
+
+        var sut = CreateSut();
+        var result = await sut.AuditAndNotifyIfNeededByTelegramIdAsync(55555, "bot", ct: CancellationToken.None);
+
+        Assert.True(result.IsApplicable);
+        Assert.False(result.IsCompliant);
+        _notifications.VerifyNoOtherCalls();
+    }
+
+    [Fact]
+    public async Task AuditByTelegramId_WhenPaidPlan_AllowsViaIsCompliant()
+    {
+        _identityLinkQuery
+            .Setup(q => q.GetByProviderAndExternalId("telegram", "12345", It.IsAny<CancellationToken>()))
+            .ReturnsAsync(new UserIdentityLink { UserId = 30, Provider = "telegram", ExternalId = "12345" });
+        _quotaAssignmentQuery
+            .Setup(q => q.GetActiveByUserId(30, It.IsAny<CancellationToken>()))
+            .ReturnsAsync(new UserQuotaPlan { UserId = 30, QuotaPlanId = 3 });
+        _quotaPlanQuery
+            .Setup(q => q.GetById(3, It.IsAny<CancellationToken>()))
+            .ReturnsAsync(new QuotaPlan { Id = 3, Name = "Pro" });
+
+        var sut = CreateSut();
+        var result = await sut.AuditAndNotifyIfNeededByTelegramIdAsync(12345, "bot", ct: CancellationToken.None);
+
+        Assert.False(result.IsApplicable);
+        Assert.True(result.IsCompliant);
+    }
 }

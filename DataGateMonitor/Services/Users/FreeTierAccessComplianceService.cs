@@ -52,8 +52,8 @@ public sealed class FreeTierAccessComplianceService(
         {
             return new FreeTierAccessComplianceResult
             {
-                IsApplicable = false,
-                IsCompliant = true,
+                IsApplicable = true,
+                IsCompliant = false,
                 TelegramId = telegramId,
             };
         }
@@ -67,8 +67,8 @@ public sealed class FreeTierAccessComplianceService(
         {
             return new FreeTierAccessComplianceResult
             {
-                IsApplicable = false,
-                IsCompliant = true,
+                IsApplicable = true,
+                IsCompliant = false,
                 TelegramId = telegramId,
             };
         }
