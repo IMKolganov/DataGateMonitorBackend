@@ -13,4 +13,13 @@ public class GetConnectedClientsRequest
 
     [Range(1, int.MaxValue, ErrorMessage = "pageSize must be greater than 0.")]
     public int PageSize { get; set; } = 10;
+
+    /// <summary>Case-insensitive contains on common name.</summary>
+    public string? CommonName { get; set; }
+
+    /// <summary>Case-insensitive contains on external id.</summary>
+    public string? ExternalId { get; set; }
+
+    /// <summary>Case-insensitive contains on common name, external id, remote IP, or username.</summary>
+    public string? Search { get; set; }
 }

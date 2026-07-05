@@ -13,4 +13,7 @@ public class GetOverviewUsersRequest
     public int? VpnServerId { get; set; }
 
     public string? ExternalId { get; set; }
+
+    /// <summary>Case-insensitive contains on resolved display name.</summary>
+    public string? DisplayName { get; set; }
 }

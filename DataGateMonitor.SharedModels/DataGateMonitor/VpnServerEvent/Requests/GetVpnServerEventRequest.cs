@@ -19,4 +19,7 @@ public class GetVpnServerEventRequest
 
     /// <summary>Optional filter: resolve all issued profile CNs for this external id on the server.</summary>
     public string? ExternalId { get; set; }
+
+    /// <summary>Optional filter: exact event type (e.g. CONNECT, DISCONNECT).</summary>
+    public string? EventType { get; set; }
 }
