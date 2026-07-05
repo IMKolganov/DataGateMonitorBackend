@@ -121,25 +121,28 @@ public sealed class UserMergeService(
                     .ExecuteUpdateAsync(s => s.SetProperty(l => l.UserId, telegramUserId), ct);
             }
 
-            stats.IssuedOvpnFilesExternalIdUpdated += await UpdateExternalIdAsync<IssuedOvpnFile>(
-                googleExternalId, telegramExternalId, ct);
-            stats.IssuedXrayClientLinksExternalIdUpdated += await UpdateExternalIdAsync<IssuedXrayClientLink>(
-                googleExternalId, telegramExternalId, ct);
-
             stats.VpnServerClientsUserIdUpdated += await UpdateUserIdAsync<VpnServerClient>(googleUserId, telegramUserId, ct);
-            stats.VpnServerClientsExternalIdUpdated += await UpdateExternalIdAsync<VpnServerClient>(
-                googleExternalId, telegramExternalId, ct);
 
             stats.VpnServerClientTrafficsUserIdUpdated += await UpdateUserIdAsync<VpnServerClientTraffic>(
                 googleUserId, telegramUserId, ct);
-            stats.VpnServerClientTrafficsExternalIdUpdated += await UpdateExternalIdAsync<VpnServerClientTraffic>(
-                googleExternalId, telegramExternalId, ct);
 
             stats.VpnServerClientTrafficDailiesUserIdUpdated += await UpdateUserIdAsync<VpnServerClientTrafficDaily>(
                 googleUserId, telegramUserId, ct);
-            stats.VpnServerClientTrafficDailiesExternalIdUpdated +=
-                await UpdateExternalIdAsync<VpnServerClientTrafficDaily>(
-                    googleExternalId, telegramExternalId, ct);
+
+            if (!string.Equals(googleExternalId, telegramExternalId, StringComparison.Ordinal))
+            {
+                stats.IssuedOvpnFilesExternalIdUpdated += await UpdateExternalIdAsync<IssuedOvpnFile>(
+                    telegramExternalId, googleExternalId, ct);
+                stats.IssuedXrayClientLinksExternalIdUpdated += await UpdateExternalIdAsync<IssuedXrayClientLink>(
+                    telegramExternalId, googleExternalId, ct);
+                stats.VpnServerClientsExternalIdUpdated += await UpdateExternalIdAsync<VpnServerClient>(
+                    telegramExternalId, googleExternalId, ct);
+                stats.VpnServerClientTrafficsExternalIdUpdated += await UpdateExternalIdAsync<VpnServerClientTraffic>(
+                    telegramExternalId, googleExternalId, ct);
+                stats.VpnServerClientTrafficDailiesExternalIdUpdated +=
+                    await UpdateExternalIdAsync<VpnServerClientTrafficDaily>(
+                        telegramExternalId, googleExternalId, ct);
+            }
 
             await MergeCredentialsAsync(telegramUserId, googleUserId, stats, warnings, ct);
             await MergeQuotaPlansAsync(telegramUserId, googleUserId, stats, warnings, ct);
@@ -466,21 +469,22 @@ public sealed class UserMergeService(
     {
         stats.IdentityLinksReassigned = 1;
 
-        stats.IssuedOvpnFilesExternalIdUpdated = await CountExternalIdAsync<IssuedOvpnFile>(googleExternalId, ct);
-        stats.IssuedXrayClientLinksExternalIdUpdated =
-            await CountExternalIdAsync<IssuedXrayClientLink>(googleExternalId, ct);
-
         stats.VpnServerClientsUserIdUpdated = await CountUserIdAsync<VpnServerClient>(mergedUserId, ct);
-        stats.VpnServerClientsExternalIdUpdated = await CountExternalIdAsync<VpnServerClient>(googleExternalId, ct);
-
         stats.VpnServerClientTrafficsUserIdUpdated = await CountUserIdAsync<VpnServerClientTraffic>(mergedUserId, ct);
-        stats.VpnServerClientTrafficsExternalIdUpdated =
-            await CountExternalIdAsync<VpnServerClientTraffic>(googleExternalId, ct);
-
         stats.VpnServerClientTrafficDailiesUserIdUpdated =
             await CountUserIdAsync<VpnServerClientTrafficDaily>(mergedUserId, ct);
-        stats.VpnServerClientTrafficDailiesExternalIdUpdated =
-            await CountExternalIdAsync<VpnServerClientTrafficDaily>(googleExternalId, ct);
+
+        if (!string.Equals(googleExternalId, telegramExternalId, StringComparison.Ordinal))
+        {
+            stats.IssuedOvpnFilesExternalIdUpdated = await CountExternalIdAsync<IssuedOvpnFile>(telegramExternalId, ct);
+            stats.IssuedXrayClientLinksExternalIdUpdated =
+                await CountExternalIdAsync<IssuedXrayClientLink>(telegramExternalId, ct);
+            stats.VpnServerClientsExternalIdUpdated = await CountExternalIdAsync<VpnServerClient>(telegramExternalId, ct);
+            stats.VpnServerClientTrafficsExternalIdUpdated =
+                await CountExternalIdAsync<VpnServerClientTraffic>(telegramExternalId, ct);
+            stats.VpnServerClientTrafficDailiesExternalIdUpdated =
+                await CountExternalIdAsync<VpnServerClientTrafficDaily>(telegramExternalId, ct);
+        }
 
         stats.DevicesReassigned = await CountUserIdAsync<Device>(mergedUserId, ct);
         stats.UserRefreshTokensRemoved = await CountUserIdAsync<UserRefreshToken>(mergedUserId, ct);
@@ -524,7 +528,7 @@ public sealed class UserMergeService(
         if (googleExternalId != telegramExternalId)
         {
             warnings.Add(
-                $"VPN ExternalId will be rewritten from Google sub to Telegram id ({telegramExternalId}).");
+                $"VPN ExternalId will be rewritten from Telegram id ({telegramExternalId}) to Google sub ({googleExternalId}).");
         }
     }
 

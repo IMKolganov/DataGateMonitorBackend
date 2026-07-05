@@ -3,9 +3,11 @@ using Mapster;
 using DataGateMonitor.DataBase.Services.Command.Interfaces;
 using DataGateMonitor.DataBase.Services.Query.IssuedXrayClientLinkTable;
 using DataGateMonitor.DataBase.Services.Query.IssuedXrayClientLinkTokenTable;
+using DataGateMonitor.DataBase.Services.Query.UserIdentityLinkTable;
 using DataGateMonitor.DataBase.Services.Query.VpnServerOvpnFileConfigTable;
 using DataGateMonitor.DataBase.Services.Query.VpnServerTable;
 using DataGateMonitor.Models;
+using DataGateMonitor.Services.Api.Auth.Users;
 using DataGateMonitor.Services.Others.Notifications.OvpnFileApi;
 using DataGateMonitor.SharedModels.DataGateMonitor.OpenVpnFiles.Requests;
 using DataGateMonitor.SharedModels.DataGateMonitor.OpenVpnFiles.Responses;
@@ -21,6 +23,7 @@ public sealed class XrayClientLinkService(
     IVpnServerOvpnFileConfigQueryService vpnServerOvpnFileConfigQueryService,
     IIssuedXrayClientLinkQueryService issuedXrayClientLinkQueryService,
     IIssuedXrayClientLinkTokenQueryService issuedXrayClientLinkTokenQueryService,
+    IUserIdentityLinkQueryService userIdentityLinkQueryService,
     ICommandService<IssuedXrayClientLink, int> issuedXrayClientLinkCommandService,
     ICommandService<IssuedXrayClientLinkToken, int> issuedXrayClientLinkTokenCommandService,
     IVpnServerQueryService vpnServerQueryService,
@@ -55,8 +58,12 @@ public sealed class XrayClientLinkService(
 
     public async Task<List<IssuedXrayClientLink>> GetAllByExternalId(string externalId, CancellationToken ct)
     {
-        var list = await issuedXrayClientLinkQueryService.GetAllByExternalId(externalId, ct);
-        await ovpnFileNotificationService.NotifyReadByExternalId(externalId, list.Count, ct,
+        var queryKeys = await ResolveVpnExternalIdQueryKeysAsync(externalId, ct);
+        var list = await QueryLinksByExternalIdKeysAsync(
+            key => issuedXrayClientLinkQueryService.GetAllByExternalId(key, ct),
+            queryKeys,
+            ct);
+        await ovpnFileNotificationService.NotifyReadByExternalId(queryKeys[0], list.Count, ct,
             VpnProfileNotificationStack.Xray);
         return list;
     }
@@ -89,9 +96,13 @@ public sealed class XrayClientLinkService(
         CancellationToken ct, bool isRevoked = false)
     {
         await RequireXrayServerAsync(vpnServerId, ct);
-        var result = await issuedXrayClientLinkQueryService.GetAllByVpnServerIdAndExternalIdAndIsRevoked(
-            vpnServerId, externalId, isRevoked, ct);
-        await ovpnFileNotificationService.NotifyReadByExternalIdAndVpnServerId(vpnServerId, externalId, result.Count,
+        var queryKeys = await ResolveVpnExternalIdQueryKeysAsync(externalId, ct);
+        var result = await QueryLinksByExternalIdKeysAsync(
+            key => issuedXrayClientLinkQueryService.GetAllByVpnServerIdAndExternalIdAndIsRevoked(
+                vpnServerId, key, isRevoked, ct),
+            queryKeys,
+            ct);
+        await ovpnFileNotificationService.NotifyReadByExternalIdAndVpnServerId(vpnServerId, queryKeys[0], result.Count,
             isRevoked, ct, VpnProfileNotificationStack.Xray);
         return result;
     }
@@ -101,15 +112,19 @@ public sealed class XrayClientLinkService(
             bool isRevoked = false)
     {
         await RequireXrayServerAsync(vpnServerId, ct);
-        var files = await issuedXrayClientLinkQueryService.GetAllByVpnServerIdAndExternalIdAndIsRevoked(
-            vpnServerId, externalId, isRevoked, ct);
+        var queryKeys = await ResolveVpnExternalIdQueryKeysAsync(externalId, ct);
+        var files = await QueryLinksByExternalIdKeysAsync(
+            key => issuedXrayClientLinkQueryService.GetAllByVpnServerIdAndExternalIdAndIsRevoked(
+                vpnServerId, key, isRevoked, ct),
+            queryKeys,
+            ct);
         var tokens = await issuedXrayClientLinkTokenQueryService.GetByIssuedLinkIds(files.Select(f => f.Id), ct);
         var result = files.Select(f =>
         {
             var t = tokens.FirstOrDefault(x => x.IssuedXrayClientLinkId == f.Id);
             return (File: f, Token: t);
         }).ToList();
-        await ovpnFileNotificationService.NotifyReadByExternalIdWithToken(vpnServerId, externalId, result.Count,
+        await ovpnFileNotificationService.NotifyReadByExternalIdWithToken(vpnServerId, queryKeys[0], result.Count,
             isRevoked, ct, VpnProfileNotificationStack.Xray);
         return result;
     }
@@ -128,6 +143,8 @@ public sealed class XrayClientLinkService(
     {
         logger.LogInformation("Add Xray client link: CommonName={Cn}, VpnServerId={Id}", request.CommonName,
             request.VpnServerId);
+
+        request.ExternalId = await ResolveVpnExternalIdAsync(request.ExternalId, ct);
 
         if (await issuedXrayClientLinkQueryService.ExistsActiveByVpnServerIdAndCommonName(
                 request.VpnServerId, request.CommonName, ct))
@@ -269,6 +286,41 @@ public sealed class XrayClientLinkService(
             FileSizeBytes = result.Content.LongLength,
             Content = result.Content
         };
+    }
+
+    private Task<string> ResolveVpnExternalIdAsync(string externalId, CancellationToken ct) =>
+        UserIdentityLinkExternalIdResolver.ResolveVpnExternalIdAsync(
+            externalId,
+            userIdentityLinkQueryService,
+            ct);
+
+    private Task<IReadOnlyList<string>> ResolveVpnExternalIdQueryKeysAsync(string externalId, CancellationToken ct) =>
+        UserIdentityLinkExternalIdResolver.ResolveVpnExternalIdQueryKeysAsync(
+            externalId,
+            userIdentityLinkQueryService,
+            ct);
+
+    private static async Task<List<IssuedXrayClientLink>> QueryLinksByExternalIdKeysAsync(
+        Func<string, Task<List<IssuedXrayClientLink>>> queryByKey,
+        IReadOnlyList<string> queryKeys,
+        CancellationToken ct)
+    {
+        if (queryKeys.Count == 1)
+            return await queryByKey(queryKeys[0]);
+
+        var seen = new HashSet<int>();
+        var result = new List<IssuedXrayClientLink>();
+        foreach (var key in queryKeys)
+        {
+            ct.ThrowIfCancellationRequested();
+            foreach (var link in await queryByKey(key))
+            {
+                if (seen.Add(link.Id))
+                    result.Add(link);
+            }
+        }
+
+        return result;
     }
 
     private async Task<IssuedXrayClientLinkToken> MakeTokenForLink(IssuedXrayClientLink link, CancellationToken ct)
