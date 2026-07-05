@@ -135,34 +135,42 @@ public sealed class TelegramAccountLinkService(
             ct);
     }
 
-    public Task<CompleteTelegramAccountLinkResponse> CompleteLinkByCodeAsync(
+    public async Task<CompleteTelegramAccountLinkResponse> CompleteLinkByCodeAsync(
         string code,
         long telegramId,
         CancellationToken ct)
     {
         if (telegramId <= 0)
-            return Task.FromResult(Fail("Telegram id is required."));
+            return Fail("Telegram id is required.");
 
         var normalizedCode = NormalizeCode(code);
         if (normalizedCode is null)
-            return Task.FromResult(Fail("Link code is required."));
+            return Fail("Link code is required.");
 
         if (!cache.TryGetValue(AccountLinkCacheKey(normalizedCode), out AccountLinkCacheEntry? entry)
             || entry is null)
-            return Task.FromResult(Fail("Invalid or expired link code."));
+            return Fail("Invalid or expired link code.");
 
         if (entry.DashboardUserId == BindDashboardAtAppCompletion)
-            return Task.FromResult(Fail("This code must be entered in the mobile app, not in the bot."));
+            return Fail("This code must be entered in the mobile app, not in the bot.");
 
         if (entry.ExpectedTelegramId != BindTelegramAtBotCompletion
             && entry.ExpectedTelegramId != telegramId)
-            return Task.FromResult(Fail("This link code was issued for a different Telegram account."));
+            return Fail("This link code was issued for a different Telegram account.");
 
-        return CompleteMergeAsync(
+        var telegramLink = await userIdentityLinkQueryService.GetByProviderAndExternalId(
+            TelegramProvider,
+            telegramId.ToString(),
+            ct);
+
+        if (telegramLink is not { UserId: > 0 })
+            return Fail("Telegram account is not registered. Use /register in the bot first.");
+
+        return await CompleteMergeAsync(
             normalizedCode,
             telegramId,
             dashboardUserId: entry.DashboardUserId,
-            performedByUserId: telegramId,
+            performedByUserId: telegramLink.UserId,
             notePrefix: "Telegram bot account link (bot completed)",
             ct);
     }
