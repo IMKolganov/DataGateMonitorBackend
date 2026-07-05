@@ -11,4 +11,13 @@ public interface INotificationCatalog
     NotificationEnvelope UserRegistered(int userId, string displayName, string? login, string? email, string? registrationSource = null);
 
     NotificationEnvelope UserPasswordChanged(int userId, string displayName, string login, string reason);
+
+    NotificationEnvelope FreeTierAccessNonCompliant(
+        int userId,
+        string planName,
+        long? telegramId,
+        bool isMergedAccount,
+        bool isChannelSubscribed,
+        string context,
+        string requiredChannelChatId);
 }

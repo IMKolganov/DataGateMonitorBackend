@@ -17,11 +17,13 @@ public sealed class UserMergeService(
     IUserIdentityLinkQueryService userIdentityLinkQueryService,
     ICommandService<User, int> userCommandService,
     ICommandService<MergedUserArchive, int> mergedUserArchiveCommandService,
+    IFreeTierAccessComplianceService freeTierAccessComplianceService,
     ILogger<UserMergeService> logger
 ) : IUserMergeService
 {
     private const string TelegramProvider = "telegram";
     private const string GoogleProvider = "google";
+    private const string LocalProvider = "local";
 
     private static readonly JsonSerializerOptions JsonOptions = new() { WriteIndented = false };
 
@@ -57,11 +59,14 @@ public sealed class UserMergeService(
                                $"User {telegramUserId} has no '{TelegramProvider}' identity link.");
 
         var googleLink = mergedLinks.FirstOrDefault(l =>
-            string.Equals(l.Provider, GoogleProvider, StringComparison.OrdinalIgnoreCase))
+                             string.Equals(l.Provider, GoogleProvider, StringComparison.OrdinalIgnoreCase))
+                         ?? mergedLinks.FirstOrDefault(l =>
+                             string.Equals(l.Provider, LocalProvider, StringComparison.OrdinalIgnoreCase))
                          ?? throw new InvalidOperationException(
-                             $"User {googleUserId} has no '{GoogleProvider}' identity link.");
+                             $"User {googleUserId} has no '{GoogleProvider}' or '{LocalProvider}' identity link.");
 
-        if (survivorLinks.Any(l =>
+        if (string.Equals(googleLink.Provider, GoogleProvider, StringComparison.OrdinalIgnoreCase)
+            && survivorLinks.Any(l =>
                 string.Equals(l.Provider, GoogleProvider, StringComparison.OrdinalIgnoreCase)
                 && !string.Equals(l.ExternalId, googleLink.ExternalId, StringComparison.Ordinal)))
         {
@@ -199,6 +204,8 @@ public sealed class UserMergeService(
                 telegramUserId,
                 archive.Id);
 
+            await TryAuditFreeTierAccessAsync(telegramUserId, warnings, ct);
+
             return new MergeTelegramGoogleUsersResponse
             {
                 DryRun = false,
@@ -215,6 +222,28 @@ public sealed class UserMergeService(
         {
             await transaction.RollbackAsync(ct);
             throw;
+        }
+    }
+
+    private async Task TryAuditFreeTierAccessAsync(int survivorUserId, List<string> warnings, CancellationToken ct)
+    {
+        try
+        {
+            var compliance = await freeTierAccessComplianceService.AuditAndNotifyIfNeededAsync(
+                survivorUserId,
+                "After Telegram-Google merge",
+                isChannelSubscribed: null,
+                ct);
+
+            if (compliance is { IsApplicable: true, IsCompliant: false })
+            {
+                warnings.Add(
+                    $"Survivor has active plan \"{compliance.ActivePlanName}\" without merge eligibility or required channel subscription; admins notified.");
+            }
+        }
+        catch (Exception ex)
+        {
+            logger.LogWarning(ex, "Free/Default access audit failed for survivor user {UserId}", survivorUserId);
         }
     }
 

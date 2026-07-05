@@ -1,4 +1,6 @@
 using Microsoft.EntityFrameworkCore;
+using DataGateMonitor.Models;
+using DataGateMonitor.Services.Api.Auth.Users;
 using DataGateMonitor.SharedModels.Auth;
 using DataGateMonitor.Tests.Helpers;
 
@@ -95,5 +97,24 @@ public class UserMergeServiceIntegrationTests
 
         var archive = await harness.Context.MergedUserArchives.SingleAsync();
         Assert.Equal(99, archive.MergedByUserId);
+    }
+
+    [Fact]
+    public async Task AfterMerge_ExternalIdResolverPrefersTelegramId()
+    {
+        await using var harness = UserMergeServiceTestHarness.Create();
+        const string tgExt = "resolver-tg-id";
+        const string googleExt = "resolver-google-sub";
+
+        var (telegram, google) = await harness.SeedTelegramGooglePairAsync(tgExt, googleExt);
+        await harness.MergeAsync(telegram, google);
+
+        var links = await harness.Context.UserIdentityLinks
+            .Where(l => l.UserId == telegram.Id)
+            .ToListAsync();
+
+        var picked = UserIdentityLinkExternalIdResolver.PickPreferredLink(links);
+        Assert.Equal(AuthIdentityProviders.Telegram, picked!.Provider);
+        Assert.Equal(tgExt, picked.ExternalId);
     }
 }

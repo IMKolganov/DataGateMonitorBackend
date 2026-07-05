@@ -128,6 +128,8 @@ public static class ServiceConfiguration
 
         services.AddScoped<IUserService, UserService>();
         services.AddScoped<IUserMergeService, UserMergeService>();
+        services.AddScoped<ITelegramAccountLinkService, TelegramAccountLinkService>();
+        services.AddScoped<IFreeTierAccessComplianceService, FreeTierAccessComplianceService>();
         
         services.AddScoped<IQuotaPlanService, QuotaPlanService>();
         services.AddScoped<IUserRoleManagementService, UserRoleManagementService>();

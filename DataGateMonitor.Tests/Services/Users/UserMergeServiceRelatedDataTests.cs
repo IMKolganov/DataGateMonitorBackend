@@ -24,6 +24,21 @@ public class UserMergeServiceRelatedDataTests
     }
 
     [Fact]
+    public async Task UpdatesAllVpnRowsSharingGoogleExternalId()
+    {
+        await using var harness = UserMergeServiceTestHarness.Create();
+        var (telegram, google) = await harness.SeedTelegramGooglePairAsync(TelegramExternalId, GoogleExternalId);
+        await harness.SeedIssuedOvpnFileAsync(GoogleExternalId, vpnServerId: 1);
+        await harness.SeedIssuedOvpnFileAsync(GoogleExternalId, vpnServerId: 2);
+
+        var response = await harness.MergeAsync(telegram, google);
+
+        Assert.Equal(2, response.Stats.IssuedOvpnFilesExternalIdUpdated);
+        Assert.All(await harness.Context.IssuedOvpnFiles.ToListAsync(), f =>
+            Assert.Equal(TelegramExternalId, f.ExternalId));
+    }
+
+    [Fact]
     public async Task RewritesIssuedXrayLinkExternalId_ToTelegramId()
     {
         await using var harness = UserMergeServiceTestHarness.Create();

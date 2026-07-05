@@ -29,6 +29,7 @@ public class AuthController(
     IUserLoginService userLoginService,
     IUserQueryService userQueryService,
     IEmailConfirmationService emailConfirmationService,
+    ITelegramAccountLinkService telegramAccountLinkService,
     IGoogleAuthCodeExchangeService exchange,
     ITokenService tokenService,
     IAdminForgotPasswordService adminForgotPasswordService,
@@ -133,6 +134,20 @@ public class AuthController(
         var result = await userRegistrationService.RegisterAsync(request, ct);
 
         return Ok(ApiResponse<RegisterUserResponse>.SuccessResponse(result));
+    }
+
+    /// <summary>
+    /// For the client app / dashboard: request a one-time code to enter in the Telegram bot to link accounts.
+    /// Requires a signed-in user with Google or password (local) identity, not yet linked to Telegram.
+    /// </summary>
+    [Authorize]
+    [HttpPost("telegram/request-account-link-code")]
+    [ProducesResponseType(typeof(ApiResponse<RequestTelegramAccountLinkCodeResponse>), StatusCodes.Status200OK)]
+    public async Task<ActionResult<ApiResponse<RequestTelegramAccountLinkCodeResponse>>> RequestTelegramAccountLinkCode(
+        CancellationToken ct)
+    {
+        var result = await telegramAccountLinkService.RequestLinkCodeAsync(currentUserService.UserId, ct);
+        return Ok(ApiResponse<RequestTelegramAccountLinkCodeResponse>.SuccessResponse(result));
     }
 
     [AllowAnonymous]

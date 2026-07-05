@@ -2,6 +2,7 @@ using Microsoft.AspNetCore.Mvc;
 using Moq;
 using DataGateMonitor.Controllers;
 using DataGateMonitor.Services.Api.CurrentUser.Interfaces;
+using DataGateMonitor.Services.Users;
 using DataGateMonitor.Services.Users.Interfaces;
 using DataGateMonitor.SharedModels.DataGateMonitor.User.Requests;
 using DataGateMonitor.SharedModels.DataGateMonitor.User.Responses;
@@ -13,6 +14,7 @@ public class UserMergeControllerTests
 {
     private readonly Mock<IUserService> _userServiceMock = new(MockBehavior.Strict);
     private readonly Mock<IUserMergeService> _userMergeServiceMock = new(MockBehavior.Strict);
+    private readonly Mock<IFreeTierAccessComplianceService> _freeTierComplianceMock = new(MockBehavior.Strict);
     private readonly Mock<ICurrentUserService> _currentUserServiceMock = new(MockBehavior.Strict);
     private readonly UserController _controller;
 
@@ -22,6 +24,7 @@ public class UserMergeControllerTests
         _controller = new UserController(
             _userServiceMock.Object,
             _userMergeServiceMock.Object,
+            _freeTierComplianceMock.Object,
             _currentUserServiceMock.Object);
     }
 
@@ -145,5 +148,29 @@ public class UserMergeControllerTests
             _controller.MergeTelegramGoogle(req, CancellationToken.None));
 
         Assert.Contains("not found", ex.Message);
+    }
+
+    [Fact]
+    public async Task AuditFreeTierAccessByTelegram_ReturnsOk_WhenCompliant()
+    {
+        _freeTierComplianceMock
+            .Setup(s => s.AuditAndNotifyIfNeededByTelegramIdAsync(
+                12345,
+                "Telegram bot audit",
+                true,
+                It.IsAny<CancellationToken>()))
+            .ReturnsAsync(new FreeTierAccessComplianceResult
+            {
+                IsApplicable = true,
+                IsCompliant = true,
+            });
+
+        var result = await _controller.AuditFreeTierAccessByTelegram(12345, true, CancellationToken.None);
+
+        var ok = Assert.IsType<OkObjectResult>(result.Result);
+        var response = Assert.IsType<ApiResponse<bool>>(ok.Value);
+        Assert.True(response.Success);
+        Assert.True(response.Data);
+        _freeTierComplianceMock.VerifyAll();
     }
 }

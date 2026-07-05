@@ -21,7 +21,8 @@ public sealed class SystemTransactionalEmailService(IQueryService<EmailBroadcast
             var subject = string.IsNullOrWhiteSpace(entity.Subject)
                 ? TransactionalEmailHtml.DefaultConfirmationSubject
                 : entity.Subject.Trim();
-            return (subject, TransactionalEmailHtml.ApplyConfirmationPlaceholders(body, code, ttlMinutes));
+            return (subject, TransactionalEmailHtml.ApplyConfirmationPlaceholders(
+                TransactionalEmailHtml.EnsureConfirmEmailAction(body), code, ttlMinutes));
         }
 
         return (TransactionalEmailHtml.DefaultConfirmationSubject, TransactionalEmailHtml.BuildEmailConfirmation(code, ttlMinutes));

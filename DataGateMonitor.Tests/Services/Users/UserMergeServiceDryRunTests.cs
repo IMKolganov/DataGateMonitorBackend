@@ -142,4 +142,17 @@ public class UserMergeServiceDryRunTests
         Assert.Contains(response.Warnings, w => w.Contains(TelegramExternalId, StringComparison.Ordinal));
         Assert.Contains(response.Warnings, w => w.Contains("ExternalId", StringComparison.OrdinalIgnoreCase));
     }
+
+    [Fact]
+    public async Task DryRun_SkipsExternalIdRewriteWarning_WhenIdsMatch()
+    {
+        await using var harness = UserMergeServiceTestHarness.Create();
+        const string sharedId = "shared-vpn-external-id";
+        var (telegram, google) = await harness.SeedTelegramGooglePairAsync(sharedId, sharedId);
+
+        var response = await harness.MergeAsync(telegram, google, dryRun: true);
+
+        Assert.DoesNotContain(response.Warnings, w => w.Contains("ExternalId", StringComparison.OrdinalIgnoreCase));
+        Assert.Equal(0, response.Stats.IssuedOvpnFilesExternalIdUpdated);
+    }
 }
