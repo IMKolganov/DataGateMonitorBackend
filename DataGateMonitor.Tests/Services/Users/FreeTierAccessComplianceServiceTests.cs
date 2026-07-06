@@ -364,4 +364,44 @@ public class FreeTierAccessComplianceServiceTests
         Assert.False(result.IsApplicable);
         Assert.True(result.IsCompliant);
     }
+
+    [Fact]
+    public async Task ShouldEnforceOpenVpnDisconnectAsync_WhenNotSubscribedAndNotMerged_ReturnsTrue()
+    {
+        SetupFreePlanUser(40, 888);
+        _channelChecker.Setup(c => c.IsSubscribedAsync(888, It.IsAny<CancellationToken>())).ReturnsAsync(false);
+        SetupGraceSettings(enabled: true, minutes: 5);
+
+        var sut = CreateSut();
+        var shouldKill = await sut.ShouldEnforceOpenVpnDisconnectAsync(40, CancellationToken.None);
+
+        Assert.True(shouldKill);
+    }
+
+    [Fact]
+    public async Task ShouldEnforceOpenVpnDisconnectAsync_WhenChannelSubscribed_ReturnsFalse()
+    {
+        SetupFreePlanUser(41, 889);
+        _channelChecker.Setup(c => c.IsSubscribedAsync(889, It.IsAny<CancellationToken>())).ReturnsAsync(true);
+
+        var sut = CreateSut();
+        var shouldKill = await sut.ShouldEnforceOpenVpnDisconnectAsync(41, CancellationToken.None);
+
+        Assert.False(shouldKill);
+    }
+
+    [Fact]
+    public async Task ShouldEnforceOpenVpnDisconnectAsync_IgnoresGracePeriod()
+    {
+        SetupFreePlanUser(42, 890);
+        _channelChecker.Setup(c => c.IsSubscribedAsync(890, It.IsAny<CancellationToken>())).ReturnsAsync(false);
+        SetupGraceSettings(enabled: true, minutes: 5);
+
+        var sut = CreateSut();
+        await sut.AuditAndNotifyIfNeededAsync(42, "bot", ct: CancellationToken.None);
+
+        var shouldKill = await sut.ShouldEnforceOpenVpnDisconnectAsync(42, CancellationToken.None);
+
+        Assert.True(shouldKill);
+    }
 }

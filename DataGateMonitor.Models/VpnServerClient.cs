@@ -1,3 +1,5 @@
+using System.ComponentModel.DataAnnotations.Schema;
+
 namespace DataGateMonitor.Models;
 
 public class VpnServerClient : BaseEntity<int>
@@ -38,4 +40,8 @@ public class VpnServerClient : BaseEntity<int>
     public double? Latitude { get; set; }
     public double? Longitude { get; set; }
     public bool IsConnected { get; set; }
+
+    /// <summary>OpenVPN management Client ID from <c>status 3</c> (not persisted).</summary>
+    [NotMapped]
+    public long? ManagementClientId { get; set; }
 }

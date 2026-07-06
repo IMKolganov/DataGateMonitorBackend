@@ -79,6 +79,15 @@ public sealed class FreeTierAccessComplianceService(
         return result;
     }
 
+    public async Task<bool> ShouldEnforceOpenVpnDisconnectAsync(int userId, CancellationToken ct = default)
+    {
+        if (userId <= 0)
+            return false;
+
+        var (result, _) = await EvaluateAccessAsync(userId, isChannelSubscribed: null, ct);
+        return result is { IsApplicable: true, IsCompliant: false };
+    }
+
     public async Task<FreeTierAccessComplianceResult> AuditAndNotifyIfNeededAsync(
         int userId,
         string context,

@@ -226,6 +226,64 @@ public class TelegramAccountLinkServiceTests
     }
 
     [Fact]
+    public async Task CompleteLinkByCodeAsync_WhenSurvivorHasDifferentGoogle_ReturnsLinkedAccountMessage()
+    {
+        const int survivorUserId = 53;
+        const int dashboardUserId = 117;
+
+        var merge = new Mock<IUserMergeService>(MockBehavior.Strict);
+
+        var sut = CreateSut(
+            userId: dashboardUserId,
+            telegramUserId: survivorUserId,
+            links:
+            [
+                new UserIdentityLink
+                {
+                    UserId = dashboardUserId,
+                    Provider = AuthIdentityProviders.Google,
+                    ExternalId = "117358012580610142000",
+                },
+            ],
+            survivorLinks:
+            [
+                new UserIdentityLink
+                {
+                    UserId = survivorUserId,
+                    Provider = AuthIdentityProviders.Telegram,
+                    ExternalId = DefaultTelegramId.ToString(),
+                },
+                new UserIdentityLink
+                {
+                    UserId = survivorUserId,
+                    Provider = AuthIdentityProviders.Google,
+                    ExternalId = "101156788354753647270",
+                },
+            ],
+            survivorUser: new User
+            {
+                Id = survivorUserId,
+                DisplayName = "koz_nik",
+                Email = "25052001kozin@gmail.com",
+            },
+            merge: merge.Object);
+
+        var issued = await sut.RequestLinkCodeAsync(dashboardUserId, null, CancellationToken.None);
+        var result = await sut.CompleteLinkByCodeAsync(issued.Code, DefaultTelegramId, CancellationToken.None);
+
+        Assert.False(result.Success);
+        Assert.StartsWith(TelegramAccountLinkService.TelegramAlreadyLinkedToGooglePrefix, result.Message, StringComparison.Ordinal);
+        Assert.Contains("25052001kozin@gmail.com", result.Message, StringComparison.Ordinal);
+        Assert.Contains("koz_nik", result.Message, StringComparison.Ordinal);
+        merge.Verify(
+            m => m.MergeTelegramGoogleAsync(
+                It.IsAny<MergeTelegramGoogleUsersRequest>(),
+                It.IsAny<int>(),
+                It.IsAny<CancellationToken>()),
+            Times.Never);
+    }
+
+    [Fact]
     public async Task CompleteLinkByCodeAsync_WhenMergeFails_CodeRemainsValid()
     {
         var merge = new Mock<IUserMergeService>();
@@ -293,6 +351,8 @@ public class TelegramAccountLinkServiceTests
         IReadOnlyList<UserIdentityLink> links,
         long registeredTelegramId = DefaultTelegramId,
         int telegramUserId = 0,
+        IReadOnlyList<UserIdentityLink>? survivorLinks = null,
+        User? survivorUser = null,
         IMemoryCache? cache = null,
         IUserMergeService? merge = null)
     {
@@ -305,11 +365,31 @@ public class TelegramAccountLinkServiceTests
         config.Setup(c => c.GetSection(It.IsAny<string>())).Returns(Mock.Of<IConfigurationSection>());
 
         var resolvedTelegramUserId = telegramUserId > 0 ? telegramUserId : userId;
+        var resolvedSurvivorLinks = survivorLinks ??
+        [
+            new UserIdentityLink
+            {
+                UserId = resolvedTelegramUserId,
+                Provider = AuthIdentityProviders.Telegram,
+                ExternalId = registeredTelegramId.ToString(),
+            },
+        ];
 
         userQuery.Setup(q => q.GetById(userId, It.IsAny<CancellationToken>()))
             .ReturnsAsync(new User { Id = userId, IsBlocked = false });
+        if (resolvedTelegramUserId != userId)
+        {
+            userQuery.Setup(q => q.GetById(resolvedTelegramUserId, It.IsAny<CancellationToken>()))
+                .ReturnsAsync(survivorUser ?? new User { Id = resolvedTelegramUserId, IsBlocked = false });
+        }
+
         linkQuery.Setup(q => q.GetListByUserId(userId, It.IsAny<CancellationToken>()))
             .ReturnsAsync(links.ToList());
+        if (resolvedTelegramUserId != userId)
+        {
+            linkQuery.Setup(q => q.GetListByUserId(resolvedTelegramUserId, It.IsAny<CancellationToken>()))
+                .ReturnsAsync(resolvedSurvivorLinks.ToList());
+        }
         linkQuery.Setup(q => q.GetByProviderAndExternalId(
                 AuthIdentityProviders.Telegram,
                 It.IsAny<string>(),

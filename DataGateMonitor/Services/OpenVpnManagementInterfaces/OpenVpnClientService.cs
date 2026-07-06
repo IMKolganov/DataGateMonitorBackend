@@ -13,6 +13,42 @@ public class OpenVpnClientService(
     IProxyClientLookupService proxyClientLookupService)
     : IOpenVpnClientService
 {
+    internal const string KillReasonMessage =
+        "Free tier: subscribe to the Telegram channel or link your account.";
+
+    public async Task KillConnectedClientAsync(VpnServer openVpnServer, VpnServerClient client,
+        CancellationToken cancellationToken)
+    {
+        ArgumentNullException.ThrowIfNull(openVpnServer);
+        ArgumentNullException.ThrowIfNull(client);
+
+        if (string.IsNullOrWhiteSpace(client.CommonName) && string.IsNullOrWhiteSpace(client.RemoteIp))
+            throw new ArgumentException("Connected client must have CommonName or RemoteIp to kill.");
+
+        var command = BuildKillCommand(client);
+        var proxyClient = openVpnMicroserviceClientFactory.Create(openVpnServer);
+        var response = await proxyClient.SendCommandWithResponseAsync(command, cancellationToken);
+
+        logger.LogInformation(
+            "Sent OpenVPN kill for server {ServerId}, CN={CommonName}, ManagementClientId={ManagementClientId}, command={Command}, response={Response}",
+            openVpnServer.Id,
+            client.CommonName,
+            client.ManagementClientId,
+            command,
+            response);
+    }
+
+    internal static string BuildKillCommand(VpnServerClient client)
+    {
+        if (client.ManagementClientId is > 0)
+            return $"client-kill {client.ManagementClientId.Value} {KillReasonMessage}";
+
+        if (!string.IsNullOrWhiteSpace(client.CommonName))
+            return $"kill {client.CommonName}";
+
+        return $"kill {client.RemoteIp}";
+    }
+
     public async Task<OpenVpnManagementStatusResult> GetClientsFromManagementAsync(VpnServer openVpnServer,
         CancellationToken cancellationToken)
     {
@@ -79,9 +115,9 @@ public class OpenVpnClientService(
     {
         try
         {
-            // Columns (status 3) can vary by version; the indexes below match the common format:
-            // 0: CLIENT_LIST, 1: CommonName, 2: RealAddress, 3: VirtualAddress, 4: Virtual6 (optional),
-            // 5: BytesReceived, 6: BytesSent, 7: ConnectedSince (unix), ... , 9: Username (may be UNDEF)
+            // Columns (status 3): 0:CLIENT_LIST, 1:CN, 2:RealAddress, 3:VirtualAddress, 4:VirtualIPv6,
+            // 5:BytesReceived, 6:BytesSent, 7:ConnectedSince, 8:ConnectedSince(time_t), 9:Username,
+            // 10:Client ID, 11:Peer ID, ...
             var remoteIp = OpenVpnRealAddressParser.NormalizeRemoteIp(parts[2]);
 
             return new VpnServerClient
@@ -92,7 +128,8 @@ public class OpenVpnClientService(
                 BytesReceived = TryParseLong(parts[5], "BytesReceived"),
                 BytesSent = TryParseLong(parts[6], "BytesSent"),
                 ConnectedSince = TryParseInstantUtc(parts[7], "ConnectedSince"),
-                Username = parts.Length > 9 && parts[9] != "UNDEF" ? parts[9] : parts[1]
+                Username = parts.Length > 9 && parts[9] != "UNDEF" ? parts[9] : parts[1],
+                ManagementClientId = TryParseOptionalClientId(parts),
             };
         }
         catch (Exception ex)
@@ -100,6 +137,16 @@ public class OpenVpnClientService(
             logger.LogError(ex, "Error parsing OpenVPN client data. Raw parts: {Parts}", string.Join("|", parts));
             return null;
         }
+    }
+
+    private static long? TryParseOptionalClientId(string[] parts)
+    {
+        if (parts.Length <= 10 || string.IsNullOrWhiteSpace(parts[10]))
+            return null;
+
+        return long.TryParse(parts[10], NumberStyles.Integer, CultureInfo.InvariantCulture, out var clientId) && clientId > 0
+            ? clientId
+            : null;
     }
 
     private long TryParseLong(string value, string fieldName)

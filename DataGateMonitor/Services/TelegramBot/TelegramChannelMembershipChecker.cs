@@ -35,11 +35,15 @@ public sealed class TelegramChannelMembershipChecker(
         using var response = await client.GetAsync(url, ct);
         if (!response.IsSuccessStatusCode)
         {
+            var errorBody = await response.Content.ReadAsStringAsync(ct);
+            var telegramDescription = TryReadTelegramDescription(errorBody);
+
             logger.LogWarning(
-                "Telegram getChatMember failed for user {TelegramUserId} in {ChatId}: HTTP {StatusCode}",
+                "Telegram getChatMember failed for user {TelegramUserId} in {ChatId}: HTTP {StatusCode}. Telegram: {TelegramDescription}",
                 telegramUserId,
                 chatId,
-                (int)response.StatusCode);
+                (int)response.StatusCode,
+                telegramDescription ?? errorBody);
             return false;
         }
 
@@ -63,6 +67,25 @@ public sealed class TelegramChannelMembershipChecker(
             "creator" or "administrator" or "member" or "restricted" => true,
             _ => false,
         };
+
+    private static string? TryReadTelegramDescription(string? json)
+    {
+        if (string.IsNullOrWhiteSpace(json))
+            return null;
+
+        try
+        {
+            using var doc = JsonDocument.Parse(json);
+            if (doc.RootElement.TryGetProperty("description", out var description))
+                return description.GetString();
+        }
+        catch (JsonException)
+        {
+            return null;
+        }
+
+        return null;
+    }
 
     private sealed class TelegramApiResponse<T>
     {

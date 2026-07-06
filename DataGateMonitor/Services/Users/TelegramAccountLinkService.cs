@@ -29,6 +29,9 @@ public sealed class TelegramAccountLinkService(
     private const string GoogleProvider = AuthIdentityProviders.Google;
     private const string LocalProvider = AuthIdentityProviders.Local;
 
+    /// <summary>Bot-localized via LocalizationTexts key <c>AccountLinkTelegramAlreadyLinkedToGoogle</c>.</summary>
+    public const string TelegramAlreadyLinkedToGooglePrefix = "TelegramAlreadyLinkedToGoogle|";
+
     private sealed record AccountLinkCacheEntry(int DashboardUserId, long ExpectedTelegramId);
 
     public async Task<RequestTelegramAccountLinkCodeResponse> RequestLinkCodeAsync(
@@ -228,6 +231,20 @@ public sealed class TelegramAccountLinkService(
         if (!hasGoogle && !hasLocal)
             return Fail("Dashboard account has no Google or password identity to merge.");
 
+        var googleConflictMessage = await TryBuildTelegramGoogleConflictMessageAsync(
+            telegramUserId,
+            dashboardLinks,
+            ct);
+        if (googleConflictMessage is not null)
+        {
+            logger.LogWarning(
+                "Account link merge blocked for TelegramId={TelegramId}, DashboardUserId={DashboardUserId}: {Reason}",
+                telegramId,
+                dashboardUserId,
+                googleConflictMessage);
+            return Fail(googleConflictMessage);
+        }
+
         try
         {
             var merge = await userMergeService.MergeTelegramGoogleAsync(
@@ -249,6 +266,17 @@ public sealed class TelegramAccountLinkService(
                 Merge = merge,
             };
         }
+        catch (InvalidOperationException ex) when (IsSurvivorGoogleConflict(ex))
+        {
+            var survivor = await userQueryService.GetById(telegramUserId, ct);
+            var message = BuildTelegramAlreadyLinkedToGoogleMessage(survivor);
+            logger.LogWarning(
+                "Account link merge blocked for TelegramId={TelegramId}, DashboardUserId={DashboardUserId}: {Reason}",
+                telegramId,
+                dashboardUserId,
+                message);
+            return Fail(message);
+        }
         catch (Exception ex)
         {
             logger.LogWarning(
@@ -259,6 +287,58 @@ public sealed class TelegramAccountLinkService(
 
             return Fail("Account link failed. Please try again or request a new code.");
         }
+    }
+
+    private async Task<string?> TryBuildTelegramGoogleConflictMessageAsync(
+        int survivorUserId,
+        IReadOnlyList<UserIdentityLink> incomingDashboardLinks,
+        CancellationToken ct)
+    {
+        var survivorLinks = await userIdentityLinkQueryService.GetListByUserId(survivorUserId, ct);
+        var survivorGoogleLink = survivorLinks.FirstOrDefault(l =>
+            string.Equals(l.Provider, GoogleProvider, StringComparison.OrdinalIgnoreCase));
+        if (survivorGoogleLink is null)
+            return null;
+
+        var incomingGoogleLink = incomingDashboardLinks.FirstOrDefault(l =>
+            string.Equals(l.Provider, GoogleProvider, StringComparison.OrdinalIgnoreCase));
+        if (incomingGoogleLink is null)
+            return null;
+
+        if (string.Equals(survivorGoogleLink.ExternalId, incomingGoogleLink.ExternalId, StringComparison.Ordinal))
+            return null;
+
+        var survivor = await userQueryService.GetById(survivorUserId, ct);
+        return BuildTelegramAlreadyLinkedToGoogleMessage(survivor);
+    }
+
+    private static bool IsSurvivorGoogleConflict(InvalidOperationException ex)
+        => ex.Message.Contains("already has a different Google identity link", StringComparison.Ordinal);
+
+    private static string BuildTelegramAlreadyLinkedToGoogleMessage(User? survivor)
+    {
+        var label = FormatLinkedGoogleAccountLabel(survivor);
+        return $"{TelegramAlreadyLinkedToGooglePrefix}{label}";
+    }
+
+    private static string FormatLinkedGoogleAccountLabel(User? user)
+    {
+        if (user is null)
+            return "another Google account";
+
+        var name = user.DisplayName?.Trim();
+        var email = user.Email?.Trim();
+
+        if (!string.IsNullOrEmpty(name) && !string.IsNullOrEmpty(email))
+            return $"{name} ({email})";
+
+        if (!string.IsNullOrEmpty(email))
+            return email;
+
+        if (!string.IsNullOrEmpty(name))
+            return name;
+
+        return "another Google account";
     }
 
     private async Task EnsureDashboardUserCanRequestLinkCodeAsync(int userId, CancellationToken ct)

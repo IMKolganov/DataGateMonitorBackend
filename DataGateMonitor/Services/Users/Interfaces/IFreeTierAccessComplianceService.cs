@@ -25,4 +25,10 @@ public interface IFreeTierAccessComplianceService
         string context,
         bool? isChannelSubscribed = null,
         CancellationToken ct = default);
+
+    /// <summary>
+    /// Strict enforcement check for OpenVPN: Free/Default users who are neither merged nor channel-subscribed.
+    /// Ignores grace period.
+    /// </summary>
+    Task<bool> ShouldEnforceOpenVpnDisconnectAsync(int userId, CancellationToken ct = default);
 }

@@ -114,6 +114,7 @@ public static class ServiceConfiguration
             services.AddHostedService<OpenVpnStatusStreamPublisher>();
             services.AddHostedService<OpenVpnProxyTrafficFlowBackgroundService>();
             services.AddHostedService<TrafficDailyRollupBackgroundService>();
+            services.AddHostedService<FreeTierOpenVpnSessionEnforcementBackgroundService>();
         }
 
         services.AddScoped<IVpnEventLogService, VpnEventLogService>();
@@ -131,6 +132,7 @@ public static class ServiceConfiguration
         services.AddScoped<IUserMergeService, UserMergeService>();
         services.AddScoped<ITelegramAccountLinkService, TelegramAccountLinkService>();
         services.AddScoped<IFreeTierAccessComplianceService, FreeTierAccessComplianceService>();
+        services.AddScoped<IFreeTierOpenVpnSessionEnforcementService, FreeTierOpenVpnSessionEnforcementService>();
         
         services.AddScoped<IQuotaPlanService, QuotaPlanService>();
         services.AddScoped<IUserRoleManagementService, UserRoleManagementService>();
