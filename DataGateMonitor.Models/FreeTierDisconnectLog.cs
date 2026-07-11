@@ -38,4 +38,11 @@ public class FreeTierDisconnectLog : BaseEntity<int>
     public string? ErrorMessage { get; set; }
 
     public DateTimeOffset CreatedAt { get; set; } = DateTimeOffset.UtcNow;
+
+    /// <summary>Channel used to tell the user they were disconnected: "telegram", "email", or null if none was attempted/available.</summary>
+    [MaxLength(32)]
+    public string? NotificationChannel { get; set; }
+
+    /// <summary>True when <see cref="NotificationChannel"/> was actually delivered successfully.</summary>
+    public bool NotificationSent { get; set; }
 }

@@ -1,4 +1,5 @@
 using DataGateMonitor.DataBase.Services.Command.Interfaces;
+using DataGateMonitor.DataBase.Services.Query;
 using DataGateMonitor.DataBase.Services.Query.IssuedOvpnFileTable;
 using DataGateMonitor.Models;
 using DataGateMonitor.Services.DataGateOpenVpnManager.Interfaces;
@@ -18,6 +19,7 @@ public class OpenVpnDisconnectExecutorTests
     private readonly Mock<IIssuedOvpnFileQueryService> _issuedOvpnFileQueryService = new();
     private readonly Mock<IOvpnFileApiService> _ovpnFileApiService = new();
     private readonly Mock<ICommandService<FreeTierDisconnectLog, int>> _disconnectLogCommandService = new();
+    private readonly Mock<IQueryService<FreeTierDisconnectLog, int>> _disconnectLogQueryService = new();
 
     private OpenVpnDisconnectExecutor CreateSut()
         => new(
@@ -25,6 +27,7 @@ public class OpenVpnDisconnectExecutorTests
             _issuedOvpnFileQueryService.Object,
             _ovpnFileApiService.Object,
             _disconnectLogCommandService.Object,
+            _disconnectLogQueryService.Object,
             Mock.Of<ILogger<OpenVpnDisconnectExecutor>>());
 
     private static VpnServer Server(int id = 1) => new() { Id = id, ServerName = "srv-1" };
@@ -164,5 +167,58 @@ public class OpenVpnDisconnectExecutorTests
                 true,
                 It.IsAny<CancellationToken>()),
             Times.Once);
+    }
+
+    [Fact]
+    public async Task UpdateNotificationOutcomeAsync_WhenMatchingLogFound_UpdatesIt()
+    {
+        var entry = new FreeTierDisconnectLog
+        {
+            Id = 42,
+            UserId = 5,
+            VpnServerId = 1,
+            CommonName = "client-1",
+            Reason = (int)DisconnectReason.Enforcement,
+        };
+        _disconnectLogQueryService
+            .Setup(q => q.FirstOrDefault(
+                It.IsAny<System.Linq.Expressions.Expression<Func<FreeTierDisconnectLog, bool>>>(),
+                It.IsAny<Func<IQueryable<FreeTierDisconnectLog>, IOrderedQueryable<FreeTierDisconnectLog>>>(),
+                It.IsAny<bool>(),
+                It.IsAny<CancellationToken>(),
+                It.IsAny<System.Linq.Expressions.Expression<Func<FreeTierDisconnectLog, object>>[]>()))
+            .ReturnsAsync(entry);
+
+        var sut = CreateSut();
+        await sut.UpdateNotificationOutcomeAsync(5, 1, "client-1", DisconnectReason.Enforcement, "telegram", true, CancellationToken.None);
+
+        _disconnectLogCommandService.Verify(
+            x => x.Update(
+                It.Is<FreeTierDisconnectLog>(l => l.Id == 42 && l.NotificationChannel == "telegram" && l.NotificationSent),
+                true,
+                It.IsAny<CancellationToken>()),
+            Times.Once);
+    }
+
+    [Fact]
+    public async Task UpdateNotificationOutcomeAsync_WhenNoMatchingLogFound_DoesNotThrowOrUpdate()
+    {
+        _disconnectLogQueryService
+            .Setup(q => q.FirstOrDefault(
+                It.IsAny<System.Linq.Expressions.Expression<Func<FreeTierDisconnectLog, bool>>>(),
+                It.IsAny<Func<IQueryable<FreeTierDisconnectLog>, IOrderedQueryable<FreeTierDisconnectLog>>>(),
+                It.IsAny<bool>(),
+                It.IsAny<CancellationToken>(),
+                It.IsAny<System.Linq.Expressions.Expression<Func<FreeTierDisconnectLog, object>>[]>()))
+            .ReturnsAsync((FreeTierDisconnectLog?)null);
+
+        var sut = CreateSut();
+        var exception = await Record.ExceptionAsync(() =>
+            sut.UpdateNotificationOutcomeAsync(5, 1, "client-1", DisconnectReason.Enforcement, "email", false, CancellationToken.None));
+
+        Assert.Null(exception);
+        _disconnectLogCommandService.Verify(
+            x => x.Update(It.IsAny<FreeTierDisconnectLog>(), It.IsAny<bool>(), It.IsAny<CancellationToken>()),
+            Times.Never);
     }
 }

@@ -153,7 +153,15 @@ public sealed class FreeTierOpenVpnSessionEnforcementService(
 
                 try
                 {
-                    await graceDisconnectNotifier.NotifyAsync(user.Id, ct);
+                    var outcome = await graceDisconnectNotifier.NotifyAsync(user.Id, ct);
+                    await disconnectExecutor.UpdateNotificationOutcomeAsync(
+                        user.Id,
+                        server.Id,
+                        connectedClient.CommonName,
+                        DisconnectReason.Enforcement,
+                        outcome.Channel,
+                        outcome.Sent,
+                        ct);
                 }
                 catch (Exception ex)
                 {

@@ -22,4 +22,18 @@ public sealed class OpenVpnDisconnectRequest
 public interface IOpenVpnDisconnectExecutor
 {
     Task<KillOpenVpnClientResponse> ExecuteAsync(OpenVpnDisconnectRequest request, CancellationToken ct = default);
+
+    /// <summary>
+    /// Records whether the user was told about a disconnect on the most recent matching
+    /// <c>FreeTierDisconnectLog</c> row written by <see cref="ExecuteAsync"/>. Best-effort: silently
+    /// no-ops if no matching row is found.
+    /// </summary>
+    Task UpdateNotificationOutcomeAsync(
+        int userId,
+        int vpnServerId,
+        string commonName,
+        DisconnectReason reason,
+        string? notificationChannel,
+        bool notificationSent,
+        CancellationToken ct = default);
 }

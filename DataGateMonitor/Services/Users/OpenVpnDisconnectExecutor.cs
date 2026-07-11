@@ -1,4 +1,5 @@
 using DataGateMonitor.DataBase.Services.Command.Interfaces;
+using DataGateMonitor.DataBase.Services.Query;
 using DataGateMonitor.DataBase.Services.Query.IssuedOvpnFileTable;
 using DataGateMonitor.Models;
 using DataGateMonitor.Services.DataGateOpenVpnManager.Interfaces;
@@ -6,6 +7,7 @@ using DataGateMonitor.Services.OpenVpnManagementInterfaces.Interfaces;
 using DataGateMonitor.Services.Users.Interfaces;
 using DataGateMonitor.SharedModels.DataGateMonitor.OpenVpnFiles.Requests;
 using DataGateMonitor.SharedModels.DataGateMonitor.VpnServerClients.Responses;
+using DataGateMonitor.SharedModels.Enums;
 
 namespace DataGateMonitor.Services.Users;
 
@@ -14,6 +16,7 @@ public sealed class OpenVpnDisconnectExecutor(
     IIssuedOvpnFileQueryService issuedOvpnFileQueryService,
     IOvpnFileApiService ovpnFileApiService,
     ICommandService<FreeTierDisconnectLog, int> disconnectLogCommandService,
+    IQueryService<FreeTierDisconnectLog, int> disconnectLogQueryService,
     ILogger<OpenVpnDisconnectExecutor> logger) : IOpenVpnDisconnectExecutor
 {
     public async Task<KillOpenVpnClientResponse> ExecuteAsync(
@@ -58,6 +61,37 @@ public sealed class OpenVpnDisconnectExecutor(
             RevokeSucceeded = revokeSucceeded,
             ErrorMessage = errorMessage,
         };
+    }
+
+    public async Task UpdateNotificationOutcomeAsync(
+        int userId,
+        int vpnServerId,
+        string commonName,
+        DisconnectReason reason,
+        string? notificationChannel,
+        bool notificationSent,
+        CancellationToken ct = default)
+    {
+        try
+        {
+            var entry = await disconnectLogQueryService.FirstOrDefault(
+                l => l.UserId == userId && l.VpnServerId == vpnServerId
+                     && l.CommonName == commonName && l.Reason == (int)reason,
+                orderBy: q => q.OrderByDescending(l => l.Id),
+                asNoTracking: false,
+                ct: ct);
+
+            if (entry is null)
+                return;
+
+            entry.NotificationChannel = notificationChannel;
+            entry.NotificationSent = notificationSent;
+            await disconnectLogCommandService.Update(entry, saveChanges: true, ct);
+        }
+        catch (Exception ex)
+        {
+            logger.LogWarning(ex, "Failed to update notification outcome on free-tier disconnect log entry.");
+        }
     }
 
     private async Task<(bool? Succeeded, string? Error)> TryRevokeAsync(

@@ -75,7 +75,7 @@ public class FreeTierOpenVpnSessionEnforcementServiceTests
     }
 
     [Fact]
-    public async Task EnforceAsync_WhenDisconnectSucceeds_NotifiesUser()
+    public async Task EnforceAsync_WhenDisconnectSucceeds_NotifiesUserAndRecordsOutcome()
     {
         SetupEnforcementEnabled();
         SetupSingleConnectedClient(userId: 42);
@@ -86,12 +86,18 @@ public class FreeTierOpenVpnSessionEnforcementServiceTests
         _disconnectExecutor
             .Setup(e => e.ExecuteAsync(It.IsAny<OpenVpnDisconnectRequest>(), It.IsAny<CancellationToken>()))
             .ReturnsAsync(new KillOpenVpnClientResponse { Success = true });
+        _graceDisconnectNotifier
+            .Setup(n => n.NotifyAsync(42, It.IsAny<CancellationToken>()))
+            .ReturnsAsync(new FreeTierGraceDisconnectOutcome("telegram", true));
 
         var sut = CreateSut();
         var killed = await sut.EnforceAsync(CancellationToken.None);
 
         Assert.Equal(1, killed);
         _graceDisconnectNotifier.Verify(n => n.NotifyAsync(42, It.IsAny<CancellationToken>()), Times.Once);
+        _disconnectExecutor.Verify(
+            e => e.UpdateNotificationOutcomeAsync(42, 1, "cn1", DisconnectReason.Enforcement, "telegram", true, It.IsAny<CancellationToken>()),
+            Times.Once);
     }
 
     [Fact]
@@ -112,6 +118,11 @@ public class FreeTierOpenVpnSessionEnforcementServiceTests
 
         Assert.Equal(0, killed);
         _graceDisconnectNotifier.Verify(n => n.NotifyAsync(It.IsAny<int>(), It.IsAny<CancellationToken>()), Times.Never);
+        _disconnectExecutor.Verify(
+            e => e.UpdateNotificationOutcomeAsync(
+                It.IsAny<int>(), It.IsAny<int>(), It.IsAny<string>(), It.IsAny<DisconnectReason>(),
+                It.IsAny<string?>(), It.IsAny<bool>(), It.IsAny<CancellationToken>()),
+            Times.Never);
     }
 
     [Fact]
@@ -152,5 +163,10 @@ public class FreeTierOpenVpnSessionEnforcementServiceTests
         var killed = await sut.EnforceAsync(CancellationToken.None);
 
         Assert.Equal(1, killed);
+        _disconnectExecutor.Verify(
+            e => e.UpdateNotificationOutcomeAsync(
+                It.IsAny<int>(), It.IsAny<int>(), It.IsAny<string>(), It.IsAny<DisconnectReason>(),
+                It.IsAny<string?>(), It.IsAny<bool>(), It.IsAny<CancellationToken>()),
+            Times.Never);
     }
 }

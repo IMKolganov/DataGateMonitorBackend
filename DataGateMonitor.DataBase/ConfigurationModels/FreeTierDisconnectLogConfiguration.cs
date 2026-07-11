@@ -17,6 +17,8 @@ public class FreeTierDisconnectLogConfiguration : BaseEntityConfiguration<FreeTi
         entity.Property(e => e.VpnServerNameSnapshot).HasMaxLength(128);
         entity.Property(e => e.ErrorMessage).HasMaxLength(1024);
         entity.Property(e => e.CreatedAt).IsRequired();
+        entity.Property(e => e.NotificationChannel).HasMaxLength(32);
+        entity.Property(e => e.NotificationSent).IsRequired();
 
         entity.HasIndex(e => e.VpnServerId);
         entity.HasIndex(e => e.UserId);
