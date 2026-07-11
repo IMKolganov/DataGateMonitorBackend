@@ -71,7 +71,7 @@ public class UserMergeServiceValidationTests
     }
 
     [Fact]
-    public async Task GoogleUserWithoutGoogleLink_Throws()
+    public async Task DashboardUserWithoutGoogleOrLocalLink_Throws()
     {
         await using var harness = UserMergeServiceTestHarness.Create();
         var now = DateTimeOffset.UtcNow;
@@ -85,7 +85,7 @@ public class UserMergeServiceValidationTests
         var ex = await Assert.ThrowsAsync<InvalidOperationException>(() =>
             harness.MergeAsync(telegram, userWithoutLink));
 
-        Assert.Contains("google", ex.Message, StringComparison.OrdinalIgnoreCase);
+        Assert.Contains("identity link", ex.Message, StringComparison.OrdinalIgnoreCase);
     }
 
     [Fact]
@@ -169,5 +169,25 @@ public class UserMergeServiceValidationTests
 
         Assert.Equal("777888999", response.TelegramExternalId);
         Assert.Equal("google-sub-trim", response.GoogleExternalId);
+    }
+
+    [Fact]
+    public async Task Merge_ReassignsGoogleLink_WhenSurvivorHasOnlyTelegramLink()
+    {
+        await using var harness = UserMergeServiceTestHarness.Create();
+        const string googleSub = "google-only-on-merged-user";
+        var (telegram, google) = await harness.SeedTelegramGooglePairAsync(googleExternalId: googleSub);
+
+        var response = await harness.MergeAsync(telegram, google);
+
+        Assert.Equal(1, response.Stats.IdentityLinksReassigned);
+
+        var survivorLinks = await harness.Context.UserIdentityLinks
+            .Where(l => l.UserId == telegram.Id)
+            .ToListAsync();
+        Assert.Equal(2, survivorLinks.Count);
+        Assert.Contains(survivorLinks, l => l.Provider == "telegram");
+        Assert.Contains(survivorLinks, l => l.Provider == "google" && l.ExternalId == googleSub);
+        Assert.Empty(await harness.Context.UserIdentityLinks.Where(l => l.UserId == google.Id).ToListAsync());
     }
 }

@@ -127,7 +127,7 @@ public class UserServiceTests
             TotalCount = 2,
             Items = users
         };
-        _userQuery.Setup(q => q.GetPage(1, 20, It.IsAny<CancellationToken>())).ReturnsAsync(paged);
+        _userQuery.Setup(q => q.GetPage(It.Is<GetAllUsersRequest>(r => r.Page == 1 && r.PageSize == 20), It.IsAny<CancellationToken>())).ReturnsAsync(paged);
         _userIdentityLinkQuery.Setup(q => q.GetByUserId(1, It.IsAny<CancellationToken>())).ReturnsAsync((UserIdentityLink?)null);
         _userIdentityLinkQuery.Setup(q => q.GetByUserId(2, It.IsAny<CancellationToken>())).ReturnsAsync((UserIdentityLink?)null);
 
@@ -348,12 +348,12 @@ public class UserServiceTests
             TotalCount = 0,
             Items = [],
         };
-        _userQuery.Setup(q => q.GetPage(1, 500, It.IsAny<CancellationToken>())).ReturnsAsync(paged);
+        _userQuery.Setup(q => q.GetPage(It.Is<GetAllUsersRequest>(r => r.Page == 1 && r.PageSize == 500), It.IsAny<CancellationToken>())).ReturnsAsync(paged);
 
         var result = await _sut.GetUsersPage(new GetAllUsersRequest { Page = 0, PageSize = 9999 }, CancellationToken.None);
 
         result.PageSize.Should().Be(500);
-        _userQuery.Verify(q => q.GetPage(1, 500, It.IsAny<CancellationToken>()), Times.Once);
+        _userQuery.Verify(q => q.GetPage(It.Is<GetAllUsersRequest>(r => r.Page == 1 && r.PageSize == 500), It.IsAny<CancellationToken>()), Times.Once);
     }
 
     [Fact]

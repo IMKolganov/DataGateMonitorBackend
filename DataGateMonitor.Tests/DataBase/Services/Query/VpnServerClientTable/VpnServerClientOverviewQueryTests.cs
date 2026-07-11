@@ -4,6 +4,7 @@ using DataGateMonitor.DataBase.Services.Query.VpnServerClientTable;
 using DataGateMonitor.DataBase.Services.Query.UserTable;
 using DataGateMonitor.DataBase.UnitOfWork;
 using DataGateMonitor.Models;
+using DataGateMonitor.SharedModels.DataGateMonitor.VpnServerClients.Requests;
 using DataGateMonitor.Tests.Helpers;
 
 namespace DataGateMonitor.Tests.DataBase.Services.Query.VpnServerClientTable;
@@ -53,7 +54,9 @@ public class VpnServerClientOverviewQueryTests
         var sut = new VpnServerClientOverviewQuery(uow.Object, users.Object);
 
         // Only serverId=1 & connected => Ids {3,1}, order desc, take pageSize=1 => item Id=3
-        var resp = await sut.GetAllConnectedVpnServerClientsAsync(1, page: 1, pageSize: 1, CancellationToken.None);
+        var resp = await sut.GetAllConnectedVpnServerClientsAsync(
+            new GetConnectedClientsRequest { VpnServerId = 1, Page = 1, PageSize = 1 },
+            CancellationToken.None);
 
         Assert.Equal(2, resp.TotalCount);
         Assert.Single(resp.VpnClientInfoResponse);
@@ -82,7 +85,9 @@ public class VpnServerClientOverviewQueryTests
         var sut = new VpnServerClientOverviewQuery(uow.Object, users.Object);
 
         // History for serverId 5: total 3; page 2 size 2 => only one item (Id=10 order desc -> [12,11] then [10])
-        var resp = await sut.GetAllHistoryVpnServerClientsAsync(5, page: 2, pageSize: 2, CancellationToken.None);
+        var resp = await sut.GetAllHistoryVpnServerClientsAsync(
+            new GetHistoryClientsRequest { VpnServerId = 5, Page = 2, PageSize = 2 },
+            CancellationToken.None);
 
         Assert.Equal(3, resp.TotalCount);
         Assert.Single(resp.VpnClientInfoResponse);

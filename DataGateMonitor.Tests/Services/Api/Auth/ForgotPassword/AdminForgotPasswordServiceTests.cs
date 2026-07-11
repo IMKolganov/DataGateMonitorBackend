@@ -11,6 +11,7 @@ using DataGateMonitor.Services.Api.Auth.EmailConfirmation;
 using DataGateMonitor.Services.Api.Auth.ForgotPassword;
 using DataGateMonitor.Services.EmailTemplates;
 using DataGateMonitor.Services.Others.Notifications;
+using DataGateMonitor.Services.Users.Interfaces;
 using DataGateMonitor.SharedModels.DataGateMonitor.Auth.Requests;
 using Xunit;
 
@@ -30,12 +31,14 @@ public class AdminForgotPasswordServiceTests
         var sentEmailLog = new Mock<ISentEmailLogService>();
         var systemTransactionalEmail = new Mock<ISystemTransactionalEmailService>();
         var appNotifications = new Mock<IAppNotificationFacade>();
+        var passwordHistory = new Mock<IUserPasswordHistoryService>();
         var logger = new Mock<ILogger<AdminForgotPasswordService>>();
 
         var sut = new AdminForgotPasswordService(
             credentialQuery.Object,
             userQuery.Object,
             credentialCommand.Object,
+            passwordHistory.Object,
             passwordHasher.Object,
             cache,
             emailSender.Object,

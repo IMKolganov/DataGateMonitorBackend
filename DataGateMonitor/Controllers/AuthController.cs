@@ -12,9 +12,11 @@ using DataGateMonitor.Services.Api.Auth.TelegramLogin;
 using DataGateMonitor.Services.Api.Auth.Totp;
 using DataGateMonitor.Services.Api.CurrentUser.Interfaces;
 using DataGateMonitor.Services.Api.Auth.Registers.Interfaces;
+using DataGateMonitor.Services.Users.Interfaces;
 using DataGateMonitor.DataBase.Services.Query.UserTable;
 using DataGateMonitor.SharedModels.DataGateMonitor.Auth.Requests;
 using DataGateMonitor.SharedModels.DataGateMonitor.Auth.Responses;
+using DataGateMonitor.SharedModels.DataGateMonitor.User.Responses;
 using DataGateMonitor.SharedModels.Responses;
 
 namespace DataGateMonitor.Controllers;
@@ -29,6 +31,8 @@ public class AuthController(
     IUserLoginService userLoginService,
     IUserQueryService userQueryService,
     IEmailConfirmationService emailConfirmationService,
+    ITelegramAccountLinkService telegramAccountLinkService,
+    IFreeTierAccessComplianceService freeTierAccessComplianceService,
     IGoogleAuthCodeExchangeService exchange,
     ITokenService tokenService,
     IAdminForgotPasswordService adminForgotPasswordService,
@@ -133,6 +137,113 @@ public class AuthController(
         var result = await userRegistrationService.RegisterAsync(request, ct);
 
         return Ok(ApiResponse<RegisterUserResponse>.SuccessResponse(result));
+    }
+
+    /// <summary>
+    /// Client app (Google/local login): request a one-time code. Omit <see cref="RequestTelegramAccountLinkCodeRequest.TelegramId"/>
+    /// — user enters the code in the Telegram bot (recommended on mobile). Optional TelegramId binds the code to one account (legacy).
+    /// </summary>
+    [Authorize]
+    [HttpPost("telegram/request-account-link-code")]
+    [ProducesResponseType(typeof(ApiResponse<RequestTelegramAccountLinkCodeResponse>), StatusCodes.Status200OK)]
+    [ProducesResponseType(typeof(ApiResponse<RequestTelegramAccountLinkCodeResponse>), StatusCodes.Status400BadRequest)]
+    [ProducesResponseType(typeof(ApiResponse<RequestTelegramAccountLinkCodeResponse>), StatusCodes.Status404NotFound)]
+    public async Task<ActionResult<ApiResponse<RequestTelegramAccountLinkCodeResponse>>> RequestTelegramAccountLinkCode(
+        [FromBody] RequestTelegramAccountLinkCodeRequest? request,
+        CancellationToken ct)
+    {
+        try
+        {
+            var result = await telegramAccountLinkService.RequestLinkCodeAsync(
+                currentUserService.UserId,
+                request?.TelegramId,
+                ct);
+            return Ok(ApiResponse<RequestTelegramAccountLinkCodeResponse>.SuccessResponse(result));
+        }
+        catch (KeyNotFoundException ex)
+        {
+            return NotFound(ApiResponse<RequestTelegramAccountLinkCodeResponse>.ErrorResponse(ex.Message));
+        }
+        catch (InvalidOperationException ex)
+        {
+            return BadRequest(ApiResponse<RequestTelegramAccountLinkCodeResponse>.ErrorResponse(ex.Message));
+        }
+    }
+
+    /// <summary>Telegram bot: issue a link code for the sender. User enters it in the app (recommended Android flow).</summary>
+    [Authorize(Roles = "Admin,App")]
+    [HttpPost("telegram/request-account-link-code-for-bot")]
+    [ProducesResponseType(typeof(ApiResponse<RequestTelegramAccountLinkCodeResponse>), StatusCodes.Status200OK)]
+    [ProducesResponseType(typeof(ApiResponse<RequestTelegramAccountLinkCodeResponse>), StatusCodes.Status400BadRequest)]
+    public async Task<ActionResult<ApiResponse<RequestTelegramAccountLinkCodeResponse>>> RequestTelegramAccountLinkCodeForBot(
+        [FromBody] RequestTelegramAccountLinkCodeForBotRequest request,
+        CancellationToken ct)
+    {
+        if (request is null || request.TelegramId <= 0)
+            return BadRequest(ApiResponse<RequestTelegramAccountLinkCodeResponse>.ErrorResponse("TelegramId is required."));
+
+        try
+        {
+            var result = await telegramAccountLinkService.RequestLinkCodeFromBotAsync(request.TelegramId, ct);
+            return Ok(ApiResponse<RequestTelegramAccountLinkCodeResponse>.SuccessResponse(result));
+        }
+        catch (InvalidOperationException ex)
+        {
+            return BadRequest(ApiResponse<RequestTelegramAccountLinkCodeResponse>.ErrorResponse(ex.Message));
+        }
+    }
+
+    /// <summary>Client app: complete linking with a code received from the Telegram bot.</summary>
+    [Authorize]
+    [HttpPost("telegram/complete-account-link")]
+    [ProducesResponseType(typeof(ApiResponse<CompleteTelegramAccountLinkResponse>), StatusCodes.Status200OK)]
+    [ProducesResponseType(typeof(ApiResponse<CompleteTelegramAccountLinkResponse>), StatusCodes.Status400BadRequest)]
+    public async Task<ActionResult<ApiResponse<CompleteTelegramAccountLinkResponse>>> CompleteTelegramAccountLinkFromApp(
+        [FromBody] CompleteTelegramAccountLinkFromAppRequest request,
+        CancellationToken ct)
+    {
+        if (request is null || string.IsNullOrWhiteSpace(request.Code))
+            return BadRequest(ApiResponse<CompleteTelegramAccountLinkResponse>.ErrorResponse("Code is required."));
+
+        var result = await telegramAccountLinkService.CompleteLinkFromAppAsync(
+            currentUserService.UserId,
+            request.Code,
+            ct);
+
+        if (!result.Success)
+            return BadRequest(ApiResponse<CompleteTelegramAccountLinkResponse>.ErrorResponse(result.Message));
+
+        return Ok(ApiResponse<CompleteTelegramAccountLinkResponse>.SuccessResponse(result));
+    }
+
+    /// <summary>
+    /// Client apps: read-only Free/Default access status (channel subscription or merged Telegram account).
+    /// Does not notify admins or start a grace period.
+    /// </summary>
+    [Authorize]
+    [HttpGet("free-tier-access/status")]
+    [ProducesResponseType(typeof(ApiResponse<FreeTierAccessStatusResponse>), StatusCodes.Status200OK)]
+    public async Task<ActionResult<ApiResponse<FreeTierAccessStatusResponse>>> GetFreeTierAccessStatus(
+        CancellationToken ct)
+    {
+        var status = await freeTierAccessComplianceService.GetStatusAsync(currentUserService.UserId, ct);
+        return Ok(ApiResponse<FreeTierAccessStatusResponse>.SuccessResponse(status));
+    }
+
+    /// <summary>
+    /// Client apps: call right after establishing a VPN connection. Starts/refreshes the Free/Default
+    /// grace window (if applicable) and returns the resulting status, so the client can show a
+    /// "connected for N minutes" countdown via <see cref="FreeTierAccessStatusResponse.GraceExpiresAtUtc"/>.
+    /// </summary>
+    [Authorize]
+    [HttpPost("free-tier-access/connect")]
+    [ProducesResponseType(typeof(ApiResponse<FreeTierAccessStatusResponse>), StatusCodes.Status200OK)]
+    public async Task<ActionResult<ApiResponse<FreeTierAccessStatusResponse>>> RegisterFreeTierAccessConnect(
+        CancellationToken ct)
+    {
+        var status = await freeTierAccessComplianceService.RegisterConnectionAsync(
+            currentUserService.UserId, "android-connect", ct);
+        return Ok(ApiResponse<FreeTierAccessStatusResponse>.SuccessResponse(status));
     }
 
     [AllowAnonymous]

@@ -11,7 +11,7 @@ public class UserMergeServiceRelatedDataTests
     private const string GoogleExternalId = "google-sub-related";
 
     [Fact]
-    public async Task RewritesIssuedOvpnExternalId_ToTelegramId()
+    public async Task KeepsGoogleExternalId_OnMergedUserOvpnRecords()
     {
         await using var harness = UserMergeServiceTestHarness.Create();
         var (telegram, google) = await harness.SeedTelegramGooglePairAsync(TelegramExternalId, GoogleExternalId);
@@ -19,12 +19,40 @@ public class UserMergeServiceRelatedDataTests
 
         var response = await harness.MergeAsync(telegram, google);
 
-        Assert.Equal(1, response.Stats.IssuedOvpnFilesExternalIdUpdated);
-        Assert.Equal(TelegramExternalId, (await harness.Context.IssuedOvpnFiles.SingleAsync()).ExternalId);
+        Assert.Equal(0, response.Stats.IssuedOvpnFilesExternalIdUpdated);
+        Assert.Equal(GoogleExternalId, (await harness.Context.IssuedOvpnFiles.SingleAsync()).ExternalId);
     }
 
     [Fact]
-    public async Task RewritesIssuedXrayLinkExternalId_ToTelegramId()
+    public async Task RewritesSurvivorTelegramExternalId_ToGoogleSub()
+    {
+        await using var harness = UserMergeServiceTestHarness.Create();
+        var (telegram, google) = await harness.SeedTelegramGooglePairAsync(TelegramExternalId, GoogleExternalId);
+        await harness.SeedIssuedOvpnFileAsync(TelegramExternalId);
+
+        var response = await harness.MergeAsync(telegram, google);
+
+        Assert.Equal(1, response.Stats.IssuedOvpnFilesExternalIdUpdated);
+        Assert.Equal(GoogleExternalId, (await harness.Context.IssuedOvpnFiles.SingleAsync()).ExternalId);
+    }
+
+    [Fact]
+    public async Task KeepsGoogleExternalId_OnAllMergedUserOvpnRows()
+    {
+        await using var harness = UserMergeServiceTestHarness.Create();
+        var (telegram, google) = await harness.SeedTelegramGooglePairAsync(TelegramExternalId, GoogleExternalId);
+        await harness.SeedIssuedOvpnFileAsync(GoogleExternalId, vpnServerId: 1);
+        await harness.SeedIssuedOvpnFileAsync(GoogleExternalId, vpnServerId: 2);
+
+        var response = await harness.MergeAsync(telegram, google);
+
+        Assert.Equal(0, response.Stats.IssuedOvpnFilesExternalIdUpdated);
+        Assert.All(await harness.Context.IssuedOvpnFiles.ToListAsync(), f =>
+            Assert.Equal(GoogleExternalId, f.ExternalId));
+    }
+
+    [Fact]
+    public async Task KeepsGoogleExternalId_OnMergedUserXrayLink()
     {
         await using var harness = UserMergeServiceTestHarness.Create();
         var (telegram, google) = await harness.SeedTelegramGooglePairAsync(TelegramExternalId, GoogleExternalId);
@@ -32,12 +60,12 @@ public class UserMergeServiceRelatedDataTests
 
         var response = await harness.MergeAsync(telegram, google);
 
-        Assert.Equal(1, response.Stats.IssuedXrayClientLinksExternalIdUpdated);
-        Assert.Equal(TelegramExternalId, (await harness.Context.IssuedXrayClientLinks.SingleAsync()).ExternalId);
+        Assert.Equal(0, response.Stats.IssuedXrayClientLinksExternalIdUpdated);
+        Assert.Equal(GoogleExternalId, (await harness.Context.IssuedXrayClientLinks.SingleAsync()).ExternalId);
     }
 
     [Fact]
-    public async Task UpdatesVpnServerClient_UserIdAndExternalId()
+    public async Task UpdatesVpnServerClient_UserId_KeepsGoogleExternalId()
     {
         await using var harness = UserMergeServiceTestHarness.Create();
         var (telegram, google) = await harness.SeedTelegramGooglePairAsync(TelegramExternalId, GoogleExternalId);
@@ -46,15 +74,15 @@ public class UserMergeServiceRelatedDataTests
         var response = await harness.MergeAsync(telegram, google);
 
         Assert.Equal(1, response.Stats.VpnServerClientsUserIdUpdated);
-        Assert.Equal(1, response.Stats.VpnServerClientsExternalIdUpdated);
+        Assert.Equal(0, response.Stats.VpnServerClientsExternalIdUpdated);
 
         var updated = await harness.Context.VpnServerClients.SingleAsync(c => c.Id == client.Id);
         Assert.Equal(telegram.Id, updated.UserId);
-        Assert.Equal(TelegramExternalId, updated.ExternalId);
+        Assert.Equal(GoogleExternalId, updated.ExternalId);
     }
 
     [Fact]
-    public async Task UpdatesVpnServerClientTraffic_UserIdAndExternalId()
+    public async Task UpdatesVpnServerClientTraffic_UserId_KeepsGoogleExternalId()
     {
         await using var harness = UserMergeServiceTestHarness.Create();
         var (telegram, google) = await harness.SeedTelegramGooglePairAsync(TelegramExternalId, GoogleExternalId);
@@ -63,15 +91,15 @@ public class UserMergeServiceRelatedDataTests
         var response = await harness.MergeAsync(telegram, google);
 
         Assert.Equal(1, response.Stats.VpnServerClientTrafficsUserIdUpdated);
-        Assert.Equal(1, response.Stats.VpnServerClientTrafficsExternalIdUpdated);
+        Assert.Equal(0, response.Stats.VpnServerClientTrafficsExternalIdUpdated);
 
         var updated = await harness.Context.VpnServerClientTraffics.SingleAsync(t => t.Id == traffic.Id);
         Assert.Equal(telegram.Id, updated.UserId);
-        Assert.Equal(TelegramExternalId, updated.ExternalId);
+        Assert.Equal(GoogleExternalId, updated.ExternalId);
     }
 
     [Fact]
-    public async Task UpdatesVpnServerClientTrafficDaily_UserIdAndExternalId()
+    public async Task UpdatesVpnServerClientTrafficDaily_UserId_KeepsGoogleExternalId()
     {
         await using var harness = UserMergeServiceTestHarness.Create();
         var (telegram, google) = await harness.SeedTelegramGooglePairAsync(TelegramExternalId, GoogleExternalId);
@@ -80,11 +108,11 @@ public class UserMergeServiceRelatedDataTests
         var response = await harness.MergeAsync(telegram, google);
 
         Assert.Equal(1, response.Stats.VpnServerClientTrafficDailiesUserIdUpdated);
-        Assert.Equal(1, response.Stats.VpnServerClientTrafficDailiesExternalIdUpdated);
+        Assert.Equal(0, response.Stats.VpnServerClientTrafficDailiesExternalIdUpdated);
 
         var updated = await harness.Context.VpnServerClientTrafficDailies.SingleAsync(t => t.Id == daily.Id);
         Assert.Equal(telegram.Id, updated.UserId);
-        Assert.Equal(TelegramExternalId, updated.ExternalId);
+        Assert.Equal(GoogleExternalId, updated.ExternalId);
     }
 
     [Fact]

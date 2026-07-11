@@ -137,5 +137,33 @@ public static class SettingSeedData
             ValueType = "string",
             StringValue = "int"
         },
+        new Setting
+        {
+            Id = 19,
+            Key = "FreeTier_Allow_Grace_Without_Compliance",
+            ValueType = "bool",
+            BoolValue = false
+        },
+        new Setting
+        {
+            Id = 20,
+            Key = "FreeTier_Allow_Grace_Without_Compliance_Type",
+            ValueType = "string",
+            StringValue = "bool"
+        },
+        new Setting
+        {
+            Id = 21,
+            Key = "FreeTier_Grace_Period_Minutes",
+            ValueType = "int",
+            IntValue = 5
+        },
+        new Setting
+        {
+            Id = 22,
+            Key = "FreeTier_Grace_Period_Minutes_Type",
+            ValueType = "string",
+            StringValue = "int"
+        },
     };
 }

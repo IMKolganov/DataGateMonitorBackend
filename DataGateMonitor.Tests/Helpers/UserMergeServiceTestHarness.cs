@@ -13,6 +13,7 @@ using DataGateMonitor.DataBase.Services.Query.UserTable;
 using DataGateMonitor.DataBase.UnitOfWork;
 using DataGateMonitor.Models;
 using DataGateMonitor.Services.Users;
+using DataGateMonitor.Services.Users.Interfaces;
 using DataGateMonitor.SharedModels.Auth;
 using DataGateMonitor.SharedModels.DataGateMonitor.User.Requests;
 using DataGateMonitor.SharedModels.DataGateMonitor.User.Responses;
@@ -65,10 +66,19 @@ internal sealed class UserMergeServiceTestHarness : IAsyncDisposable
         IQueryService<User, int> userQueryCore = new EfQueryService<User, int>(unitOfWork);
         IQueryService<UserIdentityLink, int> linkQueryCore = new EfQueryService<UserIdentityLink, int>(unitOfWork);
 
-        var userQueryService = new UserQueryService(userQueryCore, linkQueryCore);
+        var userQueryService = new UserQueryService(userQueryCore, linkQueryCore, unitOfWork);
         var identityLinkQueryService = new UserIdentityLinkQueryService(linkQueryCore);
         var userCommandService = new EfCommandService<User, int>(unitOfWork);
         var archiveCommandService = new EfCommandService<MergedUserArchive, int>(unitOfWork);
+
+        var complianceMock = new Mock<IFreeTierAccessComplianceService>();
+        complianceMock
+            .Setup(s => s.AuditAndNotifyIfNeededAsync(
+                It.IsAny<int>(),
+                It.IsAny<string>(),
+                It.IsAny<bool?>(),
+                It.IsAny<CancellationToken>()))
+            .ReturnsAsync(new FreeTierAccessComplianceResult { IsApplicable = false, IsCompliant = true });
 
         var service = new UserMergeService(
             unitOfWork,
@@ -76,6 +86,7 @@ internal sealed class UserMergeServiceTestHarness : IAsyncDisposable
             identityLinkQueryService,
             userCommandService,
             archiveCommandService,
+            complianceMock.Object,
             NullLogger<UserMergeService>.Instance);
 
         return new UserMergeServiceTestHarness(context, service, connection);

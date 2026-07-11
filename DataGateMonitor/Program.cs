@@ -43,7 +43,7 @@ builder.Services.Configure<HostOptions>(options =>
 
 builder.Services.ConfigureServices(builder.Configuration, databaseRuntime);
 builder.Services.ConfigureQueryCommand();
-builder.Services.ConfigureTelegramServices();
+builder.Services.ConfigureTelegramServices(builder.Configuration);
 builder.Services.ConfigureGeoLiteServices(databaseRuntime);
 builder.Services.ConfigureCertExpiryServices(databaseRuntime);
 builder.Services.ConfigurePiHoleHealthServices(databaseRuntime);

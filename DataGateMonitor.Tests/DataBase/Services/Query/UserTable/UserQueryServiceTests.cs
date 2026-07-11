@@ -4,10 +4,11 @@ using DataGateMonitor.DataBase.Services.Query;
 using DataGateMonitor.DataBase.Services.Query.UserTable;
 using DataGateMonitor.DataBase.UnitOfWork;
 using DataGateMonitor.Models;
+using DataGateMonitor.SharedModels.DataGateMonitor.User.Requests;
 
 namespace DataGateMonitor.Tests.DataBase.Services.Query.UserTable;
 
-public class UserQueryServiceTests
+public partial class UserQueryServiceTests
 {
     private static DbContextOptions<TestDbContext> CreateOptions()
         => new DbContextOptionsBuilder<TestDbContext>()
@@ -25,7 +26,7 @@ public class UserQueryServiceTests
 
         var qUser = new EfQueryService<User, int>(uow.Object);
         var qLink = new EfQueryService<UserIdentityLink, int>(uow.Object);
-        var sut = new UserQueryService(qUser, qLink);
+        var sut = new UserQueryService(qUser, qLink, uow.Object);
         return (sut, ctx);
     }
 

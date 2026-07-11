@@ -182,4 +182,84 @@ public class UserLoginServicePasswordTests
             t => t.IssueAsync(5, null, null, null, It.IsAny<CancellationToken>()),
             Times.Once);
     }
+
+    [Fact]
+    public async Task LoginAsync_WhenLoginIsEmailAddress_ResolvesCredentialByEmail()
+    {
+        var credentialQuery = new Mock<IUserCredentialQueryService>();
+        var userQuery = new Mock<IUserQueryService>();
+        var passwordHasher = new Mock<IPasswordHasher<User>>();
+        var tokenValidator = new Mock<IGoogleTokenValidator>();
+        var userIdentityLinkCommand = new Mock<ICommandService<UserIdentityLink, int>>();
+        var userCommand = new Mock<ICommandService<User, int>>();
+        var userIdentityLinkQuery = new Mock<IUserIdentityLinkQueryService>();
+        var userAccountService = new Mock<IUserAccountService>();
+        var tokenService = new Mock<ITokenService>();
+        var adminTotpService = new Mock<IAdminTotpService>();
+        var appNotificationFacade = new Mock<IAppNotificationFacade>();
+        var logger = new Mock<ILogger<UserLoginService>>();
+        var httpContextAccessor = new Mock<IHttpContextAccessor>();
+
+        SetupTotpPassthrough(adminTotpService);
+
+        var user = new User
+        {
+            Id = 9,
+            DisplayName = "Email Login",
+            Email = "user@example.com",
+            IsEmailConfirmed = true,
+        };
+        var credential = new UserCredential
+        {
+            UserId = 9,
+            Login = "mylogin",
+            NormalizedLogin = "MYLOGIN",
+            PasswordHash = "HASH",
+        };
+
+        credentialQuery
+            .Setup(q => q.GetByNormalizedLogin("USER@EXAMPLE.COM", It.IsAny<CancellationToken>()))
+            .ReturnsAsync((UserCredential?)null);
+        userQuery
+            .Setup(q => q.GetByEmail("user@example.com", It.IsAny<CancellationToken>()))
+            .ReturnsAsync(user);
+        credentialQuery
+            .Setup(q => q.GetByUserId(9, It.IsAny<CancellationToken>()))
+            .ReturnsAsync(credential);
+        userQuery.Setup(q => q.GetById(9, It.IsAny<CancellationToken>())).ReturnsAsync(user);
+        passwordHasher
+            .Setup(h => h.VerifyHashedPassword(user, "HASH", "Secret123!"))
+            .Returns(PasswordVerificationResult.Success);
+        userIdentityLinkQuery
+            .Setup(q => q.AnyByUserId(9, It.IsAny<CancellationToken>()))
+            .ReturnsAsync(true);
+        tokenService
+            .Setup(t => t.IssueAsync(9, null, null, null, It.IsAny<CancellationToken>()))
+            .ReturnsAsync(new TokenPair("access", DateTimeOffset.UtcNow.AddHours(1), "refresh", DateTimeOffset.UtcNow.AddDays(1)));
+
+        var sut = new UserLoginService(
+            credentialQuery.Object,
+            userQuery.Object,
+            passwordHasher.Object,
+            tokenValidator.Object,
+            userIdentityLinkCommand.Object,
+            userCommand.Object,
+            userIdentityLinkQuery.Object,
+            userAccountService.Object,
+            tokenService.Object,
+            adminTotpService.Object,
+            appNotificationFacade.Object,
+            logger.Object,
+            httpContextAccessor.Object);
+
+        await sut.LoginAsync(
+            new LoginRequest { Login = "user@example.com", Password = "Secret123!" },
+            CancellationToken.None);
+
+        userQuery.Verify(q => q.GetByEmail("user@example.com", It.IsAny<CancellationToken>()), Times.Once);
+        credentialQuery.Verify(q => q.GetByUserId(9, It.IsAny<CancellationToken>()), Times.Once);
+        tokenService.Verify(
+            t => t.IssueAsync(9, null, null, null, It.IsAny<CancellationToken>()),
+            Times.Once);
+    }
 }

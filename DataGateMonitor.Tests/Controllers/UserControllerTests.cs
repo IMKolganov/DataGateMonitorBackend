@@ -14,6 +14,9 @@ public class UserControllerTests
 {
     private readonly Mock<IUserService> _userServiceMock = new(MockBehavior.Strict);
     private readonly Mock<IUserMergeService> _userMergeServiceMock = new(MockBehavior.Strict);
+    private readonly Mock<IFreeTierAccessComplianceService> _freeTierComplianceMock = new(MockBehavior.Strict);
+    private readonly Mock<ITelegramAccountLinkService> _telegramAccountLinkMock = new(MockBehavior.Strict);
+    private readonly Mock<IUserPasswordHistoryService> _passwordHistoryMock = new(MockBehavior.Strict);
     private readonly Mock<ICurrentUserService> _currentUserServiceMock = new(MockBehavior.Strict);
     private readonly UserController _controller;
 
@@ -22,6 +25,9 @@ public class UserControllerTests
         _controller = new UserController(
             _userServiceMock.Object,
             _userMergeServiceMock.Object,
+            _telegramAccountLinkMock.Object,
+            _freeTierComplianceMock.Object,
+            _passwordHistoryMock.Object,
             _currentUserServiceMock.Object);
     }
 

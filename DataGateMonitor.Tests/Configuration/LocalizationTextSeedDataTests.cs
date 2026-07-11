@@ -30,6 +30,17 @@ public class LocalizationTextSeedDataTests
         Assert.DoesNotContain("{code}", text);
     }
 
+    [Theory]
+    [InlineData(Language.English)]
+    [InlineData(Language.Greek)]
+    [InlineData(Language.Russian)]
+    public void AccountLinkTelegramAlreadyLinkedToGoogle_exists_for_each_language_with_placeholders(Language language)
+    {
+        var text = GetText("AccountLinkTelegramAlreadyLinkedToGoogle", language);
+
+        Assert.Contains("{accountLabel}", text);
+    }
+
     [Fact]
     public void Seed_has_unique_ids()
     {

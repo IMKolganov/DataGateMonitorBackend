@@ -21,7 +21,8 @@ public sealed class SystemTransactionalEmailService(IQueryService<EmailBroadcast
             var subject = string.IsNullOrWhiteSpace(entity.Subject)
                 ? TransactionalEmailHtml.DefaultConfirmationSubject
                 : entity.Subject.Trim();
-            return (subject, TransactionalEmailHtml.ApplyConfirmationPlaceholders(body, code, ttlMinutes));
+            return (subject, TransactionalEmailHtml.ApplyConfirmationPlaceholders(
+                TransactionalEmailHtml.EnsureConfirmEmailAction(body), code, ttlMinutes));
         }
 
         return (TransactionalEmailHtml.DefaultConfirmationSubject, TransactionalEmailHtml.BuildEmailConfirmation(code, ttlMinutes));
@@ -46,5 +47,26 @@ public sealed class SystemTransactionalEmailService(IQueryService<EmailBroadcast
 
         return (TransactionalEmailHtml.DefaultAdminPasswordResetSubject,
             TransactionalEmailHtml.BuildAdminPasswordReset(code, ttlMinutes));
+    }
+
+    public async Task<(string Subject, string BodyHtml)> GetFreeTierGraceDisconnectedAsync(
+        string planName, string requiredChannel, CancellationToken ct)
+    {
+        var entity = await templateQuery.FirstOrDefault(
+            t => t.Name == SystemEmailTemplateNames.FreeTierGraceDisconnected,
+            orderBy: q => q.OrderBy(t => t.Id),
+            asNoTracking: true,
+            ct: ct);
+
+        if (entity is { BodyHtml: { Length: > 0 } body })
+        {
+            var subject = string.IsNullOrWhiteSpace(entity.Subject)
+                ? TransactionalEmailHtml.DefaultFreeTierGraceDisconnectedSubject
+                : entity.Subject.Trim();
+            return (subject, TransactionalEmailHtml.ApplyFreeTierGraceDisconnectedPlaceholders(body, planName, requiredChannel));
+        }
+
+        return (TransactionalEmailHtml.DefaultFreeTierGraceDisconnectedSubject,
+            TransactionalEmailHtml.BuildFreeTierGraceDisconnected(planName, requiredChannel));
     }
 }

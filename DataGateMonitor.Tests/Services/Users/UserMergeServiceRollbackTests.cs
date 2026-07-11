@@ -15,6 +15,7 @@ using DataGateMonitor.DataBase.Services.Query.UserTable;
 using DataGateMonitor.DataBase.UnitOfWork;
 using DataGateMonitor.Models;
 using DataGateMonitor.Services.Users;
+using DataGateMonitor.Services.Users.Interfaces;
 using DataGateMonitor.SharedModels.DataGateMonitor.User.Requests;
 
 namespace DataGateMonitor.Tests.Services.Users;
@@ -47,7 +48,7 @@ public class UserMergeServiceRollbackTests
         IQueryService<User, int> userQueryCore = new EfQueryService<User, int>(unitOfWork);
         IQueryService<UserIdentityLink, int> linkQueryCore = new EfQueryService<UserIdentityLink, int>(unitOfWork);
 
-        var userQueryService = new UserQueryService(userQueryCore, linkQueryCore);
+        var userQueryService = new UserQueryService(userQueryCore, linkQueryCore, unitOfWork);
         var identityLinkQueryService = new UserIdentityLinkQueryService(linkQueryCore);
         var archiveCommandService = new EfCommandService<MergedUserArchive, int>(unitOfWork);
 
@@ -59,12 +60,15 @@ public class UserMergeServiceRollbackTests
             .Setup(c => c.Delete(It.IsAny<User>(), false, It.IsAny<CancellationToken>()))
             .ThrowsAsync(new InvalidOperationException("simulated delete failure"));
 
+        var complianceMock = new Mock<IFreeTierAccessComplianceService>();
+
         var service = new UserMergeService(
             unitOfWork,
             userQueryService,
             identityLinkQueryService,
             userCommandMock.Object,
             archiveCommandService,
+            complianceMock.Object,
             NullLogger<UserMergeService>.Instance);
 
         // Seed directly in our context

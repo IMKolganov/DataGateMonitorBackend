@@ -158,10 +158,10 @@ public class TelegramBotUserControllerTests
         };
 
         _telegramUserServiceMock
-            .Setup(s => s.GetAllUsersAsync(It.IsAny<CancellationToken>()))
+            .Setup(s => s.GetAllUsersAsync(It.IsAny<GetAllTelegramBotUsersRequest>(), It.IsAny<CancellationToken>()))
             .ReturnsAsync(users);
 
-        var result = await _controller.GetAllUsers(CancellationToken.None);
+        var result = await _controller.GetAllUsers(new GetAllTelegramBotUsersRequest(), CancellationToken.None);
 
         var ok = Assert.IsType<OkObjectResult>(result.Result);
         var response = Assert.IsType<ApiResponse<GetAllTelegramUsersResponse>>(ok.Value);

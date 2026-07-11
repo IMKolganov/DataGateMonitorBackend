@@ -10,8 +10,10 @@ using DataGateMonitor.Services.Api.Auth.Registers.Interfaces;
 using DataGateMonitor.Services.Api.Auth.Users;
 using DataGateMonitor.Services.Others;
 using DataGateMonitor.Services.Others.Notifications;
+using DataGateMonitor.Services.Users.Interfaces;
 using DataGateMonitor.SharedModels.DataGateMonitor.Auth.Requests;
 using DataGateMonitor.SharedModels.DataGateMonitor.Auth.Responses;
+using DataGateMonitor.SharedModels.DataGateMonitor.User;
 
 namespace DataGateMonitor.Services.Api.Auth.Registers;
 
@@ -26,6 +28,7 @@ public sealed class UserRegistrationService(
     IEmailConfirmationService emailConfirmationService,
     ISettingsService settingsService,
     IAppNotificationFacade appNotificationFacade,
+    IUserPasswordHistoryService passwordHistoryService,
     ILogger<UserRegistrationService> logger
 ) : IUserRegistrationService
 {
@@ -89,6 +92,13 @@ public sealed class UserRegistrationService(
         };
 
         await userCredentialCommandService.Add(credential, saveChanges: true, ct);
+
+        await passwordHistoryService.RecordSnapshotBeforeChangeAsync(
+            credential,
+            PasswordSetActorKind.System,
+            null,
+            "registration",
+            ct);
 
         await LocalUserIdentityLinkEnsurer.EnsureAsync(
             user.Id,

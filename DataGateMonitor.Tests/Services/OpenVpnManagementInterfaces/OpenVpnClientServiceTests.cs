@@ -215,6 +215,41 @@ public class OpenVpnClientServiceTests
     }
 
     [Fact]
+    public async Task ParseStatus_Status3_ParsesManagementClientId()
+    {
+        var svc = CreateService(out var geoMock, out _, out _, out _);
+        geoMock.Setup(x => x.GetGeoInfoAsync("203.0.113.5:40884", It.IsAny<CancellationToken>()))
+            .ReturnsAsync(new OpenVpnGeoInfo());
+
+        const string sample =
+            "CLIENT_LIST\tclient-a\t203.0.113.5:40884\t10.51.28.2\t\t10\t20\t2025-12-03 08:55:35\t1764752135\tUNDEF\t13959\t2\tAES-256-GCM\n";
+
+        var result = await InvokeParseStatusAsync(svc, sample);
+        Assert.Single(result.Clients);
+        Assert.Equal(13959, result.Clients[0].ManagementClientId);
+    }
+
+    [Theory]
+    [InlineData(13959L, "client-a", "203.0.113.5:40884", "client-kill 13959 Free tier: subscribe to the Telegram channel or link your account.")]
+    [InlineData(null, "client-a", "203.0.113.5:40884", "kill client-a")]
+    [InlineData(0L, "", "203.0.113.5:40884", "kill 203.0.113.5:40884")]
+    public void BuildKillCommand_SelectsClientKillOrCommonNameOrRealAddress(
+        long? managementClientId,
+        string commonName,
+        string remoteIp,
+        string expected)
+    {
+        var command = OpenVpnClientService.BuildKillCommand(new VpnServerClient
+        {
+            CommonName = commonName,
+            RemoteIp = remoteIp,
+            ManagementClientId = managementClientId,
+        });
+
+        Assert.Equal(expected, command);
+    }
+
+    [Fact]
     public async Task ParseStatus_OpenVpn27LoopbackRealAddress_IsCanonicalized_And_SessionIdMatchesLegacyFormat()
     {
         var svc = CreateService(out var geoMock, out _, out _, out _);

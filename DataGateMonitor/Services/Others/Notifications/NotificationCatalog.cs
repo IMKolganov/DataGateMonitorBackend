@@ -117,4 +117,29 @@ public class NotificationCatalog : INotificationCatalog
         };
         return new NotificationEnvelope(req, WebAndTelegram);
     }
+
+    public NotificationEnvelope FreeTierAccessNonCompliant(
+        int userId,
+        string planName,
+        long? telegramId,
+        bool isMergedAccount,
+        bool isChannelSubscribed,
+        string context,
+        string requiredChannelChatId)
+    {
+        var telegramPart = telegramId is > 0 ? $" TelegramId: {telegramId}." : "";
+        var req = new NotifyAdminsRequest
+        {
+            Type = NotificationTypes.FreeTierAccessNonCompliant,
+            Title = "Free/Default plan without merge or channel subscription",
+            Message =
+                $"User #{userId} has active plan \"{planName}\" but is neither a merged Telegram+Google account " +
+                $"nor subscribed to {requiredChannelChatId}.{telegramPart} " +
+                $"Merged={isMergedAccount}; ChannelSubscribed={isChannelSubscribed}. Context: {context}.",
+            Severity = NotificationSeverity.Warning,
+            Source = "auth",
+            ActorUserId = userId,
+        };
+        return new NotificationEnvelope(req, WebAndTelegram);
+    }
 }

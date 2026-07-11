@@ -196,6 +196,36 @@ public class UserQuotaPlanQueryServiceTests
     }
 
     [Fact]
+    public async Task GetAllActive_Delegates_WithActivePredicate()
+    {
+        Expression<Func<UserQuotaPlan, bool>>? captured = null;
+        var rows = new List<UserQuotaPlan> { new() { Id = 1, UserId = 5, QuotaPlanId = 1, EffectiveTo = null } };
+        var q = new Mock<IQueryService<UserQuotaPlan, int>>();
+        q.Setup(x => x.Where(
+                It.IsAny<Expression<Func<UserQuotaPlan, bool>>>(),
+                null,
+                true,
+                It.IsAny<CancellationToken>(),
+                It.IsAny<Expression<Func<UserQuotaPlan, object>>[]>()))
+            .Callback((Expression<Func<UserQuotaPlan, bool>> p,
+                Func<IQueryable<UserQuotaPlan>, IOrderedQueryable<UserQuotaPlan>>? _,
+                bool __, CancellationToken ___, Expression<Func<UserQuotaPlan, object>>[] ____) => captured = p)
+            .ReturnsAsync(rows);
+
+        var sut = new UserQuotaPlanQueryService(q.Object);
+        var result = await sut.GetAllActive(CancellationToken.None);
+
+        Assert.Same(rows, result);
+        Assert.NotNull(captured);
+        var sample = new[]
+        {
+            rows[0],
+            new UserQuotaPlan { Id = 2, UserId = 6, QuotaPlanId = 1, EffectiveTo = DateTimeOffset.UtcNow },
+        }.AsQueryable();
+        Assert.Single(sample.Where(captured!));
+    }
+
+    [Fact]
     public async Task GetListByUserId_Delegates_To_Where()
     {
         var rows = new List<UserQuotaPlan> { new() { Id = 1, UserId = 7, QuotaPlanId = 1 } };

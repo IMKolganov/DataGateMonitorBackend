@@ -9,6 +9,7 @@ using DataGateMonitor.Services.Api.Auth.Registers.Interfaces;
 using DataGateMonitor.Services.Api.Auth.TelegramLogin;
 using DataGateMonitor.Services.Api.Auth.Totp;
 using DataGateMonitor.Services.Api.CurrentUser.Interfaces;
+using DataGateMonitor.Services.Users.Interfaces;
 using DataGateMonitor.DataBase.Services.Query.UserTable;
 using DataGateMonitor.Models;
 using DataGateMonitor.SharedModels.DataGateMonitor.Auth.Requests;
@@ -26,6 +27,8 @@ public class AuthControllerTests
     private readonly Mock<IUserLoginService> _userLoginService = new();
     private readonly Mock<IUserQueryService> _userQueryService = new();
     private readonly Mock<IEmailConfirmationService> _emailConfirmationService = new();
+    private readonly Mock<ITelegramAccountLinkService> _telegramAccountLinkService = new();
+    private readonly Mock<IFreeTierAccessComplianceService> _freeTierComplianceService = new();
     private readonly Mock<IGoogleAuthCodeExchangeService> _exchange = new();
     private readonly Mock<ITokenService> _tokenService = new();
     private readonly Mock<IAdminForgotPasswordService> _adminForgotPasswordService = new();
@@ -53,6 +56,8 @@ public class AuthControllerTests
             _userLoginService.Object,
             _userQueryService.Object,
             _emailConfirmationService.Object,
+            _telegramAccountLinkService.Object,
+            _freeTierComplianceService.Object,
             _exchange.Object,
             _tokenService.Object,
             _adminForgotPasswordService.Object,
@@ -187,5 +192,135 @@ public class AuthControllerTests
 
         var bad = Assert.IsType<BadRequestObjectResult>(result.Result);
         Assert.False(((ApiResponse<string>)bad.Value!).Success);
+    }
+
+    [Fact]
+    public async Task RequestTelegramAccountLinkCode_DelegatesToService()
+    {
+        _currentUserService.Setup(s => s.UserId).Returns(42);
+        _telegramAccountLinkService
+            .Setup(s => s.RequestLinkCodeAsync(42, 999L, It.IsAny<CancellationToken>()))
+            .ReturnsAsync(new RequestTelegramAccountLinkCodeResponse
+            {
+                Code = "ABCD2345",
+                ExpiresInSeconds = 900,
+            });
+
+        var controller = CreateController();
+        var result = await controller.RequestTelegramAccountLinkCode(
+            new RequestTelegramAccountLinkCodeRequest { TelegramId = 999 },
+            CancellationToken.None);
+
+        var ok = Assert.IsType<OkObjectResult>(result.Result);
+        var response = Assert.IsType<ApiResponse<RequestTelegramAccountLinkCodeResponse>>(ok.Value);
+        Assert.Equal("ABCD2345", response.Data!.Code);
+    }
+
+    [Fact]
+    public async Task RequestTelegramAccountLinkCode_WhenTelegramIdOmitted_DelegatesWithNull()
+    {
+        _currentUserService.Setup(s => s.UserId).Returns(42);
+        _telegramAccountLinkService
+            .Setup(s => s.RequestLinkCodeAsync(42, null, It.IsAny<CancellationToken>()))
+            .ReturnsAsync(new RequestTelegramAccountLinkCodeResponse
+            {
+                Code = "WXYZ5678",
+                ExpiresInSeconds = 900,
+            });
+
+        var controller = CreateController();
+        var result = await controller.RequestTelegramAccountLinkCode(null, CancellationToken.None);
+
+        var ok = Assert.IsType<OkObjectResult>(result.Result);
+        var response = Assert.IsType<ApiResponse<RequestTelegramAccountLinkCodeResponse>>(ok.Value);
+        Assert.Equal("WXYZ5678", response.Data!.Code);
+    }
+
+    [Fact]
+    public async Task RequestTelegramAccountLinkCode_WhenBusinessRuleFails_ReturnsBadRequest()
+    {
+        _currentUserService.Setup(s => s.UserId).Returns(42);
+        _telegramAccountLinkService
+            .Setup(s => s.RequestLinkCodeAsync(42, 999L, It.IsAny<CancellationToken>()))
+            .ThrowsAsync(new InvalidOperationException("already linked"));
+
+        var controller = CreateController();
+        var result = await controller.RequestTelegramAccountLinkCode(
+            new RequestTelegramAccountLinkCodeRequest { TelegramId = 999 },
+            CancellationToken.None);
+
+        var bad = Assert.IsType<BadRequestObjectResult>(result.Result);
+        Assert.False(((ApiResponse<RequestTelegramAccountLinkCodeResponse>)bad.Value!).Success);
+    }
+
+    [Fact]
+    public async Task GetFreeTierAccessStatus_DelegatesToComplianceService()
+    {
+        _currentUserService.Setup(s => s.UserId).Returns(7);
+        _freeTierComplianceService
+            .Setup(s => s.GetStatusAsync(7, It.IsAny<CancellationToken>()))
+            .ReturnsAsync(new FreeTierAccessStatusResponse
+            {
+                IsApplicable = true,
+                IsCompliant = false,
+                CanRequestAccountLinkCode = true,
+                RequiredChannel = "@DataGateVPNBot",
+                ActivePlanName = "Free",
+            });
+
+        var controller = CreateController();
+        var result = await controller.GetFreeTierAccessStatus(CancellationToken.None);
+
+        var ok = Assert.IsType<OkObjectResult>(result.Result);
+        var response = Assert.IsType<ApiResponse<FreeTierAccessStatusResponse>>(ok.Value);
+        Assert.True(response.Data!.IsApplicable);
+        Assert.False(response.Data.IsCompliant);
+        Assert.True(response.Data.CanRequestAccountLinkCode);
+    }
+
+    [Fact]
+    public async Task RegisterFreeTierAccessConnect_DelegatesToComplianceServiceForCurrentUser()
+    {
+        var expiresAt = DateTimeOffset.UtcNow.AddMinutes(15);
+        _currentUserService.Setup(s => s.UserId).Returns(9);
+        _freeTierComplianceService
+            .Setup(s => s.RegisterConnectionAsync(9, "android-connect", It.IsAny<CancellationToken>()))
+            .ReturnsAsync(new FreeTierAccessStatusResponse
+            {
+                IsApplicable = true,
+                IsCompliant = true,
+                IsGracePeriod = true,
+                GraceExpiresAtUtc = expiresAt,
+                RequiredChannel = "@DataGateVPNBot",
+                ActivePlanName = "Free",
+            });
+
+        var controller = CreateController();
+        var result = await controller.RegisterFreeTierAccessConnect(CancellationToken.None);
+
+        var ok = Assert.IsType<OkObjectResult>(result.Result);
+        var response = Assert.IsType<ApiResponse<FreeTierAccessStatusResponse>>(ok.Value);
+        Assert.True(response.Data!.IsGracePeriod);
+        Assert.Equal(expiresAt, response.Data.GraceExpiresAtUtc);
+        _freeTierComplianceService.Verify(
+            s => s.RegisterConnectionAsync(9, "android-connect", It.IsAny<CancellationToken>()),
+            Times.Once);
+    }
+
+    [Fact]
+    public async Task ConfirmEmail_DelegatesToEmailConfirmationService()
+    {
+        _emailConfirmationService
+            .Setup(s => s.ConfirmAsync("user@example.com", "123456", It.IsAny<CancellationToken>()))
+            .ReturnsAsync(new ConfirmEmailResponse { Success = true, Message = "Email confirmed." });
+
+        var controller = CreateController();
+        var result = await controller.ConfirmEmail(
+            new ConfirmEmailRequest { Email = "user@example.com", Code = "123456" },
+            CancellationToken.None);
+
+        var ok = Assert.IsType<OkObjectResult>(result.Result);
+        var response = Assert.IsType<ApiResponse<ConfirmEmailResponse>>(ok.Value);
+        Assert.True(response.Data!.Success);
     }
 }

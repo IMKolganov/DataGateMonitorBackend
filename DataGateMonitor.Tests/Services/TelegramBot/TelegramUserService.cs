@@ -5,6 +5,7 @@ using DataGateMonitor.DataBase.Services.Command.Interfaces;
 using DataGateMonitor.DataBase.Services.Query.TelegramBotUserTable;
 using DataGateMonitor.Models;
 using DataGateMonitor.Services.TelegramBot;
+using DataGateMonitor.SharedModels.DataGateMonitor.TelegramBotUser.Requests;
 
 namespace DataGateMonitor.Tests.Services.TelegramBot;
 
@@ -216,13 +217,13 @@ public class TelegramUserServiceTests
         };
 
         _userQuery
-            .Setup(q => q.GetAll(It.IsAny<CancellationToken>()))
+            .Setup(q => q.GetFiltered(It.IsAny<GetAllTelegramBotUsersRequest>(), It.IsAny<CancellationToken>()))
             .ReturnsAsync(users);
 
         var result = await _service.GetAllUsersAsync(CancellationToken.None);
 
         Assert.NotNull(result);
-        Assert.Equal(new[] { 1, 2 }, result!.Select(u => u.Id).ToArray());
+        Assert.Equal(new[] { 1, 2 }, result!.Select(u => u.Id).OrderBy(i => i).ToArray());
     }
 
     // -----------------------------------------------------------------------

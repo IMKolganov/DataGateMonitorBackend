@@ -5,4 +5,5 @@ public static class SystemEmailTemplateNames
 {
     public const string EmailConfirmation = "system.email_confirmation";
     public const string AdminPasswordReset = "system.admin_password_reset";
+    public const string FreeTierGraceDisconnected = "system.free_tier_grace_disconnected";
 }

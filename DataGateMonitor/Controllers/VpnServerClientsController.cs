@@ -3,12 +3,17 @@ using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Mvc;
 using DataGateMonitor.DataBase.Services.Query.VpnServerClientTable;
 using DataGateMonitor.DataBase.Services.Query.UserIdentityLinkTable;
+using DataGateMonitor.DataBase.Services.Query.IssuedOvpnFileTable;
+using DataGateMonitor.DataBase.Services.Query.UserTable;
+using DataGateMonitor.DataBase.Services.Query.VpnServerTable;
 using DataGateMonitor.Services.Api;
 using DataGateMonitor.Services.Api.Auth.Handlers.Interfaces;
 using DataGateMonitor.Services.Api.Auth.Users;
 using DataGateMonitor.Services.Api.Privacy;
+using DataGateMonitor.Services.Users.Interfaces;
 using DataGateMonitor.SharedModels.DataGateMonitor.VpnServerClients.Requests;
 using DataGateMonitor.SharedModels.DataGateMonitor.VpnServerClients.Responses;
+using DataGateMonitor.SharedModels.Enums;
 using DataGateMonitor.SharedModels.Responses;
 using System.Security.Claims;
 
@@ -24,15 +29,66 @@ public class VpnServerClientsController(
     IOpenVpnOverviewTotalsQuery openVpnOverviewTotalsQuery,
     IOpenVpnOverviewSeriesQuery openVpnOverviewSeriesQuery,
     IUserIdentityLinkQueryService userIdentityLinkQueryService,
-    IVpnServerAccessQueryService vpnServerAccessQueryService) : BaseController
+    IVpnServerAccessQueryService vpnServerAccessQueryService,
+    IVpnServerQueryService vpnServerQueryService,
+    IIssuedOvpnFileQueryService issuedOvpnFileQueryService,
+    IUserQueryService userQueryService,
+    IOpenVpnDisconnectExecutor openVpnDisconnectExecutor) : BaseController
 {
+    /// <summary>
+    /// Admin-triggered disconnect of a connected OpenVPN client. Optionally revokes the client's
+    /// certificate/ovpn file so it cannot silently reconnect with the same profile.
+    /// </summary>
+    [HttpPost("kill")]
+    [Authorize(Roles = "Admin,App")]
+    public async Task<ActionResult<ApiResponse<KillOpenVpnClientResponse>>> KillConnectedClient(
+        [FromBody] KillOpenVpnClientRequest request, CancellationToken ct)
+    {
+        if (await VpnServerAuthorizationHelper.RequireVpnServerAccessOrForbidAsync<KillOpenVpnClientResponse>(
+                User, vpnServerAccessQueryService, request.VpnServerId, ct) is { } deny)
+            return deny;
+
+        var server = await vpnServerQueryService.GetById(request.VpnServerId, ct);
+        if (server is null)
+            return NotFound(ApiResponse<KillOpenVpnClientResponse>.ErrorResponse(
+                $"VPN server {request.VpnServerId} not found."));
+
+        var externalId = await issuedOvpnFileQueryService.GetExternalIdByCommonName(
+            request.CommonName, request.VpnServerId, ct);
+        var user = !string.IsNullOrWhiteSpace(externalId)
+            ? await userQueryService.GetByExternalId(externalId, ct)
+            : null;
+
+        var initiatedByUserId = HttpUserContext.TryGetUserId(User, out var adminUserId) ? adminUserId : (int?)null;
+
+        var result = await openVpnDisconnectExecutor.ExecuteAsync(
+            new OpenVpnDisconnectRequest
+            {
+                Server = server,
+                Client = new Models.VpnServerClient
+                {
+                    CommonName = request.CommonName,
+                    ManagementClientId = request.ManagementClientId,
+                },
+                UserId = user?.Id,
+                UserDisplayNameSnapshot = user?.DisplayName ?? user?.Email,
+                Reason = DisconnectReason.Manual,
+                InitiatedByUserId = initiatedByUserId,
+                RevokeCertificate = request.RevokeCertificate,
+            },
+            ct);
+
+        return Ok(ApiResponse<KillOpenVpnClientResponse>.SuccessResponse(result));
+    }
+
+
     [HttpGet("get-all-connected")]
     public async Task<ActionResult<ApiResponse<ConnectedClientsResponse>>> GetAllConnectedClients(
         [FromQuery] GetConnectedClientsRequest request, CancellationToken cancellationToken)
     {
         var result =
             await openVpnServerClientOverviewQuery.GetAllConnectedVpnServerClientsAsync(
-            request.VpnServerId, request.Page, request.PageSize, cancellationToken);
+            request, cancellationToken);
 
         var response = result.Adapt<ConnectedClientsResponse>();
         var ownExternalId = GetCurrentUserExternalId();
@@ -53,7 +109,7 @@ public class VpnServerClientsController(
 
         var result = 
             await openVpnServerClientOverviewQuery.GetAllHistoryVpnServerClientsAsync(
-            request.VpnServerId, request.Page, request.PageSize, ct);
+            request, ct);
 
         var response = result.Adapt<ConnectedClientsResponse>();
         var ownExternalId = GetCurrentUserExternalId();
@@ -129,6 +185,7 @@ public class VpnServerClientsController(
             request.To,
             request.VpnServerId,
             externalId,
+            request.DisplayName,
             ct);
 
         var ownExternalId = GetCurrentUserExternalId();

@@ -3,6 +3,7 @@ using Microsoft.EntityFrameworkCore;
 using Moq;
 using DataGateMonitor.DataBase.Services.Query.ClientApplicationTable;
 using DataGateMonitor.Models;
+using DataGateMonitor.SharedModels.DataGateMonitor.Applications.Requests;
 using DataGateMonitor.SharedModels.Responses;
 using DataGateMonitor.Tests.Helpers;
 
@@ -50,21 +51,17 @@ public class ClientApplicationQueryServiceTests
     }
 
     [Fact]
-    public async Task GetAllAsync_Delegates_To_IQueryService()
+    public async Task GetAllAsync_Returns_All_When_No_Filters()
     {
         var data = CreateSample();
         var (q, ctx) = CreateEfBackedQuery(data);
-        q.Setup(x => x.GetAll(true, It.IsAny<CancellationToken>()))
-         .ReturnsAsync(data)
-         .Verifiable();
 
         var sut = new ClientApplicationQueryService(q.Object);
 
         var result = await sut.GetAll(CancellationToken.None);
 
         Assert.Equal(data.Count, result.Count);
-        Assert.True(result.SequenceEqual(data));
-        q.Verify(x => x.GetAll(true, It.IsAny<CancellationToken>()), Times.Once);
+        Assert.Equal(data.Select(x => x.Id).OrderBy(i => i), result.Select(x => x.Id).OrderBy(i => i));
         await ctx.DisposeAsync();
     }
 
@@ -164,6 +161,21 @@ public class ClientApplicationQueryServiceTests
 
         Assert.NotNull(result);
         Assert.Equal(2, result!.Id);
+        await ctx.DisposeAsync();
+    }
+
+    [Fact]
+    public async Task GetFiltered_Filters_By_IsRevoked()
+    {
+        var data = CreateSample();
+        var (q, ctx) = CreateEfBackedQuery(data);
+        var sut = new ClientApplicationQueryService(q.Object);
+
+        var revoked = await sut.GetFiltered(new GetAllApplicationsRequest { IsRevoked = true }, CancellationToken.None);
+        var active = await sut.GetFiltered(new GetAllApplicationsRequest { IsRevoked = false }, CancellationToken.None);
+
+        Assert.Equal(new[] { 3, 4 }, revoked.Select(x => x.Id).OrderBy(i => i));
+        Assert.Equal(new[] { 1, 2 }, active.Select(x => x.Id).OrderBy(i => i));
         await ctx.DisposeAsync();
     }
 

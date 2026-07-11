@@ -1,3 +1,4 @@
+using Microsoft.Extensions.Configuration;
 using Microsoft.Extensions.DependencyInjection;
 using DataGateMonitor.Configurations;
 using DataGateMonitor.Services.TelegramBot.Interfaces;
@@ -11,12 +12,14 @@ public class TelegramServiceConfigurationTests
     public void ConfigureTelegramServices_Registers_TelegramAndLocalizationServices()
     {
         var services = new ServiceCollection();
+        var configuration = new ConfigurationBuilder().AddInMemoryCollection().Build();
 
-        services.ConfigureTelegramServices();
+        services.ConfigureTelegramServices(configuration);
 
         AssertRegistered(services, typeof(ITelegramUserService));
         AssertRegistered(services, typeof(ILocalizationService));
         AssertRegistered(services, typeof(IIncomingMessageLogService));
+        AssertRegistered(services, typeof(ITelegramChannelMembershipChecker));
     }
 
     private static void AssertRegistered(IServiceCollection services, Type serviceType)

@@ -137,54 +137,20 @@ public class IncomingMessageLogQueryServiceTests
     }
 
     [Fact]
-    public async Task GetPageAsync_Calls_PageAsync_With_Null_Predicate_And_OrderBy_Desc()
+    public async Task GetPageAsync_Returns_Paged_Results_Ordered_By_Id_Desc()
     {
         var data = CreateSample();
         var (q, ctx) = CreateEfBackedQuery(data);
 
-        Expression<Func<IncomingMessageLog, bool>>? capturedPredicate = null;
-        Func<IQueryable<IncomingMessageLog>, IOrderedQueryable<IncomingMessageLog>>? capturedOrderBy = null;
-
-        var paged = new TestPagedResult<IncomingMessageLog>
-        {
-            Page = 3,
-            PageSize = 5,
-            TotalCount = data.Count,
-            Items = data.OrderByDescending(x => x.Id).Skip(10).Take(5).ToList()
-        };
-
-        q.Setup(x => x.Page(
-                3,
-                5,
-                null,
-                It.IsAny<Func<IQueryable<IncomingMessageLog>, IOrderedQueryable<IncomingMessageLog>>>(),
-                true,
-                It.IsAny<CancellationToken>(),
-                It.IsAny<Expression<Func<IncomingMessageLog, object>>[]>()))
-         .Callback((int page, int size,
-             Expression<Func<IncomingMessageLog, bool>>? predicate,
-             Func<IQueryable<IncomingMessageLog>, IOrderedQueryable<IncomingMessageLog>>? orderBy,
-             bool _, CancellationToken __, Expression<Func<IncomingMessageLog, object>>[] ___) =>
-         {
-             capturedPredicate = predicate;
-             capturedOrderBy = orderBy;
-         })
-         .ReturnsAsync(paged as IPagedResult<IncomingMessageLog>)
-         .Verifiable();
-
         var sut = new IncomingMessageLogQueryService(q.Object);
-        var result = await sut.GetPage(3, 5, CancellationToken.None);
+        var result = await sut.GetPage(1, 2, CancellationToken.None);
 
-        Assert.Same(paged, result);
-        Assert.Null(capturedPredicate);
-        Assert.NotNull(capturedOrderBy);
-
-        var ordered = capturedOrderBy!(ctx.IncomingMessageLogs);
-        var orderedIds = ordered.Select(x => x.Id).ToList();
-        var expectedIds = ctx.IncomingMessageLogs.Select(x => x.Id).OrderByDescending(i => i).ToList();
-        Assert.Equal(expectedIds, orderedIds);
-
-        q.Verify();
+        Assert.Equal(1, result.Page);
+        Assert.Equal(2, result.PageSize);
+        Assert.Equal(4, result.TotalCount);
+        Assert.Equal(2, result.Items.Count);
+        Assert.Equal(4, result.Items[0].Id);
+        Assert.Equal(3, result.Items[1].Id);
         await ctx.DisposeAsync();
     }
 }

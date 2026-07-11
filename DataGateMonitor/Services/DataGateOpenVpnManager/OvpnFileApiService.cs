@@ -3,9 +3,13 @@ using Mapster;
 using DataGateMonitor.DataBase.Services.Command.Interfaces;
 using DataGateMonitor.DataBase.Services.Query.IssuedOvpnFileTable;
 using DataGateMonitor.DataBase.Services.Query.IssuedOvpnFileTokenTable;
+using DataGateMonitor.DataBase.Services.Query.QuotaPlanAllowedServerTable;
+using DataGateMonitor.DataBase.Services.Query.UserIdentityLinkTable;
+using DataGateMonitor.DataBase.Services.Query.UserQuotaPlanTable;
 using DataGateMonitor.DataBase.Services.Query.VpnServerOvpnFileConfigTable;
 using DataGateMonitor.DataBase.Services.Query.VpnServerTable;
 using DataGateMonitor.Models;
+using DataGateMonitor.Services.Api.Auth.Users;
 using DataGateMonitor.Services.DataGateOpenVpnManager.Interfaces;
 using DataGateMonitor.Services.Others.Notifications.OvpnFileApi;
 using DataGateMonitor.SharedModels.DataGateOpenVpnManager.OvpnFile.Requests;
@@ -24,6 +28,9 @@ public class OvpnFileApiService(
     IVpnServerOvpnFileConfigQueryService openVpnServerOvpnFileConfigQueryService,
     IIssuedOvpnFileQueryService issuedOvpnFileQueryService,
     IIssuedOvpnFileTokenQueryService issuedOvpnFileTokenQueryService,
+    IUserIdentityLinkQueryService userIdentityLinkQueryService,
+    IUserQuotaPlanQueryService userQuotaPlanQueryService,
+    IQuotaPlanAllowedServerQueryService quotaPlanAllowedServerQueryService,
     ICommandService<IssuedOvpnFile, int> issuedOvpnFileCommandService,
     ICommandService<IssuedOvpnFileToken, int> issuedOvpnFileTokenCommandService,
     IVpnServerQueryService openVpnServerQueryService,
@@ -63,9 +70,13 @@ public class OvpnFileApiService(
     
     public async Task<List<IssuedOvpnFile>> GetAllByExternalId(string externalId, CancellationToken ct)
     {
-        var issuedFiles = await issuedOvpnFileQueryService.GetAllByExternalId(externalId, ct);
+        var queryKeys = await ResolveVpnExternalIdQueryKeysAsync(externalId, ct);
+        var issuedFiles = await QueryIssuedFilesByExternalIdKeysAsync(
+            key => issuedOvpnFileQueryService.GetAllByExternalId(key, ct),
+            queryKeys,
+            ct);
         
-        await ovpnFileNotificationService.NotifyReadByExternalId(externalId, issuedFiles.Count, ct);
+        await ovpnFileNotificationService.NotifyReadByExternalId(queryKeys[0], issuedFiles.Count, ct);
 
         return issuedFiles;
     }
@@ -103,9 +114,13 @@ public class OvpnFileApiService(
     public async Task<List<IssuedOvpnFile>> GetAllByExternalIdAndVpnServerId(int vpnServerId, string externalId,
         CancellationToken ct, bool isRevoked = false)
     {
-        var result = await issuedOvpnFileQueryService.GetAllByVpnServerIdAndExternalIdAndIsRevoked(
-            vpnServerId, externalId, isRevoked, ct);
-        await ovpnFileNotificationService.NotifyReadByExternalIdAndVpnServerId(vpnServerId, externalId, result.Count,
+        var queryKeys = await ResolveVpnExternalIdQueryKeysAsync(externalId, ct);
+        var result = await QueryIssuedFilesByExternalIdKeysAsync(
+            key => issuedOvpnFileQueryService.GetAllByVpnServerIdAndExternalIdAndIsRevoked(
+                vpnServerId, key, isRevoked, ct),
+            queryKeys,
+            ct);
+        await ovpnFileNotificationService.NotifyReadByExternalIdAndVpnServerId(vpnServerId, queryKeys[0], result.Count,
             isRevoked, ct);
 
         return result;
@@ -115,9 +130,12 @@ public class OvpnFileApiService(
         GetAllByExternalIdAndVpnServerIdWithToken(int vpnServerId, string externalId, 
             CancellationToken ct, bool isRevoked = false)
     {
-        var issuedFiles =
-            await issuedOvpnFileQueryService.GetAllByVpnServerIdAndExternalIdAndIsRevoked(vpnServerId, externalId,
-                isRevoked, ct);
+        var queryKeys = await ResolveVpnExternalIdQueryKeysAsync(externalId, ct);
+        var issuedFiles = await QueryIssuedFilesByExternalIdKeysAsync(
+            key => issuedOvpnFileQueryService.GetAllByVpnServerIdAndExternalIdAndIsRevoked(
+                vpnServerId, key, isRevoked, ct),
+            queryKeys,
+            ct);
 
         var tokens = await issuedOvpnFileTokenQueryService.GetByIssuedFileIds(
             issuedFiles.Select(x => x.Id).ToList(), ct);
@@ -130,7 +148,7 @@ public class OvpnFileApiService(
             })
             .ToList();
         
-        await ovpnFileNotificationService.NotifyReadByExternalIdWithToken(vpnServerId, externalId, result.Count, 
+        await ovpnFileNotificationService.NotifyReadByExternalIdWithToken(vpnServerId, queryKeys[0], result.Count, 
             isRevoked, ct);
 
         return result;
@@ -158,6 +176,9 @@ public class OvpnFileApiService(
             "Attempting to add new OVPN file: CommonName={CommonName}, VpnServerId={VpnServerId}",
             request.CommonName,
             request.VpnServerId);
+
+        request.ExternalId = await ResolveVpnExternalIdAsync(request.ExternalId, ct);
+        await RequireTargetUserServerAccessAsync(request, ct);
         
         if (await issuedOvpnFileQueryService
                 .ExistsActiveByVpnServerIdAndCommonName(request.VpnServerId, request.CommonName, ct))
@@ -375,6 +396,66 @@ public class OvpnFileApiService(
 
         await issuedOvpnFileTokenCommandService.Add(token, true, ct);
         return token;
+    }
+
+    private Task<string> ResolveVpnExternalIdAsync(string externalId, CancellationToken ct) =>
+        UserIdentityLinkExternalIdResolver.ResolveVpnExternalIdAsync(
+            externalId,
+            userIdentityLinkQueryService,
+            ct);
+
+    private async Task RequireTargetUserServerAccessAsync(AddFileRequest request, CancellationToken ct)
+    {
+        var externalId = request.ExternalId?.Trim();
+        if (string.IsNullOrWhiteSpace(externalId))
+            return;
+
+        var link = await userIdentityLinkQueryService.GetByExternalId(externalId, ct);
+        if (link is not { UserId: > 0 })
+            return;
+
+        var activePlan = await userQuotaPlanQueryService.GetActiveByUserId(link.UserId, ct);
+        if (activePlan is null)
+            return;
+
+        var allowed = await quotaPlanAllowedServerQueryService.GetByQuotaPlanIdAndServerId(
+            activePlan.QuotaPlanId,
+            request.VpnServerId,
+            ct);
+        if (allowed is not null)
+            return;
+
+        throw new InvalidOperationException(
+            $"VPN server {request.VpnServerId} is not allowed for user {link.UserId}'s active quota plan {activePlan.QuotaPlanId}.");
+    }
+
+    private Task<IReadOnlyList<string>> ResolveVpnExternalIdQueryKeysAsync(string externalId, CancellationToken ct) =>
+        UserIdentityLinkExternalIdResolver.ResolveVpnExternalIdQueryKeysAsync(
+            externalId,
+            userIdentityLinkQueryService,
+            ct);
+
+    private static async Task<List<IssuedOvpnFile>> QueryIssuedFilesByExternalIdKeysAsync(
+        Func<string, Task<List<IssuedOvpnFile>>> queryByKey,
+        IReadOnlyList<string> queryKeys,
+        CancellationToken ct)
+    {
+        if (queryKeys.Count == 1)
+            return await queryByKey(queryKeys[0]);
+
+        var seen = new HashSet<int>();
+        var result = new List<IssuedOvpnFile>();
+        foreach (var key in queryKeys)
+        {
+            ct.ThrowIfCancellationRequested();
+            foreach (var file in await queryByKey(key))
+            {
+                if (seen.Add(file.Id))
+                    result.Add(file);
+            }
+        }
+
+        return result;
     }
 
     private async Task<VpnServerOvpnFileConfig> GetVpnServerOvpnFileConfig(int vpnServerId, 

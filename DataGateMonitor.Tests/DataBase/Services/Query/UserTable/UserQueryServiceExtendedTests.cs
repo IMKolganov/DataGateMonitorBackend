@@ -23,7 +23,8 @@ public class UserQueryServiceExtendedTests
 
         var sut = new UserQueryService(
             new EfQueryService<User, int>(uow.Object),
-            new EfQueryService<UserIdentityLink, int>(uow.Object));
+            new EfQueryService<UserIdentityLink, int>(uow.Object),
+            uow.Object);
         return (sut, ctx);
     }
 
