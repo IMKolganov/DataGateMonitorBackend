@@ -404,4 +404,51 @@ public class FreeTierAccessComplianceServiceTests
 
         Assert.True(shouldKill);
     }
+
+    [Fact]
+    public async Task EvaluateAccessForEnforcementAsync_ReturnsNonCompliant_ForFreePlanWithoutMergeOrChannel()
+    {
+        SetupFreePlanUser(50, 891);
+
+        var sut = CreateSut();
+        var result = await sut.EvaluateAccessForEnforcementAsync(50, CancellationToken.None);
+
+        Assert.True(result.IsApplicable);
+        Assert.False(result.IsCompliant);
+        Assert.Equal(891, result.TelegramId);
+        Assert.Equal(QuotaPlanNames.Free, result.ActivePlanName);
+    }
+
+    [Fact]
+    public async Task EvaluateAccessForEnforcementAsync_IgnoresGracePeriod_EvenWhenActive()
+    {
+        SetupFreePlanUser(51, 892);
+        SetupGraceSettings(enabled: true, minutes: 5);
+
+        var sut = CreateSut();
+        await sut.AuditAndNotifyIfNeededAsync(51, "bot", ct: CancellationToken.None);
+
+        var result = await sut.EvaluateAccessForEnforcementAsync(51, CancellationToken.None);
+
+        Assert.True(result.IsApplicable);
+        Assert.False(result.IsCompliant);
+        Assert.False(result.IsGracePeriod);
+    }
+
+    [Fact]
+    public async Task EvaluateAccessForEnforcementAsync_ReturnsNotApplicable_ForPaidPlan()
+    {
+        _quotaAssignmentQuery
+            .Setup(q => q.GetActiveByUserId(52, It.IsAny<CancellationToken>()))
+            .ReturnsAsync(new UserQuotaPlan { UserId = 52, QuotaPlanId = 3 });
+        _quotaPlanQuery
+            .Setup(q => q.GetById(3, It.IsAny<CancellationToken>()))
+            .ReturnsAsync(new QuotaPlan { Id = 3, Name = "Pro" });
+
+        var sut = CreateSut();
+        var result = await sut.EvaluateAccessForEnforcementAsync(52, CancellationToken.None);
+
+        Assert.False(result.IsApplicable);
+        Assert.True(result.IsCompliant);
+    }
 }

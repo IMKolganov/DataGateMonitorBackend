@@ -93,6 +93,42 @@ public class VpnServerClientQueryServiceTests
     }
 
     [Fact]
+    public async Task GetAllConnectedAsync_Uses_WhereAsync_With_IsConnectedFilter()
+    {
+        var data = Sample();
+        var (q, ctx) = CreateEfBackedQuery(data);
+
+        Expression<Func<VpnServerClient, bool>>? captured = null;
+
+        q.Setup(x => x.Where(
+                It.IsAny<Expression<Func<VpnServerClient, bool>>>(),
+                null,
+                true,
+                It.IsAny<CancellationToken>(),
+                It.IsAny<Expression<Func<VpnServerClient, object>>[]>()
+            ))
+         .Callback((Expression<Func<VpnServerClient, bool>> predicate,
+             Func<IQueryable<VpnServerClient>, IOrderedQueryable<VpnServerClient>>? _,
+             bool __, CancellationToken ___, Expression<Func<VpnServerClient, object>>[] ____) =>
+         {
+             captured = predicate;
+         })
+         .ReturnsAsync(data.Where(x => x.IsConnected).ToList())
+         .Verifiable();
+
+        var sut = new VpnServerClientQueryService(q.Object);
+        var result = await sut.GetAllConnected(CancellationToken.None);
+
+        Assert.Equal(2, result.Count);
+        Assert.All(result, x => Assert.True(x.IsConnected));
+        Assert.NotNull(captured);
+        var filtered = ctx.Clients.Where(captured!).ToList();
+        Assert.All(filtered, x => Assert.True(x.IsConnected));
+        q.Verify();
+        await ctx.DisposeAsync();
+    }
+
+    [Fact]
     public async Task GetByIdAsync_Delegates()
     {
         var entity = new VpnServerClient { Id = 42, VpnServerId = 10, IsConnected = true, SessionId = Guid.NewGuid(), ConnectedSince = DateTimeOffset.UtcNow };
