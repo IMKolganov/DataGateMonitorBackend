@@ -62,6 +62,7 @@ public class ApplicationDbContext(DbContextOptions<ApplicationDbContext> options
     public DbSet<EmailBroadcastTemplate> EmailBroadcastTemplates { get; set; } = null!;
     public DbSet<MobileCrashReport> MobileCrashReports { get; set; } = null!;
     public DbSet<WindowsCrashReport> WindowsCrashReports { get; set; } = null!;
+    public DbSet<FreeTierDisconnectLog> FreeTierDisconnectLogs { get; set; } = null!;
 
     protected override void OnModelCreating(ModelBuilder modelBuilder)
     {
@@ -110,6 +111,7 @@ public class ApplicationDbContext(DbContextOptions<ApplicationDbContext> options
         modelBuilder.ApplyConfiguration(new DeviceConfiguration());
         modelBuilder.ApplyConfiguration(new UserRefreshTokenConfiguration());
         modelBuilder.ApplyConfiguration(new UserPasswordHistoryConfiguration());
+        modelBuilder.ApplyConfiguration(new FreeTierDisconnectLogConfiguration());
     }
     
     private void UpdateTimestamps()
