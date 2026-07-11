@@ -346,6 +346,100 @@ public class TelegramAccountLinkServiceTests
             Times.Once);
     }
 
+    [Fact]
+    public async Task CompleteLinkByCodeAsync_WhenCodeAlreadyRedeemedAndSurvivorIsMerged_ReturnsAlreadyLinkedSuccess()
+    {
+        const int survivorUserId = 10;
+        var cache = new MemoryCache(new MemoryCacheOptions());
+        var userQuery = new Mock<IUserQueryService>();
+        var linkQuery = new Mock<IUserIdentityLinkQueryService>();
+        var config = new Mock<IConfiguration>();
+        config.Setup(c => c.GetSection(It.IsAny<string>())).Returns(Mock.Of<IConfigurationSection>());
+
+        // Code is not in the cache (already redeemed by an earlier successful call and removed).
+        linkQuery.Setup(q => q.GetByProviderAndExternalId(
+                AuthIdentityProviders.Telegram, DefaultTelegramId.ToString(), It.IsAny<CancellationToken>()))
+            .ReturnsAsync(new UserIdentityLink { UserId = survivorUserId, Provider = AuthIdentityProviders.Telegram, ExternalId = DefaultTelegramId.ToString() });
+        linkQuery.Setup(q => q.GetListByUserId(survivorUserId, It.IsAny<CancellationToken>()))
+            .ReturnsAsync(
+            [
+                new UserIdentityLink { UserId = survivorUserId, Provider = AuthIdentityProviders.Telegram, ExternalId = DefaultTelegramId.ToString() },
+                new UserIdentityLink { UserId = survivorUserId, Provider = AuthIdentityProviders.Google, ExternalId = "g-sub" },
+            ]);
+
+        var sut = new TelegramAccountLinkService(
+            cache, userQuery.Object, linkQuery.Object, Mock.Of<IUserMergeService>(), config.Object,
+            Mock.Of<ILogger<TelegramAccountLinkService>>());
+
+        var result = await sut.CompleteLinkByCodeAsync("STALECOD", DefaultTelegramId, CancellationToken.None);
+
+        Assert.True(result.Success);
+        Assert.Contains("already linked", result.Message, StringComparison.OrdinalIgnoreCase);
+    }
+
+    [Fact]
+    public async Task CompleteLinkByCodeAsync_WhenCodeAlreadyRedeemedAndSurvivorNotMerged_ReturnsInvalidCode()
+    {
+        var cache = new MemoryCache(new MemoryCacheOptions());
+        var userQuery = new Mock<IUserQueryService>();
+        var linkQuery = new Mock<IUserIdentityLinkQueryService>();
+        var config = new Mock<IConfiguration>();
+        config.Setup(c => c.GetSection(It.IsAny<string>())).Returns(Mock.Of<IConfigurationSection>());
+
+        linkQuery.Setup(q => q.GetByProviderAndExternalId(
+                AuthIdentityProviders.Telegram, It.IsAny<string>(), It.IsAny<CancellationToken>()))
+            .ReturnsAsync((UserIdentityLink?)null);
+
+        var sut = new TelegramAccountLinkService(
+            cache, userQuery.Object, linkQuery.Object, Mock.Of<IUserMergeService>(), config.Object,
+            Mock.Of<ILogger<TelegramAccountLinkService>>());
+
+        var result = await sut.CompleteLinkByCodeAsync("NOSUCHCD", DefaultTelegramId, CancellationToken.None);
+
+        Assert.False(result.Success);
+        Assert.Contains("Invalid or expired", result.Message, StringComparison.OrdinalIgnoreCase);
+    }
+
+    [Fact]
+    public async Task CompleteLinkByCodeAsync_WhenDashboardUserGoneButSurvivorMerged_ReturnsAlreadyLinkedSuccess()
+    {
+        const int dashboardUserId = 20;
+        const int survivorUserId = 10;
+        var cache = new MemoryCache(new MemoryCacheOptions());
+        var userQuery = new Mock<IUserQueryService>();
+        var linkQuery = new Mock<IUserIdentityLinkQueryService>();
+        var config = new Mock<IConfiguration>();
+        config.Setup(c => c.GetSection(It.IsAny<string>())).Returns(Mock.Of<IConfigurationSection>());
+
+        // Dashboard user existed when the code was requested, but is gone (hard-deleted by an
+        // earlier successful merge) by the time this call resolves it.
+        userQuery.SetupSequence(q => q.GetById(dashboardUserId, It.IsAny<CancellationToken>()))
+            .ReturnsAsync(new User { Id = dashboardUserId, IsBlocked = false })
+            .ReturnsAsync((User?)null);
+
+        linkQuery.Setup(q => q.GetListByUserId(dashboardUserId, It.IsAny<CancellationToken>()))
+            .ReturnsAsync([new UserIdentityLink { UserId = dashboardUserId, Provider = AuthIdentityProviders.Google, ExternalId = "g-sub" }]);
+        linkQuery.Setup(q => q.GetByProviderAndExternalId(
+                AuthIdentityProviders.Telegram, DefaultTelegramId.ToString(), It.IsAny<CancellationToken>()))
+            .ReturnsAsync(new UserIdentityLink { UserId = survivorUserId, Provider = AuthIdentityProviders.Telegram, ExternalId = DefaultTelegramId.ToString() });
+        linkQuery.Setup(q => q.GetListByUserId(survivorUserId, It.IsAny<CancellationToken>()))
+            .ReturnsAsync(
+            [
+                new UserIdentityLink { UserId = survivorUserId, Provider = AuthIdentityProviders.Telegram, ExternalId = DefaultTelegramId.ToString() },
+                new UserIdentityLink { UserId = survivorUserId, Provider = AuthIdentityProviders.Google, ExternalId = "g-sub" },
+            ]);
+
+        var sut = new TelegramAccountLinkService(
+            cache, userQuery.Object, linkQuery.Object, Mock.Of<IUserMergeService>(), config.Object,
+            Mock.Of<ILogger<TelegramAccountLinkService>>());
+
+        var issued = await sut.RequestLinkCodeAsync(dashboardUserId, null, CancellationToken.None);
+        var result = await sut.CompleteLinkByCodeAsync(issued.Code, DefaultTelegramId, CancellationToken.None);
+
+        Assert.True(result.Success);
+        Assert.Contains("already linked", result.Message, StringComparison.OrdinalIgnoreCase);
+    }
+
     private static TelegramAccountLinkService CreateSut(
         int userId,
         IReadOnlyList<UserIdentityLink> links,

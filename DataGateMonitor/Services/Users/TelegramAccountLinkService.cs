@@ -152,7 +152,22 @@ public sealed class TelegramAccountLinkService(
 
         if (!cache.TryGetValue(AccountLinkCacheKey(normalizedCode), out AccountLinkCacheEntry? entry)
             || entry is null)
+        {
+            // Most likely cause: this code was already redeemed by an earlier, successful
+            // submission (e.g. the client retried after a slow/lost response) and the code was
+            // removed from the cache on success. Tell the user they're already linked instead of
+            // an unhelpful "invalid code" when that's the case.
+            if (await IsAlreadyMergedByTelegramIdAsync(telegramId, ct))
+            {
+                return new CompleteTelegramAccountLinkResponse
+                {
+                    Success = true,
+                    Message = "Accounts are already linked.",
+                };
+            }
+
             return Fail("Invalid or expired link code.");
+        }
 
         if (entry.DashboardUserId == BindDashboardAtAppCompletion)
             return Fail("This code must be entered in the mobile app, not in the bot.");
@@ -208,7 +223,24 @@ public sealed class TelegramAccountLinkService(
 
         var dashboardUser = await userQueryService.GetById(dashboardUserId, ct);
         if (dashboardUser is null)
+        {
+            // The dashboard-side user row is hard-deleted once a merge completes (see
+            // UserMergeService.MergeTelegramGoogleAsync). A null lookup here almost always means
+            // this exact code was already redeemed successfully by an earlier submission and the
+            // caller is retrying (e.g. a lost/timed-out response) — confirm via the survivor's
+            // links and report success instead of a confusing "not found".
+            if (await IsUserAlreadyMergedAsync(telegramUserId, ct))
+            {
+                RemoveCode(normalizedCode, entryDashboardUserId: dashboardUserId, entryTelegramId: telegramId);
+                return new CompleteTelegramAccountLinkResponse
+                {
+                    Success = true,
+                    Message = "Accounts are already linked.",
+                };
+            }
+
             return Fail("Dashboard user not found.");
+        }
 
         if (dashboardUser.IsBlocked)
             return Fail("User account is blocked.");
@@ -339,6 +371,27 @@ public sealed class TelegramAccountLinkService(
             return name;
 
         return "another Google account";
+    }
+
+    /// <summary>True when <paramref name="userId"/> already has both a Telegram link and a Google/local link.</summary>
+    private async Task<bool> IsUserAlreadyMergedAsync(int userId, CancellationToken ct)
+    {
+        var links = await userIdentityLinkQueryService.GetListByUserId(userId, ct);
+        var hasTelegram = links.Any(l => string.Equals(l.Provider, TelegramProvider, StringComparison.OrdinalIgnoreCase));
+        var hasGoogleOrLocal = links.Any(l =>
+            string.Equals(l.Provider, GoogleProvider, StringComparison.OrdinalIgnoreCase)
+            || string.Equals(l.Provider, LocalProvider, StringComparison.OrdinalIgnoreCase));
+        return hasTelegram && hasGoogleOrLocal;
+    }
+
+    private async Task<bool> IsAlreadyMergedByTelegramIdAsync(long telegramId, CancellationToken ct)
+    {
+        var telegramLink = await userIdentityLinkQueryService.GetByProviderAndExternalId(
+            TelegramProvider,
+            telegramId.ToString(),
+            ct);
+
+        return telegramLink is { UserId: > 0 } && await IsUserAlreadyMergedAsync(telegramLink.UserId, ct);
     }
 
     private async Task EnsureDashboardUserCanRequestLinkCodeAsync(int userId, CancellationToken ct)
