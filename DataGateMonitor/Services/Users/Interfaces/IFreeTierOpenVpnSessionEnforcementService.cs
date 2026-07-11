@@ -7,4 +7,6 @@ public interface IFreeTierOpenVpnSessionEnforcementService
     Task<bool> IsEnabledAsync(CancellationToken ct = default);
 
     Task<int> GetIntervalMinutesAsync(CancellationToken ct = default);
+
+    Task<bool> IsRevokeOnEnforcementEnabledAsync(CancellationToken ct = default);
 }

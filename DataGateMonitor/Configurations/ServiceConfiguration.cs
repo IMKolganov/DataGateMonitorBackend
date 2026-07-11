@@ -133,6 +133,8 @@ public static class ServiceConfiguration
         services.AddScoped<ITelegramAccountLinkService, TelegramAccountLinkService>();
         services.AddScoped<IFreeTierAccessComplianceService, FreeTierAccessComplianceService>();
         services.AddScoped<IFreeTierOpenVpnSessionEnforcementService, FreeTierOpenVpnSessionEnforcementService>();
+        services.AddScoped<IOpenVpnDisconnectExecutor, OpenVpnDisconnectExecutor>();
+        services.AddScoped<IFreeTierEnforcementOverviewService, FreeTierEnforcementOverviewService>();
         
         services.AddScoped<IQuotaPlanService, QuotaPlanService>();
         services.AddScoped<IUserRoleManagementService, UserRoleManagementService>();

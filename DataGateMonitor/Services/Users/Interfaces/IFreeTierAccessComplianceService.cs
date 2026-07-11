@@ -10,6 +10,13 @@ public interface IFreeTierAccessComplianceService
     Task<FreeTierAccessStatusResponse> GetStatusAsync(int userId, CancellationToken ct = default);
 
     /// <summary>
+    /// Raw compliance evaluation with no grace period applied — the exact rule the OpenVPN session
+    /// enforcement job uses to decide who to kill (<see cref="ShouldEnforceOpenVpnDisconnectAsync"/>).
+    /// Used to build the "who currently qualifies for enforcement" admin view so it matches reality.
+    /// </summary>
+    Task<FreeTierAccessComplianceResult> EvaluateAccessForEnforcementAsync(int userId, CancellationToken ct = default);
+
+    /// <summary>
     /// When the user has an active Free/Default plan, they must be a merged Telegram+Google account
     /// or subscribed to the required Telegram channel. Otherwise admins are notified.
     /// </summary>

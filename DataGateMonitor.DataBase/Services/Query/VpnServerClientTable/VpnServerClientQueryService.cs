@@ -12,6 +12,9 @@ public class VpnServerClientQueryService(IQueryService<VpnServerClient, int> q) 
     public Task<List<VpnServerClient>> GetAllConnectedByVpnServerId(int vpnServerId, CancellationToken ct)
         => q.Where(x => x.IsConnected && x.VpnServerId == vpnServerId, ct: ct);
 
+    public Task<List<VpnServerClient>> GetAllConnected(CancellationToken ct)
+        => q.Where(x => x.IsConnected, ct: ct);
+
     public Task<VpnServerClient?> GetById(int id, CancellationToken ct)
         => q.FindById(id, ct: ct);
 

@@ -88,6 +88,13 @@ public sealed class FreeTierAccessComplianceService(
         return result is { IsApplicable: true, IsCompliant: false };
     }
 
+    public async Task<FreeTierAccessComplianceResult> EvaluateAccessForEnforcementAsync(
+        int userId, CancellationToken ct = default)
+    {
+        var (result, _) = await EvaluateAccessAsync(userId, isChannelSubscribed: null, ct);
+        return result;
+    }
+
     public async Task<FreeTierAccessComplianceResult> AuditAndNotifyIfNeededAsync(
         int userId,
         string context,

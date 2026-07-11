@@ -15,6 +15,7 @@ public sealed class FreeTierOpenVpnSessionEnforcementService(
     IIssuedOvpnFileQueryService issuedOvpnFileQueryService,
     IUserQueryService userQueryService,
     IFreeTierAccessComplianceService freeTierAccessComplianceService,
+    IOpenVpnDisconnectExecutor disconnectExecutor,
     ISettingsService settingsService,
     ILogger<FreeTierOpenVpnSessionEnforcementService> logger) : IFreeTierOpenVpnSessionEnforcementService
 {
@@ -44,6 +45,18 @@ public sealed class FreeTierOpenVpnSessionEnforcementService(
         return minutes > 0 ? minutes : 15;
     }
 
+    public async Task<bool> IsRevokeOnEnforcementEnabledAsync(CancellationToken ct = default)
+    {
+        var typeKey = $"{FreeTierAccessSettingsKeys.RevokeOvpnOnEnforcement}_Type";
+        var type = await settingsService.GetValueAsync<string>(typeKey, ct);
+        if (!string.Equals(type, "bool", StringComparison.OrdinalIgnoreCase))
+            return false;
+
+        return await settingsService.GetValueAsync<bool>(
+            FreeTierAccessSettingsKeys.RevokeOvpnOnEnforcement,
+            ct);
+    }
+
     public async Task<int> EnforceAsync(CancellationToken ct = default)
     {
         if (!await IsEnabledAsync(ct))
@@ -56,12 +69,14 @@ public sealed class FreeTierOpenVpnSessionEnforcementService(
             .Where(s => s.ServerType == VpnServerType.OpenVpn && !s.IsDisable && !s.IsDeleted)
             .ToList();
 
+        var revokeOnEnforcement = await IsRevokeOnEnforcementEnabledAsync(ct);
+
         var killed = 0;
         foreach (var server in servers)
         {
             try
             {
-                killed += await EnforceOnServerAsync(server, ct);
+                killed += await EnforceOnServerAsync(server, revokeOnEnforcement, ct);
             }
             catch (Exception ex)
             {
@@ -83,7 +98,7 @@ public sealed class FreeTierOpenVpnSessionEnforcementService(
         return killed;
     }
 
-    private async Task<int> EnforceOnServerAsync(VpnServer server, CancellationToken ct)
+    private async Task<int> EnforceOnServerAsync(VpnServer server, bool revokeOnEnforcement, CancellationToken ct)
     {
         var status = await openVpnClientService.GetClientsFromManagementAsync(server, ct);
         if (status.Clients.Count == 0)
@@ -118,15 +133,33 @@ public sealed class FreeTierOpenVpnSessionEnforcementService(
             if (!shouldKill)
                 continue;
 
-            await openVpnClientService.KillConnectedClientAsync(server, connectedClient, ct);
-            killed++;
+            var result = await disconnectExecutor.ExecuteAsync(
+                new OpenVpnDisconnectRequest
+                {
+                    Server = server,
+                    Client = connectedClient,
+                    UserId = user.Id,
+                    UserDisplayNameSnapshot = user.DisplayName ?? user.Email,
+                    Reason = DisconnectReason.Enforcement,
+                    InitiatedByUserId = null,
+                    RevokeCertificate = revokeOnEnforcement,
+                },
+                ct);
+
+            if (result.Success)
+                killed++;
 
             logger.LogInformation(
-                "Disconnected non-compliant Free/Default user {UserId} on server {ServerId}, CN={CommonName}, ManagementClientId={ManagementClientId}",
+                "Disconnected non-compliant Free/Default user {UserId} on server {ServerId}, CN={CommonName}, " +
+                "ManagementClientId={ManagementClientId}, KillSucceeded={KillSucceeded}, RevokeAttempted={RevokeAttempted}, " +
+                "RevokeSucceeded={RevokeSucceeded}",
                 user.Id,
                 server.Id,
                 connectedClient.CommonName,
-                connectedClient.ManagementClientId);
+                connectedClient.ManagementClientId,
+                result.Success,
+                result.RevokeAttempted,
+                result.RevokeSucceeded);
         }
 
         return killed;
