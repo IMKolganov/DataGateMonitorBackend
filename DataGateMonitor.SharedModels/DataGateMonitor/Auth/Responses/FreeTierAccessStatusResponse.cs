@@ -17,6 +17,9 @@ public sealed class FreeTierAccessStatusResponse
 
     public bool IsGracePeriod { get; set; }
 
+    /// <summary>When <see cref="IsGracePeriod"/> is true, when the grace window expires (UTC).</summary>
+    public DateTimeOffset? GraceExpiresAtUtc { get; set; }
+
     /// <summary>User already has a Telegram identity link on this account.</summary>
     public bool IsLinkedToTelegram { get; set; }
 

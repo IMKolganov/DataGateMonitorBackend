@@ -20,4 +20,7 @@ public sealed class FreeTierAccessComplianceResult
 
     /// <summary>True when access is allowed via the configurable grace window (no channel subscription / merge).</summary>
     public bool IsGracePeriod { get; init; }
+
+    /// <summary>When <see cref="IsGracePeriod"/> is true, when the grace window expires (UTC).</summary>
+    public DateTimeOffset? GraceExpiresAtUtc { get; init; }
 }

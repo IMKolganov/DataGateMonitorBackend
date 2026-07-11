@@ -135,6 +135,7 @@ public static class ServiceConfiguration
         services.AddScoped<IFreeTierOpenVpnSessionEnforcementService, FreeTierOpenVpnSessionEnforcementService>();
         services.AddScoped<IOpenVpnDisconnectExecutor, OpenVpnDisconnectExecutor>();
         services.AddScoped<IFreeTierEnforcementOverviewService, FreeTierEnforcementOverviewService>();
+        services.AddScoped<IFreeTierGraceDisconnectNotifier, FreeTierGraceDisconnectNotifier>();
         
         services.AddScoped<IQuotaPlanService, QuotaPlanService>();
         services.AddScoped<IUserRoleManagementService, UserRoleManagementService>();

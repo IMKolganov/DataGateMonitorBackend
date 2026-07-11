@@ -11,6 +11,7 @@ public static class TelegramServiceConfiguration
         services.Configure<TelegramChannelSettings>(configuration.GetSection(TelegramChannelSettings.SectionName));
         services.PostConfigure<TelegramChannelSettings>(TelegramChannelSettings.ApplyEnvOverrides);
         services.AddScoped<ITelegramChannelMembershipChecker, TelegramChannelMembershipChecker>();
+        services.AddScoped<ITelegramDirectMessageSender, TelegramDirectMessageSender>();
 
         services.AddScoped<ITelegramBotUserProfilePhotoService, TelegramBotUserProfilePhotoService>();
         services.AddScoped<ITelegramUserService, TelegramUserService>();

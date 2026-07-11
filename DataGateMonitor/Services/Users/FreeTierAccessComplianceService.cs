@@ -34,12 +34,24 @@ public sealed class FreeTierAccessComplianceService(
         var result = evaluation.Result;
         var links = evaluation.Links;
 
-        if (result is { IsApplicable: true, IsCompliant: false } && IsGraceActive(userId))
+        if (result is { IsApplicable: true, IsCompliant: false } && TryGetGraceExpiresAt(userId) is { } expiresAt)
         {
-            result = CopyResult(result, isCompliant: true, isGracePeriod: true);
+            result = CopyResult(result, isCompliant: true, isGracePeriod: true, graceExpiresAtUtc: expiresAt);
         }
 
         return MapToStatusResponse(result, links);
+    }
+
+    /// <summary>
+    /// Called by client apps right after establishing a VPN connection. Starts/refreshes the grace
+    /// window (same effect as <see cref="AuditAndNotifyIfNeededAsync"/>) and returns the resulting status,
+    /// including <see cref="FreeTierAccessStatusResponse.GraceExpiresAtUtc"/> for a "connected for N minutes" UI.
+    /// </summary>
+    public async Task<FreeTierAccessStatusResponse> RegisterConnectionAsync(
+        int userId, string context, CancellationToken ct = default)
+    {
+        await AuditAndNotifyIfNeededAsync(userId, context, ct: ct);
+        return await GetStatusAsync(userId, ct);
     }
 
     public async Task<FreeTierAccessComplianceResult> AuditAndNotifyIfNeededByTelegramIdAsync(
@@ -92,8 +104,8 @@ public sealed class FreeTierAccessComplianceService(
         int userId, CancellationToken ct = default)
     {
         var (result, _) = await EvaluateAccessAsync(userId, isChannelSubscribed: null, ct);
-        if (result is { IsApplicable: true, IsCompliant: false } && IsGraceActive(userId))
-            return CopyResult(result, isCompliant: true, isGracePeriod: true);
+        if (result is { IsApplicable: true, IsCompliant: false } && TryGetGraceExpiresAt(userId) is { } expiresAt)
+            return CopyResult(result, isCompliant: true, isGracePeriod: true, graceExpiresAtUtc: expiresAt);
 
         return result;
     }
@@ -110,7 +122,7 @@ public sealed class FreeTierAccessComplianceService(
         if (!result.IsApplicable || result.IsCompliant)
             return result;
 
-        if (await TryApplyGracePeriodAsync(userId, ct))
+        if (await TryApplyGracePeriodAsync(userId, ct) is { } expiresAt)
         {
             logger.LogInformation(
                 "User {UserId} on plan {PlanName} allowed via grace period. Context={Context}",
@@ -118,7 +130,7 @@ public sealed class FreeTierAccessComplianceService(
                 result.ActivePlanName,
                 context);
 
-            return CopyResult(result, isCompliant: true, isGracePeriod: true);
+            return CopyResult(result, isCompliant: true, isGracePeriod: true, graceExpiresAtUtc: expiresAt);
         }
 
         try
@@ -152,7 +164,8 @@ public sealed class FreeTierAccessComplianceService(
         FreeTierAccessComplianceResult source,
         bool? isCompliant = null,
         bool? isGracePeriod = null,
-        bool? adminsNotified = null)
+        bool? adminsNotified = null,
+        DateTimeOffset? graceExpiresAtUtc = null)
         => new()
         {
             IsApplicable = source.IsApplicable,
@@ -164,6 +177,7 @@ public sealed class FreeTierAccessComplianceService(
             UserId = source.UserId,
             TelegramId = source.TelegramId,
             AdminsNotified = adminsNotified ?? source.AdminsNotified,
+            GraceExpiresAtUtc = graceExpiresAtUtc ?? source.GraceExpiresAtUtc,
         };
 
     private async Task<(FreeTierAccessComplianceResult Result, IReadOnlyList<UserIdentityLink> Links)> EvaluateAccessAsync(
@@ -240,6 +254,7 @@ public sealed class FreeTierAccessComplianceService(
             IsMergedAccount = result.IsMergedAccount,
             IsChannelSubscribed = result.IsChannelSubscribed,
             IsGracePeriod = result.IsGracePeriod,
+            GraceExpiresAtUtc = result.GraceExpiresAtUtc,
             IsLinkedToTelegram = isLinkedToTelegram,
             CanRequestAccountLinkCode = !isLinkedToTelegram && (hasGoogle || hasLocal),
             ActivePlanName = result.ActivePlanName,
@@ -269,31 +284,32 @@ public sealed class FreeTierAccessComplianceService(
 
     internal static string BuildGraceCacheKey(int userId) => $"free-tier-grace:{userId}";
 
-    private bool IsGraceActive(int userId)
-        => memoryCache.TryGetValue(BuildGraceCacheKey(userId), out _);
+    private DateTimeOffset? TryGetGraceExpiresAt(int userId)
+        => memoryCache.TryGetValue(BuildGraceCacheKey(userId), out DateTimeOffset expiresAt) ? expiresAt : null;
 
-    private async Task<bool> TryApplyGracePeriodAsync(int userId, CancellationToken ct)
+    private async Task<DateTimeOffset?> TryApplyGracePeriodAsync(int userId, CancellationToken ct)
     {
         if (!await IsGraceEnabledAsync(ct))
-            return false;
+            return null;
 
         var graceMinutes = await GetGraceMinutesAsync(ct);
         if (graceMinutes <= 0)
-            return false;
+            return null;
 
         var cacheKey = BuildGraceCacheKey(userId);
-        if (memoryCache.TryGetValue(cacheKey, out _))
-            return true;
+        if (TryGetGraceExpiresAt(userId) is { } existingExpiresAt)
+            return existingExpiresAt;
 
+        var expiresAt = DateTimeOffset.UtcNow.AddMinutes(graceMinutes);
         memoryCache.Set(
             cacheKey,
-            DateTimeOffset.UtcNow,
+            expiresAt,
             new MemoryCacheEntryOptions
             {
                 AbsoluteExpirationRelativeToNow = TimeSpan.FromMinutes(graceMinutes),
             });
 
-        return true;
+        return expiresAt;
     }
 
     private async Task<bool> IsGraceEnabledAsync(CancellationToken ct)

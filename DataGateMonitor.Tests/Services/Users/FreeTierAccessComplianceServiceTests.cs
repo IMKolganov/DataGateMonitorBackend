@@ -219,6 +219,35 @@ public class FreeTierAccessComplianceServiceTests
         _notifications.VerifyNoOtherCalls();
     }
 
+    [Fact]
+    public async Task IsCompliantViaGrace_SetsGraceExpiresAtUtc()
+    {
+        SetupFreePlanUser(60, 1010);
+        SetupGraceSettings(enabled: true, minutes: 5);
+
+        var before = DateTimeOffset.UtcNow;
+        var sut = CreateSut();
+        var result = await sut.AuditAndNotifyIfNeededAsync(60, "bot", ct: CancellationToken.None);
+        var after = DateTimeOffset.UtcNow;
+
+        Assert.True(result.IsGracePeriod);
+        Assert.NotNull(result.GraceExpiresAtUtc);
+        Assert.InRange(result.GraceExpiresAtUtc!.Value, before.AddMinutes(5), after.AddMinutes(5));
+    }
+
+    [Fact]
+    public async Task GracePeriod_ReusesCacheEntry_KeepsSameExpiry()
+    {
+        SetupFreePlanUser(61, 1011);
+        SetupGraceSettings(enabled: true, minutes: 5);
+
+        var sut = CreateSut();
+        var first = await sut.AuditAndNotifyIfNeededAsync(61, "bot", ct: CancellationToken.None);
+        var second = await sut.AuditAndNotifyIfNeededAsync(61, "bot", ct: CancellationToken.None);
+
+        Assert.Equal(first.GraceExpiresAtUtc, second.GraceExpiresAtUtc);
+    }
+
     [Theory]
     [InlineData("creator", true)]
     [InlineData("member", true)]
@@ -328,6 +357,62 @@ public class FreeTierAccessComplianceServiceTests
         Assert.True(status.IsApplicable);
         Assert.True(status.IsCompliant);
         Assert.True(status.IsGracePeriod);
+        Assert.NotNull(status.GraceExpiresAtUtc);
+    }
+
+    [Fact]
+    public async Task GetStatusAsync_WhenNotCompliantAndNoGrace_GraceExpiresAtUtcIsNull()
+    {
+        SetupFreePlanUser(18, 668);
+        SetupGraceSettings(enabled: false);
+
+        var sut = CreateSut();
+        var status = await sut.GetStatusAsync(18, CancellationToken.None);
+
+        Assert.False(status.IsCompliant);
+        Assert.Null(status.GraceExpiresAtUtc);
+    }
+
+    [Fact]
+    public async Task RegisterConnectionAsync_WhenNonCompliant_StartsGraceAndReturnsExpiry()
+    {
+        SetupFreePlanUser(70, 1020);
+        SetupGraceSettings(enabled: true, minutes: 5);
+
+        var sut = CreateSut();
+        var status = await sut.RegisterConnectionAsync(70, "android-connect", CancellationToken.None);
+
+        Assert.True(status.IsApplicable);
+        Assert.True(status.IsCompliant);
+        Assert.True(status.IsGracePeriod);
+        Assert.NotNull(status.GraceExpiresAtUtc);
+        _notifications.VerifyNoOtherCalls();
+    }
+
+    [Fact]
+    public async Task RegisterConnectionAsync_WhenCompliant_ReturnsCompliantStatusWithoutGrace()
+    {
+        _quotaAssignmentQuery
+            .Setup(q => q.GetActiveByUserId(71, It.IsAny<CancellationToken>()))
+            .ReturnsAsync(new UserQuotaPlan { UserId = 71, QuotaPlanId = 2 });
+        _quotaPlanQuery
+            .Setup(q => q.GetById(2, It.IsAny<CancellationToken>()))
+            .ReturnsAsync(new QuotaPlan { Id = 2, Name = QuotaPlanNames.Default });
+        _identityLinkQuery
+            .Setup(q => q.GetListByUserId(71, It.IsAny<CancellationToken>()))
+            .ReturnsAsync(
+            [
+                new UserIdentityLink { Provider = "telegram", ExternalId = "12345" },
+                new UserIdentityLink { Provider = "google", ExternalId = "sub" },
+            ]);
+
+        var sut = CreateSut();
+        var status = await sut.RegisterConnectionAsync(71, "android-connect", CancellationToken.None);
+
+        Assert.True(status.IsCompliant);
+        Assert.False(status.IsGracePeriod);
+        Assert.Null(status.GraceExpiresAtUtc);
+        _notifications.VerifyNoOtherCalls();
     }
 
     [Fact]

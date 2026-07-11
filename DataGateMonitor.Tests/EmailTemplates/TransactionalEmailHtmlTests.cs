@@ -46,4 +46,26 @@ public class TransactionalEmailHtmlTests
 
         Assert.Equal(html, result);
     }
+
+    [Fact]
+    public void BuildFreeTierGraceDisconnected_IncludesPlanAndChannel()
+    {
+        var html = TransactionalEmailHtml.BuildFreeTierGraceDisconnected("Free", "@DataGateVPNBot");
+
+        Assert.Contains("Free", html);
+        Assert.Contains("@DataGateVPNBot", html);
+    }
+
+    [Fact]
+    public void ApplyFreeTierGraceDisconnectedPlaceholders_ReplacesBothTokens()
+    {
+        var template = TransactionalEmailHtml.BuildFreeTierGraceDisconnectedWithPlaceholders();
+
+        var result = TransactionalEmailHtml.ApplyFreeTierGraceDisconnectedPlaceholders(template, "Default", "@DataGateVPNBot");
+
+        Assert.DoesNotContain("{{PLAN_NAME}}", result);
+        Assert.DoesNotContain("{{REQUIRED_CHANNEL}}", result);
+        Assert.Contains("Default", result);
+        Assert.Contains("@DataGateVPNBot", result);
+    }
 }

@@ -16,6 +16,7 @@ public sealed class FreeTierOpenVpnSessionEnforcementService(
     IUserQueryService userQueryService,
     IFreeTierAccessComplianceService freeTierAccessComplianceService,
     IOpenVpnDisconnectExecutor disconnectExecutor,
+    IFreeTierGraceDisconnectNotifier graceDisconnectNotifier,
     ISettingsService settingsService,
     ILogger<FreeTierOpenVpnSessionEnforcementService> logger) : IFreeTierOpenVpnSessionEnforcementService
 {
@@ -147,7 +148,21 @@ public sealed class FreeTierOpenVpnSessionEnforcementService(
                 ct);
 
             if (result.Success)
+            {
                 killed++;
+
+                try
+                {
+                    await graceDisconnectNotifier.NotifyAsync(user.Id, ct);
+                }
+                catch (Exception ex)
+                {
+                    logger.LogWarning(
+                        ex,
+                        "Failed to notify user {UserId} after free-tier enforcement disconnect.",
+                        user.Id);
+                }
+            }
 
             logger.LogInformation(
                 "Disconnected non-compliant Free/Default user {UserId} on server {ServerId}, CN={CommonName}, " +

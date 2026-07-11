@@ -10,6 +10,13 @@ public interface IFreeTierAccessComplianceService
     Task<FreeTierAccessStatusResponse> GetStatusAsync(int userId, CancellationToken ct = default);
 
     /// <summary>
+    /// Client apps call this right after establishing a VPN connection. Starts/refreshes the grace
+    /// window for a non-compliant user (same effect as <see cref="AuditAndNotifyIfNeededAsync"/>) and
+    /// returns the resulting status, including how long the grace window has left.
+    /// </summary>
+    Task<FreeTierAccessStatusResponse> RegisterConnectionAsync(int userId, string context, CancellationToken ct = default);
+
+    /// <summary>
     /// Raw compliance evaluation with no grace period applied — the exact rule the OpenVPN session
     /// enforcement job uses to decide who to kill (<see cref="ShouldEnforceOpenVpnDisconnectAsync"/>).
     /// Used to build the "who currently qualifies for enforcement" admin view so it matches reality.

@@ -12,6 +12,7 @@ public static class TransactionalEmailHtml
 {
     public const string DefaultConfirmationSubject = "Confirm your email — DataGate";
     public const string DefaultAdminPasswordResetSubject = "Administrator password reset — DataGate";
+    public const string DefaultFreeTierGraceDisconnectedSubject = "You were disconnected from the VPN — DataGate";
     public const string DefaultConfirmEmailPageUrl = "https://datagateapp.com/confirm-email";
 
     private const string MailVersionLabel = "1.0.3";
@@ -91,6 +92,45 @@ public static class TransactionalEmailHtml
             codeLabel: "Reset code",
             codeValueHtml: "{{CODE}}",
             signoff: "— The DataGate team");
+
+    public static string BuildFreeTierGraceDisconnected(string planName, string requiredChannel)
+        => BuildDocument(
+            pageTitle: "DataGate — disconnected after grace period",
+            emailTitle: "You were disconnected",
+            emailTagline: "Your Free/Default plan requires channel subscription or a linked account.",
+            includeDownloadButton: false,
+            emailLead: "Hello,",
+            bodyParagraphs:
+            [
+                $"You connected to the VPN and were allowed a short grace period, but you were disconnected because your account (plan <strong>{Escape(planName)}</strong>) still isn't subscribed to the required Telegram channel and isn't a linked (merged) account.",
+                $"Subscribe to <strong>{Escape(requiredChannel)}</strong> or link your Telegram account to your Google/local account in the app, then reconnect.",
+                "If you need help: <a href=\"https://t.me/KolganovIvan\" target=\"_blank\" rel=\"noopener noreferrer\"><b>@KolganovIvan</b></a>",
+            ],
+            codeLabel: "Required channel",
+            codeValueHtml: Escape(requiredChannel),
+            signoff: "— The DataGate team");
+
+    public static string BuildFreeTierGraceDisconnectedWithPlaceholders()
+        => BuildDocument(
+            pageTitle: "DataGate — disconnected after grace period",
+            emailTitle: "You were disconnected",
+            emailTagline: "Your Free/Default plan requires channel subscription or a linked account.",
+            includeDownloadButton: false,
+            emailLead: "Hello,",
+            bodyParagraphs:
+            [
+                "You connected to the VPN and were allowed a short grace period, but you were disconnected because your account (plan <strong>{{PLAN_NAME}}</strong>) still isn't subscribed to the required Telegram channel and isn't a linked (merged) account.",
+                "Subscribe to <strong>{{REQUIRED_CHANNEL}}</strong> or link your Telegram account to your Google/local account in the app, then reconnect.",
+                "If you need help: <a href=\"https://t.me/KolganovIvan\" target=\"_blank\" rel=\"noopener noreferrer\"><b>@KolganovIvan</b></a>",
+            ],
+            codeLabel: "Required channel",
+            codeValueHtml: "{{REQUIRED_CHANNEL}}",
+            signoff: "— The DataGate team");
+
+    public static string ApplyFreeTierGraceDisconnectedPlaceholders(string bodyHtml, string planName, string requiredChannel)
+        => bodyHtml
+            .Replace("{{PLAN_NAME}}", Escape(planName), StringComparison.Ordinal)
+            .Replace("{{REQUIRED_CHANNEL}}", Escape(requiredChannel), StringComparison.Ordinal);
 
     public static string ApplyConfirmationPlaceholders(string bodyHtml, string code, int ttlMinutes)
     {

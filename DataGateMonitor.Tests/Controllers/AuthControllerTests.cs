@@ -279,6 +279,35 @@ public class AuthControllerTests
     }
 
     [Fact]
+    public async Task RegisterFreeTierAccessConnect_DelegatesToComplianceServiceForCurrentUser()
+    {
+        var expiresAt = DateTimeOffset.UtcNow.AddMinutes(15);
+        _currentUserService.Setup(s => s.UserId).Returns(9);
+        _freeTierComplianceService
+            .Setup(s => s.RegisterConnectionAsync(9, "android-connect", It.IsAny<CancellationToken>()))
+            .ReturnsAsync(new FreeTierAccessStatusResponse
+            {
+                IsApplicable = true,
+                IsCompliant = true,
+                IsGracePeriod = true,
+                GraceExpiresAtUtc = expiresAt,
+                RequiredChannel = "@DataGateVPNBot",
+                ActivePlanName = "Free",
+            });
+
+        var controller = CreateController();
+        var result = await controller.RegisterFreeTierAccessConnect(CancellationToken.None);
+
+        var ok = Assert.IsType<OkObjectResult>(result.Result);
+        var response = Assert.IsType<ApiResponse<FreeTierAccessStatusResponse>>(ok.Value);
+        Assert.True(response.Data!.IsGracePeriod);
+        Assert.Equal(expiresAt, response.Data.GraceExpiresAtUtc);
+        _freeTierComplianceService.Verify(
+            s => s.RegisterConnectionAsync(9, "android-connect", It.IsAny<CancellationToken>()),
+            Times.Once);
+    }
+
+    [Fact]
     public async Task ConfirmEmail_DelegatesToEmailConfirmationService()
     {
         _emailConfirmationService

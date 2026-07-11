@@ -230,6 +230,22 @@ public class AuthController(
         return Ok(ApiResponse<FreeTierAccessStatusResponse>.SuccessResponse(status));
     }
 
+    /// <summary>
+    /// Client apps: call right after establishing a VPN connection. Starts/refreshes the Free/Default
+    /// grace window (if applicable) and returns the resulting status, so the client can show a
+    /// "connected for N minutes" countdown via <see cref="FreeTierAccessStatusResponse.GraceExpiresAtUtc"/>.
+    /// </summary>
+    [Authorize]
+    [HttpPost("free-tier-access/connect")]
+    [ProducesResponseType(typeof(ApiResponse<FreeTierAccessStatusResponse>), StatusCodes.Status200OK)]
+    public async Task<ActionResult<ApiResponse<FreeTierAccessStatusResponse>>> RegisterFreeTierAccessConnect(
+        CancellationToken ct)
+    {
+        var status = await freeTierAccessComplianceService.RegisterConnectionAsync(
+            currentUserService.UserId, "android-connect", ct);
+        return Ok(ApiResponse<FreeTierAccessStatusResponse>.SuccessResponse(status));
+    }
+
     [AllowAnonymous]
     [HttpPost("email/request-confirmation")]
     [ProducesResponseType(typeof(ApiResponse<string>), StatusCodes.Status200OK)]
