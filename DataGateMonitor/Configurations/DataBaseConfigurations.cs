@@ -16,7 +16,7 @@ public static class DataBaseConfigurations
     public static void DataBaseServices(this IServiceCollection services, IConfiguration configuration,
         ILogger logger, DatabaseRuntimeOptions databaseRuntime)
     {
-        if (IntegrationTestDatabaseOptions.UseInMemoryDatabaseForIntegrationTests(out var inMemoryDatabaseName))
+        if (IntegrationTestDatabaseOptions.UseInMemoryDatabaseForIntegrationTests(configuration, out var inMemoryDatabaseName))
         {
             logger.Information("Using EF Core in-memory database for integration tests: {DatabaseName}", inMemoryDatabaseName);
             services.AddDbContext<ApplicationDbContext>(
@@ -140,8 +140,16 @@ file sealed class MarkDatabaseUnconfiguredHostedService(ApplicationDatabaseState
 
 file static class IntegrationTestDatabaseOptions
 {
-    public static bool UseInMemoryDatabaseForIntegrationTests(out string databaseName)
+    public static bool UseInMemoryDatabaseForIntegrationTests(IConfiguration configuration, out string databaseName)
     {
+        databaseName = configuration["IntegrationTesting:InMemoryDatabaseName"] ?? string.Empty;
+        if (configuration.GetValue<bool>("IntegrationTesting:UseInMemoryDatabase")
+            && !string.IsNullOrWhiteSpace(databaseName))
+        {
+            return true;
+        }
+
+        // Legacy env-based hook (avoid in parallel WebApplicationFactory tests).
         databaseName = Environment.GetEnvironmentVariable("DATAGATE_INMEMORY_DB_NAME") ?? string.Empty;
         return string.Equals(
                    Environment.GetEnvironmentVariable("DATAGATE_USE_INMEMORY_DB"),

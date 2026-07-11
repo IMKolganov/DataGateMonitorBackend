@@ -16,6 +16,9 @@ namespace DataGateMonitor.Controllers;
 public class UserController(
     IUserService userService,
     IUserMergeService userMergeService,
+    ITelegramAccountLinkService telegramAccountLinkService,
+    IFreeTierAccessComplianceService freeTierAccessComplianceService,
+    IUserPasswordHistoryService userPasswordHistoryService,
     ICurrentUserService currentUserService) : BaseController
 {
     [HttpPost("register-from-tgbot")]
@@ -86,5 +89,95 @@ public class UserController(
             cancellationToken);
 
         return Ok(ApiResponse<MergeTelegramGoogleUsersResponse>.SuccessResponse(response));
+    }
+
+    /// <summary>
+    /// Telegram bot: user entered a link code from the client app. Merges dashboard account into Telegram user.
+    /// </summary>
+    [HttpPost("merge-telegram-google/by-link-code")]
+    [ProducesResponseType(typeof(ApiResponse<CompleteTelegramAccountLinkResponse>), StatusCodes.Status200OK)]
+    public async Task<ActionResult<ApiResponse<CompleteTelegramAccountLinkResponse>>> MergeTelegramGoogleByLinkCode(
+        [FromBody] CompleteTelegramAccountLinkRequest request,
+        CancellationToken ct)
+    {
+        if (request is null || string.IsNullOrWhiteSpace(request.Code))
+            return BadRequest(ApiResponse<CompleteTelegramAccountLinkResponse>.ErrorResponse("Code is required."));
+
+        if (request.TelegramId <= 0)
+            return BadRequest(ApiResponse<CompleteTelegramAccountLinkResponse>.ErrorResponse("TelegramId is required."));
+
+        var result = await telegramAccountLinkService.CompleteLinkByCodeAsync(
+            request.Code,
+            request.TelegramId,
+            ct);
+
+        if (!result.Success)
+            return BadRequest(ApiResponse<CompleteTelegramAccountLinkResponse>.ErrorResponse(result.Message));
+
+        return Ok(ApiResponse<CompleteTelegramAccountLinkResponse>.SuccessResponse(result));
+    }
+
+    /// <summary>
+    /// Audits whether a Telegram user with Free/Default plan is merged or subscribed to the required channel.
+    /// Notifies admins when the check fails. Optional channelSubscribed comes from the bot getChatMember result.
+    /// </summary>
+    [HttpPost("audit-free-tier-access/by-telegram/{telegramId:long}")]
+    [ProducesResponseType(typeof(ApiResponse<bool>), StatusCodes.Status200OK)]
+    public async Task<ActionResult<ApiResponse<bool>>> AuditFreeTierAccessByTelegram(
+        [FromRoute] long telegramId,
+        [FromQuery] bool? channelSubscribed,
+        [FromQuery] string? context,
+        CancellationToken cancellationToken)
+    {
+        var result = await freeTierAccessComplianceService.AuditAndNotifyIfNeededByTelegramIdAsync(
+            telegramId,
+            string.IsNullOrWhiteSpace(context) ? "Telegram bot audit" : context,
+            channelSubscribed,
+            cancellationToken);
+
+        return Ok(ApiResponse<bool>.SuccessResponse(result.IsCompliant));
+    }
+
+    [HttpGet("{id:int}/password-history")]
+    [Authorize(Roles = "Admin")]
+    [ProducesResponseType(typeof(ApiResponse<GetUserPasswordHistoryResponse>), StatusCodes.Status200OK)]
+    public async Task<ActionResult<ApiResponse<GetUserPasswordHistoryResponse>>> GetPasswordHistory(
+        [FromRoute] int id,
+        CancellationToken cancellationToken)
+    {
+        var response = await userPasswordHistoryService.GetHistoryAsync(id, cancellationToken);
+        return Ok(ApiResponse<GetUserPasswordHistoryResponse>.SuccessResponse(response));
+    }
+
+    [HttpPost("{id:int}/set-password")]
+    [Authorize(Roles = "Admin")]
+    [ProducesResponseType(typeof(ApiResponse<AdminSetUserPasswordResponse>), StatusCodes.Status200OK)]
+    public async Task<ActionResult<ApiResponse<AdminSetUserPasswordResponse>>> AdminSetPassword(
+        [FromRoute] int id,
+        [FromBody] AdminSetUserPasswordRequest request,
+        CancellationToken cancellationToken)
+    {
+        var response = await userPasswordHistoryService.AdminSetPasswordAsync(
+            id,
+            currentUserService.UserId,
+            request,
+            cancellationToken);
+        return Ok(ApiResponse<AdminSetUserPasswordResponse>.SuccessResponse(response));
+    }
+
+    [HttpPost("{id:int}/password-history/{historyId:int}/restore")]
+    [Authorize(Roles = "Admin")]
+    [ProducesResponseType(typeof(ApiResponse<RestoreUserPasswordResponse>), StatusCodes.Status200OK)]
+    public async Task<ActionResult<ApiResponse<RestoreUserPasswordResponse>>> RestorePasswordFromHistory(
+        [FromRoute] int id,
+        [FromRoute] int historyId,
+        CancellationToken cancellationToken)
+    {
+        var response = await userPasswordHistoryService.RestoreFromHistoryAsync(
+            id,
+            historyId,
+            currentUserService.UserId,
+            cancellationToken);
+        return Ok(ApiResponse<RestoreUserPasswordResponse>.SuccessResponse(response));
     }
 }

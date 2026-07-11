@@ -1,5 +1,6 @@
 ﻿using Microsoft.EntityFrameworkCore;
 using DataGateMonitor.Models;
+using DataGateMonitor.SharedModels.DataGateMonitor.Applications.Requests;
 using DataGateMonitor.SharedModels.Responses;
 
 namespace DataGateMonitor.DataBase.Services.Query.ClientApplicationTable;
@@ -7,7 +8,28 @@ namespace DataGateMonitor.DataBase.Services.Query.ClientApplicationTable;
 public class ClientApplicationQueryService(IQueryService<ClientApplication, int> q) : IClientApplicationQueryService
 {
     public Task<List<ClientApplication>> GetAll(CancellationToken ct)
-        => q.GetAll(ct: ct);
+        => GetFiltered(new GetAllApplicationsRequest(), ct);
+
+    public async Task<List<ClientApplication>> GetFiltered(GetAllApplicationsRequest request, CancellationToken ct)
+    {
+        var query = q.Query();
+
+        var namePattern = GridFilterHelper.ContainsPattern(request.Name);
+        if (namePattern != null)
+            query = query.Where(x => EF.Functions.ILike(x.Name, namePattern));
+
+        var clientIdPattern = GridFilterHelper.ContainsPattern(request.ClientId);
+        if (clientIdPattern != null)
+            query = query.Where(x => EF.Functions.ILike(x.ClientId, clientIdPattern));
+
+        if (request.IsRevoked.HasValue)
+            query = query.Where(x => x.IsRevoked == request.IsRevoked.Value);
+
+        return await query
+            .OrderBy(x => x.Id)
+            .AsNoTracking()
+            .ToListAsync(ct);
+    }
     
     public Task<List<ClientApplication>> GetAllIsNotRevoked(CancellationToken ct)
         => q.Query()

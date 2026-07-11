@@ -27,6 +27,7 @@ public interface IOpenVpnOverviewSeriesQuery
         DateTimeOffset toUtc,
         int? vpnServerId,
         string? externalId,
+        string? displayName,
         CancellationToken ct = default);
 
     /// <summary>

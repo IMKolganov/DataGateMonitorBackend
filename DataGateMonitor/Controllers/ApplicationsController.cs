@@ -28,9 +28,10 @@ public class ApplicationsController(IApplicationService appService) : BaseContro
 
     [HttpGet("get-all")]
     public async Task<ActionResult<ApiResponse<ApplicationsResponse>>> GetAllApplications(
+        [FromQuery] GetAllApplicationsRequest request,
         CancellationToken cancellationToken)
     {
-        var apps = await appService.GetAllApplicationsAsync(cancellationToken);
+        var apps = await appService.GetAllApplicationsAsync(request, cancellationToken);
 
         var dtoList = apps.Adapt<List<ApplicationDto>>();
 

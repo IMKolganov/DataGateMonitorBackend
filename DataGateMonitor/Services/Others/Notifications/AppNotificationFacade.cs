@@ -45,4 +45,25 @@ public class AppNotificationFacade(
         var env = catalog.UserPasswordChanged(userId, displayName, login, reason);
         return notificationService.NotifyAdmins(env.Request, env.Channels, ct);
     }
+
+    public Task FreeTierAccessNonCompliant(
+        int userId,
+        string planName,
+        long? telegramId,
+        bool isMergedAccount,
+        bool isChannelSubscribed,
+        string context,
+        string requiredChannelChatId,
+        CancellationToken ct)
+    {
+        var env = catalog.FreeTierAccessNonCompliant(
+            userId,
+            planName,
+            telegramId,
+            isMergedAccount,
+            isChannelSubscribed,
+            context,
+            requiredChannelChatId);
+        return notificationService.NotifyAdmins(env.Request, env.Channels, ct);
+    }
 }

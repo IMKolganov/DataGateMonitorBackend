@@ -2,6 +2,7 @@ using Microsoft.AspNetCore.Mvc;
 using Moq;
 using DataGateMonitor.Controllers;
 using DataGateMonitor.Services.Api.CurrentUser.Interfaces;
+using DataGateMonitor.Services.Users;
 using DataGateMonitor.Services.Users.Interfaces;
 using DataGateMonitor.SharedModels.DataGateMonitor.User.Requests;
 using DataGateMonitor.SharedModels.DataGateMonitor.User.Responses;
@@ -13,6 +14,9 @@ public class UserMergeControllerTests
 {
     private readonly Mock<IUserService> _userServiceMock = new(MockBehavior.Strict);
     private readonly Mock<IUserMergeService> _userMergeServiceMock = new(MockBehavior.Strict);
+    private readonly Mock<IFreeTierAccessComplianceService> _freeTierComplianceMock = new(MockBehavior.Strict);
+    private readonly Mock<ITelegramAccountLinkService> _telegramAccountLinkMock = new(MockBehavior.Strict);
+    private readonly Mock<IUserPasswordHistoryService> _passwordHistoryMock = new(MockBehavior.Strict);
     private readonly Mock<ICurrentUserService> _currentUserServiceMock = new(MockBehavior.Strict);
     private readonly UserController _controller;
 
@@ -22,6 +26,9 @@ public class UserMergeControllerTests
         _controller = new UserController(
             _userServiceMock.Object,
             _userMergeServiceMock.Object,
+            _telegramAccountLinkMock.Object,
+            _freeTierComplianceMock.Object,
+            _passwordHistoryMock.Object,
             _currentUserServiceMock.Object);
     }
 
@@ -145,5 +152,129 @@ public class UserMergeControllerTests
             _controller.MergeTelegramGoogle(req, CancellationToken.None));
 
         Assert.Contains("not found", ex.Message);
+    }
+
+    [Fact]
+    public async Task MergeTelegramGoogleByLinkCode_WhenCodeMissing_ReturnsBadRequest()
+    {
+        var result = await _controller.MergeTelegramGoogleByLinkCode(
+            new CompleteTelegramAccountLinkRequest { Code = "  ", TelegramId = 1 },
+            CancellationToken.None);
+
+        var bad = Assert.IsType<BadRequestObjectResult>(result.Result);
+        Assert.False(((ApiResponse<CompleteTelegramAccountLinkResponse>)bad.Value!).Success);
+    }
+
+    [Fact]
+    public async Task MergeTelegramGoogleByLinkCode_ReturnsOk_WithServiceResult()
+    {
+        var req = new CompleteTelegramAccountLinkRequest { Code = "ABCD2345", TelegramId = 999 };
+        var expected = new CompleteTelegramAccountLinkResponse
+        {
+            Success = true,
+            Message = "Linked",
+            Merge = new MergeTelegramGoogleUsersResponse { SurvivorUserId = 10, MergedUserId = 20 },
+        };
+
+        _telegramAccountLinkMock
+            .Setup(s => s.CompleteLinkByCodeAsync("ABCD2345", 999, It.IsAny<CancellationToken>()))
+            .ReturnsAsync(expected);
+
+        var result = await _controller.MergeTelegramGoogleByLinkCode(req, CancellationToken.None);
+
+        var ok = Assert.IsType<OkObjectResult>(result.Result);
+        var response = Assert.IsType<ApiResponse<CompleteTelegramAccountLinkResponse>>(ok.Value);
+        Assert.True(response.Data!.Success);
+        Assert.Equal(10, response.Data.Merge!.SurvivorUserId);
+        _telegramAccountLinkMock.VerifyAll();
+    }
+
+    [Fact]
+    public async Task MergeTelegramGoogleByLinkCode_WhenServiceFails_ReturnsBadRequest()
+    {
+        var req = new CompleteTelegramAccountLinkRequest { Code = "ABCD2345", TelegramId = 999 };
+
+        _telegramAccountLinkMock
+            .Setup(s => s.CompleteLinkByCodeAsync("ABCD2345", 999, It.IsAny<CancellationToken>()))
+            .ReturnsAsync(new CompleteTelegramAccountLinkResponse
+            {
+                Success = false,
+                Message = "Invalid or expired link code.",
+            });
+
+        var result = await _controller.MergeTelegramGoogleByLinkCode(req, CancellationToken.None);
+
+        var bad = Assert.IsType<BadRequestObjectResult>(result.Result);
+        Assert.False(((ApiResponse<CompleteTelegramAccountLinkResponse>)bad.Value!).Success);
+        _telegramAccountLinkMock.VerifyAll();
+    }
+
+    [Fact]
+    public async Task AuditFreeTierAccessByTelegram_ReturnsOk_WhenCompliant()
+    {
+        _freeTierComplianceMock
+            .Setup(s => s.AuditAndNotifyIfNeededByTelegramIdAsync(
+                12345,
+                "Telegram bot audit",
+                true,
+                It.IsAny<CancellationToken>()))
+            .ReturnsAsync(new FreeTierAccessComplianceResult
+            {
+                IsApplicable = true,
+                IsCompliant = true,
+            });
+
+        var result = await _controller.AuditFreeTierAccessByTelegram(12345, true, "Telegram bot audit", CancellationToken.None);
+
+        var ok = Assert.IsType<OkObjectResult>(result.Result);
+        var response = Assert.IsType<ApiResponse<bool>>(ok.Value);
+        Assert.True(response.Success);
+        Assert.True(response.Data);
+        _freeTierComplianceMock.VerifyAll();
+    }
+
+    [Fact]
+    public async Task AuditFreeTierAccessByTelegram_ReturnsFalse_WhenNotCompliant()
+    {
+        _freeTierComplianceMock
+            .Setup(s => s.AuditAndNotifyIfNeededByTelegramIdAsync(
+                12345,
+                "Telegram bot audit",
+                false,
+                It.IsAny<CancellationToken>()))
+            .ReturnsAsync(new FreeTierAccessComplianceResult
+            {
+                IsApplicable = true,
+                IsCompliant = false,
+            });
+
+        var result = await _controller.AuditFreeTierAccessByTelegram(12345, false, "Telegram bot audit", CancellationToken.None);
+
+        var ok = Assert.IsType<OkObjectResult>(result.Result);
+        var response = Assert.IsType<ApiResponse<bool>>(ok.Value);
+        Assert.False(response.Data);
+        _freeTierComplianceMock.VerifyAll();
+    }
+
+    [Fact]
+    public async Task AuditFreeTierAccessByTelegram_ReturnsTrue_WhenNotApplicableButCompliant()
+    {
+        _freeTierComplianceMock
+            .Setup(s => s.AuditAndNotifyIfNeededByTelegramIdAsync(
+                12345,
+                "Telegram bot audit",
+                null,
+                It.IsAny<CancellationToken>()))
+            .ReturnsAsync(new FreeTierAccessComplianceResult
+            {
+                IsApplicable = false,
+                IsCompliant = true,
+            });
+
+        var result = await _controller.AuditFreeTierAccessByTelegram(12345, null, "Telegram bot audit", CancellationToken.None);
+
+        var ok = Assert.IsType<OkObjectResult>(result.Result);
+        Assert.True(((ApiResponse<bool>)ok.Value!).Data);
+        _freeTierComplianceMock.VerifyAll();
     }
 }

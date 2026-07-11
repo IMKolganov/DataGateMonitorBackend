@@ -24,12 +24,20 @@ public class VpnServerConflogQueryService(IQueryService<VpnServerConflog, int> q
 
     public async Task<IPagedResult<VpnServerConflog>> GetPageByVpnServerId(
         int vpnServerId, int page, int pageSize, CancellationToken ct = default)
+        => await GetPageByVpnServerId(vpnServerId, page, pageSize, requestUrl: null, ct);
+
+    public async Task<IPagedResult<VpnServerConflog>> GetPageByVpnServerId(
+        int vpnServerId, int page, int pageSize, string? requestUrl, CancellationToken ct = default)
     {
         if (page < 1) page = 1;
         if (pageSize < 1) pageSize = 10;
 
         var baseQuery = q.Query()
             .Where(x => x.VpnServerId == vpnServerId);
+
+        var urlPattern = GridFilterHelper.ContainsPattern(requestUrl);
+        if (urlPattern != null)
+            baseQuery = baseQuery.Where(x => x.RequestUrl != null && EF.Functions.ILike(x.RequestUrl, urlPattern));
 
         var totalCount = await baseQuery.CountAsync(ct);
 

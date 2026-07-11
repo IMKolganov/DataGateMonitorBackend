@@ -4,6 +4,7 @@ using DataGateMonitor.DataBase.Services.Command.Interfaces;
 using DataGateMonitor.DataBase.Services.Query.TelegramBotUserTable;
 using DataGateMonitor.Models;
 using DataGateMonitor.Services.TelegramBot.Interfaces;
+using DataGateMonitor.SharedModels.DataGateMonitor.TelegramBotUser.Requests;
 
 namespace DataGateMonitor.Services.TelegramBot;
 
@@ -61,10 +62,10 @@ public class TelegramUserService(
     }
 
     public async Task<List<TelegramBotUser>> GetAllUsersAsync(CancellationToken ct)
-    {
-        var telegramBotUser = await telegramBotUserQueryService.GetAll(ct);
-        return telegramBotUser.OrderBy(x => x.Id).ToList();
-    }
+        => await GetAllUsersAsync(new GetAllTelegramBotUsersRequest(), ct);
+
+    public Task<List<TelegramBotUser>> GetAllUsersAsync(GetAllTelegramBotUsersRequest request, CancellationToken ct)
+        => telegramBotUserQueryService.GetFiltered(request, ct);
 
     public async Task<TelegramBotUser?> GetUserByTelegramIdAsync(long telegramId, CancellationToken ct)
     {

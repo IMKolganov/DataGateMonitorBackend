@@ -49,5 +49,9 @@
       "Microsoft.AspNetCore": "Warning"
     }
   },
+  "TelegramChannel": {
+    "RequiredChannelUsername": "DataGateVPNBot",
+    "BotToken": ""
+  },
   "AllowedHosts": "*"
 }

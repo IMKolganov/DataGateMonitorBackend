@@ -536,6 +536,121 @@ public static class LocalizationTextSeedData
             Text =
                 "Не удалось выдать код. Сначала зарегистрируйтесь в боте через /register или обратитесь в поддержку, если аккаунт заблокирован."
         },
+
+        new LocalizationText
+        {
+            Id = 79, Key = "AccountLinkTelegramAlreadyLinkedToGoogle", Language = Language.English,
+            Text =
+                "This Telegram account is already linked to Google account {accountLabel}. Sign in with that Google account in the app."
+        },
+        new LocalizationText
+        {
+            Id = 80, Key = "AccountLinkTelegramAlreadyLinkedToGoogle", Language = Language.Greek,
+            Text =
+                "Αυτός ο λογαριασμός Telegram είναι ήδη συνδεδεμένος με τον Google λογαριασμό {accountLabel}. Συνδεθείτε στην εφαρμογή με αυτόν τον Google λογαριασμό."
+        },
+        new LocalizationText
+        {
+            Id = 81, Key = "AccountLinkTelegramAlreadyLinkedToGoogle", Language = Language.Russian,
+            Text =
+                "Этот Telegram уже привязан к Google-аккаунту {accountLabel}. Войдите в приложение под этим Google."
+        },
+
+        new LocalizationText
+        {
+            Id = 82, Key = "AccountLinkSuccess", Language = Language.English,
+            Text = "Accounts linked successfully. User #{userId}"
+        },
+        new LocalizationText
+        {
+            Id = 83, Key = "AccountLinkSuccess", Language = Language.Greek,
+            Text = "Οι λογαριασμοί συνδέθηκαν επιτυχώς. Χρήστης #{userId}"
+        },
+        new LocalizationText
+        {
+            Id = 84, Key = "AccountLinkSuccess", Language = Language.Russian,
+            Text = "Аккаунты успешно связаны. Пользователь #{userId}"
+        },
+
+        new LocalizationText
+        {
+            Id = 85, Key = "AccountLinkAlreadyLinked", Language = Language.English,
+            Text = "Accounts are already linked."
+        },
+        new LocalizationText
+        {
+            Id = 86, Key = "AccountLinkAlreadyLinked", Language = Language.Greek,
+            Text = "Οι λογαριασμοί είναι ήδη συνδεδεμένοι."
+        },
+        new LocalizationText
+        {
+            Id = 87, Key = "AccountLinkAlreadyLinked", Language = Language.Russian,
+            Text = "Аккаунты уже связаны."
+        },
+
+        new LocalizationText
+        {
+            Id = 88, Key = "AccountLinkEnterCodePrompt", Language = Language.English,
+            Text = "Enter the code from the app:\n/link_account CODE\n\nOr send the 8-character code alone in this chat."
+        },
+        new LocalizationText
+        {
+            Id = 89, Key = "AccountLinkEnterCodePrompt", Language = Language.Greek,
+            Text = "Εισαγάγετε τον κωδικό από την εφαρμογή:\n/link_account CODE\n\nΉ στείλτε μόνο τους 8 χαρακτήρες σε αυτή τη συνομιλία."
+        },
+        new LocalizationText
+        {
+            Id = 90, Key = "AccountLinkEnterCodePrompt", Language = Language.Russian,
+            Text = "Введите код из приложения:\n/link_account КОД\n\nИли отправьте 8 символов кода отдельным сообщением в этот чат."
+        },
+
+        new LocalizationText
+        {
+            Id = 91, Key = "AccountLinkInvalidCodeFormat", Language = Language.English,
+            Text = "Invalid code format. Expected 8 characters (A-Z, 2-9)."
+        },
+        new LocalizationText
+        {
+            Id = 92, Key = "AccountLinkInvalidCodeFormat", Language = Language.Greek,
+            Text = "Μη έγκυρη μορφή κωδικού. Αναμένονται 8 χαρακτήρες (A-Z, 2-9)."
+        },
+        new LocalizationText
+        {
+            Id = 93, Key = "AccountLinkInvalidCodeFormat", Language = Language.Russian,
+            Text = "Неверный формат кода. Нужны 8 символов (A-Z, 2-9)."
+        },
+
+        new LocalizationText
+        {
+            Id = 94, Key = "AccountLinkNotRegistered", Language = Language.English,
+            Text = "Telegram account is not registered. Use /register in the bot first."
+        },
+        new LocalizationText
+        {
+            Id = 95, Key = "AccountLinkNotRegistered", Language = Language.Greek,
+            Text = "Ο λογαριασμός Telegram δεν είναι εγγεγραμμένος. Χρησιμοποιήστε πρώτα /register στο bot."
+        },
+        new LocalizationText
+        {
+            Id = 96, Key = "AccountLinkNotRegistered", Language = Language.Russian,
+            Text = "Telegram-аккаунт не зарегистрирован. Сначала используйте /register в боте."
+        },
+
+        new LocalizationText
+        {
+            Id = 97, Key = "AccountLinkFailed", Language = Language.English,
+            Text = "Could not link accounts. Check the code and try again."
+        },
+        new LocalizationText
+        {
+            Id = 98, Key = "AccountLinkFailed", Language = Language.Greek,
+            Text = "Αποτυχία σύνδεσης λογαριασμών. Ελέγξτε τον κωδικό και δοκιμάστε ξανά."
+        },
+        new LocalizationText
+        {
+            Id = 99, Key = "AccountLinkFailed", Language = Language.Russian,
+            Text = "Не удалось связать аккаунты. Проверьте код и попробуйте снова."
+        },
     };
 
 }

@@ -53,14 +53,14 @@ public class UserMergeServiceDryRunTests
 
         var response = await harness.MergeAsync(telegram, google, dryRun: true);
 
-        Assert.Equal(1, response.Stats.IssuedOvpnFilesExternalIdUpdated);
-        Assert.Equal(1, response.Stats.IssuedXrayClientLinksExternalIdUpdated);
+        Assert.Equal(0, response.Stats.IssuedOvpnFilesExternalIdUpdated);
+        Assert.Equal(0, response.Stats.IssuedXrayClientLinksExternalIdUpdated);
         Assert.Equal(1, response.Stats.VpnServerClientsUserIdUpdated);
-        Assert.Equal(1, response.Stats.VpnServerClientsExternalIdUpdated);
+        Assert.Equal(0, response.Stats.VpnServerClientsExternalIdUpdated);
         Assert.Equal(1, response.Stats.VpnServerClientTrafficsUserIdUpdated);
-        Assert.Equal(1, response.Stats.VpnServerClientTrafficsExternalIdUpdated);
+        Assert.Equal(0, response.Stats.VpnServerClientTrafficsExternalIdUpdated);
         Assert.Equal(1, response.Stats.VpnServerClientTrafficDailiesUserIdUpdated);
-        Assert.Equal(1, response.Stats.VpnServerClientTrafficDailiesExternalIdUpdated);
+        Assert.Equal(0, response.Stats.VpnServerClientTrafficDailiesExternalIdUpdated);
         Assert.Equal(1, response.Stats.DevicesReassigned);
         Assert.Equal(1, response.Stats.UserRefreshTokensRemoved);
     }
@@ -139,7 +139,20 @@ public class UserMergeServiceDryRunTests
 
         var response = await harness.MergeAsync(telegram, google, dryRun: true);
 
-        Assert.Contains(response.Warnings, w => w.Contains(TelegramExternalId, StringComparison.Ordinal));
+        Assert.Contains(response.Warnings, w => w.Contains(GoogleExternalId, StringComparison.Ordinal));
         Assert.Contains(response.Warnings, w => w.Contains("ExternalId", StringComparison.OrdinalIgnoreCase));
+    }
+
+    [Fact]
+    public async Task DryRun_SkipsExternalIdRewriteWarning_WhenIdsMatch()
+    {
+        await using var harness = UserMergeServiceTestHarness.Create();
+        const string sharedId = "shared-vpn-external-id";
+        var (telegram, google) = await harness.SeedTelegramGooglePairAsync(sharedId, sharedId);
+
+        var response = await harness.MergeAsync(telegram, google, dryRun: true);
+
+        Assert.DoesNotContain(response.Warnings, w => w.Contains("ExternalId", StringComparison.OrdinalIgnoreCase));
+        Assert.Equal(0, response.Stats.IssuedOvpnFilesExternalIdUpdated);
     }
 }

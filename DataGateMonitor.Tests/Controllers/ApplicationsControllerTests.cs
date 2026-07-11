@@ -96,13 +96,13 @@ namespace DataGateMonitor.Tests.Controllers
             var list = new List<ClientApplication> { app1, app2 };
 
             appServiceMock
-                .Setup(s => s.GetAllApplicationsAsync(It.IsAny<CancellationToken>()))
+                .Setup(s => s.GetAllApplicationsAsync(It.IsAny<GetAllApplicationsRequest>(), It.IsAny<CancellationToken>()))
                 .ReturnsAsync(list);
 
             var ct = CancellationToken.None;
 
             // Act
-            var result = await controller.GetAllApplications(ct);
+            var result = await controller.GetAllApplications(new GetAllApplicationsRequest(), ct);
 
             // Assert
             var ok = Assert.IsType<OkObjectResult>(result.Result);
@@ -117,13 +117,26 @@ namespace DataGateMonitor.Tests.Controllers
             Assert.Equal(2, response.Data.Applications.Count);
 
             appServiceMock.Verify(
-                s => s.GetAllApplicationsAsync(ct),
+                s => s.GetAllApplicationsAsync(It.IsAny<GetAllApplicationsRequest>(), ct),
                 Times.Once);
         }
 
-        // -------------------------
-        // RevokeApplication tests
-        // -------------------------
+    [Fact]
+    public async Task GetAllApplications_Passes_Filter_Request_To_Service()
+    {
+        var request = new GetAllApplicationsRequest { Name = "App", IsRevoked = false };
+        appServiceMock
+            .Setup(s => s.GetAllApplicationsAsync(request, It.IsAny<CancellationToken>()))
+            .ReturnsAsync(new List<ClientApplication>());
+
+        await controller.GetAllApplications(request, CancellationToken.None);
+
+        appServiceMock.Verify(s => s.GetAllApplicationsAsync(request, It.IsAny<CancellationToken>()), Times.Once);
+    }
+
+    // -------------------------
+    // RevokeApplication tests
+    // -------------------------
 
         [Fact]
         public async Task RevokeApplication_WhenExists_ReturnsOk()

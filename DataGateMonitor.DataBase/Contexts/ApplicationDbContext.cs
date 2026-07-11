@@ -49,6 +49,7 @@ public class ApplicationDbContext(DbContextOptions<ApplicationDbContext> options
     public DbSet<NotificationRecipient> NotificationRecipients { get; set; } = null!;
     public DbSet<User> Users { get; set; } = null!;
     public DbSet<UserCredential> UserCredentials { get; set; } = null!;
+    public DbSet<UserPasswordHistory> UserPasswordHistories { get; set; } = null!;
     public DbSet<UserIdentityLink> UserIdentityLinks { get; set; } = null!;
     public DbSet<MergedUserArchive> MergedUserArchives { get; set; } = null!;
     public DbSet<QuotaPlan> QuotaPlans { get; set; } = null!;
@@ -61,6 +62,7 @@ public class ApplicationDbContext(DbContextOptions<ApplicationDbContext> options
     public DbSet<EmailBroadcastTemplate> EmailBroadcastTemplates { get; set; } = null!;
     public DbSet<MobileCrashReport> MobileCrashReports { get; set; } = null!;
     public DbSet<WindowsCrashReport> WindowsCrashReports { get; set; } = null!;
+    public DbSet<FreeTierDisconnectLog> FreeTierDisconnectLogs { get; set; } = null!;
 
     protected override void OnModelCreating(ModelBuilder modelBuilder)
     {
@@ -108,6 +110,8 @@ public class ApplicationDbContext(DbContextOptions<ApplicationDbContext> options
         modelBuilder.ApplyConfiguration(new UserRoleConfiguration());
         modelBuilder.ApplyConfiguration(new DeviceConfiguration());
         modelBuilder.ApplyConfiguration(new UserRefreshTokenConfiguration());
+        modelBuilder.ApplyConfiguration(new UserPasswordHistoryConfiguration());
+        modelBuilder.ApplyConfiguration(new FreeTierDisconnectLogConfiguration());
     }
     
     private void UpdateTimestamps()

@@ -54,6 +54,23 @@ public class UserMergeServiceProfileTests
     }
 
     [Fact]
+    public async Task PreservesSurvivorDashboardAccess_WhenAlreadyEnabled()
+    {
+        await using var harness = UserMergeServiceTestHarness.Create();
+        var (telegram, google) = await harness.SeedTelegramGooglePairAsync(
+            googleHasDashboardAccess: false);
+
+        telegram.HasDashboardAccess = true;
+        harness.Context.Users.Update(telegram);
+        await harness.Context.SaveChangesAsync();
+
+        await harness.MergeAsync(telegram, google);
+
+        var survivor = await harness.Context.Users.SingleAsync(u => u.Id == telegram.Id);
+        Assert.True(survivor.HasDashboardAccess);
+    }
+
+    [Fact]
     public async Task AddsAdminWarning_WhenMergedUserIsAdmin()
     {
         await using var harness = UserMergeServiceTestHarness.Create();

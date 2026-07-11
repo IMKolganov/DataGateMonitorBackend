@@ -109,9 +109,9 @@ public class VpnServerConflogControllerTests
             TotalCount = 0,
             Items = new List<VpnServerConflog>()
         };
-        _conflogQuery.Setup(q => q.GetPageByVpnServerId(5, 1, 20, It.IsAny<CancellationToken>())).ReturnsAsync(paged);
+        _conflogQuery.Setup(q => q.GetPageByVpnServerId(5, 1, 20, null, It.IsAny<CancellationToken>())).ReturnsAsync(paged);
 
-        var result = await _controller.GetHistoryByServer(5, 1, 20, CancellationToken.None);
+        var result = await _controller.GetHistoryByServer(5, new GetConflogHistoryByServerRequest { Page = 1, PageSize = 20 }, CancellationToken.None);
 
         var ok = Assert.IsType<OkObjectResult>(result.Result);
         var response = Assert.IsType<ApiResponse<VpnServerConflogPageResponse>>(ok.Value);
@@ -119,7 +119,27 @@ public class VpnServerConflogControllerTests
         Assert.NotNull(response.Data);
         Assert.Equal(1, response.Data.Page);
         Assert.Equal(20, response.Data.PageSize);
-        _conflogQuery.Verify(q => q.GetPageByVpnServerId(5, 1, 20, It.IsAny<CancellationToken>()), Times.Once);
+        _conflogQuery.Verify(q => q.GetPageByVpnServerId(5, 1, 20, null, It.IsAny<CancellationToken>()), Times.Once);
+    }
+
+    [Fact]
+    public async Task GetHistoryByServer_Passes_RequestUrl_To_Query()
+    {
+        var paged = new DataGateMonitor.SharedModels.Responses.PagedResponse<VpnServerConflog>
+        {
+            Page = 1,
+            PageSize = 20,
+            TotalCount = 0,
+            Items = new List<VpnServerConflog>()
+        };
+        _conflogQuery
+            .Setup(q => q.GetPageByVpnServerId(5, 1, 20, "/api/info", It.IsAny<CancellationToken>()))
+            .ReturnsAsync(paged);
+
+        var request = new GetConflogHistoryByServerRequest { Page = 1, PageSize = 20, RequestUrl = "/api/info" };
+        await _controller.GetHistoryByServer(5, request, CancellationToken.None);
+
+        _conflogQuery.Verify(q => q.GetPageByVpnServerId(5, 1, 20, "/api/info", It.IsAny<CancellationToken>()), Times.Once);
     }
 
     [Fact]

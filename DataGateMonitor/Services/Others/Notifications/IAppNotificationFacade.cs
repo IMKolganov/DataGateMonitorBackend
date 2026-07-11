@@ -11,4 +11,14 @@ public interface IAppNotificationFacade
     Task UserRegistered(int userId, string displayName, string? login, string? email, string? registrationSource, CancellationToken ct);
 
     Task UserPasswordChanged(int userId, string displayName, string login, string reason, CancellationToken ct);
+
+    Task FreeTierAccessNonCompliant(
+        int userId,
+        string planName,
+        long? telegramId,
+        bool isMergedAccount,
+        bool isChannelSubscribed,
+        string context,
+        string requiredChannelChatId,
+        CancellationToken ct);
 }

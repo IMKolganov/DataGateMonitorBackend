@@ -78,6 +78,15 @@ public sealed class OpenVpnOverviewSeriesQuery(
         int? vpnServerId,
         string? externalId,
         CancellationToken ct = default)
+        => await GetOverviewUsersFromSessionsAsync(fromUtc, toUtc, vpnServerId, externalId, displayName: null, ct);
+
+    public async Task<OverviewUsersResponse> GetOverviewUsersFromSessionsAsync(
+        DateTimeOffset fromUtc,
+        DateTimeOffset toUtc,
+        int? vpnServerId,
+        string? externalId,
+        string? displayName,
+        CancellationToken ct = default)
     {
         if (toUtc < fromUtc) (fromUtc, toUtc) = (toUtc, fromUtc);
 
@@ -129,6 +138,14 @@ public sealed class OpenVpnOverviewSeriesQuery(
                 LastSeen = row.LastSeen
             })
             .ToList();
+
+        var displayNameFilter = GridFilterHelper.Normalize(displayName);
+        if (displayNameFilter != null)
+        {
+            result = result
+                .Where(x => x.DisplayName.Contains(displayNameFilter, StringComparison.OrdinalIgnoreCase))
+                .ToList();
+        }
 
         return new OverviewUsersResponse { OverviewUserItems = result };
     }

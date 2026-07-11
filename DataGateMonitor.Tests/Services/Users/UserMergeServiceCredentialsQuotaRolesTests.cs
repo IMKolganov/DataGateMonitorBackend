@@ -127,6 +127,35 @@ public class UserMergeServiceCredentialsQuotaRolesTests
     }
 
     [Fact]
+    public async Task ReassignsAllQuotaPlans_WhenMergedHasOnlyHistoricalPlans()
+    {
+        await using var harness = UserMergeServiceTestHarness.Create();
+        var (telegram, google) = await harness.SeedTelegramGooglePairAsync();
+        var historical = await harness.SeedHistoricalQuotaPlanAsync(google.Id, quotaPlanId: 5);
+
+        var response = await harness.MergeAsync(telegram, google);
+
+        Assert.True(response.Stats.UserQuotaPlansReassigned >= 1);
+        Assert.Equal(0, response.Stats.UserQuotaPlansClosed);
+
+        var moved = await harness.Context.UserQuotaPlans.SingleAsync(p => p.Id == historical.Id);
+        Assert.Equal(telegram.Id, moved.UserId);
+    }
+
+    [Fact]
+    public async Task NoCredentialChanges_WhenMergedUserHasNoCredential()
+    {
+        await using var harness = UserMergeServiceTestHarness.Create();
+        var (telegram, google) = await harness.SeedTelegramGooglePairAsync();
+
+        var response = await harness.MergeAsync(telegram, google);
+
+        Assert.Equal(0, response.Stats.UserCredentialsReassigned);
+        Assert.Equal(0, response.Stats.UserCredentialsRemoved);
+        Assert.Empty(await harness.Context.UserCredentials.ToListAsync());
+    }
+
+    [Fact]
     public async Task UpdatesAssignedBy_OnQuotaPlansCreatedByMergedUser()
     {
         await using var harness = UserMergeServiceTestHarness.Create();

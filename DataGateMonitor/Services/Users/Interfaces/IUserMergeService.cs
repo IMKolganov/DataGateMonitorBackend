@@ -6,8 +6,8 @@ namespace DataGateMonitor.Services.Users.Interfaces;
 public interface IUserMergeService
 {
     /// <summary>
-    /// Merges a Google dashboard user into a Telegram dashboard user (survivor).
-    /// The Google user row is archived then removed; VPN data uses Telegram ExternalId.
+    /// Merges a dashboard user (Google or local/password identity) into a Telegram user (survivor).
+    /// The merged user row is archived then removed; VPN data uses Telegram ExternalId.
     /// </summary>
     Task<MergeTelegramGoogleUsersResponse> MergeTelegramGoogleAsync(
         MergeTelegramGoogleUsersRequest request,

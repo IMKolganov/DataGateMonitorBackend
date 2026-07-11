@@ -34,7 +34,8 @@ public class VpnServerEventController(
             request.Page,
             request.PageSize,
             cancellationToken,
-            commonNames);
+            commonNames,
+            request.EventType);
 
         var dto = page.Adapt<VpnServerEventResponse>();
         return Ok(ApiResponse<VpnServerEventResponse>.SuccessResponse(dto));

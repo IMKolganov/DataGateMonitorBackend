@@ -33,7 +33,7 @@ public class TelegramBotIncomingMessageLogController(
         [FromQuery] GetAllMessagesRequest request, CancellationToken cancellationToken)
     {
         var messages = await incomingMessageLogQueryService.GetPage(
-            request.Page, request.PageSize, cancellationToken);
+            request, cancellationToken);
 
         var response = new GetAllMessagesResponse
         {

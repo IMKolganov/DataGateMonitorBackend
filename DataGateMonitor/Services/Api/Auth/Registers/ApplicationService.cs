@@ -3,6 +3,7 @@ using DataGateMonitor.DataBase.Services.Command.Interfaces;
 using DataGateMonitor.DataBase.Services.Query.ClientApplicationTable;
 using DataGateMonitor.Models;
 using DataGateMonitor.Services.Api.Auth.Registers.Interfaces;
+using DataGateMonitor.SharedModels.DataGateMonitor.Applications.Requests;
 
 namespace DataGateMonitor.Services.Api.Auth;
 
@@ -48,10 +49,11 @@ public class ApplicationService(IClientApplicationQueryService clientApplication
         return systemApp != null && !string.IsNullOrEmpty(systemApp.ClientSecret);
     }
 
-    public async Task<List<ClientApplication>> GetAllApplicationsAsync(CancellationToken ct)
-    {
-        return await clientApplicationQueryService.GetAll(ct);
-    }
+    public Task<List<ClientApplication>> GetAllApplicationsAsync(CancellationToken ct)
+        => GetAllApplicationsAsync(new GetAllApplicationsRequest(), ct);
+
+    public Task<List<ClientApplication>> GetAllApplicationsAsync(GetAllApplicationsRequest request, CancellationToken ct)
+        => clientApplicationQueryService.GetFiltered(request, ct);
     
     public async Task<ClientApplication> UpdateApplicationAsync(ClientApplication clientApplication, 
         CancellationToken ct)

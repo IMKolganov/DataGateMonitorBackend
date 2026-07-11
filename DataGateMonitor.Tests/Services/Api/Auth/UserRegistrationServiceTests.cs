@@ -11,6 +11,8 @@ using DataGateMonitor.Services.Api.Auth.Registers;
 using DataGateMonitor.Services.Api.Auth.Users;
 using DataGateMonitor.Services.Others;
 using DataGateMonitor.Services.Others.Notifications;
+using DataGateMonitor.Services.Users.Interfaces;
+using DataGateMonitor.SharedModels.DataGateMonitor.User;
 using DataGateMonitor.SharedModels.DataGateMonitor.Auth.Requests;
 using Xunit;
 
@@ -28,6 +30,7 @@ public class UserRegistrationServiceTests
     private readonly Mock<IEmailConfirmationService> _emailConfirmationService;
     private readonly Mock<ISettingsService> _settingsService;
     private readonly Mock<IAppNotificationFacade> _appNotificationFacade;
+    private readonly Mock<IUserPasswordHistoryService> _passwordHistoryService;
     private readonly Mock<ILogger<UserRegistrationService>> _logger;
     private readonly UserRegistrationService _sut;
 
@@ -43,6 +46,15 @@ public class UserRegistrationServiceTests
         _emailConfirmationService = new Mock<IEmailConfirmationService>();
         _settingsService = new Mock<ISettingsService>();
         _appNotificationFacade = new Mock<IAppNotificationFacade>();
+        _passwordHistoryService = new Mock<IUserPasswordHistoryService>();
+        _passwordHistoryService
+            .Setup(s => s.RecordSnapshotBeforeChangeAsync(
+                It.IsAny<UserCredential>(),
+                It.IsAny<PasswordSetActorKind>(),
+                It.IsAny<int?>(),
+                It.IsAny<string?>(),
+                It.IsAny<CancellationToken>()))
+            .Returns(Task.CompletedTask);
         _logger = new Mock<ILogger<UserRegistrationService>>();
         _identityLinkQuery
             .Setup(q => q.AnyByUserId(It.IsAny<int>(), It.IsAny<CancellationToken>()))
@@ -62,6 +74,7 @@ public class UserRegistrationServiceTests
             _emailConfirmationService.Object,
             _settingsService.Object,
             _appNotificationFacade.Object,
+            _passwordHistoryService.Object,
             _logger.Object);
     }
 

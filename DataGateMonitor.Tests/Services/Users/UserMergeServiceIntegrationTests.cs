@@ -1,4 +1,6 @@
 using Microsoft.EntityFrameworkCore;
+using DataGateMonitor.Models;
+using DataGateMonitor.Services.Api.Auth.Users;
 using DataGateMonitor.SharedModels.Auth;
 using DataGateMonitor.Tests.Helpers;
 
@@ -66,14 +68,14 @@ public class UserMergeServiceIntegrationTests
 
         var stats = response.Stats;
         Assert.Equal(1, stats.IdentityLinksReassigned);
-        Assert.Equal(1, stats.IssuedOvpnFilesExternalIdUpdated);
-        Assert.Equal(1, stats.IssuedXrayClientLinksExternalIdUpdated);
+        Assert.Equal(0, stats.IssuedOvpnFilesExternalIdUpdated);
+        Assert.Equal(0, stats.IssuedXrayClientLinksExternalIdUpdated);
         Assert.Equal(1, stats.VpnServerClientsUserIdUpdated);
-        Assert.Equal(1, stats.VpnServerClientsExternalIdUpdated);
+        Assert.Equal(0, stats.VpnServerClientsExternalIdUpdated);
         Assert.Equal(1, stats.VpnServerClientTrafficsUserIdUpdated);
-        Assert.Equal(1, stats.VpnServerClientTrafficsExternalIdUpdated);
+        Assert.Equal(0, stats.VpnServerClientTrafficsExternalIdUpdated);
         Assert.Equal(1, stats.VpnServerClientTrafficDailiesUserIdUpdated);
-        Assert.Equal(1, stats.VpnServerClientTrafficDailiesExternalIdUpdated);
+        Assert.Equal(0, stats.VpnServerClientTrafficDailiesExternalIdUpdated);
         Assert.Equal(1, stats.UserCredentialsRemoved);
         Assert.Equal(1, stats.UserQuotaPlansClosed);
         Assert.True(stats.UserQuotaPlansReassigned >= 1);
@@ -90,10 +92,29 @@ public class UserMergeServiceIntegrationTests
         Assert.Contains(response.Warnings, w => w.Contains("IsAdmin", StringComparison.OrdinalIgnoreCase));
 
         Assert.Empty(await harness.Context.Users.Where(u => u.Id == google.Id).ToListAsync());
-        Assert.Equal(tgExt, (await harness.Context.IssuedOvpnFiles.SingleAsync()).ExternalId);
+        Assert.Equal(googleExt, (await harness.Context.IssuedOvpnFiles.SingleAsync()).ExternalId);
         Assert.Equal("full@gmail.com", (await harness.Context.Users.SingleAsync(u => u.Id == telegram.Id)).Email);
 
         var archive = await harness.Context.MergedUserArchives.SingleAsync();
         Assert.Equal(99, archive.MergedByUserId);
+    }
+
+    [Fact]
+    public async Task AfterMerge_ExternalIdResolverPrefersGoogleSub()
+    {
+        await using var harness = UserMergeServiceTestHarness.Create();
+        const string tgExt = "resolver-tg-id";
+        const string googleExt = "resolver-google-sub";
+
+        var (telegram, google) = await harness.SeedTelegramGooglePairAsync(tgExt, googleExt);
+        await harness.MergeAsync(telegram, google);
+
+        var links = await harness.Context.UserIdentityLinks
+            .Where(l => l.UserId == telegram.Id)
+            .ToListAsync();
+
+        var picked = UserIdentityLinkExternalIdResolver.PickPreferredLink(links);
+        Assert.Equal(AuthIdentityProviders.Google, picked!.Provider);
+        Assert.Equal(googleExt, picked.ExternalId);
     }
 }

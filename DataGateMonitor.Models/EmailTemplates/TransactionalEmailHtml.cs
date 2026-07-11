@@ -12,6 +12,8 @@ public static class TransactionalEmailHtml
 {
     public const string DefaultConfirmationSubject = "Confirm your email — DataGate";
     public const string DefaultAdminPasswordResetSubject = "Administrator password reset — DataGate";
+    public const string DefaultFreeTierGraceDisconnectedSubject = "You were disconnected from the VPN — DataGate";
+    public const string DefaultConfirmEmailPageUrl = "https://datagateapp.com/confirm-email";
 
     private const string MailVersionLabel = "1.0.3";
 
@@ -33,7 +35,9 @@ public static class TransactionalEmailHtml
             ],
             codeLabel: "Confirmation code",
             codeValueHtml: Escape(code),
-            signoff: "— The DataGate team");
+            signoff: "— The DataGate team",
+            actionButtonHref: DefaultConfirmEmailPageUrl,
+            actionButtonLabel: "Enter confirmation code");
 
     public static string BuildEmailConfirmationWithPlaceholders()
         => BuildDocument(
@@ -51,7 +55,9 @@ public static class TransactionalEmailHtml
             ],
             codeLabel: "Confirmation code",
             codeValueHtml: "{{CODE}}",
-            signoff: "— The DataGate team");
+            signoff: "— The DataGate team",
+            actionButtonHref: DefaultConfirmEmailPageUrl,
+            actionButtonLabel: "Enter confirmation code");
 
     public static string BuildAdminPasswordReset(string code, int ttlMinutes)
         => BuildDocument(
@@ -87,6 +93,45 @@ public static class TransactionalEmailHtml
             codeValueHtml: "{{CODE}}",
             signoff: "— The DataGate team");
 
+    public static string BuildFreeTierGraceDisconnected(string planName, string requiredChannel)
+        => BuildDocument(
+            pageTitle: "DataGate — disconnected after grace period",
+            emailTitle: "You were disconnected",
+            emailTagline: "Your Free/Default plan requires channel subscription or a linked account.",
+            includeDownloadButton: false,
+            emailLead: "Hello,",
+            bodyParagraphs:
+            [
+                $"You connected to the VPN and were allowed a short grace period, but you were disconnected because your account (plan <strong>{Escape(planName)}</strong>) still isn't subscribed to the required Telegram channel and isn't a linked (merged) account.",
+                $"Subscribe to <strong>{Escape(requiredChannel)}</strong> or link your Telegram account to your Google/local account in the app, then reconnect.",
+                "If you need help: <a href=\"https://t.me/KolganovIvan\" target=\"_blank\" rel=\"noopener noreferrer\"><b>@KolganovIvan</b></a>",
+            ],
+            codeLabel: "Required channel",
+            codeValueHtml: Escape(requiredChannel),
+            signoff: "— The DataGate team");
+
+    public static string BuildFreeTierGraceDisconnectedWithPlaceholders()
+        => BuildDocument(
+            pageTitle: "DataGate — disconnected after grace period",
+            emailTitle: "You were disconnected",
+            emailTagline: "Your Free/Default plan requires channel subscription or a linked account.",
+            includeDownloadButton: false,
+            emailLead: "Hello,",
+            bodyParagraphs:
+            [
+                "You connected to the VPN and were allowed a short grace period, but you were disconnected because your account (plan <strong>{{PLAN_NAME}}</strong>) still isn't subscribed to the required Telegram channel and isn't a linked (merged) account.",
+                "Subscribe to <strong>{{REQUIRED_CHANNEL}}</strong> or link your Telegram account to your Google/local account in the app, then reconnect.",
+                "If you need help: <a href=\"https://t.me/KolganovIvan\" target=\"_blank\" rel=\"noopener noreferrer\"><b>@KolganovIvan</b></a>",
+            ],
+            codeLabel: "Required channel",
+            codeValueHtml: "{{REQUIRED_CHANNEL}}",
+            signoff: "— The DataGate team");
+
+    public static string ApplyFreeTierGraceDisconnectedPlaceholders(string bodyHtml, string planName, string requiredChannel)
+        => bodyHtml
+            .Replace("{{PLAN_NAME}}", Escape(planName), StringComparison.Ordinal)
+            .Replace("{{REQUIRED_CHANNEL}}", Escape(requiredChannel), StringComparison.Ordinal);
+
     public static string ApplyConfirmationPlaceholders(string bodyHtml, string code, int ttlMinutes)
     {
         return bodyHtml
@@ -97,6 +142,37 @@ public static class TransactionalEmailHtml
     public static string ApplyPasswordResetPlaceholders(string bodyHtml, string code, int ttlMinutes)
         => ApplyConfirmationPlaceholders(bodyHtml, code, ttlMinutes);
 
+    /// <summary>
+    /// Ensures seeded/custom confirmation templates include a link to the web confirmation form.
+    /// </summary>
+    public static string EnsureConfirmEmailAction(string bodyHtml)
+    {
+        if (string.IsNullOrEmpty(bodyHtml))
+            return bodyHtml;
+
+        if (bodyHtml.Contains(DefaultConfirmEmailPageUrl, StringComparison.OrdinalIgnoreCase))
+            return bodyHtml;
+
+        const string marker = "<div class=\"code-panel\"";
+        var index = bodyHtml.IndexOf(marker, StringComparison.OrdinalIgnoreCase);
+        if (index < 0)
+            return bodyHtml;
+
+        var button =
+            $"""
+            <div class="btn-wrap">
+              <a class="btn" href="{Escape(DefaultConfirmEmailPageUrl)}" target="_blank" rel="noopener noreferrer">
+                Enter confirmation code
+              </a>
+            </div>
+
+            <br />
+
+            """;
+
+        return bodyHtml.Insert(index, button);
+    }
+
     private static string BuildDocument(
         string pageTitle,
         string emailTitle,
@@ -106,7 +182,9 @@ public static class TransactionalEmailHtml
         IReadOnlyList<string> bodyParagraphs,
         string codeLabel,
         string codeValueHtml,
-        string signoff)
+        string signoff,
+        string? actionButtonHref = null,
+        string? actionButtonLabel = null)
     {
         var sb = new StringBuilder();
         sb.Append(CssAndHeadOpen(pageTitle));
@@ -149,6 +227,21 @@ public static class TransactionalEmailHtml
 
         foreach (var p in bodyParagraphs)
             sb.Append($"                    <p class=\"email-body\">{p}</p>\n");
+
+        if (!string.IsNullOrWhiteSpace(actionButtonHref) && !string.IsNullOrWhiteSpace(actionButtonLabel))
+        {
+            sb.Append(
+                $"""
+                            <div class="btn-wrap">
+                              <a class="btn" href="{Escape(actionButtonHref)}" target="_blank" rel="noopener noreferrer">
+                                {Escape(actionButtonLabel)}
+                              </a>
+                            </div>
+
+                            <br />
+
+                """);
+        }
 
         sb.Append(
             $"""

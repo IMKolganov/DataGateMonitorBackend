@@ -45,6 +45,13 @@ public sealed class UserLoginService(
         var normalizedLogin = login.ToUpperInvariant();
 
         var credential = await credentialQueryService.GetByNormalizedLogin(normalizedLogin, ct);
+        if (credential is null && login.Contains('@', StringComparison.Ordinal))
+        {
+            var userByEmail = await userQueryService.GetByEmail(login, ct);
+            if (userByEmail is not null)
+                credential = await credentialQueryService.GetByUserId(userByEmail.Id, ct);
+        }
+
         if (credential is null)
             throw new UnauthorizedAccessException("Invalid login or password.");
 

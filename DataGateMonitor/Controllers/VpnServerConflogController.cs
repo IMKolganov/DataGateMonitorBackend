@@ -60,11 +60,11 @@ public class VpnServerConflogController(
     [HttpGet("history-by-server/{vpnServerId:int}")]
     public async Task<ActionResult<ApiResponse<VpnServerConflogPageResponse>>> GetHistoryByServer(
         int vpnServerId,
-        [FromQuery] int page = 1,
-        [FromQuery] int pageSize = 20,
+        [FromQuery] GetConflogHistoryByServerRequest request,
         CancellationToken ct = default)
     {
-        var paged = await conflogQueryService.GetPageByVpnServerId(vpnServerId, page, pageSize, ct);
+        var paged = await conflogQueryService.GetPageByVpnServerId(
+            vpnServerId, request.Page, request.PageSize, request.RequestUrl, ct);
         var response = new VpnServerConflogPageResponse
         {
             Page = paged.Page,

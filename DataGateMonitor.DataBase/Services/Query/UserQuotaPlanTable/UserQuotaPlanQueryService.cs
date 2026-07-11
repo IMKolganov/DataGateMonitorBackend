@@ -24,6 +24,9 @@ public class UserQuotaPlanQueryService(IQueryService<UserQuotaPlan, int> q) : IU
             asNoTracking: true,
             ct: ct);
 
+    public Task<List<UserQuotaPlan>> GetAllActive(CancellationToken ct)
+        => q.Where(x => x.EffectiveTo == null, ct: ct);
+
     public Task<UserQuotaPlan?> GetByUserId(int userId, CancellationToken ct)
         => q.FirstOrDefault(
             predicate: x => x.UserId == userId,

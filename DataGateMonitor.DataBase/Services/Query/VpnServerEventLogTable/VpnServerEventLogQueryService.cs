@@ -21,7 +21,8 @@ public class VpnServerEventLogQueryService(IQueryService<VpnServerEventLog, int>
         int page,
         int pageSize,
         CancellationToken ct,
-        IReadOnlyList<string>? commonNames = null)
+        IReadOnlyList<string>? commonNames = null,
+        string? eventType = null)
     {
         if (page < 1) page = 1;
         if (pageSize < 1) pageSize = 10;
@@ -34,6 +35,10 @@ public class VpnServerEventLogQueryService(IQueryService<VpnServerEventLog, int>
             baseQuery = baseQuery.Where(x =>
                 x.CommonName != null && commonNames.Contains(x.CommonName));
         }
+
+        var eventTypePattern = GridFilterHelper.ExactMatchPattern(eventType);
+        if (eventTypePattern != null)
+            baseQuery = baseQuery.Where(x => x.EventType != null && EF.Functions.ILike(x.EventType, eventTypePattern));
 
         var totalCount = await baseQuery.CountAsync(ct);
 

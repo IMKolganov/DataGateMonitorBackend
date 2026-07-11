@@ -48,9 +48,10 @@ public class TelegramBotUserController(
     
     [HttpGet("get-all")]
     public async Task<ActionResult<ApiResponse<GetAllTelegramUsersResponse>>> GetAllUsers(
+        [FromQuery] GetAllTelegramBotUsersRequest request,
         CancellationToken cancellationToken)
     {
-        var telegramBotUsers = await telegramUserService.GetAllUsersAsync(cancellationToken);
+        var telegramBotUsers = await telegramUserService.GetAllUsersAsync(request, cancellationToken);
         var response = telegramBotUsers.Adapt<GetAllTelegramUsersResponse>();
         await telegramBotUserProfilePhotoService.ApplyHasProfilePhotoFlagsAsync(
             response.TelegramBotUsers, cancellationToken);

@@ -11,9 +11,11 @@ using DataGateMonitor.Services.AdminEmail;
 using DataGateMonitor.Services.Api.Auth.EmailConfirmation;
 using DataGateMonitor.Services.EmailTemplates;
 using DataGateMonitor.Services.Others.Notifications;
+using DataGateMonitor.Services.Users.Interfaces;
 using DataGateMonitor.SharedModels.Auth;
 using DataGateMonitor.SharedModels.DataGateMonitor.Auth.Requests;
 using DataGateMonitor.SharedModels.DataGateMonitor.Auth.Responses;
+using DataGateMonitor.SharedModels.DataGateMonitor.User;
 
 namespace DataGateMonitor.Services.Api.Auth.ForgotPassword;
 
@@ -21,6 +23,7 @@ public sealed class AdminForgotPasswordService(
     IUserCredentialQueryService credentialQueryService,
     IUserQueryService userQueryService,
     ICommandService<UserCredential, int> credentialCommandService,
+    IUserPasswordHistoryService passwordHistoryService,
     IPasswordHasher<User> passwordHasher,
     IMemoryCache cache,
     IEmailSenderService emailSender,
@@ -141,6 +144,13 @@ public sealed class AdminForgotPasswordService(
 
         var user = await userQueryService.GetById(userId, ct)
                    ?? throw new InvalidOperationException("User not found for credential.");
+
+        await passwordHistoryService.RecordSnapshotBeforeChangeAsync(
+            credential,
+            PasswordSetActorKind.User,
+            userId,
+            "reset-password-code",
+            ct);
 
         var newHash = passwordHasher.HashPassword(user, request.NewPassword);
         credential.PasswordHash = newHash;

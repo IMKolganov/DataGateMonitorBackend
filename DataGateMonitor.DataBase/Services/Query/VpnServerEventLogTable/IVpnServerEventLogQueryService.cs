@@ -14,7 +14,8 @@ public interface IVpnServerEventLogQueryService
         int page,
         int pageSize,
         CancellationToken ct,
-        IReadOnlyList<string>? commonNames = null);
+        IReadOnlyList<string>? commonNames = null,
+        string? eventType = null);
 
     Task<IReadOnlyList<VpnClientAppVersionSummaryItemDto>> GetAppVersionSummaryAsync(
         int vpnServerId,
