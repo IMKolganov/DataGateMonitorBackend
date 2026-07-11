@@ -6,7 +6,9 @@ using Moq;
 using DataGateMonitor.DataBase.Services.Command.Interfaces;
 using DataGateMonitor.DataBase.Services.Query.IssuedOvpnFileTable;
 using DataGateMonitor.DataBase.Services.Query.IssuedOvpnFileTokenTable;
+using DataGateMonitor.DataBase.Services.Query.QuotaPlanAllowedServerTable;
 using DataGateMonitor.DataBase.Services.Query.UserIdentityLinkTable;
+using DataGateMonitor.DataBase.Services.Query.UserQuotaPlanTable;
 using DataGateMonitor.DataBase.Services.Query.VpnServerOvpnFileConfigTable;
 using DataGateMonitor.DataBase.Services.Query.VpnServerTable;
 using DataGateMonitor.Mapping.DataGateOpenVpnManager.Mappings;
@@ -248,12 +250,20 @@ public class OvpnFileApiServiceTests
             .Returns(Task.CompletedTask);
 
         var identityLinkQuery = CreateMergedUserIdentityLinkQuery(telegramId, googleSub);
+        var userQuotaPlanQuery = new Mock<IUserQuotaPlanQueryService>(MockBehavior.Strict);
+        userQuotaPlanQuery.Setup(q => q.GetActiveByUserId(10, It.IsAny<CancellationToken>()))
+            .ReturnsAsync(new UserQuotaPlan { UserId = 10, QuotaPlanId = 7 });
+        var quotaPlanAllowedServerQuery = new Mock<IQuotaPlanAllowedServerQueryService>(MockBehavior.Strict);
+        quotaPlanAllowedServerQuery.Setup(q => q.GetByQuotaPlanIdAndServerId(7, vpnServerId, It.IsAny<CancellationToken>()))
+            .ReturnsAsync(new QuotaPlanAllowedServer { QuotaPlanId = 7, VpnServerId = vpnServerId });
         var sut = CreateService(
             ovpnClient: ovpnClient,
             fileQuery: fileQuery,
             serverQuery: serverQuery,
             notification: notification,
             identityLinkQuery: identityLinkQuery,
+            userQuotaPlanQuery: userQuotaPlanQuery,
+            quotaPlanAllowedServerQuery: quotaPlanAllowedServerQuery,
             configQuery: configQuery,
             fileCommand: fileCommand);
 
@@ -271,6 +281,60 @@ public class OvpnFileApiServiceTests
         captured.Should().NotBeNull();
         captured!.ExternalId.Should().Be(googleSub);
         result.ExternalId.Should().Be(googleSub);
+        quotaPlanAllowedServerQuery.VerifyAll();
+    }
+
+    [Fact]
+    public async Task AddOvpnFile_WhenTargetUserPlanDoesNotAllowServer_ThrowsBeforeIssuing()
+    {
+        const string externalId = "telegram-locked";
+        const int userId = 123;
+        const int quotaPlanId = 44;
+        const int vpnServerId = 99;
+
+        var identityLinkQuery = new Mock<IUserIdentityLinkQueryService>(MockBehavior.Strict);
+        identityLinkQuery.Setup(q => q.GetByExternalId(externalId, It.IsAny<CancellationToken>()))
+            .ReturnsAsync(new UserIdentityLink
+            {
+                UserId = userId,
+                Provider = AuthIdentityProviders.Telegram,
+                ExternalId = externalId,
+            });
+        identityLinkQuery.Setup(q => q.GetListByUserId(userId, It.IsAny<CancellationToken>()))
+            .ReturnsAsync([new UserIdentityLink
+            {
+                UserId = userId,
+                Provider = AuthIdentityProviders.Telegram,
+                ExternalId = externalId,
+            }]);
+
+        var userQuotaPlanQuery = new Mock<IUserQuotaPlanQueryService>(MockBehavior.Strict);
+        userQuotaPlanQuery.Setup(q => q.GetActiveByUserId(userId, It.IsAny<CancellationToken>()))
+            .ReturnsAsync(new UserQuotaPlan { UserId = userId, QuotaPlanId = quotaPlanId });
+        var quotaPlanAllowedServerQuery = new Mock<IQuotaPlanAllowedServerQueryService>(MockBehavior.Strict);
+        quotaPlanAllowedServerQuery.Setup(q => q.GetByQuotaPlanIdAndServerId(quotaPlanId, vpnServerId, It.IsAny<CancellationToken>()))
+            .ReturnsAsync((QuotaPlanAllowedServer?)null);
+
+        var ovpnClient = new Mock<IOvpnFileApiClient>(MockBehavior.Strict);
+        var fileCommand = new Mock<ICommandService<IssuedOvpnFile, int>>(MockBehavior.Strict);
+        var sut = CreateService(
+            ovpnClient: ovpnClient,
+            identityLinkQuery: identityLinkQuery,
+            userQuotaPlanQuery: userQuotaPlanQuery,
+            quotaPlanAllowedServerQuery: quotaPlanAllowedServerQuery,
+            fileCommand: fileCommand);
+
+        var act = () => sut.AddOvpnFile(new AddFileRequest
+        {
+            VpnServerId = vpnServerId,
+            CommonName = "locked-cn",
+            ExternalId = externalId,
+        }, CancellationToken.None);
+
+        await act.Should().ThrowAsync<InvalidOperationException>()
+            .WithMessage("*not allowed*active quota plan*");
+        ovpnClient.Verify(c => c.AddOvpnFile(It.IsAny<int>(), It.IsAny<GenerateOvpnFileRequest>(), It.IsAny<CancellationToken>()), Times.Never);
+        fileCommand.Verify(c => c.Add(It.IsAny<IssuedOvpnFile>(), It.IsAny<bool>(), It.IsAny<CancellationToken>()), Times.Never);
     }
 
     [Fact]
@@ -412,6 +476,8 @@ public class OvpnFileApiServiceTests
         Mock<IVpnServerQueryService>? serverQuery = null,
         Mock<IOvpnFileNotificationService>? notification = null,
         Mock<IUserIdentityLinkQueryService>? identityLinkQuery = null,
+        Mock<IUserQuotaPlanQueryService>? userQuotaPlanQuery = null,
+        Mock<IQuotaPlanAllowedServerQueryService>? quotaPlanAllowedServerQuery = null,
         Mock<IVpnServerOvpnFileConfigQueryService>? configQuery = null,
         Mock<ICommandService<IssuedOvpnFile, int>>? fileCommand = null)
     {
@@ -427,6 +493,8 @@ public class OvpnFileApiServiceTests
         fileQuery ??= new Mock<IIssuedOvpnFileQueryService>(MockBehavior.Loose);
         notification ??= new Mock<IOvpnFileNotificationService>(MockBehavior.Loose);
         identityLinkQuery ??= new Mock<IUserIdentityLinkQueryService>(MockBehavior.Loose);
+        userQuotaPlanQuery ??= new Mock<IUserQuotaPlanQueryService>(MockBehavior.Loose);
+        quotaPlanAllowedServerQuery ??= new Mock<IQuotaPlanAllowedServerQueryService>(MockBehavior.Loose);
 
         return new OvpnFileApiService(
             ovpnClient.Object,
@@ -436,6 +504,8 @@ public class OvpnFileApiServiceTests
             fileQuery.Object,
             tokenQuery.Object,
             identityLinkQuery.Object,
+            userQuotaPlanQuery.Object,
+            quotaPlanAllowedServerQuery.Object,
             fileCommand.Object,
             tokenCommand.Object,
             serverQuery.Object,

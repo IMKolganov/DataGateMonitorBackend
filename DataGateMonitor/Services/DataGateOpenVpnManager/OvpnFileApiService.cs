@@ -3,7 +3,9 @@ using Mapster;
 using DataGateMonitor.DataBase.Services.Command.Interfaces;
 using DataGateMonitor.DataBase.Services.Query.IssuedOvpnFileTable;
 using DataGateMonitor.DataBase.Services.Query.IssuedOvpnFileTokenTable;
+using DataGateMonitor.DataBase.Services.Query.QuotaPlanAllowedServerTable;
 using DataGateMonitor.DataBase.Services.Query.UserIdentityLinkTable;
+using DataGateMonitor.DataBase.Services.Query.UserQuotaPlanTable;
 using DataGateMonitor.DataBase.Services.Query.VpnServerOvpnFileConfigTable;
 using DataGateMonitor.DataBase.Services.Query.VpnServerTable;
 using DataGateMonitor.Models;
@@ -27,6 +29,8 @@ public class OvpnFileApiService(
     IIssuedOvpnFileQueryService issuedOvpnFileQueryService,
     IIssuedOvpnFileTokenQueryService issuedOvpnFileTokenQueryService,
     IUserIdentityLinkQueryService userIdentityLinkQueryService,
+    IUserQuotaPlanQueryService userQuotaPlanQueryService,
+    IQuotaPlanAllowedServerQueryService quotaPlanAllowedServerQueryService,
     ICommandService<IssuedOvpnFile, int> issuedOvpnFileCommandService,
     ICommandService<IssuedOvpnFileToken, int> issuedOvpnFileTokenCommandService,
     IVpnServerQueryService openVpnServerQueryService,
@@ -174,6 +178,7 @@ public class OvpnFileApiService(
             request.VpnServerId);
 
         request.ExternalId = await ResolveVpnExternalIdAsync(request.ExternalId, ct);
+        await RequireTargetUserServerAccessAsync(request, ct);
         
         if (await issuedOvpnFileQueryService
                 .ExistsActiveByVpnServerIdAndCommonName(request.VpnServerId, request.CommonName, ct))
@@ -398,6 +403,31 @@ public class OvpnFileApiService(
             externalId,
             userIdentityLinkQueryService,
             ct);
+
+    private async Task RequireTargetUserServerAccessAsync(AddFileRequest request, CancellationToken ct)
+    {
+        var externalId = request.ExternalId?.Trim();
+        if (string.IsNullOrWhiteSpace(externalId))
+            return;
+
+        var link = await userIdentityLinkQueryService.GetByExternalId(externalId, ct);
+        if (link is not { UserId: > 0 })
+            return;
+
+        var activePlan = await userQuotaPlanQueryService.GetActiveByUserId(link.UserId, ct);
+        if (activePlan is null)
+            return;
+
+        var allowed = await quotaPlanAllowedServerQueryService.GetByQuotaPlanIdAndServerId(
+            activePlan.QuotaPlanId,
+            request.VpnServerId,
+            ct);
+        if (allowed is not null)
+            return;
+
+        throw new InvalidOperationException(
+            $"VPN server {request.VpnServerId} is not allowed for user {link.UserId}'s active quota plan {activePlan.QuotaPlanId}.");
+    }
 
     private Task<IReadOnlyList<string>> ResolveVpnExternalIdQueryKeysAsync(string externalId, CancellationToken ct) =>
         UserIdentityLinkExternalIdResolver.ResolveVpnExternalIdQueryKeysAsync(

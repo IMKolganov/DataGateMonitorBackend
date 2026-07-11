@@ -391,7 +391,7 @@ public class FreeTierAccessComplianceServiceTests
     }
 
     [Fact]
-    public async Task ShouldEnforceOpenVpnDisconnectAsync_IgnoresGracePeriod()
+    public async Task ShouldEnforceOpenVpnDisconnectAsync_RespectsActiveGracePeriod()
     {
         SetupFreePlanUser(42, 890);
         _channelChecker.Setup(c => c.IsSubscribedAsync(890, It.IsAny<CancellationToken>())).ReturnsAsync(false);
@@ -402,7 +402,7 @@ public class FreeTierAccessComplianceServiceTests
 
         var shouldKill = await sut.ShouldEnforceOpenVpnDisconnectAsync(42, CancellationToken.None);
 
-        Assert.True(shouldKill);
+        Assert.False(shouldKill);
     }
 
     [Fact]
@@ -420,7 +420,7 @@ public class FreeTierAccessComplianceServiceTests
     }
 
     [Fact]
-    public async Task EvaluateAccessForEnforcementAsync_IgnoresGracePeriod_EvenWhenActive()
+    public async Task EvaluateAccessForEnforcementAsync_RespectsActiveGracePeriod()
     {
         SetupFreePlanUser(51, 892);
         SetupGraceSettings(enabled: true, minutes: 5);
@@ -431,8 +431,8 @@ public class FreeTierAccessComplianceServiceTests
         var result = await sut.EvaluateAccessForEnforcementAsync(51, CancellationToken.None);
 
         Assert.True(result.IsApplicable);
-        Assert.False(result.IsCompliant);
-        Assert.False(result.IsGracePeriod);
+        Assert.True(result.IsCompliant);
+        Assert.True(result.IsGracePeriod);
     }
 
     [Fact]

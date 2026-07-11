@@ -84,7 +84,7 @@ public sealed class FreeTierAccessComplianceService(
         if (userId <= 0)
             return false;
 
-        var (result, _) = await EvaluateAccessAsync(userId, isChannelSubscribed: null, ct);
+        var result = await EvaluateAccessForEnforcementAsync(userId, ct);
         return result is { IsApplicable: true, IsCompliant: false };
     }
 
@@ -92,6 +92,9 @@ public sealed class FreeTierAccessComplianceService(
         int userId, CancellationToken ct = default)
     {
         var (result, _) = await EvaluateAccessAsync(userId, isChannelSubscribed: null, ct);
+        if (result is { IsApplicable: true, IsCompliant: false } && IsGraceActive(userId))
+            return CopyResult(result, isCompliant: true, isGracePeriod: true);
+
         return result;
     }
 

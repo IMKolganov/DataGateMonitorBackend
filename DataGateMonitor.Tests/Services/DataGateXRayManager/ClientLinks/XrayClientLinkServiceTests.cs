@@ -5,7 +5,9 @@ using Moq;
 using DataGateMonitor.DataBase.Services.Command.Interfaces;
 using DataGateMonitor.DataBase.Services.Query.IssuedXrayClientLinkTable;
 using DataGateMonitor.DataBase.Services.Query.IssuedXrayClientLinkTokenTable;
+using DataGateMonitor.DataBase.Services.Query.QuotaPlanAllowedServerTable;
 using DataGateMonitor.DataBase.Services.Query.UserIdentityLinkTable;
+using DataGateMonitor.DataBase.Services.Query.UserQuotaPlanTable;
 using DataGateMonitor.DataBase.Services.Query.VpnServerOvpnFileConfigTable;
 using DataGateMonitor.DataBase.Services.Query.VpnServerTable;
 using DataGateMonitor.Models;
@@ -192,6 +194,12 @@ public class XrayClientLinkServiceTests
             .Returns(Task.CompletedTask);
 
         var identityLinkQuery = CreateMergedUserIdentityLinkQuery(telegramId, googleSub);
+        var userQuotaPlanQuery = new Mock<IUserQuotaPlanQueryService>(MockBehavior.Strict);
+        userQuotaPlanQuery.Setup(q => q.GetActiveByUserId(10, It.IsAny<CancellationToken>()))
+            .ReturnsAsync(new UserQuotaPlan { UserId = 10, QuotaPlanId = 8 });
+        var quotaPlanAllowedServerQuery = new Mock<IQuotaPlanAllowedServerQueryService>(MockBehavior.Strict);
+        quotaPlanAllowedServerQuery.Setup(q => q.GetByQuotaPlanIdAndServerId(8, vpnServerId, It.IsAny<CancellationToken>()))
+            .ReturnsAsync(new QuotaPlanAllowedServer { QuotaPlanId = 8, VpnServerId = vpnServerId });
         var sut = CreateService(
             linkQuery: linkQuery,
             serverQuery: serverQuery,
@@ -199,7 +207,9 @@ public class XrayClientLinkServiceTests
             microserviceClient: microserviceClient,
             linkCommand: linkCommand,
             notification: notification,
-            identityLinkQuery: identityLinkQuery);
+            identityLinkQuery: identityLinkQuery,
+            userQuotaPlanQuery: userQuotaPlanQuery,
+            quotaPlanAllowedServerQuery: quotaPlanAllowedServerQuery);
 
         var request = new AddFileRequest
         {
@@ -215,6 +225,60 @@ public class XrayClientLinkServiceTests
         captured!.ExternalId.Should().Be(googleSub);
         request.ExternalId.Should().Be(googleSub);
         result.ExternalId.Should().Be(googleSub);
+        quotaPlanAllowedServerQuery.VerifyAll();
+    }
+
+    [Fact]
+    public async Task AddClientLink_WhenTargetUserPlanDoesNotAllowServer_ThrowsBeforeIssuing()
+    {
+        const string externalId = "telegram-xray-locked";
+        const int userId = 321;
+        const int quotaPlanId = 45;
+        const int vpnServerId = 100;
+
+        var identityLinkQuery = new Mock<IUserIdentityLinkQueryService>(MockBehavior.Strict);
+        identityLinkQuery.Setup(q => q.GetByExternalId(externalId, It.IsAny<CancellationToken>()))
+            .ReturnsAsync(new UserIdentityLink
+            {
+                UserId = userId,
+                Provider = AuthIdentityProviders.Telegram,
+                ExternalId = externalId,
+            });
+        identityLinkQuery.Setup(q => q.GetListByUserId(userId, It.IsAny<CancellationToken>()))
+            .ReturnsAsync([new UserIdentityLink
+            {
+                UserId = userId,
+                Provider = AuthIdentityProviders.Telegram,
+                ExternalId = externalId,
+            }]);
+
+        var userQuotaPlanQuery = new Mock<IUserQuotaPlanQueryService>(MockBehavior.Strict);
+        userQuotaPlanQuery.Setup(q => q.GetActiveByUserId(userId, It.IsAny<CancellationToken>()))
+            .ReturnsAsync(new UserQuotaPlan { UserId = userId, QuotaPlanId = quotaPlanId });
+        var quotaPlanAllowedServerQuery = new Mock<IQuotaPlanAllowedServerQueryService>(MockBehavior.Strict);
+        quotaPlanAllowedServerQuery.Setup(q => q.GetByQuotaPlanIdAndServerId(quotaPlanId, vpnServerId, It.IsAny<CancellationToken>()))
+            .ReturnsAsync((QuotaPlanAllowedServer?)null);
+
+        var microserviceClient = new Mock<IXrayClientLinkMicroserviceClient>(MockBehavior.Strict);
+        var linkCommand = new Mock<ICommandService<IssuedXrayClientLink, int>>(MockBehavior.Strict);
+        var sut = CreateService(
+            microserviceClient: microserviceClient,
+            linkCommand: linkCommand,
+            identityLinkQuery: identityLinkQuery,
+            userQuotaPlanQuery: userQuotaPlanQuery,
+            quotaPlanAllowedServerQuery: quotaPlanAllowedServerQuery);
+
+        var act = () => sut.AddClientLink(new AddFileRequest
+        {
+            VpnServerId = vpnServerId,
+            CommonName = "locked-xray-cn",
+            ExternalId = externalId,
+        }, CancellationToken.None);
+
+        await act.Should().ThrowAsync<InvalidOperationException>()
+            .WithMessage("*not allowed*active quota plan*");
+        microserviceClient.Verify(c => c.AddClientLink(It.IsAny<int>(), It.IsAny<GenerateClientLinkMicroserviceRequest>(), It.IsAny<CancellationToken>()), Times.Never);
+        linkCommand.Verify(c => c.Add(It.IsAny<IssuedXrayClientLink>(), It.IsAny<bool>(), It.IsAny<CancellationToken>()), Times.Never);
     }
 
     private static Mock<IUserIdentityLinkQueryService> CreateMergedUserIdentityLinkQuery(
@@ -253,7 +317,9 @@ public class XrayClientLinkServiceTests
         Mock<ICommandService<IssuedXrayClientLink, int>>? linkCommand = null,
         Mock<IVpnServerQueryService>? serverQuery = null,
         Mock<IOvpnFileNotificationService>? notification = null,
-        Mock<IUserIdentityLinkQueryService>? identityLinkQuery = null)
+        Mock<IUserIdentityLinkQueryService>? identityLinkQuery = null,
+        Mock<IUserQuotaPlanQueryService>? userQuotaPlanQuery = null,
+        Mock<IQuotaPlanAllowedServerQueryService>? quotaPlanAllowedServerQuery = null)
     {
         microserviceClient ??= new Mock<IXrayClientLinkMicroserviceClient>(MockBehavior.Loose);
         var logger = Mock.Of<ILogger<XrayClientLinkService>>();
@@ -266,6 +332,8 @@ public class XrayClientLinkServiceTests
         serverQuery ??= new Mock<IVpnServerQueryService>(MockBehavior.Loose);
         notification ??= new Mock<IOvpnFileNotificationService>(MockBehavior.Loose);
         identityLinkQuery ??= new Mock<IUserIdentityLinkQueryService>(MockBehavior.Loose);
+        userQuotaPlanQuery ??= new Mock<IUserQuotaPlanQueryService>(MockBehavior.Loose);
+        quotaPlanAllowedServerQuery ??= new Mock<IQuotaPlanAllowedServerQueryService>(MockBehavior.Loose);
 
         return new XrayClientLinkService(
             microserviceClient.Object,
@@ -275,6 +343,8 @@ public class XrayClientLinkServiceTests
             linkQuery.Object,
             tokenQuery.Object,
             identityLinkQuery.Object,
+            userQuotaPlanQuery.Object,
+            quotaPlanAllowedServerQuery.Object,
             linkCommand.Object,
             tokenCommand.Object,
             serverQuery.Object,
