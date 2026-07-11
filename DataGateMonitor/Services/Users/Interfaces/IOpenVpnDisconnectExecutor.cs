@@ -24,15 +24,20 @@ public interface IOpenVpnDisconnectExecutor
     Task<KillOpenVpnClientResponse> ExecuteAsync(OpenVpnDisconnectRequest request, CancellationToken ct = default);
 
     /// <summary>
-    /// Records whether the user was told about a disconnect on the most recent matching
-    /// <c>FreeTierDisconnectLog</c> row written by <see cref="ExecuteAsync"/>. Best-effort: silently
-    /// no-ops if no matching row is found.
+    /// Same as <see cref="ExecuteAsync"/>, but also returns the id of the <c>FreeTierDisconnectLog</c>
+    /// row that was written (null if the write failed), so a caller can precisely correlate a later
+    /// <see cref="UpdateNotificationOutcomeAsync"/> call to this exact disconnect event.
+    /// </summary>
+    Task<(KillOpenVpnClientResponse Response, int? DisconnectLogId)> ExecuteWithLogIdAsync(
+        OpenVpnDisconnectRequest request, CancellationToken ct = default);
+
+    /// <summary>
+    /// Records whether the user was told about a disconnect on the <c>FreeTierDisconnectLog</c> row
+    /// identified by <paramref name="disconnectLogId"/> (from <see cref="ExecuteWithLogIdAsync"/>).
+    /// Best-effort: silently no-ops if the row no longer exists.
     /// </summary>
     Task UpdateNotificationOutcomeAsync(
-        int userId,
-        int vpnServerId,
-        string commonName,
-        DisconnectReason reason,
+        int disconnectLogId,
         string? notificationChannel,
         bool notificationSent,
         CancellationToken ct = default);

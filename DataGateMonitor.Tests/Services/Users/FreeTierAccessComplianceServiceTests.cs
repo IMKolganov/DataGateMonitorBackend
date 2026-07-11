@@ -190,6 +190,34 @@ public class FreeTierAccessComplianceServiceTests
     }
 
     [Fact]
+    public async Task NotifiesAdmins_OnlyOnce_WithinCooldownWindow_ForSameUser()
+    {
+        SetupFreePlanUser(63, 963);
+        SetupGraceSettings(enabled: false);
+
+        _notifications
+            .Setup(n => n.FreeTierAccessNonCompliant(
+                63,
+                QuotaPlanNames.Free,
+                963,
+                false,
+                false,
+                It.IsAny<string>(),
+                "@DataGateVPNBot",
+                It.IsAny<CancellationToken>()))
+            .Returns(Task.CompletedTask);
+
+        var sut = CreateSut();
+        await sut.AuditAndNotifyIfNeededAsync(63, "first", ct: CancellationToken.None);
+        await sut.AuditAndNotifyIfNeededAsync(63, "second", ct: CancellationToken.None);
+
+        _notifications.Verify(
+            n => n.FreeTierAccessNonCompliant(
+                63, QuotaPlanNames.Free, 963, false, false, It.IsAny<string>(), "@DataGateVPNBot", It.IsAny<CancellationToken>()),
+            Times.Once);
+    }
+
+    [Fact]
     public async Task IsCompliantViaGrace_WhenSettingEnabledAndNoMergeOrChannel()
     {
         SetupFreePlanUser(13, 999);
@@ -371,6 +399,21 @@ public class FreeTierAccessComplianceServiceTests
 
         Assert.False(status.IsCompliant);
         Assert.Null(status.GraceExpiresAtUtc);
+    }
+
+    [Fact]
+    public async Task RegisterConnectionAsync_EvaluatesComplianceExactlyOnce()
+    {
+        SetupFreePlanUser(72, 1021);
+        SetupGraceSettings(enabled: true, minutes: 5);
+
+        var sut = CreateSut();
+        await sut.RegisterConnectionAsync(72, "android-connect", CancellationToken.None);
+
+        // RegisterConnectionAsync used to call AuditAndNotifyIfNeededAsync then GetStatusAsync,
+        // re-running the full compliance evaluation (including a live Telegram check) twice.
+        _quotaAssignmentQuery.Verify(q => q.GetActiveByUserId(72, It.IsAny<CancellationToken>()), Times.Once);
+        _channelChecker.Verify(c => c.IsSubscribedAsync(1021, It.IsAny<CancellationToken>()), Times.Once);
     }
 
     [Fact]

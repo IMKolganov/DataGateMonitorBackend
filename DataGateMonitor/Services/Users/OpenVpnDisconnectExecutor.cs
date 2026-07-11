@@ -1,5 +1,4 @@
 using DataGateMonitor.DataBase.Services.Command.Interfaces;
-using DataGateMonitor.DataBase.Services.Query;
 using DataGateMonitor.DataBase.Services.Query.IssuedOvpnFileTable;
 using DataGateMonitor.Models;
 using DataGateMonitor.Services.DataGateOpenVpnManager.Interfaces;
@@ -7,7 +6,6 @@ using DataGateMonitor.Services.OpenVpnManagementInterfaces.Interfaces;
 using DataGateMonitor.Services.Users.Interfaces;
 using DataGateMonitor.SharedModels.DataGateMonitor.OpenVpnFiles.Requests;
 using DataGateMonitor.SharedModels.DataGateMonitor.VpnServerClients.Responses;
-using DataGateMonitor.SharedModels.Enums;
 
 namespace DataGateMonitor.Services.Users;
 
@@ -16,10 +14,16 @@ public sealed class OpenVpnDisconnectExecutor(
     IIssuedOvpnFileQueryService issuedOvpnFileQueryService,
     IOvpnFileApiService ovpnFileApiService,
     ICommandService<FreeTierDisconnectLog, int> disconnectLogCommandService,
-    IQueryService<FreeTierDisconnectLog, int> disconnectLogQueryService,
     ILogger<OpenVpnDisconnectExecutor> logger) : IOpenVpnDisconnectExecutor
 {
     public async Task<KillOpenVpnClientResponse> ExecuteAsync(
+        OpenVpnDisconnectRequest request, CancellationToken ct = default)
+    {
+        var (response, _) = await ExecuteWithLogIdAsync(request, ct);
+        return response;
+    }
+
+    public async Task<(KillOpenVpnClientResponse Response, int? DisconnectLogId)> ExecuteWithLogIdAsync(
         OpenVpnDisconnectRequest request, CancellationToken ct = default)
     {
         var server = request.Server;
@@ -52,45 +56,40 @@ public sealed class OpenVpnDisconnectExecutor(
                 : revokeError is null ? errorMessage : $"{errorMessage} | {revokeError}";
         }
 
-        await WriteLogAsync(request, killSucceeded, revokeSucceeded, errorMessage, ct);
+        var logId = await WriteLogAsync(request, killSucceeded, revokeSucceeded, errorMessage, ct);
 
-        return new KillOpenVpnClientResponse
+        var response = new KillOpenVpnClientResponse
         {
             Success = killSucceeded,
             RevokeAttempted = request.RevokeCertificate,
             RevokeSucceeded = revokeSucceeded,
             ErrorMessage = errorMessage,
         };
+
+        return (response, logId);
     }
 
     public async Task UpdateNotificationOutcomeAsync(
-        int userId,
-        int vpnServerId,
-        string commonName,
-        DisconnectReason reason,
+        int disconnectLogId,
         string? notificationChannel,
         bool notificationSent,
         CancellationToken ct = default)
     {
         try
         {
-            var entry = await disconnectLogQueryService.FirstOrDefault(
-                l => l.UserId == userId && l.VpnServerId == vpnServerId
-                     && l.CommonName == commonName && l.Reason == (int)reason,
-                orderBy: q => q.OrderByDescending(l => l.Id),
-                asNoTracking: false,
-                ct: ct);
-
-            if (entry is null)
-                return;
-
-            entry.NotificationChannel = notificationChannel;
-            entry.NotificationSent = notificationSent;
-            await disconnectLogCommandService.Update(entry, saveChanges: true, ct);
+            await disconnectLogCommandService.UpdateWhere(
+                l => l.Id == disconnectLogId,
+                set => set
+                    .SetProperty(l => l.NotificationChannel, notificationChannel)
+                    .SetProperty(l => l.NotificationSent, notificationSent),
+                ct);
         }
         catch (Exception ex)
         {
-            logger.LogWarning(ex, "Failed to update notification outcome on free-tier disconnect log entry.");
+            logger.LogWarning(
+                ex,
+                "Failed to update notification outcome on free-tier disconnect log entry {DisconnectLogId}.",
+                disconnectLogId);
         }
     }
 
@@ -133,7 +132,7 @@ public sealed class OpenVpnDisconnectExecutor(
         }
     }
 
-    private async Task WriteLogAsync(
+    private async Task<int?> WriteLogAsync(
         OpenVpnDisconnectRequest request,
         bool killSucceeded,
         bool? revokeSucceeded,
@@ -159,11 +158,13 @@ public sealed class OpenVpnDisconnectExecutor(
                 CreatedAt = DateTimeOffset.UtcNow,
             };
 
-            await disconnectLogCommandService.Add(entry, saveChanges: true, ct);
+            var added = await disconnectLogCommandService.Add(entry, saveChanges: true, ct);
+            return added.Id;
         }
         catch (Exception ex)
         {
             logger.LogWarning(ex, "Failed to write free-tier disconnect log entry.");
+            return null;
         }
     }
 }

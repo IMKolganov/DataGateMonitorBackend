@@ -13,5 +13,11 @@ public sealed record FreeTierGraceDisconnectOutcome(string? Channel, bool Sent)
 /// </summary>
 public interface IFreeTierGraceDisconnectNotifier
 {
-    Task<FreeTierGraceDisconnectOutcome> NotifyAsync(int userId, CancellationToken ct = default);
+    /// <param name="planNameHint">
+    /// The user's active plan name, if the caller already computed it (e.g. from the same compliance
+    /// evaluation that decided to disconnect them) — avoids a redundant compliance re-evaluation just to
+    /// read the plan name for the email body. Falls back to evaluating it when null.
+    /// </param>
+    Task<FreeTierGraceDisconnectOutcome> NotifyAsync(
+        int userId, string? planNameHint = null, CancellationToken ct = default);
 }

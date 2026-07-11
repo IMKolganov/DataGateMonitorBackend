@@ -24,7 +24,8 @@ public sealed class FreeTierGraceDisconnectNotifier(
     private const string TelegramChannel = "telegram";
     private const string EmailChannel = "email";
 
-    public async Task<FreeTierGraceDisconnectOutcome> NotifyAsync(int userId, CancellationToken ct = default)
+    public async Task<FreeTierGraceDisconnectOutcome> NotifyAsync(
+        int userId, string? planNameHint = null, CancellationToken ct = default)
     {
         try
         {
@@ -55,33 +56,42 @@ public sealed class FreeTierGraceDisconnectNotifier(
                     : FreeTierGraceDisconnectOutcome.NoChannelAvailable;
             }
 
-            var evaluation = await freeTierAccessComplianceService.EvaluateAccessForEnforcementAsync(userId, ct);
-            var planName = evaluation.ActivePlanName ?? QuotaPlanNames.Free;
+            var planName = planNameHint;
+            if (string.IsNullOrWhiteSpace(planName))
+            {
+                var evaluation = await freeTierAccessComplianceService.EvaluateAccessForEnforcementAsync(userId, ct);
+                planName = evaluation.ActivePlanName;
+            }
+
+            planName ??= QuotaPlanNames.Free;
 
             var (subject, bodyHtml) = await systemTransactionalEmailService.GetFreeTierGraceDisconnectedAsync(
                 planName, requiredChannel, ct);
 
+            // Send and audit-log independently: a failure writing the SentEmailLogs row must never be
+            // mistaken for (and reported as) an email delivery failure.
+            string? sendError = null;
             try
             {
                 await emailSenderService.SendAsync(user.Email, subject, bodyHtml, ct);
-                await sentEmailLogService.LogAsync(userId, user.Email, subject, bodyHtml, true, null, null, ct);
-                return new FreeTierGraceDisconnectOutcome(EmailChannel, Sent: true);
             }
             catch (Exception ex)
             {
-                var msg = ex.Message.Length > 4000 ? ex.Message[..4000] : ex.Message;
-                try
-                {
-                    await sentEmailLogService.LogAsync(userId, user.Email, subject, bodyHtml, false, msg, null, ct);
-                }
-                catch
-                {
-                    // ignore secondary logging failures
-                }
-
+                sendError = ex.Message.Length > 4000 ? ex.Message[..4000] : ex.Message;
                 logger.LogWarning(ex, "Failed to send free-tier grace-disconnect email to user {UserId}.", userId);
-                return new FreeTierGraceDisconnectOutcome(EmailChannel, Sent: false);
             }
+
+            try
+            {
+                await sentEmailLogService.LogAsync(
+                    userId, user.Email, subject, bodyHtml, sendError is null, sendError, null, ct);
+            }
+            catch (Exception logEx)
+            {
+                logger.LogWarning(logEx, "Failed to write SentEmailLog entry for user {UserId}.", userId);
+            }
+
+            return new FreeTierGraceDisconnectOutcome(EmailChannel, Sent: sendError is null);
         }
         catch (Exception ex)
         {

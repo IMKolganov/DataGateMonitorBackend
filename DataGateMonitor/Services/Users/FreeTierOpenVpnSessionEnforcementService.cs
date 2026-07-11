@@ -106,7 +106,7 @@ public sealed class FreeTierOpenVpnSessionEnforcementService(
             return 0;
 
         var killed = 0;
-        var checkedUsers = new Dictionary<int, bool>();
+        var checkedUsers = new Dictionary<int, FreeTierAccessComplianceResult>();
 
         foreach (var connectedClient in status.Clients)
         {
@@ -125,16 +125,16 @@ public sealed class FreeTierOpenVpnSessionEnforcementService(
             if (user is not { Id: > 0 })
                 continue;
 
-            if (!checkedUsers.TryGetValue(user.Id, out var shouldKill))
+            if (!checkedUsers.TryGetValue(user.Id, out var compliance))
             {
-                shouldKill = await freeTierAccessComplianceService.ShouldEnforceOpenVpnDisconnectAsync(user.Id, ct);
-                checkedUsers[user.Id] = shouldKill;
+                compliance = await freeTierAccessComplianceService.EvaluateAccessForEnforcementAsync(user.Id, ct);
+                checkedUsers[user.Id] = compliance;
             }
 
-            if (!shouldKill)
+            if (compliance is not { IsApplicable: true, IsCompliant: false })
                 continue;
 
-            var result = await disconnectExecutor.ExecuteAsync(
+            var (result, disconnectLogId) = await disconnectExecutor.ExecuteWithLogIdAsync(
                 new OpenVpnDisconnectRequest
                 {
                     Server = server,
@@ -153,15 +153,15 @@ public sealed class FreeTierOpenVpnSessionEnforcementService(
 
                 try
                 {
-                    var outcome = await graceDisconnectNotifier.NotifyAsync(user.Id, ct);
-                    await disconnectExecutor.UpdateNotificationOutcomeAsync(
-                        user.Id,
-                        server.Id,
-                        connectedClient.CommonName,
-                        DisconnectReason.Enforcement,
-                        outcome.Channel,
-                        outcome.Sent,
-                        ct);
+                    var outcome = await graceDisconnectNotifier.NotifyAsync(user.Id, compliance.ActivePlanName, ct);
+                    if (disconnectLogId is { } logId)
+                    {
+                        await disconnectExecutor.UpdateNotificationOutcomeAsync(
+                            logId,
+                            outcome.Channel,
+                            outcome.Sent,
+                            ct);
+                    }
                 }
                 catch (Exception ex)
                 {

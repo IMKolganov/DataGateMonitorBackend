@@ -4,6 +4,7 @@ using DataGateMonitor.DataBase.Services.Query.IssuedOvpnFileTable;
 using DataGateMonitor.DataBase.Services.Query.UserTable;
 using DataGateMonitor.DataBase.Services.Query.VpnServerTable;
 using DataGateMonitor.Models;
+using DataGateMonitor.Models.Helpers;
 using DataGateMonitor.Services.OpenVpnManagementInterfaces.Interfaces;
 using DataGateMonitor.Services.Others;
 using DataGateMonitor.Services.Users;
@@ -74,29 +75,39 @@ public class FreeTierOpenVpnSessionEnforcementServiceTests
             .ReturnsAsync(new User { Id = userId, DisplayName = "u" });
     }
 
+    private void SetupNonCompliant(int userId, string planName = QuotaPlanNames.Free)
+    {
+        _complianceService
+            .Setup(s => s.EvaluateAccessForEnforcementAsync(userId, It.IsAny<CancellationToken>()))
+            .ReturnsAsync(new FreeTierAccessComplianceResult
+            {
+                IsApplicable = true,
+                IsCompliant = false,
+                ActivePlanName = planName,
+            });
+    }
+
     [Fact]
     public async Task EnforceAsync_WhenDisconnectSucceeds_NotifiesUserAndRecordsOutcome()
     {
         SetupEnforcementEnabled();
         SetupSingleConnectedClient(userId: 42);
+        SetupNonCompliant(42);
 
-        _complianceService
-            .Setup(s => s.ShouldEnforceOpenVpnDisconnectAsync(42, It.IsAny<CancellationToken>()))
-            .ReturnsAsync(true);
         _disconnectExecutor
-            .Setup(e => e.ExecuteAsync(It.IsAny<OpenVpnDisconnectRequest>(), It.IsAny<CancellationToken>()))
-            .ReturnsAsync(new KillOpenVpnClientResponse { Success = true });
+            .Setup(e => e.ExecuteWithLogIdAsync(It.IsAny<OpenVpnDisconnectRequest>(), It.IsAny<CancellationToken>()))
+            .ReturnsAsync((new KillOpenVpnClientResponse { Success = true }, (int?)77));
         _graceDisconnectNotifier
-            .Setup(n => n.NotifyAsync(42, It.IsAny<CancellationToken>()))
+            .Setup(n => n.NotifyAsync(42, QuotaPlanNames.Free, It.IsAny<CancellationToken>()))
             .ReturnsAsync(new FreeTierGraceDisconnectOutcome("telegram", true));
 
         var sut = CreateSut();
         var killed = await sut.EnforceAsync(CancellationToken.None);
 
         Assert.Equal(1, killed);
-        _graceDisconnectNotifier.Verify(n => n.NotifyAsync(42, It.IsAny<CancellationToken>()), Times.Once);
+        _graceDisconnectNotifier.Verify(n => n.NotifyAsync(42, QuotaPlanNames.Free, It.IsAny<CancellationToken>()), Times.Once);
         _disconnectExecutor.Verify(
-            e => e.UpdateNotificationOutcomeAsync(42, 1, "cn1", DisconnectReason.Enforcement, "telegram", true, It.IsAny<CancellationToken>()),
+            e => e.UpdateNotificationOutcomeAsync(77, "telegram", true, It.IsAny<CancellationToken>()),
             Times.Once);
     }
 
@@ -105,23 +116,21 @@ public class FreeTierOpenVpnSessionEnforcementServiceTests
     {
         SetupEnforcementEnabled();
         SetupSingleConnectedClient(userId: 43);
+        SetupNonCompliant(43);
 
-        _complianceService
-            .Setup(s => s.ShouldEnforceOpenVpnDisconnectAsync(43, It.IsAny<CancellationToken>()))
-            .ReturnsAsync(true);
         _disconnectExecutor
-            .Setup(e => e.ExecuteAsync(It.IsAny<OpenVpnDisconnectRequest>(), It.IsAny<CancellationToken>()))
-            .ReturnsAsync(new KillOpenVpnClientResponse { Success = false });
+            .Setup(e => e.ExecuteWithLogIdAsync(It.IsAny<OpenVpnDisconnectRequest>(), It.IsAny<CancellationToken>()))
+            .ReturnsAsync((new KillOpenVpnClientResponse { Success = false }, (int?)78));
 
         var sut = CreateSut();
         var killed = await sut.EnforceAsync(CancellationToken.None);
 
         Assert.Equal(0, killed);
-        _graceDisconnectNotifier.Verify(n => n.NotifyAsync(It.IsAny<int>(), It.IsAny<CancellationToken>()), Times.Never);
+        _graceDisconnectNotifier.Verify(
+            n => n.NotifyAsync(It.IsAny<int>(), It.IsAny<string?>(), It.IsAny<CancellationToken>()), Times.Never);
         _disconnectExecutor.Verify(
             e => e.UpdateNotificationOutcomeAsync(
-                It.IsAny<int>(), It.IsAny<int>(), It.IsAny<string>(), It.IsAny<DisconnectReason>(),
-                It.IsAny<string?>(), It.IsAny<bool>(), It.IsAny<CancellationToken>()),
+                It.IsAny<int>(), It.IsAny<string?>(), It.IsAny<bool>(), It.IsAny<CancellationToken>()),
             Times.Never);
     }
 
@@ -132,15 +141,42 @@ public class FreeTierOpenVpnSessionEnforcementServiceTests
         SetupSingleConnectedClient(userId: 44);
 
         _complianceService
-            .Setup(s => s.ShouldEnforceOpenVpnDisconnectAsync(44, It.IsAny<CancellationToken>()))
-            .ReturnsAsync(false);
+            .Setup(s => s.EvaluateAccessForEnforcementAsync(44, It.IsAny<CancellationToken>()))
+            .ReturnsAsync(new FreeTierAccessComplianceResult { IsApplicable = true, IsCompliant = true });
 
         var sut = CreateSut();
         var killed = await sut.EnforceAsync(CancellationToken.None);
 
         Assert.Equal(0, killed);
-        _disconnectExecutor.Verify(e => e.ExecuteAsync(It.IsAny<OpenVpnDisconnectRequest>(), It.IsAny<CancellationToken>()), Times.Never);
-        _graceDisconnectNotifier.Verify(n => n.NotifyAsync(It.IsAny<int>(), It.IsAny<CancellationToken>()), Times.Never);
+        _disconnectExecutor.Verify(
+            e => e.ExecuteWithLogIdAsync(It.IsAny<OpenVpnDisconnectRequest>(), It.IsAny<CancellationToken>()), Times.Never);
+        _graceDisconnectNotifier.Verify(
+            n => n.NotifyAsync(It.IsAny<int>(), It.IsAny<string?>(), It.IsAny<CancellationToken>()), Times.Never);
+    }
+
+    [Fact]
+    public async Task EnforceAsync_WhenLogWriteFailed_SkipsOutcomeUpdate()
+    {
+        SetupEnforcementEnabled();
+        SetupSingleConnectedClient(userId: 46);
+        SetupNonCompliant(46);
+
+        _disconnectExecutor
+            .Setup(e => e.ExecuteWithLogIdAsync(It.IsAny<OpenVpnDisconnectRequest>(), It.IsAny<CancellationToken>()))
+            .ReturnsAsync((new KillOpenVpnClientResponse { Success = true }, (int?)null));
+        _graceDisconnectNotifier
+            .Setup(n => n.NotifyAsync(46, QuotaPlanNames.Free, It.IsAny<CancellationToken>()))
+            .ReturnsAsync(new FreeTierGraceDisconnectOutcome("email", true));
+
+        var sut = CreateSut();
+        var killed = await sut.EnforceAsync(CancellationToken.None);
+
+        Assert.Equal(1, killed);
+        _graceDisconnectNotifier.Verify(n => n.NotifyAsync(46, QuotaPlanNames.Free, It.IsAny<CancellationToken>()), Times.Once);
+        _disconnectExecutor.Verify(
+            e => e.UpdateNotificationOutcomeAsync(
+                It.IsAny<int>(), It.IsAny<string?>(), It.IsAny<bool>(), It.IsAny<CancellationToken>()),
+            Times.Never);
     }
 
     [Fact]
@@ -148,15 +184,13 @@ public class FreeTierOpenVpnSessionEnforcementServiceTests
     {
         SetupEnforcementEnabled();
         SetupSingleConnectedClient(userId: 45);
+        SetupNonCompliant(45);
 
-        _complianceService
-            .Setup(s => s.ShouldEnforceOpenVpnDisconnectAsync(45, It.IsAny<CancellationToken>()))
-            .ReturnsAsync(true);
         _disconnectExecutor
-            .Setup(e => e.ExecuteAsync(It.IsAny<OpenVpnDisconnectRequest>(), It.IsAny<CancellationToken>()))
-            .ReturnsAsync(new KillOpenVpnClientResponse { Success = true });
+            .Setup(e => e.ExecuteWithLogIdAsync(It.IsAny<OpenVpnDisconnectRequest>(), It.IsAny<CancellationToken>()))
+            .ReturnsAsync((new KillOpenVpnClientResponse { Success = true }, (int?)79));
         _graceDisconnectNotifier
-            .Setup(n => n.NotifyAsync(45, It.IsAny<CancellationToken>()))
+            .Setup(n => n.NotifyAsync(45, QuotaPlanNames.Free, It.IsAny<CancellationToken>()))
             .ThrowsAsync(new InvalidOperationException("boom"));
 
         var sut = CreateSut();
@@ -165,8 +199,7 @@ public class FreeTierOpenVpnSessionEnforcementServiceTests
         Assert.Equal(1, killed);
         _disconnectExecutor.Verify(
             e => e.UpdateNotificationOutcomeAsync(
-                It.IsAny<int>(), It.IsAny<int>(), It.IsAny<string>(), It.IsAny<DisconnectReason>(),
-                It.IsAny<string?>(), It.IsAny<bool>(), It.IsAny<CancellationToken>()),
+                It.IsAny<int>(), It.IsAny<string?>(), It.IsAny<bool>(), It.IsAny<CancellationToken>()),
             Times.Never);
     }
 }

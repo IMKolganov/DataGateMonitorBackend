@@ -50,8 +50,8 @@ public sealed class FreeTierAccessComplianceService(
     public async Task<FreeTierAccessStatusResponse> RegisterConnectionAsync(
         int userId, string context, CancellationToken ct = default)
     {
-        await AuditAndNotifyIfNeededAsync(userId, context, ct: ct);
-        return await GetStatusAsync(userId, ct);
+        var (result, links) = await AuditAndNotifyCoreAsync(userId, context, isChannelSubscribed: null, ct);
+        return MapToStatusResponse(result, links);
     }
 
     public async Task<FreeTierAccessComplianceResult> AuditAndNotifyIfNeededByTelegramIdAsync(
@@ -116,11 +116,22 @@ public sealed class FreeTierAccessComplianceService(
         bool? isChannelSubscribed = null,
         CancellationToken ct = default)
     {
+        var (result, _) = await AuditAndNotifyCoreAsync(userId, context, isChannelSubscribed, ct);
+        return result;
+    }
+
+    private async Task<(FreeTierAccessComplianceResult Result, IReadOnlyList<UserIdentityLink> Links)> AuditAndNotifyCoreAsync(
+        int userId,
+        string context,
+        bool? isChannelSubscribed,
+        CancellationToken ct)
+    {
         var evaluation = await EvaluateAccessAsync(userId, isChannelSubscribed, ct);
         var result = evaluation.Result;
+        var links = evaluation.Links;
 
         if (!result.IsApplicable || result.IsCompliant)
-            return result;
+            return (result, links);
 
         if (await TryApplyGracePeriodAsync(userId, ct) is { } expiresAt)
         {
@@ -130,24 +141,30 @@ public sealed class FreeTierAccessComplianceService(
                 result.ActivePlanName,
                 context);
 
-            return CopyResult(result, isCompliant: true, isGracePeriod: true, graceExpiresAtUtc: expiresAt);
+            return (CopyResult(result, isCompliant: true, isGracePeriod: true, graceExpiresAtUtc: expiresAt), links);
         }
 
-        try
+        var cooldownKey = BuildAdminNotifyCooldownKey(userId);
+        if (!memoryCache.TryGetValue(cooldownKey, out _))
         {
-            await appNotificationFacade.FreeTierAccessNonCompliant(
-                userId,
-                result.ActivePlanName ?? QuotaPlanNames.Free,
-                result.TelegramId,
-                result.IsMergedAccount,
-                result.IsChannelSubscribed,
-                context,
-                channelOptions.Value.RequiredChannelChatId,
-                ct);
-        }
-        catch (Exception ex)
-        {
-            logger.LogWarning(ex, "Failed to notify admins about Free/Default access violation for user {UserId}", userId);
+            memoryCache.Set(cooldownKey, true, AdminNotifyCooldown);
+
+            try
+            {
+                await appNotificationFacade.FreeTierAccessNonCompliant(
+                    userId,
+                    result.ActivePlanName ?? QuotaPlanNames.Free,
+                    result.TelegramId,
+                    result.IsMergedAccount,
+                    result.IsChannelSubscribed,
+                    context,
+                    channelOptions.Value.RequiredChannelChatId,
+                    ct);
+            }
+            catch (Exception ex)
+            {
+                logger.LogWarning(ex, "Failed to notify admins about Free/Default access violation for user {UserId}", userId);
+            }
         }
 
         logger.LogWarning(
@@ -157,7 +174,7 @@ public sealed class FreeTierAccessComplianceService(
             channelOptions.Value.RequiredChannelChatId,
             context);
 
-        return CopyResult(result, adminsNotified: true);
+        return (CopyResult(result, adminsNotified: true), links);
     }
 
     private static FreeTierAccessComplianceResult CopyResult(
@@ -283,6 +300,16 @@ public sealed class FreeTierAccessComplianceService(
     }
 
     internal static string BuildGraceCacheKey(int userId) => $"free-tier-grace:{userId}";
+
+    private static string BuildAdminNotifyCooldownKey(int userId) => $"free-tier-admin-notify-cooldown:{userId}";
+
+    /// <summary>
+    /// Suppresses repeat "non-compliant" admin notifications for the same user within this window.
+    /// Callers of <see cref="AuditAndNotifyIfNeededAsync"/> can legitimately fire many times in a row
+    /// for the same non-compliant user (e.g. a client app calling <c>RegisterConnectionAsync</c> on
+    /// every reconnect attempt) — without this, each call would page admins again.
+    /// </summary>
+    private static readonly TimeSpan AdminNotifyCooldown = TimeSpan.FromMinutes(10);
 
     private DateTimeOffset? TryGetGraceExpiresAt(int userId)
         => memoryCache.TryGetValue(BuildGraceCacheKey(userId), out DateTimeOffset expiresAt) ? expiresAt : null;

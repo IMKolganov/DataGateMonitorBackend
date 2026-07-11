@@ -47,7 +47,7 @@ public class FreeTierGraceDisconnectNotifierTests
             .ReturnsAsync(true);
 
         var sut = CreateSut();
-        var outcome = await sut.NotifyAsync(1, CancellationToken.None);
+        var outcome = await sut.NotifyAsync(1, ct: CancellationToken.None);
 
         Assert.Equal("telegram", outcome.Channel);
         Assert.True(outcome.Sent);
@@ -72,7 +72,7 @@ public class FreeTierGraceDisconnectNotifierTests
             .ReturnsAsync(("Subject", "<html/>"));
 
         var sut = CreateSut();
-        var outcome = await sut.NotifyAsync(2, CancellationToken.None);
+        var outcome = await sut.NotifyAsync(2, ct: CancellationToken.None);
 
         Assert.Equal("email", outcome.Channel);
         Assert.True(outcome.Sent);
@@ -96,7 +96,7 @@ public class FreeTierGraceDisconnectNotifierTests
             .ReturnsAsync(("Subject", "<html/>"));
 
         var sut = CreateSut();
-        var outcome = await sut.NotifyAsync(3, CancellationToken.None);
+        var outcome = await sut.NotifyAsync(3, ct: CancellationToken.None);
 
         Assert.Equal("email", outcome.Channel);
         Assert.True(outcome.Sent);
@@ -115,7 +115,7 @@ public class FreeTierGraceDisconnectNotifierTests
             .ReturnsAsync([]);
 
         var sut = CreateSut();
-        var outcome = await sut.NotifyAsync(4, CancellationToken.None);
+        var outcome = await sut.NotifyAsync(4, ct: CancellationToken.None);
 
         Assert.Null(outcome.Channel);
         Assert.False(outcome.Sent);
@@ -136,7 +136,7 @@ public class FreeTierGraceDisconnectNotifierTests
             .ReturnsAsync(false);
 
         var sut = CreateSut();
-        var outcome = await sut.NotifyAsync(7, CancellationToken.None);
+        var outcome = await sut.NotifyAsync(7, ct: CancellationToken.None);
 
         Assert.Equal("telegram", outcome.Channel);
         Assert.False(outcome.Sent);
@@ -158,7 +158,7 @@ public class FreeTierGraceDisconnectNotifierTests
             .ThrowsAsync(new InvalidOperationException("smtp down"));
 
         var sut = CreateSut();
-        var outcome = await sut.NotifyAsync(8, CancellationToken.None);
+        var outcome = await sut.NotifyAsync(8, ct: CancellationToken.None);
 
         Assert.Equal("email", outcome.Channel);
         Assert.False(outcome.Sent);
@@ -172,7 +172,7 @@ public class FreeTierGraceDisconnectNotifierTests
         _userQuery.Setup(q => q.GetById(5, It.IsAny<CancellationToken>())).ReturnsAsync((User?)null);
 
         var sut = CreateSut();
-        var outcome = await sut.NotifyAsync(5, CancellationToken.None);
+        var outcome = await sut.NotifyAsync(5, ct: CancellationToken.None);
 
         Assert.Null(outcome.Channel);
         Assert.False(outcome.Sent);
@@ -186,7 +186,7 @@ public class FreeTierGraceDisconnectNotifierTests
 
         var sut = CreateSut();
         FreeTierGraceDisconnectOutcome? outcome = null;
-        var exception = await Record.ExceptionAsync(async () => outcome = await sut.NotifyAsync(6, CancellationToken.None));
+        var exception = await Record.ExceptionAsync(async () => outcome = await sut.NotifyAsync(6, ct: CancellationToken.None));
 
         Assert.Null(exception);
         Assert.NotNull(outcome);
