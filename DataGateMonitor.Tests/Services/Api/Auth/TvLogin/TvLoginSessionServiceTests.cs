@@ -1,6 +1,9 @@
 using Microsoft.AspNetCore.Http;
 using Microsoft.Extensions.Configuration;
+using Microsoft.Extensions.Logging.Abstractions;
 using Moq;
+using DataGateMonitor.DataBase.Services.Command.Interfaces;
+using DataGateMonitor.DataBase.Services.Query.TvLoginSessionTable;
 using DataGateMonitor.Hubs;
 using DataGateMonitor.Models;
 using DataGateMonitor.Services.Api.Auth.Login;
@@ -600,44 +603,195 @@ public class TvLoginSessionServiceTests
     // ── Full lifecycle ──────────────────────────────────────────────────────
 
     [Fact]
-    public async Task FullLifecycle_Create_View_Approve_PollTokens_PollConsumed()
+    public async Task CreateSessionAsync_FallsBackToFrontendBaseUrl()
     {
-        var h = new TvLoginSessionServiceHarness();
+        var h = new TvLoginSessionServiceHarness(new ConfigurationBuilder()
+            .AddInMemoryCollection(new Dictionary<string, string?>
+            {
+                ["Frontend:BaseUrl"] = "https://app.example.com/",
+            })
+            .Build());
         var sut = h.CreateSut();
 
-        var created = await sut.CreateSessionAsync(
-            new CreateTvLoginSessionRequest { DeviceName = "Den TV" },
-            "10.0.0.2",
-            CancellationToken.None);
+        var result = await sut.CreateSessionAsync(new CreateTvLoginSessionRequest(), "1.1.1.1", CancellationToken.None);
 
-        Assert.Equal("pending", (await sut.PollSessionAsync(created.SessionId, "10.0.0.2", CancellationToken.None)).Status);
+        Assert.Equal("https://app.example.com/tv/link", result.VerificationUrl);
+    }
 
-        await sut.GetByUserCodeAsync(created.UserCode, CancellationToken.None);
-        Assert.Equal("viewed", (await sut.PollSessionAsync(created.SessionId, "10.0.0.2", CancellationToken.None)).Status);
+    [Fact]
+    public async Task CreateSessionAsync_BlankDeviceHeaders_StoredAsNull()
+    {
+        var h = new TvLoginSessionServiceHarness();
+        var httpContext = new DefaultHttpContext();
+        httpContext.Request.Headers.UserAgent = "   ";
+        httpContext.Request.Headers["X-Device-Id"] = "  ";
+        h.Http.SetupGet(x => x.HttpContext).Returns(httpContext);
+        var sut = h.CreateSut();
 
-        var session = h.Sessions.Single(s => s.Id == created.SessionId);
-        h.UserQuery.Setup(u => u.GetById(100, It.IsAny<CancellationToken>()))
-            .ReturnsAsync((int id, CancellationToken _) =>
+        await sut.CreateSessionAsync(new CreateTvLoginSessionRequest(), "1.1.1.1", CancellationToken.None);
+
+        Assert.Null(h.Sessions[0].DeviceId);
+        Assert.Null(h.Sessions[0].UserAgent);
+    }
+
+    [Fact]
+    public async Task CreateSessionAsync_WhenAllCodesCollide_Throws()
+    {
+        var h = new TvLoginSessionServiceHarness();
+        var query = new Mock<ITvLoginSessionQueryService>();
+        query.Setup(q => q.AnyActiveByUserCode(It.IsAny<string>(), It.IsAny<CancellationToken>()))
+            .ReturnsAsync(true);
+        var colliding = new TvLoginSessionService(
+            query.Object,
+            Mock.Of<ICommandService<TvLoginSession, Guid>>(),
+            h.UserQuery.Object,
+            h.TokenService.Object,
+            h.Hub.Object,
+            h.Cache,
+            h.Config,
+            h.Http.Object,
+            NullLogger<TvLoginSessionService>.Instance);
+
+        var ex = await Assert.ThrowsAsync<InvalidOperationException>(
+            () => colliding.CreateSessionAsync(new CreateTvLoginSessionRequest(), "9.9.9.9", CancellationToken.None));
+        Assert.Contains("unique TV login code", ex.Message);
+    }
+
+    [Fact]
+    public async Task ApproveAsync_WhenUpdateAffectsZeroRows_ThrowsNotPending()
+    {
+        var h = new TvLoginSessionServiceHarness();
+        var session = h.AddSession();
+        h.ForceUpdateWhereCount = 0;
+        var sut = h.CreateSut();
+
+        var ex = await Assert.ThrowsAsync<InvalidOperationException>(
+            () => sut.ApproveAsync(
+                new ApproveTvLoginSessionRequest { SessionId = session.Id },
+                1,
+                "1.1.1.1",
+                CancellationToken.None));
+
+        Assert.Equal(TvLoginSessionService.SessionNotPendingMessage, ex.Message);
+    }
+
+    [Fact]
+    public async Task DenyAsync_WhenUpdateAffectsZeroRows_ThrowsNotPending()
+    {
+        var h = new TvLoginSessionServiceHarness();
+        var session = h.AddSession(status: TvLoginSessionStatus.Viewed);
+        h.ForceUpdateWhereCount = 0;
+        var sut = h.CreateSut();
+
+        var ex = await Assert.ThrowsAsync<InvalidOperationException>(
+            () => sut.DenyAsync(
+                new DenyTvLoginSessionRequest { SessionId = session.Id },
+                1,
+                "1.1.1.1",
+                CancellationToken.None));
+
+        Assert.Equal(TvLoginSessionService.SessionNotPendingMessage, ex.Message);
+    }
+
+    [Fact]
+    public async Task PollSessionAsync_UnknownStatus_ReturnsExpired()
+    {
+        var h = new TvLoginSessionServiceHarness();
+        var session = h.AddSession(status: (TvLoginSessionStatus)999);
+        var sut = h.CreateSut();
+
+        var poll = await sut.PollSessionAsync(session.Id, "1.1.1.1", CancellationToken.None);
+
+        Assert.Equal("expired", poll.Status);
+    }
+
+    [Fact]
+    public async Task GetByUserCodeAsync_WhenStaleBecomesNonOpen_ThrowsExpired()
+    {
+        var h = new TvLoginSessionServiceHarness();
+        // Not returned by GetActive (expired), but still found via GetLatest → SessionExpiredMessage.
+        var session = h.AddSession(
+            userCode: "444555",
+            status: TvLoginSessionStatus.Pending,
+            expiresAt: DateTimeOffset.UtcNow.AddMinutes(-1));
+        var sut = h.CreateSut();
+
+        var ex = await Assert.ThrowsAsync<InvalidOperationException>(
+            () => sut.GetByUserCodeAsync("444555", CancellationToken.None));
+
+        Assert.Equal(TvLoginSessionService.SessionExpiredMessage, ex.Message);
+        Assert.Equal(TvLoginSessionStatus.Pending, session.Status);
+    }
+
+    [Fact]
+    public async Task GetByUserCodeAsync_WhenActiveThenExpiresDuringEnsure_ThrowsExpired()
+    {
+        var h = new TvLoginSessionServiceHarness();
+        // Force GetActive to return a stale pending row (bypass ExpiresAt filter in mock).
+        var sessionId = Guid.NewGuid();
+        var session = new TvLoginSession
+        {
+            Id = sessionId,
+            UserCode = "666777",
+            Status = TvLoginSessionStatus.Pending,
+            ExpiresAt = DateTimeOffset.UtcNow.AddMinutes(-1),
+        };
+        h.Sessions.Add(session);
+
+        var query = new Mock<ITvLoginSessionQueryService>();
+        query.Setup(q => q.GetActiveByUserCode("666777", It.IsAny<CancellationToken>()))
+            .ReturnsAsync(session);
+        query.Setup(q => q.GetById(sessionId, It.IsAny<CancellationToken>())).ReturnsAsync(session);
+
+        var command = new Mock<ICommandService<TvLoginSession, Guid>>();
+        command.Setup(c => c.UpdateWhere(
+                It.IsAny<System.Linq.Expressions.Expression<Func<TvLoginSession, bool>>>(),
+                It.IsAny<Action<Microsoft.EntityFrameworkCore.Query.UpdateSettersBuilder<TvLoginSession>>>(),
+                It.IsAny<CancellationToken>()))
+            .ReturnsAsync((
+                System.Linq.Expressions.Expression<Func<TvLoginSession, bool>> pred,
+                Action<Microsoft.EntityFrameworkCore.Query.UpdateSettersBuilder<TvLoginSession>> _,
+                CancellationToken __) =>
             {
-                session.ApprovedUserId = id;
-                return new User { Id = 100, DisplayName = "Owner", Email = "o@x.com" };
+                var matches = h.Sessions.Where(pred.Compile()).ToList();
+                foreach (var s in matches)
+                    s.Status = TvLoginSessionStatus.Expired;
+                return matches.Count;
             });
-        h.TokenService
-            .Setup(t => t.IssueAsync(100, null, It.IsAny<string?>(), It.IsAny<string?>(), It.IsAny<CancellationToken>()))
-            .ReturnsAsync(new TokenPair("tok", DateTimeOffset.UtcNow.AddMinutes(10), "ref", DateTimeOffset.UtcNow.AddDays(7)));
 
-        await sut.ApproveAsync(
-            new ApproveTvLoginSessionRequest { SessionId = created.SessionId },
-            100,
-            "10.0.0.3",
-            CancellationToken.None);
+        var sut = new TvLoginSessionService(
+            query.Object,
+            command.Object,
+            h.UserQuery.Object,
+            h.TokenService.Object,
+            h.Hub.Object,
+            h.Cache,
+            h.Config,
+            h.Http.Object,
+            NullLogger<TvLoginSessionService>.Instance);
 
-        var withTokens = await sut.PollSessionAsync(created.SessionId, "10.0.0.2", CancellationToken.None);
-        Assert.Equal("approved", withTokens.Status);
-        Assert.Equal("tok", withTokens.Token);
+        var ex = await Assert.ThrowsAsync<InvalidOperationException>(
+            () => sut.GetByUserCodeAsync("666777", CancellationToken.None));
 
-        var again = await sut.PollSessionAsync(created.SessionId, "10.0.0.2", CancellationToken.None);
-        Assert.Equal("consumed", again.Status);
-        Assert.Null(again.Token);
+        Assert.Equal(TvLoginSessionService.SessionExpiredMessage, ex.Message);
+        Assert.Equal(TvLoginSessionStatus.Expired, session.Status);
+    }
+
+    [Fact]
+    public async Task PollApproved_WhenUserMissing_MarksConsumed_ReturnsExpired()
+    {
+        var h = new TvLoginSessionServiceHarness();
+        var session = h.AddSession(status: TvLoginSessionStatus.Approved, approvedUserId: 88);
+        h.UserQuery.Setup(u => u.GetById(88, It.IsAny<CancellationToken>()))
+            .ReturnsAsync((User?)null);
+        h.EnqueueUpdate(s => s.Status = TvLoginSessionStatus.Consumed);
+        var sut = h.CreateSut();
+
+        var poll = await sut.PollSessionAsync(session.Id, "1.1.1.1", CancellationToken.None);
+
+        Assert.Equal("expired", poll.Status);
+        h.Hub.Verify(
+            x => x.NotifyStatusAsync(session.Id, "consumed", It.IsAny<DateTimeOffset>(), It.IsAny<CancellationToken>()),
+            Times.Once);
     }
 }

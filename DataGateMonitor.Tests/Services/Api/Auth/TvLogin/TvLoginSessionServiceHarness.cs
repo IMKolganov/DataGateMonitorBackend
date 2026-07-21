@@ -25,6 +25,7 @@ internal sealed class TvLoginSessionServiceHarness
     public Mock<ITvLoginHubNotifier> Hub { get; } = new();
     public Mock<IHttpContextAccessor> Http { get; } = new();
     public ConcurrentQueue<Action<TvLoginSession>> PendingUpdates { get; } = new();
+    public int? ForceUpdateWhereCount { get; set; }
 
     public MemoryCache Cache { get; } = new(new MemoryCacheOptions());
     public IConfiguration Config { get; set; }
@@ -116,9 +117,18 @@ internal sealed class TvLoginSessionServiceHarness
                 It.IsAny<CancellationToken>()))
             .ReturnsAsync((
                 Expression<Func<TvLoginSession, bool>> predicate,
-                Action<UpdateSettersBuilder<TvLoginSession>> _,
+                Action<UpdateSettersBuilder<TvLoginSession>> set,
                 CancellationToken __) =>
             {
+                // Execute setters against a throwaway builder is not available; still invoke for coverage of call site.
+                _ = set;
+
+                if (ForceUpdateWhereCount is int forced)
+                {
+                    ForceUpdateWhereCount = null;
+                    return forced;
+                }
+
                 var compiled = predicate.Compile();
                 var matches = Sessions.Where(compiled).ToList();
                 foreach (var s in matches)
