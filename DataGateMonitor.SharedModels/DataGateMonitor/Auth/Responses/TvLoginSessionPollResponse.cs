@@ -6,7 +6,7 @@ namespace DataGateMonitor.SharedModels.DataGateMonitor.Auth.Responses;
 /// </summary>
 public sealed class TvLoginSessionPollResponse
 {
-    /// <summary>pending | approved | denied | expired | consumed</summary>
+    /// <summary>pending | viewed | approved | denied | expired | consumed</summary>
     public string Status { get; set; } = null!;
 
     public DateTimeOffset ExpiresAt { get; set; }
