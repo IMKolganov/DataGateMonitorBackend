@@ -46,7 +46,7 @@ public sealed class TvLoginHub(ITvLoginSessionQueryService sessionQuery) : Hub
 
     private static string MapStatus(TvLoginSession session)
     {
-        if (session.Status == TvLoginSessionStatus.Pending
+        if (session.Status is TvLoginSessionStatus.Pending or TvLoginSessionStatus.Viewed
             && session.ExpiresAt <= DateTimeOffset.UtcNow)
             return "expired";
 
