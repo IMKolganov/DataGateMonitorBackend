@@ -17,7 +17,7 @@
     "RefreshPepper": "your-refresh-pepper"
   },
   "Auth": {
-    "PublicWebBaseUrl": "https://dash.datagateapp.com",
+    "PublicWebBaseUrl": "https://YOUR_PUBLIC_WEB_HOST",
     "TvLoginSessionMinutes": 5
   },
   "EmailSender": {

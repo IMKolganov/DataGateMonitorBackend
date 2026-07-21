@@ -30,9 +30,9 @@ public class TvLoginSessionServiceTests
 
         Assert.NotEqual(Guid.Empty, result.SessionId);
         Assert.Matches(@"^\d{6}$", result.UserCode);
-        Assert.Equal("https://dash.datagateapp.com/tv/link", result.VerificationUrl);
+        Assert.Equal("https://tv-link.test/tv/link", result.VerificationUrl);
         Assert.Equal(
-            $"https://dash.datagateapp.com/tv/link?code={Uri.EscapeDataString(result.UserCode)}",
+            $"https://tv-link.test/tv/link?code={Uri.EscapeDataString(result.UserCode)}",
             result.QrPayload);
         Assert.Equal(2, result.PollIntervalSeconds);
         Assert.Equal(TvLoginHub.HubPath, result.SignalRHubPath);
@@ -48,7 +48,7 @@ public class TvLoginSessionServiceTests
         var h = new TvLoginSessionServiceHarness(new ConfigurationBuilder()
             .AddInMemoryCollection(new Dictionary<string, string?>
             {
-                ["Auth:PublicWebBaseUrl"] = "https://dash.datagateapp.com/",
+                ["Auth:PublicWebBaseUrl"] = "https://tv-link.test/",
                 ["Auth:TvLoginSessionMinutes"] = "3",
             })
             .Build());
@@ -57,7 +57,7 @@ public class TvLoginSessionServiceTests
 
         var result = await sut.CreateSessionAsync(new CreateTvLoginSessionRequest(), "1.2.3.4", CancellationToken.None);
 
-        Assert.Equal("https://dash.datagateapp.com/tv/link", result.VerificationUrl);
+        Assert.Equal("https://tv-link.test/tv/link", result.VerificationUrl);
         Assert.InRange(result.ExpiresAt, before.AddMinutes(2.5), before.AddMinutes(3.5));
     }
 
@@ -67,7 +67,7 @@ public class TvLoginSessionServiceTests
         var h = new TvLoginSessionServiceHarness(new ConfigurationBuilder()
             .AddInMemoryCollection(new Dictionary<string, string?>
             {
-                ["Auth:PublicWebBaseUrl"] = "https://dash.datagateapp.com",
+                ["Auth:PublicWebBaseUrl"] = "https://tv-link.test",
                 ["Auth:TvLoginSessionMinutes"] = "0",
             })
             .Build());
@@ -616,6 +616,23 @@ public class TvLoginSessionServiceTests
         var result = await sut.CreateSessionAsync(new CreateTvLoginSessionRequest(), "1.1.1.1", CancellationToken.None);
 
         Assert.Equal("https://app.example.com/tv/link", result.VerificationUrl);
+    }
+
+    [Fact]
+    public async Task CreateSessionAsync_WhenPublicWebBaseUrlMissing_Throws()
+    {
+        var h = new TvLoginSessionServiceHarness(new ConfigurationBuilder()
+            .AddInMemoryCollection(new Dictionary<string, string?>
+            {
+                ["Auth:TvLoginSessionMinutes"] = "5",
+            })
+            .Build());
+        var sut = h.CreateSut();
+
+        var ex = await Assert.ThrowsAsync<InvalidOperationException>(
+            () => sut.CreateSessionAsync(new CreateTvLoginSessionRequest(), "1.1.1.1", CancellationToken.None));
+
+        Assert.Contains("Auth:PublicWebBaseUrl is not configured", ex.Message);
     }
 
     [Fact]

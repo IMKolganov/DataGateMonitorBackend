@@ -410,8 +410,13 @@ public sealed class TvLoginSessionService(
     private string GetPublicWebBaseUrl()
     {
         var configured = configuration["Auth:PublicWebBaseUrl"]
-                         ?? configuration["Frontend:BaseUrl"]
-                         ?? "https://dash.datagateapp.com";
+                         ?? configuration["Frontend:BaseUrl"];
+        if (string.IsNullOrWhiteSpace(configured))
+        {
+            throw new InvalidOperationException(
+                "Auth:PublicWebBaseUrl is not configured. Set Auth__PublicWebBaseUrl (or Frontend__BaseUrl) to the public web origin used in TV QR links, e.g. https://dash.example.com");
+        }
+
         return configured.TrimEnd('/');
     }
 

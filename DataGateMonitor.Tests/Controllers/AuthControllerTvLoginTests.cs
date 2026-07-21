@@ -29,8 +29,8 @@ public class AuthControllerTvLoginTests
         {
             SessionId = Guid.NewGuid(),
             UserCode = "123456",
-            VerificationUrl = "https://dash.datagateapp.com/tv/link",
-            QrPayload = "https://dash.datagateapp.com/tv/link?code=123456",
+            VerificationUrl = "https://tv-link.test/tv/link",
+            QrPayload = "https://tv-link.test/tv/link?code=123456",
             ExpiresAt = DateTimeOffset.UtcNow.AddMinutes(5),
             PollIntervalSeconds = 2,
             SignalRHubPath = "/api/hubs/tv-login",

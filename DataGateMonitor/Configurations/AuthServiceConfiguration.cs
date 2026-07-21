@@ -42,6 +42,8 @@ public static class AuthServiceConfiguration
         #region example google env
         // GoogleAuth:ClientId → ENV: GOOGLEAUTH__CLIENTID
         // GoogleAuth:ClientSecret → ENV: GOOGLEAUTH__CLIENTSECRET
+        // Auth:PublicWebBaseUrl → ENV: Auth__PublicWebBaseUrl  (compose / .env — public origin for TV QR /tv/link)
+        // Auth:TvLoginSessionMinutes → ENV: Auth__TvLoginSessionMinutes
         #endregion
         services.Configure<GoogleAuthSettings>(configuration.GetSection("GoogleAuth"));
         

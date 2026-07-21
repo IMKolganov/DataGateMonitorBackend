@@ -35,7 +35,8 @@ internal sealed class TvLoginSessionServiceHarness
         Config = config ?? new ConfigurationBuilder()
             .AddInMemoryCollection(new Dictionary<string, string?>
             {
-                ["Auth:PublicWebBaseUrl"] = "https://dash.datagateapp.com",
+                // Test-only values — production must set Auth__PublicWebBaseUrl via env/appsettings.
+                ["Auth:PublicWebBaseUrl"] = "https://tv-link.test",
                 ["Auth:TvLoginSessionMinutes"] = "5",
             })
             .Build();
