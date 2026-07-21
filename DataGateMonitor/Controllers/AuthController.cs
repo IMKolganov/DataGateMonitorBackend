@@ -10,6 +10,7 @@ using DataGateMonitor.Services.Api.Auth.Login;
 using DataGateMonitor.Services.Api.Auth.EmailConfirmation;
 using DataGateMonitor.Services.Api.Auth.TelegramLogin;
 using DataGateMonitor.Services.Api.Auth.Totp;
+using DataGateMonitor.Services.Api.Auth.TvLogin;
 using DataGateMonitor.Services.Api.CurrentUser.Interfaces;
 using DataGateMonitor.Services.Api.Auth.Registers.Interfaces;
 using DataGateMonitor.Services.Users.Interfaces;
@@ -37,6 +38,7 @@ public class AuthController(
     ITokenService tokenService,
     IAdminForgotPasswordService adminForgotPasswordService,
     ITelegramLoginCodeService telegramLoginCodeService,
+    ITvLoginSessionService tvLoginSessionService,
     IAdminTotpService adminTotpService,
     ICurrentUserService currentUserService,
     IAdminIdleSessionTracker adminIdleSessionTracker,
@@ -348,6 +350,108 @@ public class AuthController(
     {
         var result = await telegramLoginCodeService.LoginWithCodeAsync(request, ct);
         return Ok(ApiResponse<LoginResponse>.SuccessResponse(result));
+    }
+
+    /// <summary>
+    /// TV / device linking: create a short-lived session (QR + user code). Public.
+    /// </summary>
+    [AllowAnonymous]
+    [HttpPost("tv/session")]
+    [ProducesResponseType(typeof(ApiResponse<CreateTvLoginSessionResponse>), StatusCodes.Status200OK)]
+    public async Task<ActionResult<ApiResponse<CreateTvLoginSessionResponse>>> CreateTvLoginSession(
+        [FromBody] CreateTvLoginSessionRequest? request,
+        CancellationToken ct)
+    {
+        var clientIp = HttpContext.Connection.RemoteIpAddress?.ToString();
+        var result = await tvLoginSessionService.CreateSessionAsync(
+            request ?? new CreateTvLoginSessionRequest(),
+            clientIp,
+            ct);
+        return Ok(ApiResponse<CreateTvLoginSessionResponse>.SuccessResponse(result));
+    }
+
+    /// <summary>
+    /// TV polls until approved/denied/expired. On first approved poll, returns login tokens once.
+    /// </summary>
+    [AllowAnonymous]
+    [HttpGet("tv/session/{sessionId:guid}")]
+    [ProducesResponseType(typeof(ApiResponse<TvLoginSessionPollResponse>), StatusCodes.Status200OK)]
+    public async Task<ActionResult<ApiResponse<TvLoginSessionPollResponse>>> PollTvLoginSession(
+        [FromRoute] Guid sessionId,
+        CancellationToken ct)
+    {
+        var clientIp = HttpContext.Connection.RemoteIpAddress?.ToString();
+        var result = await tvLoginSessionService.PollSessionAsync(sessionId, clientIp, ct);
+        return Ok(ApiResponse<TvLoginSessionPollResponse>.SuccessResponse(result));
+    }
+
+    /// <summary>
+    /// Authenticated phone/web preview of a pending TV session by user code.
+    /// </summary>
+    [Authorize]
+    [HttpGet("tv/session/by-code/{userCode}")]
+    [ProducesResponseType(typeof(ApiResponse<TvLoginSessionPreviewResponse>), StatusCodes.Status200OK)]
+    [ProducesResponseType(StatusCodes.Status404NotFound)]
+    [ProducesResponseType(StatusCodes.Status410Gone)]
+    public async Task<ActionResult<ApiResponse<TvLoginSessionPreviewResponse>>> GetTvLoginSessionByCode(
+        [FromRoute] string userCode,
+        CancellationToken ct)
+    {
+        try
+        {
+            var result = await tvLoginSessionService.GetByUserCodeAsync(userCode, ct);
+            return Ok(ApiResponse<TvLoginSessionPreviewResponse>.SuccessResponse(result));
+        }
+        catch (InvalidOperationException ex) when (
+            ex.Message == TvLoginSessionService.SessionExpiredMessage)
+        {
+            return StatusCode(
+                StatusCodes.Status410Gone,
+                ApiResponse<TvLoginSessionPreviewResponse>.ErrorResponse(ex.Message));
+        }
+        catch (InvalidOperationException ex) when (
+            ex.Message == TvLoginSessionService.SessionNotFoundMessage)
+        {
+            return NotFound(ApiResponse<TvLoginSessionPreviewResponse>.ErrorResponse(ex.Message));
+        }
+    }
+
+    /// <summary>
+    /// Authenticated phone/web approves a pending TV session. TOTP must already be satisfied on this Bearer.
+    /// </summary>
+    [Authorize]
+    [HttpPost("tv/session/approve")]
+    [ProducesResponseType(typeof(ApiResponse<TvLoginSessionActionResponse>), StatusCodes.Status200OK)]
+    public async Task<ActionResult<ApiResponse<TvLoginSessionActionResponse>>> ApproveTvLoginSession(
+        [FromBody] ApproveTvLoginSessionRequest request,
+        CancellationToken ct)
+    {
+        var clientIp = HttpContext.Connection.RemoteIpAddress?.ToString();
+        var result = await tvLoginSessionService.ApproveAsync(
+            request,
+            currentUserService.UserId,
+            clientIp,
+            ct);
+        return Ok(ApiResponse<TvLoginSessionActionResponse>.SuccessResponse(result));
+    }
+
+    /// <summary>
+    /// Authenticated phone/web denies a pending TV session.
+    /// </summary>
+    [Authorize]
+    [HttpPost("tv/session/deny")]
+    [ProducesResponseType(typeof(ApiResponse<TvLoginSessionActionResponse>), StatusCodes.Status200OK)]
+    public async Task<ActionResult<ApiResponse<TvLoginSessionActionResponse>>> DenyTvLoginSession(
+        [FromBody] DenyTvLoginSessionRequest request,
+        CancellationToken ct)
+    {
+        var clientIp = HttpContext.Connection.RemoteIpAddress?.ToString();
+        var result = await tvLoginSessionService.DenyAsync(
+            request,
+            currentUserService.UserId,
+            clientIp,
+            ct);
+        return Ok(ApiResponse<TvLoginSessionActionResponse>.SuccessResponse(result));
     }
 
     [AllowAnonymous]

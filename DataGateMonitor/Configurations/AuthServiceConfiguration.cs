@@ -14,6 +14,7 @@ using DataGateMonitor.Services.Api.Auth.EmailConfirmation;
 using DataGateMonitor.Services.Api.Auth.Login;
 using DataGateMonitor.Services.Api.Auth.TelegramLogin;
 using DataGateMonitor.Services.Api.Auth.Totp;
+using DataGateMonitor.Services.Api.Auth.TvLogin;
 using DataGateMonitor.Services.Api.Auth.Registers;
 using DataGateMonitor.Services.Api.Auth.Registers.Interfaces;
 using DataGateMonitor.Services.Api.Auth.Users;
@@ -57,6 +58,7 @@ public static class AuthServiceConfiguration
         services.AddScoped<IAdminForgotPasswordService, AdminForgotPasswordService>();
         services.AddScoped<IEmailConfirmationService, EmailConfirmationService>();
         services.AddScoped<ITelegramLoginCodeService, TelegramLoginCodeService>();
+        services.AddScoped<ITvLoginSessionService, TvLoginSessionService>();
         services.AddScoped<IAdminTotpService, AdminTotpService>();
 
         services.AddAuthorization(options =>

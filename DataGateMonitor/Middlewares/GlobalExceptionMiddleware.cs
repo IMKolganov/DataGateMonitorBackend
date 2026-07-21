@@ -174,7 +174,10 @@ public class GlobalExceptionMiddleware(
     private static bool IsClientFacingInvalidOperation(string message) =>
         message.Contains("only supported for", StringComparison.OrdinalIgnoreCase)
         || message.Contains("is missing", StringComparison.OrdinalIgnoreCase)
-        || message.Contains("not found", StringComparison.OrdinalIgnoreCase);
+        || message.Contains("not found", StringComparison.OrdinalIgnoreCase)
+        || message.Contains("has expired", StringComparison.OrdinalIgnoreCase)
+        || message.Contains("no longer pending", StringComparison.OrdinalIgnoreCase)
+        || message.Contains("Too many requests", StringComparison.OrdinalIgnoreCase);
 
     private static string GetExceptionDetails(Exception ex)
     {
