@@ -73,7 +73,7 @@ public class AuthControllerTvLoginTests
     [Fact]
     public async Task GetTvLoginSessionByCode_WhenOk_ReturnsPreview()
     {
-        _tv.Setup(s => s.GetByUserCodeAsync("123456", It.IsAny<CancellationToken>()))
+        _tv.Setup(s => s.GetByUserCodeAsync("123456", It.IsAny<int>(), It.IsAny<string?>(), It.IsAny<CancellationToken>()))
             .ReturnsAsync(new TvLoginSessionPreviewResponse
             {
                 SessionId = Guid.NewGuid(),
@@ -92,7 +92,7 @@ public class AuthControllerTvLoginTests
     [Fact]
     public async Task GetTvLoginSessionByCode_WhenNotFound_Returns404()
     {
-        _tv.Setup(s => s.GetByUserCodeAsync(It.IsAny<string>(), It.IsAny<CancellationToken>()))
+        _tv.Setup(s => s.GetByUserCodeAsync(It.IsAny<string>(), It.IsAny<int>(), It.IsAny<string?>(), It.IsAny<CancellationToken>()))
             .ThrowsAsync(new InvalidOperationException(TvLoginSessionService.SessionNotFoundMessage));
 
         var controller = CreateController();
@@ -105,7 +105,7 @@ public class AuthControllerTvLoginTests
     [Fact]
     public async Task GetTvLoginSessionByCode_WhenExpired_Returns410()
     {
-        _tv.Setup(s => s.GetByUserCodeAsync(It.IsAny<string>(), It.IsAny<CancellationToken>()))
+        _tv.Setup(s => s.GetByUserCodeAsync(It.IsAny<string>(), It.IsAny<int>(), It.IsAny<string?>(), It.IsAny<CancellationToken>()))
             .ThrowsAsync(new InvalidOperationException(TvLoginSessionService.SessionExpiredMessage));
 
         var controller = CreateController();
@@ -160,5 +160,80 @@ public class AuthControllerTvLoginTests
 
         var ok = Assert.IsType<OkObjectResult>(result.Result);
         Assert.Equal("denied", ((ApiResponse<TvLoginSessionActionResponse>)ok.Value!).Data!.Status);
+    }
+
+    [Fact]
+    public async Task GetTvLoginSessionByCode_WhenDenied_Returns410()
+    {
+        _tv.Setup(s => s.GetByUserCodeAsync(It.IsAny<string>(), It.IsAny<int>(), It.IsAny<string?>(), It.IsAny<CancellationToken>()))
+            .ThrowsAsync(new InvalidOperationException(TvLoginSessionService.SessionDeniedMessage));
+
+        var controller = CreateController();
+        var result = await controller.GetTvLoginSessionByCode("111111", CancellationToken.None);
+
+        var gone = Assert.IsType<ObjectResult>(result.Result);
+        Assert.Equal(StatusCodes.Status410Gone, gone.StatusCode);
+    }
+
+    [Fact]
+    public async Task GetTvLoginSessionByCode_WhenRateLimited_Returns429()
+    {
+        _tv.Setup(s => s.GetByUserCodeAsync(It.IsAny<string>(), It.IsAny<int>(), It.IsAny<string?>(), It.IsAny<CancellationToken>()))
+            .ThrowsAsync(new InvalidOperationException(TvLoginSessionService.RateLimitMessage));
+
+        var controller = CreateController();
+        var result = await controller.GetTvLoginSessionByCode("111111", CancellationToken.None);
+
+        var tooMany = Assert.IsType<ObjectResult>(result.Result);
+        Assert.Equal(StatusCodes.Status429TooManyRequests, tooMany.StatusCode);
+    }
+
+    [Fact]
+    public async Task CreateTvLoginSession_ForwardsRemoteIpAddress()
+    {
+        _tv.Setup(s => s.CreateSessionAsync(
+                It.IsAny<CreateTvLoginSessionRequest>(),
+                "203.0.113.10",
+                It.IsAny<CancellationToken>()))
+            .ReturnsAsync(new CreateTvLoginSessionResponse
+            {
+                SessionId = Guid.NewGuid(),
+                UserCode = "123456",
+                VerificationUrl = "https://tv-link.test/tv/link",
+                QrPayload = "https://tv-link.test/tv/link?code=123456",
+                ExpiresAt = DateTimeOffset.UtcNow.AddMinutes(5),
+            });
+
+        var controller = CreateController();
+        controller.HttpContext.Connection.RemoteIpAddress = System.Net.IPAddress.Parse("203.0.113.10");
+
+        await controller.CreateTvLoginSession(new CreateTvLoginSessionRequest(), CancellationToken.None);
+
+        _tv.Verify(s => s.CreateSessionAsync(
+            It.IsAny<CreateTvLoginSessionRequest>(),
+            "203.0.113.10",
+            It.IsAny<CancellationToken>()), Times.Once);
+    }
+
+    [Fact]
+    public void TvLoginEndpoints_HaveExpectedAuthAttributes()
+    {
+        var type = typeof(AuthController);
+
+        Assert.NotNull(type.GetMethod(nameof(AuthController.CreateTvLoginSession))!
+            .GetCustomAttributes(typeof(Microsoft.AspNetCore.Authorization.AllowAnonymousAttribute), true)
+            .FirstOrDefault());
+        Assert.NotNull(type.GetMethod(nameof(AuthController.PollTvLoginSession))!
+            .GetCustomAttributes(typeof(Microsoft.AspNetCore.Authorization.AllowAnonymousAttribute), true)
+            .FirstOrDefault());
+        Assert.NotNull(type.GetMethod(nameof(AuthController.GetTvLoginSessionByCode))!
+            .GetCustomAttributes(typeof(Microsoft.AspNetCore.Authorization.AuthorizeAttribute), true)
+            .FirstOrDefault());
+        Assert.NotNull(type.GetMethod(nameof(AuthController.ApproveTvLoginSession))!
+            .GetCustomAttributes(typeof(Microsoft.AspNetCore.Authorization.AuthorizeAttribute), true)
+            .FirstOrDefault());
+        Assert.NotNull(type.GetMethod(nameof(AuthController.DenyTvLoginSession))!
+            .GetCustomAttributes(typeof(Microsoft.AspNetCore.Authorization.AuthorizeAttribute), true)
+            .FirstOrDefault());
     }
 }

@@ -1,8 +1,10 @@
 using System.Collections.Concurrent;
 using System.Security.Cryptography;
 using System.Text;
+using Microsoft.EntityFrameworkCore;
 using Microsoft.Extensions.Caching.Memory;
 using Microsoft.Extensions.Logging;
+using Npgsql;
 using DataGateMonitor.DataBase.Services.Command.Interfaces;
 using DataGateMonitor.DataBase.Services.Query.TvLoginSessionTable;
 using DataGateMonitor.DataBase.Services.Query.UserTable;
@@ -28,7 +30,10 @@ public sealed class TvLoginSessionService(
     public const string RateLimitMessage = "Too many requests. Try again later.";
     public const string SessionNotFoundMessage = "TV login session not found.";
     public const string SessionExpiredMessage = "TV login session has expired.";
+    public const string SessionDeniedMessage = "TV login session was denied.";
+    public const string SessionAlreadyCompletedMessage = "TV login session was already completed.";
     public const string SessionNotPendingMessage = "TV login session is no longer pending.";
+    public const string SessionCodeMismatchMessage = "TV login session id and user code do not match.";
 
     private const int DefaultTtlMinutes = 5;
     private const int PollIntervalSeconds = 2;
@@ -39,6 +44,9 @@ public sealed class TvLoginSessionService(
     private const int PollRateLimitWindowMinutes = 10;
     private const int ApproveRateLimitMax = 30;
     private const int ApproveRateLimitWindowMinutes = 10;
+    private const int PreviewRateLimitMax = 60;
+    private const int PreviewRateLimitWindowMinutes = 10;
+    private const int CreateInsertRetryMax = 8;
 
     private static readonly ConcurrentDictionary<string, object> RateLimitLocks = new();
 
@@ -49,29 +57,51 @@ public sealed class TvLoginSessionService(
     {
         EnsureNotRateLimited($"tvlogin:rl:create:{IpKey(clientIp)}", CreateRateLimitMax, CreateRateLimitWindowMinutes);
 
+        // Resolve public URL before any DB write so misconfiguration cannot orphan Pending rows.
+        var baseUrl = GetPublicWebBaseUrl();
+
         var ttlMinutes = configuration.GetValue<int?>("Auth:TvLoginSessionMinutes") ?? DefaultTtlMinutes;
         if (ttlMinutes <= 0)
             ttlMinutes = DefaultTtlMinutes;
 
         var (deviceId, userAgent) = GetClientInfo();
-        var userCode = await GenerateUniqueUserCodeAsync(ct);
         var now = DateTimeOffset.UtcNow;
-        var session = new TvLoginSession
+        TvLoginSession? session = null;
+
+        for (var attempt = 0; attempt < CreateInsertRetryMax; attempt++)
         {
-            Id = Guid.NewGuid(),
-            UserCode = userCode,
-            Status = TvLoginSessionStatus.Pending,
-            DeviceName = Truncate(request.DeviceName?.Trim(), 128),
-            Client = Truncate(request.Client?.Trim(), 64),
-            ExpiresAt = now.AddMinutes(ttlMinutes),
-            DeviceId = Truncate(deviceId, 128),
-            UserAgent = Truncate(userAgent, 512),
-        };
+            var userCode = await GenerateUniqueUserCodeAsync(ct);
+            session = new TvLoginSession
+            {
+                Id = Guid.NewGuid(),
+                UserCode = userCode,
+                Status = TvLoginSessionStatus.Pending,
+                DeviceName = Truncate(request.DeviceName?.Trim(), 128),
+                Client = Truncate(request.Client?.Trim(), 64),
+                ExpiresAt = now.AddMinutes(ttlMinutes),
+                DeviceId = Truncate(deviceId, 128),
+                UserAgent = Truncate(userAgent, 512),
+            };
 
-        await sessionCommand.Add(session, ct: ct);
+            try
+            {
+                await sessionCommand.Add(session, ct: ct);
+                break;
+            }
+            catch (Exception ex) when (IsUniqueUserCodeViolation(ex) && attempt < CreateInsertRetryMax - 1)
+            {
+                logger.LogWarning(
+                    ex,
+                    "TV login user code collision on insert (attempt {Attempt}); retrying allocation",
+                    attempt + 1);
+                session = null;
+            }
+        }
 
-        var formattedCode = FormatUserCode(userCode);
-        var baseUrl = GetPublicWebBaseUrl();
+        if (session is null)
+            throw new InvalidOperationException("Unable to allocate a unique TV login code. Try again.");
+
+        var formattedCode = FormatUserCode(session.UserCode);
         var verificationUrl = $"{baseUrl}/tv/link";
         var qrPayload = $"{verificationUrl}?code={Uri.EscapeDataString(formattedCode)}";
 
@@ -118,8 +148,17 @@ public sealed class TvLoginSessionService(
         };
     }
 
-    public async Task<TvLoginSessionPreviewResponse> GetByUserCodeAsync(string userCode, CancellationToken ct)
+    public async Task<TvLoginSessionPreviewResponse> GetByUserCodeAsync(
+        string userCode,
+        int requestingUserId,
+        string? clientIp,
+        CancellationToken ct)
     {
+        EnsureNotRateLimited(
+            $"tvlogin:rl:preview:{requestingUserId}:{IpKey(clientIp)}",
+            PreviewRateLimitMax,
+            PreviewRateLimitWindowMinutes);
+
         var normalized = NormalizeUserCode(userCode);
         if (normalized.Length != UserCodeLength)
             throw new InvalidOperationException(SessionNotFoundMessage);
@@ -130,12 +169,12 @@ public sealed class TvLoginSessionService(
             var latest = await sessionQuery.GetLatestByUserCode(normalized, ct);
             if (latest is null)
                 throw new InvalidOperationException(SessionNotFoundMessage);
-            throw new InvalidOperationException(SessionExpiredMessage);
+            throw new InvalidOperationException(MessageForClosedSession(latest.Status));
         }
 
         session = await EnsureNotStaleOpenAsync(session, ct);
         if (session.Status is not (TvLoginSessionStatus.Pending or TvLoginSessionStatus.Viewed))
-            throw new InvalidOperationException(SessionExpiredMessage);
+            throw new InvalidOperationException(MessageForClosedSession(session.Status));
 
         // Phone opened the link / entered the code — mark viewed so TV (hub or poll) can show "continue on phone".
         if (session.Status == TvLoginSessionStatus.Pending)
@@ -321,16 +360,28 @@ public sealed class TvLoginSessionService(
         CancellationToken ct)
     {
         TvLoginSession? session = null;
+        string? normalizedCode = null;
+        if (!string.IsNullOrWhiteSpace(userCode))
+        {
+            normalizedCode = NormalizeUserCode(userCode);
+            if (normalizedCode.Length != UserCodeLength)
+                normalizedCode = null;
+        }
 
         if (sessionId is { } id && id != Guid.Empty)
-            session = await sessionQuery.GetById(id, ct);
-
-        if (session is null && !string.IsNullOrWhiteSpace(userCode))
         {
-            var normalized = NormalizeUserCode(userCode);
-            if (normalized.Length == UserCodeLength)
-                session = await sessionQuery.GetActiveByUserCode(normalized, ct)
-                          ?? await sessionQuery.GetLatestByUserCode(normalized, ct);
+            session = await sessionQuery.GetById(id, ct);
+            if (session is not null && normalizedCode is not null
+                && !string.Equals(session.UserCode, normalizedCode, StringComparison.Ordinal))
+            {
+                throw new InvalidOperationException(SessionCodeMismatchMessage);
+            }
+        }
+
+        if (session is null && normalizedCode is not null)
+        {
+            session = await sessionQuery.GetActiveByUserCode(normalizedCode, ct)
+                      ?? await sessionQuery.GetLatestByUserCode(normalizedCode, ct);
         }
 
         if (session is null)
@@ -407,6 +458,13 @@ public sealed class TvLoginSessionService(
 
     internal static string FormatUserCode(string normalized) => normalized;
 
+    internal static string MessageForClosedSession(TvLoginSessionStatus status) => status switch
+    {
+        TvLoginSessionStatus.Denied => SessionDeniedMessage,
+        TvLoginSessionStatus.Approved or TvLoginSessionStatus.Consumed => SessionAlreadyCompletedMessage,
+        _ => SessionExpiredMessage,
+    };
+
     private string GetPublicWebBaseUrl()
     {
         var configured = configuration["Auth:PublicWebBaseUrl"]
@@ -469,6 +527,19 @@ public sealed class TvLoginSessionService(
 
     private static string IpKey(string? clientIp) =>
         string.IsNullOrWhiteSpace(clientIp) ? "unknown" : clientIp.Trim();
+
+    private static bool IsUniqueUserCodeViolation(Exception ex)
+    {
+        for (var cur = ex; cur is not null; cur = cur.InnerException)
+        {
+            if (cur is PostgresException { SqlState: "23505" })
+                return true;
+            if (cur is DbUpdateException db && db.InnerException is PostgresException { SqlState: "23505" })
+                return true;
+        }
+
+        return false;
+    }
 
     private (string? deviceId, string? userAgent) GetClientInfo()
     {

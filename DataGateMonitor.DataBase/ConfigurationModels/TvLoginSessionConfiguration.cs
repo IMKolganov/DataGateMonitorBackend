@@ -40,5 +40,12 @@ public class TvLoginSessionConfiguration : BaseEntityConfiguration<TvLoginSessio
         entity.HasIndex(e => e.ApprovedUserId);
         entity.HasIndex(e => new { e.UserCode, e.Status });
         entity.HasIndex(e => new { e.ApprovedUserId, e.Status });
+
+        // At most one open (Pending/Viewed) session may share a user code.
+        entity.HasIndex(e => e.UserCode)
+            .IsUnique()
+            .HasDatabaseName("IX_TvLoginSessions_UserCode_Open")
+            .HasFilter(
+                $"\"Status\" IN ({(int)TvLoginSessionStatus.Pending}, {(int)TvLoginSessionStatus.Viewed})");
     }
 }

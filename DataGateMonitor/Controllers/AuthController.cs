@@ -399,13 +399,27 @@ public class AuthController(
         [FromRoute] string userCode,
         CancellationToken ct)
     {
+        var clientIp = HttpContext.Connection.RemoteIpAddress?.ToString();
         try
         {
-            var result = await tvLoginSessionService.GetByUserCodeAsync(userCode, ct);
+            var result = await tvLoginSessionService.GetByUserCodeAsync(
+                userCode,
+                currentUserService.UserId,
+                clientIp,
+                ct);
             return Ok(ApiResponse<TvLoginSessionPreviewResponse>.SuccessResponse(result));
         }
         catch (InvalidOperationException ex) when (
-            ex.Message == TvLoginSessionService.SessionExpiredMessage)
+            ex.Message == TvLoginSessionService.RateLimitMessage)
+        {
+            return StatusCode(
+                StatusCodes.Status429TooManyRequests,
+                ApiResponse<TvLoginSessionPreviewResponse>.ErrorResponse(ex.Message));
+        }
+        catch (InvalidOperationException ex) when (
+            ex.Message is TvLoginSessionService.SessionExpiredMessage
+                or TvLoginSessionService.SessionDeniedMessage
+                or TvLoginSessionService.SessionAlreadyCompletedMessage)
         {
             return StatusCode(
                 StatusCodes.Status410Gone,

@@ -150,4 +150,65 @@ public class TvLoginSessionQueryServiceTests
         Assert.Equal(newer, latest!.Id);
         await ctx.DisposeAsync();
     }
+
+    [Fact]
+    public async Task GetById_WhenMissing_ReturnsNull()
+    {
+        var (q, ctx) = CreateEfBackedQuery([]);
+        var sut = new TvLoginSessionQueryService(q.Object);
+
+        Assert.Null(await sut.GetById(Guid.NewGuid(), CancellationToken.None));
+        await ctx.DisposeAsync();
+    }
+
+    [Fact]
+    public async Task AnyActiveByUserCode_TrueForOpenPending()
+    {
+        var (q, ctx) = CreateEfBackedQuery(
+        [
+            new TvLoginSession
+            {
+                Id = Guid.NewGuid(),
+                UserCode = "444444",
+                Status = TvLoginSessionStatus.Pending,
+                ExpiresAt = DateTimeOffset.UtcNow.AddMinutes(5),
+            }
+        ]);
+        var sut = new TvLoginSessionQueryService(q.Object);
+
+        Assert.True(await sut.AnyActiveByUserCode("444444", CancellationToken.None));
+        await ctx.DisposeAsync();
+    }
+
+    [Fact]
+    public async Task GetActiveByUserCode_WhenTwoOpen_ReturnsNewest()
+    {
+        var older = Guid.NewGuid();
+        var newer = Guid.NewGuid();
+        var (q, ctx) = CreateEfBackedQuery(
+        [
+            new TvLoginSession
+            {
+                Id = older,
+                UserCode = "555555",
+                Status = TvLoginSessionStatus.Pending,
+                ExpiresAt = DateTimeOffset.UtcNow.AddMinutes(5),
+                CreateDate = DateTimeOffset.UtcNow.AddMinutes(-5),
+            },
+            new TvLoginSession
+            {
+                Id = newer,
+                UserCode = "555555",
+                Status = TvLoginSessionStatus.Viewed,
+                ExpiresAt = DateTimeOffset.UtcNow.AddMinutes(5),
+                CreateDate = DateTimeOffset.UtcNow,
+            },
+        ]);
+        var sut = new TvLoginSessionQueryService(q.Object);
+
+        var active = await sut.GetActiveByUserCode("555555", CancellationToken.None);
+
+        Assert.Equal(newer, active!.Id);
+        await ctx.DisposeAsync();
+    }
 }

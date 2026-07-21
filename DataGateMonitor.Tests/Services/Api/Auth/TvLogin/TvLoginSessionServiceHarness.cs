@@ -121,29 +121,31 @@ internal sealed class TvLoginSessionServiceHarness
                 Action<UpdateSettersBuilder<TvLoginSession>> set,
                 CancellationToken __) =>
             {
-                // Execute setters against a throwaway builder is not available; still invoke for coverage of call site.
                 _ = set;
 
-                if (ForceUpdateWhereCount is int forced)
+                lock (Sessions)
                 {
-                    ForceUpdateWhereCount = null;
-                    return forced;
-                }
-
-                var compiled = predicate.Compile();
-                var matches = Sessions.Where(compiled).ToList();
-                foreach (var s in matches)
-                {
-                    if (PendingUpdates.TryDequeue(out var apply))
+                    if (ForceUpdateWhereCount is int forced)
                     {
-                        apply(s);
-                        continue;
+                        ForceUpdateWhereCount = null;
+                        return forced;
                     }
 
-                    ApplyDefaultTransition(s);
-                }
+                    var compiled = predicate.Compile();
+                    var matches = Sessions.Where(compiled).ToList();
+                    foreach (var s in matches)
+                    {
+                        if (PendingUpdates.TryDequeue(out var apply))
+                        {
+                            apply(s);
+                            continue;
+                        }
 
-                return matches.Count;
+                        ApplyDefaultTransition(s);
+                    }
+
+                    return matches.Count;
+                }
             });
 
         return new TvLoginSessionService(

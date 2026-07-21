@@ -12,7 +12,11 @@ public interface ITvLoginSessionService
 
     Task<TvLoginSessionPollResponse> PollSessionAsync(Guid sessionId, string? clientIp, CancellationToken ct);
 
-    Task<TvLoginSessionPreviewResponse> GetByUserCodeAsync(string userCode, CancellationToken ct);
+    Task<TvLoginSessionPreviewResponse> GetByUserCodeAsync(
+        string userCode,
+        int requestingUserId,
+        string? clientIp,
+        CancellationToken ct);
 
     Task<TvLoginSessionActionResponse> ApproveAsync(
         ApproveTvLoginSessionRequest request,

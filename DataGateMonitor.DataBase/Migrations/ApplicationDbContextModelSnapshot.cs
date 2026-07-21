@@ -2535,6 +2535,11 @@ namespace DataGateMonitor.DataBase.Migrations
 
                     b.HasIndex("UserCode", "Status");
 
+                    b.HasIndex("UserCode")
+                        .IsUnique()
+                        .HasDatabaseName("IX_TvLoginSessions_UserCode_Open")
+                        .HasFilter("\"Status\" IN (0, 5)");
+
                     b.ToTable("TvLoginSessions", "xgb_dashopnvpn");
                 });
 

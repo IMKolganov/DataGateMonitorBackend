@@ -181,6 +181,75 @@ public class TvLoginHubTests
     }
 
     [Fact]
+    public async Task WatchSession_UnknownStatus_SnapshotSaysExpired()
+    {
+        var sessionId = Guid.NewGuid();
+        var session = new TvLoginSession
+        {
+            Id = sessionId,
+            UserCode = "123456",
+            Status = (TvLoginSessionStatus)999,
+            ExpiresAt = DateTimeOffset.UtcNow.AddMinutes(5),
+        };
+        var query = new Mock<ITvLoginSessionQueryService>();
+        query.Setup(q => q.GetById(sessionId, It.IsAny<CancellationToken>())).ReturnsAsync(session);
+
+        TvLoginSessionStatusEvent? pushed = null;
+        var caller = new Mock<ISingleClientProxy>();
+        caller.Setup(c => c.SendCoreAsync(It.IsAny<string>(), It.IsAny<object?[]>(), It.IsAny<CancellationToken>()))
+            .Callback<string, object?[], CancellationToken>((_, args, _) =>
+                pushed = Assert.IsType<TvLoginSessionStatusEvent>(args[0]))
+            .Returns(Task.CompletedTask);
+
+        var clients = new Mock<IHubCallerClients>();
+        clients.SetupGet(c => c.Caller).Returns(caller.Object);
+
+        var hub = new TvLoginHub(query.Object)
+        {
+            Context = new TestHubCallerContext("conn-unknown"),
+            Groups = Mock.Of<IGroupManager>(),
+            Clients = clients.Object,
+        };
+
+        await hub.WatchSession(sessionId);
+
+        Assert.Equal("expired", pushed!.Status);
+        Assert.Equal((TvLoginSessionStatus)999, session.Status);
+    }
+
+    [Fact]
+    public async Task WatchSession_WhenPendingPastExpiry_DoesNotMutatePersistedStatus()
+    {
+        var sessionId = Guid.NewGuid();
+        var session = new TvLoginSession
+        {
+            Id = sessionId,
+            UserCode = "123456",
+            Status = TvLoginSessionStatus.Pending,
+            ExpiresAt = DateTimeOffset.UtcNow.AddMinutes(-1),
+        };
+        var query = new Mock<ITvLoginSessionQueryService>();
+        query.Setup(q => q.GetById(sessionId, It.IsAny<CancellationToken>())).ReturnsAsync(session);
+
+        var caller = new Mock<ISingleClientProxy>();
+        caller.Setup(c => c.SendCoreAsync(It.IsAny<string>(), It.IsAny<object?[]>(), It.IsAny<CancellationToken>()))
+            .Returns(Task.CompletedTask);
+        var clients = new Mock<IHubCallerClients>();
+        clients.SetupGet(c => c.Caller).Returns(caller.Object);
+
+        var hub = new TvLoginHub(query.Object)
+        {
+            Context = new TestHubCallerContext("conn-no-write"),
+            Groups = Mock.Of<IGroupManager>(),
+            Clients = clients.Object,
+        };
+
+        await hub.WatchSession(sessionId);
+
+        Assert.Equal(TvLoginSessionStatus.Pending, session.Status);
+    }
+
+    [Fact]
     public async Task WatchSession_WhenMissing_ThrowsHubException()
     {
         var sessionId = Guid.NewGuid();
