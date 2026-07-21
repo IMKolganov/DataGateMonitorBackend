@@ -19,6 +19,7 @@ using DataGateMonitor.Services.UserRoles;
 using DataGateMonitor.Services.Users;
 using DataGateMonitor.Services.Users.Interfaces;
 using DataGateMonitor.Services.DataGateXRayManager.ClientLinks;
+using DataGateMonitor.Services.VpnAccess;
 using DataGateMonitor.Services.Api.MobileCrashIngest;
 using DataGateMonitor.Services.Api.WindowsCrashIngest;
 using DataGateMonitor.Services.Cache;
@@ -154,6 +155,7 @@ public static class ServiceConfiguration
         services.AddHttpClient();
         services.AddScoped<ICertApiClient, CertApiClient>();
         services.AddScoped<IOvpnFileApiClient, OvpnFileApiClient>();
+        services.AddScoped<IVpnServerQuotaPlanAccessGuard, VpnServerQuotaPlanAccessGuard>();
         services.AddScoped<IOvpnFileApiService, OvpnFileApiService>();
         services.AddScoped<IXrayClientLinkMicroserviceClient, XrayClientLinkMicroserviceClient>();
         services.AddScoped<IXrayClientLinkService, XrayClientLinkService>();
