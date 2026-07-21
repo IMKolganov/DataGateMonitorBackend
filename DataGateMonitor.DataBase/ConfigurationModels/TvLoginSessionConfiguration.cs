@@ -37,6 +37,8 @@ public class TvLoginSessionConfiguration : BaseEntityConfiguration<TvLoginSessio
         entity.HasIndex(e => e.UserCode);
         entity.HasIndex(e => e.Status);
         entity.HasIndex(e => e.ExpiresAt);
+        entity.HasIndex(e => e.ApprovedUserId);
         entity.HasIndex(e => new { e.UserCode, e.Status });
+        entity.HasIndex(e => new { e.ApprovedUserId, e.Status });
     }
 }

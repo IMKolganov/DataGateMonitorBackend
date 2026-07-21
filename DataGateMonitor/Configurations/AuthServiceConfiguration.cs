@@ -62,6 +62,7 @@ public static class AuthServiceConfiguration
         services.AddScoped<IEmailConfirmationService, EmailConfirmationService>();
         services.AddScoped<ITelegramLoginCodeService, TelegramLoginCodeService>();
         services.AddScoped<ITvLoginSessionService, TvLoginSessionService>();
+        services.AddScoped<ITvLoginAdminService, TvLoginAdminService>();
         services.AddSingleton<ITvLoginHubNotifier, TvLoginHubNotifier>();
         services.AddScoped<IAdminTotpService, AdminTotpService>();
 

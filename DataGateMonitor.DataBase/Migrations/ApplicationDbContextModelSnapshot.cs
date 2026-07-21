@@ -2523,11 +2523,15 @@ namespace DataGateMonitor.DataBase.Migrations
 
                     b.HasKey("Id");
 
+                    b.HasIndex("ApprovedUserId");
+
                     b.HasIndex("ExpiresAt");
 
                     b.HasIndex("Status");
 
                     b.HasIndex("UserCode");
+
+                    b.HasIndex("ApprovedUserId", "Status");
 
                     b.HasIndex("UserCode", "Status");
 
