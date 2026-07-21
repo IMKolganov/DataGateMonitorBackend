@@ -276,7 +276,7 @@ public class XrayClientLinkServiceTests
         }, CancellationToken.None);
 
         await act.Should().ThrowAsync<InvalidOperationException>()
-            .WithMessage("*not allowed*active quota plan*");
+            .WithMessage("VpnServerNotAllowedByQuotaPlan");
         microserviceClient.Verify(c => c.AddClientLink(It.IsAny<int>(), It.IsAny<GenerateClientLinkMicroserviceRequest>(), It.IsAny<CancellationToken>()), Times.Never);
         linkCommand.Verify(c => c.Add(It.IsAny<IssuedXrayClientLink>(), It.IsAny<bool>(), It.IsAny<CancellationToken>()), Times.Never);
     }

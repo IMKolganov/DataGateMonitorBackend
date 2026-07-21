@@ -12,6 +12,7 @@ using DataGateMonitor.Models;
 using DataGateMonitor.Services.Api.Auth.Users;
 using DataGateMonitor.Services.DataGateOpenVpnManager.Interfaces;
 using DataGateMonitor.Services.Others.Notifications.OvpnFileApi;
+using DataGateMonitor.Services.VpnAccess;
 using DataGateMonitor.SharedModels.DataGateOpenVpnManager.OvpnFile.Requests;
 using DataGateMonitor.SharedModels.DataGateMonitor.OpenVpnFiles.Requests;
 using DataGateMonitor.SharedModels.DataGateMonitor.OpenVpnFiles.Responses;
@@ -425,8 +426,7 @@ public class OvpnFileApiService(
         if (allowed is not null)
             return;
 
-        throw new InvalidOperationException(
-            $"VPN server {request.VpnServerId} is not allowed for user {link.UserId}'s active quota plan {activePlan.QuotaPlanId}.");
+        throw new InvalidOperationException(VpnServerAccessErrorKeys.NotAllowedByQuotaPlan);
     }
 
     private Task<IReadOnlyList<string>> ResolveVpnExternalIdQueryKeysAsync(string externalId, CancellationToken ct) =>

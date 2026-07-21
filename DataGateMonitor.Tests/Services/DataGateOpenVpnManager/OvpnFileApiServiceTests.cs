@@ -332,7 +332,7 @@ public class OvpnFileApiServiceTests
         }, CancellationToken.None);
 
         await act.Should().ThrowAsync<InvalidOperationException>()
-            .WithMessage("*not allowed*active quota plan*");
+            .WithMessage("VpnServerNotAllowedByQuotaPlan");
         ovpnClient.Verify(c => c.AddOvpnFile(It.IsAny<int>(), It.IsAny<GenerateOvpnFileRequest>(), It.IsAny<CancellationToken>()), Times.Never);
         fileCommand.Verify(c => c.Add(It.IsAny<IssuedOvpnFile>(), It.IsAny<bool>(), It.IsAny<CancellationToken>()), Times.Never);
     }

@@ -11,6 +11,7 @@ using DataGateMonitor.DataBase.Services.Query.VpnServerTable;
 using DataGateMonitor.Models;
 using DataGateMonitor.Services.Api.Auth.Users;
 using DataGateMonitor.Services.Others.Notifications.OvpnFileApi;
+using DataGateMonitor.Services.VpnAccess;
 using DataGateMonitor.SharedModels.DataGateMonitor.OpenVpnFiles.Requests;
 using DataGateMonitor.SharedModels.DataGateMonitor.OpenVpnFiles.Responses;
 using DataGateMonitor.SharedModels.DataGateMonitor.OpenVpnFiles.Responses.Dto;
@@ -320,8 +321,7 @@ public sealed class XrayClientLinkService(
         if (allowed is not null)
             return;
 
-        throw new InvalidOperationException(
-            $"VPN server {request.VpnServerId} is not allowed for user {link.UserId}'s active quota plan {activePlan.QuotaPlanId}.");
+        throw new InvalidOperationException(VpnServerAccessErrorKeys.NotAllowedByQuotaPlan);
     }
 
     private Task<IReadOnlyList<string>> ResolveVpnExternalIdQueryKeysAsync(string externalId, CancellationToken ct) =>
