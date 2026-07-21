@@ -353,7 +353,8 @@ public class AuthController(
     }
 
     /// <summary>
-    /// TV / device linking: create a short-lived session (QR + user code). Public.
+    /// TV / device linking: create a short-lived session (QR payload + 6-digit user code). Public.
+    /// Prefer SignalR <c>/api/hubs/tv-login</c> (<c>WatchSession</c>); fall back to polling GET tv/session/{id}.
     /// </summary>
     [AllowAnonymous]
     [HttpPost("tv/session")]
@@ -371,7 +372,8 @@ public class AuthController(
     }
 
     /// <summary>
-    /// TV polls until approved/denied/expired. On first approved poll, returns login tokens once.
+    /// TV status check / poll fallback. Same DB status as SignalR.
+    /// Status: pending → viewed (phone opened code) → approved (tokens once) | denied | expired | consumed.
     /// </summary>
     [AllowAnonymous]
     [HttpGet("tv/session/{sessionId:guid}")]

@@ -15,6 +15,7 @@ using DataGateMonitor.Services.Api.Auth.Login;
 using DataGateMonitor.Services.Api.Auth.TelegramLogin;
 using DataGateMonitor.Services.Api.Auth.Totp;
 using DataGateMonitor.Services.Api.Auth.TvLogin;
+using DataGateMonitor.Hubs;
 using DataGateMonitor.Services.Api.Auth.Registers;
 using DataGateMonitor.Services.Api.Auth.Registers.Interfaces;
 using DataGateMonitor.Services.Api.Auth.Users;
@@ -59,6 +60,7 @@ public static class AuthServiceConfiguration
         services.AddScoped<IEmailConfirmationService, EmailConfirmationService>();
         services.AddScoped<ITelegramLoginCodeService, TelegramLoginCodeService>();
         services.AddScoped<ITvLoginSessionService, TvLoginSessionService>();
+        services.AddSingleton<ITvLoginHubNotifier, TvLoginHubNotifier>();
         services.AddScoped<IAdminTotpService, AdminTotpService>();
 
         services.AddAuthorization(options =>

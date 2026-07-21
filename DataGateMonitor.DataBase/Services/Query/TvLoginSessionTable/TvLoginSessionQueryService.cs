@@ -14,7 +14,7 @@ public class TvLoginSessionQueryService(IQueryService<TvLoginSession, Guid> q) :
         return q.Query()
             .Where(x =>
                 x.UserCode == normalizedUserCode
-                && x.Status == TvLoginSessionStatus.Pending
+                && (x.Status == TvLoginSessionStatus.Pending || x.Status == TvLoginSessionStatus.Viewed)
                 && x.ExpiresAt > now)
             .OrderByDescending(x => x.CreateDate)
             .FirstOrDefaultAsync(ct);
@@ -33,7 +33,7 @@ public class TvLoginSessionQueryService(IQueryService<TvLoginSession, Guid> q) :
             .AnyAsync(
                 x =>
                     x.UserCode == normalizedUserCode
-                    && x.Status == TvLoginSessionStatus.Pending
+                    && (x.Status == TvLoginSessionStatus.Pending || x.Status == TvLoginSessionStatus.Viewed)
                     && x.ExpiresAt > now,
                 ct);
     }

@@ -6,6 +6,7 @@ using Microsoft.Extensions.Logging;
 using DataGateMonitor.DataBase.Services.Command.Interfaces;
 using DataGateMonitor.DataBase.Services.Query.TvLoginSessionTable;
 using DataGateMonitor.DataBase.Services.Query.UserTable;
+using DataGateMonitor.Hubs;
 using DataGateMonitor.Models;
 using DataGateMonitor.Services.Api.Auth.Login;
 using DataGateMonitor.SharedModels.DataGateMonitor.Auth.Requests;
@@ -18,6 +19,7 @@ public sealed class TvLoginSessionService(
     ICommandService<TvLoginSession, Guid> sessionCommand,
     IUserQueryService userQueryService,
     ITokenService tokenService,
+    ITvLoginHubNotifier hubNotifier,
     IMemoryCache cache,
     IConfiguration configuration,
     IHttpContextAccessor httpContextAccessor,
@@ -30,7 +32,7 @@ public sealed class TvLoginSessionService(
 
     private const int DefaultTtlMinutes = 5;
     private const int PollIntervalSeconds = 2;
-    private const int UserCodeLength = 8;
+    private const int UserCodeLength = 6;
     private const int CreateRateLimitMax = 10;
     private const int CreateRateLimitWindowMinutes = 10;
     private const int PollRateLimitMax = 200;
@@ -88,6 +90,7 @@ public sealed class TvLoginSessionService(
             QrPayload = qrPayload,
             ExpiresAt = session.ExpiresAt,
             PollIntervalSeconds = PollIntervalSeconds,
+            SignalRHubPath = TvLoginHub.HubPath,
         };
     }
 
@@ -101,11 +104,12 @@ public sealed class TvLoginSessionService(
         var session = await sessionQuery.GetById(sessionId, ct)
                       ?? throw new InvalidOperationException(SessionNotFoundMessage);
 
-        session = await EnsureNotStalePendingAsync(session, ct);
+        session = await EnsureNotStaleOpenAsync(session, ct);
 
         return session.Status switch
         {
             TvLoginSessionStatus.Pending => StatusOnly(session, "pending"),
+            TvLoginSessionStatus.Viewed => StatusOnly(session, "viewed"),
             TvLoginSessionStatus.Denied => StatusOnly(session, "denied"),
             TvLoginSessionStatus.Expired => StatusOnly(session, "expired"),
             TvLoginSessionStatus.Consumed => StatusOnly(session, "consumed"),
@@ -121,23 +125,44 @@ public sealed class TvLoginSessionService(
             throw new InvalidOperationException(SessionNotFoundMessage);
 
         var session = await sessionQuery.GetActiveByUserCode(normalized, ct);
-        if (session is not null)
+        if (session is null)
         {
-            return new TvLoginSessionPreviewResponse
-            {
-                SessionId = session.Id,
-                UserCode = FormatUserCode(session.UserCode),
-                DeviceName = session.DeviceName,
-                ExpiresAt = session.ExpiresAt,
-                Status = "pending",
-            };
+            var latest = await sessionQuery.GetLatestByUserCode(normalized, ct);
+            if (latest is null)
+                throw new InvalidOperationException(SessionNotFoundMessage);
+            throw new InvalidOperationException(SessionExpiredMessage);
         }
 
-        var latest = await sessionQuery.GetLatestByUserCode(normalized, ct);
-        if (latest is null)
-            throw new InvalidOperationException(SessionNotFoundMessage);
+        session = await EnsureNotStaleOpenAsync(session, ct);
+        if (session.Status is not (TvLoginSessionStatus.Pending or TvLoginSessionStatus.Viewed))
+            throw new InvalidOperationException(SessionExpiredMessage);
 
-        throw new InvalidOperationException(SessionExpiredMessage);
+        // Phone opened the link / entered the code — mark viewed so TV (hub or poll) can show "continue on phone".
+        if (session.Status == TvLoginSessionStatus.Pending)
+        {
+            var now = DateTimeOffset.UtcNow;
+            var affected = await sessionCommand.UpdateWhere(
+                s => s.Id == session.Id && s.Status == TvLoginSessionStatus.Pending && s.ExpiresAt > now,
+                set => set
+                    .SetProperty(x => x.Status, TvLoginSessionStatus.Viewed)
+                    .SetProperty(x => x.LastUpdate, now),
+                ct);
+            if (affected == 1)
+            {
+                session.Status = TvLoginSessionStatus.Viewed;
+                await hubNotifier.NotifyStatusAsync(session.Id, "viewed", session.ExpiresAt, ct);
+            }
+        }
+
+        return new TvLoginSessionPreviewResponse
+        {
+            SessionId = session.Id,
+            UserCode = FormatUserCode(session.UserCode),
+            DeviceName = session.DeviceName,
+            ExpiresAt = session.ExpiresAt,
+            // Phone approve UI always treats an open session as pending confirmation.
+            Status = "pending",
+        };
     }
 
     public async Task<TvLoginSessionActionResponse> ApproveAsync(
@@ -151,18 +176,18 @@ public sealed class TvLoginSessionService(
             ApproveRateLimitMax,
             ApproveRateLimitWindowMinutes);
 
-        var session = await ResolvePendingSessionAsync(request.SessionId, request.UserCode, ct);
+        var session = await ResolveOpenSessionAsync(request.SessionId, request.UserCode, ct);
         var user = await userQueryService.GetById(approvingUserId, ct)
                    ?? throw new UnauthorizedAccessException("User not found.");
 
         if (user.IsBlocked)
             throw new UnauthorizedAccessException("User account is blocked.");
 
-        // Phone Bearer already passed JWT auth (and TOTP at login when required). Issue TV tokens only after approve;
-        // TV poll receives final tokens — no second TOTP challenge on the TV.
         var now = DateTimeOffset.UtcNow;
         var affected = await sessionCommand.UpdateWhere(
-            s => s.Id == session.Id && s.Status == TvLoginSessionStatus.Pending && s.ExpiresAt > now,
+            s => s.Id == session.Id
+                 && (s.Status == TvLoginSessionStatus.Pending || s.Status == TvLoginSessionStatus.Viewed)
+                 && s.ExpiresAt > now,
             set => set
                 .SetProperty(x => x.Status, TvLoginSessionStatus.Approved)
                 .SetProperty(x => x.ApprovedUserId, approvingUserId)
@@ -178,6 +203,8 @@ public sealed class TvLoginSessionService(
             session.Id,
             approvingUserId);
 
+        await hubNotifier.NotifyStatusAsync(session.Id, "approved", session.ExpiresAt, ct);
+
         return new TvLoginSessionActionResponse { Status = "approved" };
     }
 
@@ -192,10 +219,12 @@ public sealed class TvLoginSessionService(
             ApproveRateLimitMax,
             ApproveRateLimitWindowMinutes);
 
-        var session = await ResolvePendingSessionAsync(request.SessionId, request.UserCode, ct);
+        var session = await ResolveOpenSessionAsync(request.SessionId, request.UserCode, ct);
         var now = DateTimeOffset.UtcNow;
         var affected = await sessionCommand.UpdateWhere(
-            s => s.Id == session.Id && s.Status == TvLoginSessionStatus.Pending && s.ExpiresAt > now,
+            s => s.Id == session.Id
+                 && (s.Status == TvLoginSessionStatus.Pending || s.Status == TvLoginSessionStatus.Viewed)
+                 && s.ExpiresAt > now,
             set => set
                 .SetProperty(x => x.Status, TvLoginSessionStatus.Denied)
                 .SetProperty(x => x.CompletedAt, now)
@@ -209,6 +238,8 @@ public sealed class TvLoginSessionService(
             "TV login session {SessionId} denied by user {UserId}",
             session.Id,
             denyingUserId);
+
+        await hubNotifier.NotifyStatusAsync(session.Id, "denied", session.ExpiresAt, ct);
 
         return new TvLoginSessionActionResponse { Status = "denied" };
     }
@@ -227,10 +258,10 @@ public sealed class TvLoginSessionService(
         if (user is null || user.IsBlocked)
         {
             await MarkConsumedAsync(session.Id, ct);
+            await hubNotifier.NotifyStatusAsync(session.Id, "consumed", session.ExpiresAt, ct);
             return StatusOnly(session, "expired");
         }
 
-        // Claim one-time delivery before issuing tokens to avoid replay.
         var now = DateTimeOffset.UtcNow;
         var claimed = await sessionCommand.UpdateWhere(
             s => s.Id == session.Id && s.Status == TvLoginSessionStatus.Approved,
@@ -253,6 +284,8 @@ public sealed class TvLoginSessionService(
             "TV login session {SessionId} tokens issued for user {UserId} (consumed)",
             session.Id,
             user.Id);
+
+        await hubNotifier.NotifyStatusAsync(session.Id, "consumed", session.ExpiresAt, ct);
 
         return new TvLoginSessionPollResponse
         {
@@ -282,7 +315,7 @@ public sealed class TvLoginSessionService(
             ct);
     }
 
-    private async Task<TvLoginSession> ResolvePendingSessionAsync(
+    private async Task<TvLoginSession> ResolveOpenSessionAsync(
         Guid? sessionId,
         string? userCode,
         CancellationToken ct)
@@ -303,31 +336,36 @@ public sealed class TvLoginSessionService(
         if (session is null)
             throw new InvalidOperationException(SessionNotFoundMessage);
 
-        session = await EnsureNotStalePendingAsync(session, ct);
+        session = await EnsureNotStaleOpenAsync(session, ct);
 
-        if (session.Status != TvLoginSessionStatus.Pending)
+        if (session.Status is not (TvLoginSessionStatus.Pending or TvLoginSessionStatus.Viewed))
             throw new InvalidOperationException(SessionNotPendingMessage);
 
         return session;
     }
 
-    private async Task<TvLoginSession> EnsureNotStalePendingAsync(TvLoginSession session, CancellationToken ct)
+    private async Task<TvLoginSession> EnsureNotStaleOpenAsync(TvLoginSession session, CancellationToken ct)
     {
-        if (session.Status != TvLoginSessionStatus.Pending)
+        if (session.Status is not (TvLoginSessionStatus.Pending or TvLoginSessionStatus.Viewed))
             return session;
 
         if (session.ExpiresAt > DateTimeOffset.UtcNow)
             return session;
 
         var now = DateTimeOffset.UtcNow;
+        var previous = session.Status;
         await sessionCommand.UpdateWhere(
-            s => s.Id == session.Id && s.Status == TvLoginSessionStatus.Pending,
+            s => s.Id == session.Id
+                 && (s.Status == TvLoginSessionStatus.Pending || s.Status == TvLoginSessionStatus.Viewed),
             set => set
                 .SetProperty(x => x.Status, TvLoginSessionStatus.Expired)
                 .SetProperty(x => x.LastUpdate, now),
             ct);
 
         session.Status = TvLoginSessionStatus.Expired;
+        if (previous is TvLoginSessionStatus.Pending or TvLoginSessionStatus.Viewed)
+            await hubNotifier.NotifyStatusAsync(session.Id, "expired", session.ExpiresAt, ct);
+
         return session;
     }
 
@@ -345,13 +383,9 @@ public sealed class TvLoginSessionService(
 
     private static string GenerateRawUserCode()
     {
-        const string chars = "ABCDEFGHJKLMNPQRSTUVWXYZ23456789";
-        var bytes = new byte[UserCodeLength];
-        RandomNumberGenerator.Fill(bytes);
-        var result = new char[UserCodeLength];
-        for (var i = 0; i < UserCodeLength; i++)
-            result[i] = chars[bytes[i] % chars.Length];
-        return new string(result);
+        // Cryptographically random 6-digit code, including leading zeros (stored as string).
+        var value = RandomNumberGenerator.GetInt32(0, 1_000_000);
+        return value.ToString("D6");
     }
 
     internal static string NormalizeUserCode(string? userCode)
@@ -364,18 +398,14 @@ public sealed class TvLoginSessionService(
         {
             if (ch is '-' or ' ' or '\t')
                 continue;
-            sb.Append(char.ToUpperInvariant(ch));
+            if (ch is >= '0' and <= '9')
+                sb.Append(ch);
         }
 
         return sb.ToString();
     }
 
-    internal static string FormatUserCode(string normalized)
-    {
-        if (normalized.Length != UserCodeLength)
-            return normalized;
-        return $"{normalized[..4]}-{normalized[4..]}";
-    }
+    internal static string FormatUserCode(string normalized) => normalized;
 
     private string GetPublicWebBaseUrl()
     {
