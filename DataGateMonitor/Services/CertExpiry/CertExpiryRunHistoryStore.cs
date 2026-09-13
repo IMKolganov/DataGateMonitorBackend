@@ -1,5 +1,7 @@
 using System.Collections.Concurrent;
+using DataGateMonitor.Services.Paging;
 using DataGateMonitor.SharedModels.DataGateMonitor.CertExpiry.Responses;
+using DataGateMonitor.SharedModels.Responses;
 
 namespace DataGateMonitor.Services.CertExpiry;
 
@@ -10,6 +12,9 @@ public interface ICertExpiryRunHistoryStore
     CertExpiryCheckRunResponse? Get(Guid runId);
 
     IReadOnlyList<CertExpiryRunSummaryDto> List(int limit, int? vpnServerId = null);
+
+    /// <summary>Page over retained run history (newest first). TotalCount is the filtered buffer size.</summary>
+    PagedResponse<CertExpiryRunSummaryDto> ListPage(int page, int pageSize, int? vpnServerId = null);
 }
 
 public sealed class CertExpiryRunHistoryStore : ICertExpiryRunHistoryStore
@@ -30,6 +35,20 @@ public sealed class CertExpiryRunHistoryStore : ICertExpiryRunHistoryStore
     {
         limit = Math.Clamp(limit, 1, MaxRuns);
 
+        return QuerySummaries(vpnServerId)
+            .Take(limit)
+            .ToList();
+    }
+
+    public PagedResponse<CertExpiryRunSummaryDto> ListPage(int page, int pageSize, int? vpnServerId = null)
+    {
+        pageSize = Math.Clamp(pageSize, 1, MaxRuns);
+        var all = QuerySummaries(vpnServerId).ToList();
+        return PagedResponseFactory.FromItems(all, page, pageSize);
+    }
+
+    private IEnumerable<CertExpiryRunSummaryDto> QuerySummaries(int? vpnServerId)
+    {
         var query = _runs.Values.AsEnumerable();
 
         if (vpnServerId is int serverId)
@@ -37,9 +56,7 @@ public sealed class CertExpiryRunHistoryStore : ICertExpiryRunHistoryStore
 
         return query
             .OrderByDescending(r => r.StartedAtUtc)
-            .Take(limit)
-            .Select(CertExpiryRunMapper.ToSummary)
-            .ToList();
+            .Select(CertExpiryRunMapper.ToSummary);
     }
 
     private void TrimIfNeeded()
