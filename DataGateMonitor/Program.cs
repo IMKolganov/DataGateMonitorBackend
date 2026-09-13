@@ -37,8 +37,8 @@ var databaseRuntime = DatabaseRuntimeOptions.FromConfiguration(builder.Configura
 builder.Services.AddSingleton(databaseRuntime);
 builder.Services.Configure<HostOptions>(options =>
 {
-    if (!databaseRuntime.IsConnectionConfigured)
-        options.BackgroundServiceExceptionBehavior = BackgroundServiceExceptionBehavior.Ignore;
+    // Keep Kestrel/Swagger up even if a background poller fails (e.g. partial schema during migrate).
+    options.BackgroundServiceExceptionBehavior = BackgroundServiceExceptionBehavior.Ignore;
 });
 
 if (databaseRuntime.IsConnectionConfigured)
