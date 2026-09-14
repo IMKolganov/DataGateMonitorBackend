@@ -232,6 +232,70 @@ public class XrayVpnClientSyncServiceProxyRealIpTests
         Assert.Equal("203.0.113.50", geoHost);
     }
 
+    [Fact]
+    public async Task Sync_WhenXrayLinkMissing_FallsBackToOvpnExternalId()
+    {
+        VpnServerClientUpsertPayload? captured = null;
+
+        var upsert = new Mock<IVpnServerClientUpsertService>(MockBehavior.Strict);
+        upsert.Setup(u => u.UpsertAsync(It.IsAny<VpnServerClientUpsertPayload>(), It.IsAny<CancellationToken>()))
+            .Callback<VpnServerClientUpsertPayload, CancellationToken>((p, _) => captured = p)
+            .ReturnsAsync(1);
+
+        var (clientCmd, trafficCmd, tx, counter) = CreateCommandMocks();
+
+        var xrayLinks = new Mock<IIssuedXrayClientLinkQueryService>(MockBehavior.Strict);
+        xrayLinks.Setup(q => q.GetExternalIdByCommonName("legacy-cn", 7, It.IsAny<CancellationToken>()))
+            .ReturnsAsync((string?)null);
+
+        var ovpnFiles = new Mock<IIssuedOvpnFileQueryService>(MockBehavior.Strict);
+        ovpnFiles.Setup(q => q.GetExternalIdByCommonName("legacy-cn", 7, It.IsAny<CancellationToken>()))
+            .ReturnsAsync("ovpn-ext");
+
+        var users = new Mock<IUserQueryService>(MockBehavior.Strict);
+        users.Setup(q => q.GetByExternalId("ovpn-ext", It.IsAny<CancellationToken>()))
+            .ReturnsAsync((User?)null);
+
+        var sut = new XrayVpnClientSyncService(
+            NullLogger<XrayVpnClientSyncService>.Instance,
+            xrayLinks.Object,
+            ovpnFiles.Object,
+            users.Object,
+            Mock.Of<IGeoLiteQueryService>(),
+            tx.Object,
+            clientCmd.Object,
+            trafficCmd.Object,
+            upsert.Object,
+            counter.Object);
+
+        await sut.SyncConnectedClientsAsync(
+            new VpnServer
+            {
+                Id = 7,
+                ServerType = VpnServerType.Xray,
+                ServerName = "x7",
+                ApiUrl = "https://x/",
+                CreateDate = DateTimeOffset.UtcNow,
+                LastUpdate = DateTimeOffset.UtcNow
+            },
+            [
+                new XrayNodeClientDto
+                {
+                    Email = "legacy-cn",
+                    RemoteAddress = "172.20.0.2",
+                    BytesReceived = 1,
+                    BytesSent = 2,
+                    ConnectedSince = DateTimeOffset.Parse("2024-01-01T00:00:00Z")
+                }
+            ],
+            CancellationToken.None);
+
+        Assert.Equal("ovpn-ext", captured!.ExternalId);
+        xrayLinks.VerifyAll();
+        ovpnFiles.VerifyAll();
+        users.VerifyAll();
+    }
+
     private static (
         Mock<ICommandService<VpnServerClient, int>> ClientCmd,
         Mock<ICommandService<VpnServerClientTraffic, int>> TrafficCmd,

@@ -147,6 +147,7 @@ public sealed class UserMergeService(
             await MergeCredentialsAsync(telegramUserId, googleUserId, stats, warnings, ct);
             await MergeQuotaPlansAsync(telegramUserId, googleUserId, stats, warnings, ct);
             await MergeRolesAsync(telegramUserId, googleUserId, stats, ct);
+            await MergeAccessRulesAsync(telegramUserId, googleUserId, warnings, ct);
 
             stats.DevicesReassigned += await UpdateUserIdAsync<Device>(googleUserId, telegramUserId, ct);
 
@@ -458,6 +459,41 @@ public sealed class UserMergeService(
         }
     }
 
+    /// <summary>
+    /// Moves personal server grants/blocks onto the survivor. Unique (UserId, VpnServerId)
+    /// means overlapping servers keep the survivor's rule and drop the merged one.
+    /// </summary>
+    private async Task MergeAccessRulesAsync(
+        int survivorUserId,
+        int mergedUserId,
+        List<string> warnings,
+        CancellationToken ct)
+    {
+        var survivorServerIds = await uow.GetQuery<UserVpnServerAccessRule>()
+            .AsQueryable()
+            .AsNoTracking()
+            .Where(r => r.UserId == survivorUserId)
+            .Select(r => r.VpnServerId)
+            .ToListAsync(ct);
+
+        var dropped = 0;
+        if (survivorServerIds.Count > 0)
+        {
+            dropped = await uow.GetQuery<UserVpnServerAccessRule>()
+                .AsQueryable()
+                .Where(r => r.UserId == mergedUserId && survivorServerIds.Contains(r.VpnServerId))
+                .ExecuteDeleteAsync(ct);
+        }
+
+        await UpdateUserIdAsync<UserVpnServerAccessRule>(mergedUserId, survivorUserId, ct);
+
+        if (dropped > 0)
+        {
+            warnings.Add(
+                $"Personal VPN access rules: kept survivor for {dropped} overlapping server(s); extra merged rules dropped.");
+        }
+    }
+
     private async Task PopulateDryRunStatsAsync(
         int survivorUserId,
         int mergedUserId,
@@ -524,6 +560,13 @@ public sealed class UserMergeService(
         stats.UserRolesReassigned = await uow.GetQuery<UserRole>()
             .AsQueryable()
             .CountAsync(r => r.UserId == mergedUserId, ct);
+
+        var mergedAccessRules = await CountUserIdAsync<UserVpnServerAccessRule>(mergedUserId, ct);
+        if (mergedAccessRules > 0)
+        {
+            warnings.Add(
+                $"Dry run: {mergedAccessRules} personal VPN access rule(s) would move to the survivor (overlapping servers keep the survivor's rule).");
+        }
 
         if (googleExternalId != telegramExternalId)
         {

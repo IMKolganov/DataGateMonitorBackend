@@ -12,16 +12,16 @@ using DataGateMonitor.SharedModels.Responses;
 namespace DataGateMonitor.Controllers;
 
 /// <summary>
-/// HTTP API v1 for Xray (VLESS) client links. Kept for existing clients (Android <c>get-files</c>).
-/// New callers should use <see cref="XrayClientLinksV2Controller"/> (<c>/api/v2/xray-client-links</c>).
+/// HTTP API v2 for Xray (VLESS) client links. Same DTOs and persistence as v1;
+/// paths drop the leftover <c>file</c> wording. v1 remains at <c>/api/xray-client-links</c>.
 /// </summary>
 [ApiController]
-[Route("api/xray-client-links")]
+[Route("api/v2/xray-client-links")]
 [Authorize]
 [Authorize(Roles = "Admin,VpnUser,App")]
-public class XrayClientLinksController(
+public class XrayClientLinksV2Controller(
     IXrayClientLinkService xrayClientLinkService,
-    ILogger<XrayClientLinksController> logger,
+    ILogger<XrayClientLinksV2Controller> logger,
     IUserQuotaPlanQueryService userQuotaPlanQueryService,
     IQuotaPlanAllowedServerQueryService quotaPlanAllowedServerQueryService,
     IVpnServerAccessQueryService vpnServerAccessQueryService) : BaseController
@@ -48,8 +48,8 @@ public class XrayClientLinksController(
         }
     }
 
-    [HttpGet("get-all/{vpnServerId:int}")]
-    public async Task<ActionResult<ApiResponse<XrayClientLinksResponse>>> GetAllByVpnServerId(
+    [HttpGet("by-server/{vpnServerId:int}")]
+    public async Task<ActionResult<ApiResponse<XrayClientLinksResponse>>> ListByServer(
         [FromRoute] GetXrayClientLinksByVpnServerIdRequest request, CancellationToken cancellationToken)
     {
         if (await VpnServerAuthorizationHelper.RequireVpnServerAccessOrForbidAsync<XrayClientLinksResponse>(User,
@@ -63,13 +63,13 @@ public class XrayClientLinksController(
         }
         catch (Exception ex)
         {
-            logger.LogError(ex, "Failed to get all Xray client links on server {VpnServerId}", request.VpnServerId);
+            logger.LogError(ex, "Failed to list Xray client links on server {VpnServerId}", request.VpnServerId);
             return BadRequest(ApiResponse<XrayClientLinksResponse>.ErrorResponse(ex.Message));
         }
     }
 
-    [HttpGet("get-all/{vpnServerId:int}/{externalId}")]
-    public async Task<ActionResult<ApiResponse<XrayClientLinksResponse>>> GetAllByExternalIdAndVpnServerId(
+    [HttpGet("by-server/{vpnServerId:int}/by-external-id/{externalId}")]
+    public async Task<ActionResult<ApiResponse<XrayClientLinksResponse>>> ListByServerAndExternalId(
         [FromRoute] GetXrayClientLinksByExternalIdAndVpnServerIdRequest request, CancellationToken cancellationToken)
     {
         if (await VpnServerAuthorizationHelper.RequireVpnServerAccessOrForbidAsync<XrayClientLinksResponse>(User,
@@ -84,14 +84,14 @@ public class XrayClientLinksController(
         }
         catch (Exception ex)
         {
-            logger.LogError(ex, "Failed to get all Xray client links on server {VpnServerId} and {ExternalId}",
+            logger.LogError(ex, "Failed to list Xray client links on server {VpnServerId} and {ExternalId}",
                 request.VpnServerId, request.ExternalId);
             return BadRequest(ApiResponse<XrayClientLinksResponse>.ErrorResponse(ex.Message));
         }
     }
 
-    [HttpGet("get-all-with-token/{vpnServerId:int}")]
-    public async Task<ActionResult<ApiResponse<XrayClientLinksWithTokensResponse>>> GetAllWithToken(
+    [HttpGet("by-server/{vpnServerId:int}/with-tokens")]
+    public async Task<ActionResult<ApiResponse<XrayClientLinksWithTokensResponse>>> ListByServerWithTokens(
         [FromRoute] GetXrayClientLinksByVpnServerIdRequest request, CancellationToken cancellationToken)
     {
         if (await VpnServerAuthorizationHelper.RequireVpnServerAccessOrForbidAsync<XrayClientLinksWithTokensResponse>(
@@ -107,14 +107,14 @@ public class XrayClientLinksController(
         }
         catch (Exception ex)
         {
-            logger.LogError(ex, "Failed to get all Xray client links with token on server {VpnServerId}",
+            logger.LogError(ex, "Failed to list Xray client links with tokens on server {VpnServerId}",
                 request.VpnServerId);
             return BadRequest(ApiResponse<XrayClientLinksWithTokensResponse>.ErrorResponse(ex.Message));
         }
     }
 
-    [HttpGet("get-all-with-token/{vpnServerId:int}/{externalId}")]
-    public async Task<ActionResult<ApiResponse<XrayClientLinksWithTokensResponse>>> GetAllWithToken(
+    [HttpGet("by-server/{vpnServerId:int}/by-external-id/{externalId}/with-tokens")]
+    public async Task<ActionResult<ApiResponse<XrayClientLinksWithTokensResponse>>> ListByServerAndExternalIdWithTokens(
         [FromRoute] GetXrayClientLinksByExternalIdAndVpnServerIdRequest request, CancellationToken cancellationToken)
     {
         if (await VpnServerAuthorizationHelper.RequireVpnServerAccessOrForbidAsync<XrayClientLinksWithTokensResponse>(
@@ -130,14 +130,15 @@ public class XrayClientLinksController(
         }
         catch (Exception ex)
         {
-            logger.LogError(ex, "Failed to get all Xray client links with token on server {VpnServerId} and {ExternalId}",
+            logger.LogError(ex,
+                "Failed to list Xray client links with tokens on server {VpnServerId} and {ExternalId}",
                 request.VpnServerId, request.ExternalId);
             return BadRequest(ApiResponse<XrayClientLinksWithTokensResponse>.ErrorResponse(ex.Message));
         }
     }
 
-    [HttpGet("get-files/{externalId}")]
-    public async Task<ActionResult<ApiResponse<XrayClientLinksResponse>>> GetFiles(
+    [HttpGet("by-external-id/{externalId}")]
+    public async Task<ActionResult<ApiResponse<XrayClientLinksResponse>>> ListByExternalId(
         [FromRoute] GetXrayClientLinksByExternalIdRequest request, CancellationToken cancellationToken)
     {
         try
@@ -149,13 +150,13 @@ public class XrayClientLinksController(
         }
         catch (Exception ex)
         {
-            logger.LogError(ex, "Failed to get all Xray client links for {ExternalId}", request.ExternalId);
+            logger.LogError(ex, "Failed to list Xray client links for {ExternalId}", request.ExternalId);
             return BadRequest(ApiResponse<XrayClientLinksResponse>.ErrorResponse(ex.Message));
         }
     }
 
-    [HttpPost("add")]
-    public async Task<ActionResult<ApiResponse<XrayClientLinkResponse>>> AddFile(
+    [HttpPost]
+    public async Task<ActionResult<ApiResponse<XrayClientLinkResponse>>> Add(
         [FromBody] AddXrayClientLinkRequest request, CancellationToken cancellationToken)
     {
         if (await VpnServerAuthorizationHelper.RequireVpnServerAccessOrForbidAsync<XrayClientLinkResponse>(User,
@@ -175,8 +176,8 @@ public class XrayClientLinksController(
         }
     }
 
-    [HttpPost("add-with-token")]
-    public async Task<ActionResult<ApiResponse<XrayClientLinkWithTokenResponse>>> AddFileWithToken(
+    [HttpPost("with-token")]
+    public async Task<ActionResult<ApiResponse<XrayClientLinkWithTokenResponse>>> AddWithToken(
         [FromBody] AddXrayClientLinkRequest request, CancellationToken cancellationToken)
     {
         if (await VpnServerAuthorizationHelper.RequireVpnServerAccessOrForbidAsync<XrayClientLinkWithTokenResponse>(
@@ -197,8 +198,8 @@ public class XrayClientLinksController(
         }
     }
 
-    [HttpPost("revoke-file")]
-    public async Task<ActionResult<ApiResponse<XrayClientLinkResponse>>> RevokeFile(
+    [HttpPost("revoke")]
+    public async Task<ActionResult<ApiResponse<XrayClientLinkResponse>>> Revoke(
         [FromBody] RevokeXrayClientLinkRequest request, CancellationToken cancellationToken)
     {
         if (await VpnServerAuthorizationHelper.RequireVpnServerAccessOrForbidAsync<XrayClientLinkResponse>(User,
@@ -218,8 +219,8 @@ public class XrayClientLinksController(
         }
     }
 
-    [HttpPost("download-file")]
-    public async Task<ActionResult<ApiResponse<DownloadXrayClientLinkResponse>>> DownloadFile(
+    [HttpPost("download")]
+    public async Task<ActionResult<ApiResponse<DownloadXrayClientLinkResponse>>> Download(
         [FromBody] DownloadXrayClientLinkRequest request, CancellationToken cancellationToken)
     {
         if (await VpnServerAuthorizationHelper.RequireVpnServerAccessOrForbidAsync<DownloadXrayClientLinkResponse>(User,
@@ -239,8 +240,8 @@ public class XrayClientLinksController(
         }
     }
 
-    [HttpPost("download-file-by-cn")]
-    public async Task<ActionResult<ApiResponse<DownloadXrayClientLinkResponse>>> DownloadFileByCn(
+    [HttpPost("download-by-cn")]
+    public async Task<ActionResult<ApiResponse<DownloadXrayClientLinkResponse>>> DownloadByCn(
         [FromBody] DownloadXrayClientLinkByCnRequest request, CancellationToken cancellationToken)
     {
         if (await VpnServerAuthorizationHelper.RequireVpnServerAccessOrForbidAsync<DownloadXrayClientLinkResponse>(User,

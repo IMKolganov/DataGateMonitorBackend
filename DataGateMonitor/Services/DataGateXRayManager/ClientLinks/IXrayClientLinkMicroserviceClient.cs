@@ -1,13 +1,16 @@
+using DataGateMonitor.SharedModels.DataGateXRayManager.ClientLink.Requests;
+using DataGateMonitor.SharedModels.DataGateXRayManager.ClientLink.Responses;
+
 namespace DataGateMonitor.Services.DataGateXRayManager.ClientLinks;
 
 public interface IXrayClientLinkMicroserviceClient
 {
-    Task<ClientLinkMetadataDto> AddClientLink(int vpnServerId, GenerateClientLinkMicroserviceRequest request,
+    Task<ClientLinkMetadata> AddClientLink(int vpnServerId, GenerateClientLinkRequest request,
         CancellationToken cancellationToken);
 
-    Task<ClientLinkMetadataDto> RevokeClientLink(int vpnServerId, RevokeClientLinkMicroserviceRequest request,
+    Task<ClientLinkMetadata> RevokeClientLink(int vpnServerId, RevokeClientLinkRequest request,
         CancellationToken cancellationToken);
 
-    Task<ClientLinkDownloadDto> DownloadClientLink(int vpnServerId, DownloadClientLinkMicroserviceRequest request,
+    Task<ClientLinkDownload> DownloadClientLink(int vpnServerId, DownloadClientLinkRequest request,
         CancellationToken cancellationToken);
 }
