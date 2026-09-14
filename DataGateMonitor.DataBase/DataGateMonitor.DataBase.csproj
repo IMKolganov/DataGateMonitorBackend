@@ -14,20 +14,20 @@
 
     <ItemGroup>
         <PackageReference Include="DataGateMonitor.SharedModels" Version="1.0.64" />
-      <PackageReference Include="Mapster" Version="10.0.10" />
-      <PackageReference Include="Microsoft.AspNetCore.Cryptography.KeyDerivation" Version="10.0.9" />
-      <PackageReference Include="Microsoft.EntityFrameworkCore" Version="10.0.9" />
-      <PackageReference Include="Microsoft.EntityFrameworkCore.Design" Version="10.0.9">
+      <PackageReference Include="Mapster" Version="10.0.12" />
+      <PackageReference Include="Microsoft.AspNetCore.Cryptography.KeyDerivation" Version="10.0.12" />
+      <PackageReference Include="Microsoft.EntityFrameworkCore" Version="10.0.12" />
+      <PackageReference Include="Microsoft.EntityFrameworkCore.Design" Version="10.0.12">
         <IncludeAssets>runtime; build; native; contentfiles; analyzers; buildtransitive</IncludeAssets>
         <PrivateAssets>all</PrivateAssets>
       </PackageReference>
-      <PackageReference Include="Microsoft.EntityFrameworkCore.Relational" Version="10.0.9" />
-      <PackageReference Include="Npgsql.EntityFrameworkCore.PostgreSQL" Version="10.0.2" />
-      <PackageReference Include="Microsoft.Extensions.Configuration" Version="10.0.9" />
-      <PackageReference Include="Microsoft.Extensions.Configuration.Abstractions" Version="10.0.9" />
-      <PackageReference Include="Microsoft.Extensions.Configuration.EnvironmentVariables" Version="10.0.9" />
-      <PackageReference Include="Microsoft.Extensions.Configuration.FileExtensions" Version="10.0.9" />
-      <PackageReference Include="Microsoft.Extensions.Configuration.Json" Version="10.0.9" />
+      <PackageReference Include="Microsoft.EntityFrameworkCore.Relational" Version="10.0.12" />
+      <PackageReference Include="Npgsql.EntityFrameworkCore.PostgreSQL" Version="10.0.3" />
+      <PackageReference Include="Microsoft.Extensions.Configuration" Version="10.0.12" />
+      <PackageReference Include="Microsoft.Extensions.Configuration.Abstractions" Version="10.0.12" />
+      <PackageReference Include="Microsoft.Extensions.Configuration.EnvironmentVariables" Version="10.0.12" />
+      <PackageReference Include="Microsoft.Extensions.Configuration.FileExtensions" Version="10.0.12" />
+      <PackageReference Include="Microsoft.Extensions.Configuration.Json" Version="10.0.12" />
     </ItemGroup>
 
 </Project>
