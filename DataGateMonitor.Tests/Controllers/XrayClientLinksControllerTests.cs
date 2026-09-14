@@ -6,6 +6,8 @@ using DataGateMonitor.Mapping.XrayClientLinks.Mappings;
 using DataGateMonitor.Models;
 using DataGateMonitor.Services.Api.Auth.Handlers.Interfaces;
 using DataGateMonitor.Services.DataGateXRayManager.ClientLinks;
+using DataGateMonitor.SharedModels.DataGateMonitor.OpenVpnFiles.Requests;
+using DataGateMonitor.SharedModels.DataGateMonitor.OpenVpnFiles.Responses;
 using DataGateMonitor.SharedModels.DataGateMonitor.XrayClientLinks.Requests;
 using DataGateMonitor.SharedModels.DataGateMonitor.XrayClientLinks.Responses;
 using DataGateMonitor.SharedModels.Responses;
@@ -50,11 +52,11 @@ public class XrayClientLinksControllerTests
     [Fact]
     public async Task GetByToken_Returns_BadRequest_When_Token_Empty()
     {
-        var result = await _controller.GetByToken(new GetXrayClientLinkByTokenRequest { Token = "  " },
+        var result = await _controller.GetByToken(new ByTokenRequest { Token = "  " },
             CancellationToken.None);
 
         var bad = Assert.IsType<BadRequestObjectResult>(result.Result);
-        var response = Assert.IsType<ApiResponse<XrayClientLinkResponse>>(bad.Value);
+        var response = Assert.IsType<ApiResponse<OvpnFileResponse>>(bad.Value);
         Assert.False(response.Success);
     }
 
@@ -64,14 +66,14 @@ public class XrayClientLinksControllerTests
         _service.Setup(s => s.GetByToken("tkn", It.IsAny<CancellationToken>(), It.IsAny<bool>()))
             .ReturnsAsync(new IssuedXrayClientLink { Id = 1, VpnServerId = 2, CommonName = "cn" });
 
-        var result = await _controller.GetByToken(new GetXrayClientLinkByTokenRequest { Token = "tkn" },
+        var result = await _controller.GetByToken(new ByTokenRequest { Token = "tkn" },
             CancellationToken.None);
 
         var ok = Assert.IsType<OkObjectResult>(result.Result);
-        var response = Assert.IsType<ApiResponse<XrayClientLinkResponse>>(ok.Value);
+        var response = Assert.IsType<ApiResponse<OvpnFileResponse>>(ok.Value);
         Assert.True(response.Success);
-        Assert.Equal(1, response.Data!.IssuedXrayClientLink.Id);
-        Assert.Equal("cn", response.Data.IssuedXrayClientLink.CommonName);
+        Assert.Equal(1, response.Data!.IssuedOvpnFile.Id);
+        Assert.Equal("cn", response.Data.IssuedOvpnFile.CommonName);
     }
 
     [Fact]
@@ -80,11 +82,11 @@ public class XrayClientLinksControllerTests
         _service.Setup(s => s.GetByToken("tkn", It.IsAny<CancellationToken>(), It.IsAny<bool>()))
             .ThrowsAsync(new Exception("err"));
 
-        var result = await _controller.GetByToken(new GetXrayClientLinkByTokenRequest { Token = "tkn" },
+        var result = await _controller.GetByToken(new ByTokenRequest { Token = "tkn" },
             CancellationToken.None);
 
         var bad = Assert.IsType<BadRequestObjectResult>(result.Result);
-        Assert.False(Assert.IsType<ApiResponse<XrayClientLinkResponse>>(bad.Value).Success);
+        Assert.False(Assert.IsType<ApiResponse<OvpnFileResponse>>(bad.Value).Success);
     }
 
     [Fact]
@@ -97,13 +99,13 @@ public class XrayClientLinksControllerTests
             });
 
         var result = await _controller.GetAllByVpnServerId(
-            new GetXrayClientLinksByVpnServerIdRequest { VpnServerId = 5 }, CancellationToken.None);
+            new ByVpnServerIdRequest { VpnServerId = 5 }, CancellationToken.None);
 
         var ok = Assert.IsType<OkObjectResult>(result.Result);
-        var response = Assert.IsType<ApiResponse<XrayClientLinksResponse>>(ok.Value);
+        var response = Assert.IsType<ApiResponse<OvpnFilesResponse>>(ok.Value);
         Assert.True(response.Success);
-        Assert.Single(response.Data!.IssuedXrayClientLinks);
-        Assert.Equal(9, response.Data.IssuedXrayClientLinks[0].Id);
+        Assert.Single(response.Data!.IssuedOvpnFiles);
+        Assert.Equal(9, response.Data.IssuedOvpnFiles[0].Id);
     }
 
     [Fact]
@@ -113,10 +115,10 @@ public class XrayClientLinksControllerTests
             .ThrowsAsync(new Exception("err"));
 
         var result = await _controller.GetAllByVpnServerId(
-            new GetXrayClientLinksByVpnServerIdRequest { VpnServerId = 10 }, CancellationToken.None);
+            new ByVpnServerIdRequest { VpnServerId = 10 }, CancellationToken.None);
 
         var bad = Assert.IsType<BadRequestObjectResult>(result.Result);
-        Assert.False(Assert.IsType<ApiResponse<XrayClientLinksResponse>>(bad.Value).Success);
+        Assert.False(Assert.IsType<ApiResponse<OvpnFilesResponse>>(bad.Value).Success);
     }
 
     [Fact]
@@ -126,11 +128,11 @@ public class XrayClientLinksControllerTests
             .ReturnsAsync(new List<IssuedXrayClientLink>());
 
         var result = await _controller.GetAllByExternalIdAndVpnServerId(
-            new GetXrayClientLinksByExternalIdAndVpnServerIdRequest { VpnServerId = 3, ExternalId = "ext" },
+            new ByExternalIdAndVpnServerIdRequest { VpnServerId = 3, ExternalId = "ext" },
             CancellationToken.None);
 
         var ok = Assert.IsType<OkObjectResult>(result.Result);
-        Assert.True(Assert.IsType<ApiResponse<XrayClientLinksResponse>>(ok.Value).Success);
+        Assert.True(Assert.IsType<ApiResponse<OvpnFilesResponse>>(ok.Value).Success);
     }
 
     [Fact]
@@ -140,10 +142,10 @@ public class XrayClientLinksControllerTests
             .ReturnsAsync(new List<(IssuedXrayClientLink, IssuedXrayClientLinkToken?)>());
 
         var result = await _controller.GetAllWithToken(
-            new GetXrayClientLinksByVpnServerIdRequest { VpnServerId = 6 }, CancellationToken.None);
+            new ByVpnServerIdRequest { VpnServerId = 6 }, CancellationToken.None);
 
         var ok = Assert.IsType<OkObjectResult>(result.Result);
-        Assert.True(Assert.IsType<ApiResponse<XrayClientLinksWithTokensResponse>>(ok.Value).Success);
+        Assert.True(Assert.IsType<ApiResponse<OvpnFilesWithTokensResponse>>(ok.Value).Success);
     }
 
     [Fact]
@@ -153,13 +155,13 @@ public class XrayClientLinksControllerTests
             .ReturnsAsync(new IssuedXrayClientLink { Id = 4, CommonName = "cn", VpnServerId = 1 });
 
         var result = await _controller.AddFile(
-            new AddXrayClientLinkRequest { CommonName = "cn", VpnServerId = 1, ExternalId = "e" },
+            new AddFileRequest { CommonName = "cn", VpnServerId = 1, ExternalId = "e" },
             CancellationToken.None);
 
         var ok = Assert.IsType<OkObjectResult>(result.Result);
-        var response = Assert.IsType<ApiResponse<XrayClientLinkResponse>>(ok.Value);
+        var response = Assert.IsType<ApiResponse<OvpnFileResponse>>(ok.Value);
         Assert.True(response.Success);
-        Assert.Equal("cn", response.Data!.IssuedXrayClientLink.CommonName);
+        Assert.Equal("cn", response.Data!.IssuedOvpnFile.CommonName);
     }
 
     [Fact]
@@ -169,11 +171,11 @@ public class XrayClientLinksControllerTests
             .ThrowsAsync(new InvalidOperationException("boom"));
 
         var result = await _controller.AddFile(
-            new AddXrayClientLinkRequest { CommonName = "cn", VpnServerId = 1, ExternalId = "e" },
+            new AddFileRequest { CommonName = "cn", VpnServerId = 1, ExternalId = "e" },
             CancellationToken.None);
 
         var bad = Assert.IsType<BadRequestObjectResult>(result.Result);
-        Assert.False(Assert.IsType<ApiResponse<XrayClientLinkResponse>>(bad.Value).Success);
+        Assert.False(Assert.IsType<ApiResponse<OvpnFileResponse>>(bad.Value).Success);
     }
 
     [Fact]
@@ -184,14 +186,14 @@ public class XrayClientLinksControllerTests
                 new IssuedXrayClientLinkToken { Id = 8, Token = "tok", IssuedXrayClientLinkId = 4 }));
 
         var result = await _controller.AddFileWithToken(
-            new AddXrayClientLinkRequest { CommonName = "cn", VpnServerId = 1, ExternalId = "e" },
+            new AddFileRequest { CommonName = "cn", VpnServerId = 1, ExternalId = "e" },
             CancellationToken.None);
 
         var ok = Assert.IsType<OkObjectResult>(result.Result);
-        var response = Assert.IsType<ApiResponse<XrayClientLinkWithTokenResponse>>(ok.Value);
+        var response = Assert.IsType<ApiResponse<OvpnFileWithTokenResponse>>(ok.Value);
         Assert.True(response.Success);
-        Assert.Equal("tok", response.Data!.IssuedXrayClientLinkToken.Token);
-        Assert.Equal(4, response.Data.IssuedXrayClientLinkToken.IssuedXrayClientLinkId);
+        Assert.Equal("tok", response.Data!.IssuedOvpnFileToken.Token);
+        Assert.Equal(4, response.Data.IssuedOvpnFileToken.IssuedOvpnFileId);
     }
 
     [Fact]
@@ -201,18 +203,24 @@ public class XrayClientLinksControllerTests
             .ReturnsAsync(new IssuedXrayClientLink { Id = 4, IsRevoked = true, CommonName = "cn" });
 
         var result = await _controller.RevokeFile(
-            new RevokeXrayClientLinkRequest { CommonName = "cn", VpnServerId = 5, IssuedXrayClientLinkId = 4 },
+            new RevokeFileRequest { CommonName = "cn", VpnServerId = 5, OvpnFileId = 4 },
             CancellationToken.None);
 
         var ok = Assert.IsType<OkObjectResult>(result.Result);
-        var response = Assert.IsType<ApiResponse<XrayClientLinkResponse>>(ok.Value);
+        var response = Assert.IsType<ApiResponse<OvpnFileResponse>>(ok.Value);
         Assert.True(response.Success);
-        Assert.True(response.Data!.IssuedXrayClientLink.IsRevoked);
+        Assert.True(response.Data!.IssuedOvpnFile.IsRevoked);
+        _service.Verify(s => s.RevokeClientLink(
+            It.Is<RevokeXrayClientLinkRequest>(r => r.IssuedXrayClientLinkId == 4 && r.VpnServerId == 5),
+            It.IsAny<CancellationToken>()), Times.Once);
     }
 
     [Fact]
-    public async Task DownloadFile_Returns_Ok()
+    [Trait("Compatibility", "LegacyAndroid")]
+    public async Task DownloadFile_Returns_IssuedOvpn_ForLegacyAndroidCompatibility()
     {
+        // Published DataGateAndroid (tags 1.0.15–1.0.17) requires data.issuedOvpn on v1 download.
+        // Full ASP.NET JSON wire checks: PublishedAndroidXrayClientLinkWireCompatTests.
         _service.Setup(s => s.DownloadClientLink(It.IsAny<DownloadXrayClientLinkRequest>(), It.IsAny<CancellationToken>(),
                 It.IsAny<bool>()))
             .ReturnsAsync(new DownloadXrayClientLinkResponse
@@ -223,28 +231,41 @@ public class XrayClientLinksControllerTests
             });
 
         var result = await _controller.DownloadFile(
-            new DownloadXrayClientLinkRequest { IssuedXrayClientLinkId = 1, VpnServerId = 1 },
+            new DownloadFileRequest { IssuedOvpnFileId = 1, VpnServerId = 1 },
             CancellationToken.None);
 
         var ok = Assert.IsType<OkObjectResult>(result.Result);
-        var response = Assert.IsType<ApiResponse<DownloadXrayClientLinkResponse>>(ok.Value);
+        var response = Assert.IsType<ApiResponse<DownloadFileResponse>>(ok.Value);
         Assert.True(response.Success);
-        Assert.Equal("link.txt", response.Data!.IssuedXrayClientLink.FileName);
+        Assert.Equal("link.txt", response.Data!.IssuedOvpn.FileName);
+        Assert.Equal(1, response.Data.IssuedOvpn.Id);
+        _service.Verify(s => s.DownloadClientLink(
+            It.Is<DownloadXrayClientLinkRequest>(r => r.IssuedXrayClientLinkId == 1 && r.VpnServerId == 1),
+            It.IsAny<CancellationToken>(), It.IsAny<bool>()), Times.Once);
     }
 
     [Fact]
-    public async Task DownloadFileByCn_Returns_Ok()
+    [Trait("Compatibility", "LegacyAndroid")]
+    public async Task DownloadFileByCn_Returns_IssuedOvpn_ForLegacyAndroidCompatibility()
     {
         _service.Setup(s => s.DownloadClientLinkByCn(It.IsAny<DownloadXrayClientLinkByCnRequest>(),
                 It.IsAny<CancellationToken>(), It.IsAny<bool>()))
-            .ReturnsAsync(new DownloadXrayClientLinkResponse { Content = [9], FileSizeBytes = 1 });
+            .ReturnsAsync(new DownloadXrayClientLinkResponse
+            {
+                Content = [9],
+                FileSizeBytes = 1,
+                IssuedXrayClientLink = new() { Id = 2, FileName = "by-cn.txt", CommonName = "cn" }
+            });
 
         var result = await _controller.DownloadFileByCn(
-            new DownloadXrayClientLinkByCnRequest { CommonName = "cn", VpnServerId = 1 },
+            new DownloadFileByCnRequest { CommonName = "cn", VpnServerId = 1 },
             CancellationToken.None);
 
         var ok = Assert.IsType<OkObjectResult>(result.Result);
-        Assert.True(Assert.IsType<ApiResponse<DownloadXrayClientLinkResponse>>(ok.Value).Success);
+        var response = Assert.IsType<ApiResponse<DownloadFileResponse>>(ok.Value);
+        Assert.True(response.Success);
+        Assert.Equal("by-cn.txt", response.Data!.IssuedOvpn.FileName);
+        Assert.Equal("cn", response.Data.IssuedOvpn.CommonName);
     }
 
     [Fact]
@@ -260,7 +281,7 @@ public class XrayClientLinksControllerTests
             .ReturnsAsync(false);
 
         var result = await _controller.GetAllByVpnServerId(
-            new GetXrayClientLinksByVpnServerIdRequest { VpnServerId = 5 }, CancellationToken.None);
+            new ByVpnServerIdRequest { VpnServerId = 5 }, CancellationToken.None);
 
         var forbid = Assert.IsType<ObjectResult>(result.Result);
         Assert.Equal(StatusCodes.Status403Forbidden, forbid.StatusCode);
@@ -274,10 +295,10 @@ public class XrayClientLinksControllerTests
             .ReturnsAsync(new List<IssuedXrayClientLink>());
 
         var result = await _controller.GetFiles(
-            new GetXrayClientLinksByExternalIdRequest { ExternalId = "ext2" }, CancellationToken.None);
+            new ByExternalIdRequest { ExternalId = "ext2" }, CancellationToken.None);
 
         var ok = Assert.IsType<OkObjectResult>(result.Result);
-        Assert.True(Assert.IsType<ApiResponse<XrayClientLinksResponse>>(ok.Value).Success);
+        Assert.True(Assert.IsType<ApiResponse<OvpnFilesResponse>>(ok.Value).Success);
     }
 
     [Fact]
@@ -294,7 +315,7 @@ public class XrayClientLinksControllerTests
         _vpnAccess.Setup(a => a.UserHasAccessAsync(901, 12, It.IsAny<CancellationToken>()))
             .ReturnsAsync(false);
 
-        var result = await _controller.GetByToken(new GetXrayClientLinkByTokenRequest { Token = "tok" },
+        var result = await _controller.GetByToken(new ByTokenRequest { Token = "tok" },
             CancellationToken.None);
 
         var forbid = Assert.IsType<ObjectResult>(result.Result);
@@ -320,12 +341,12 @@ public class XrayClientLinksControllerTests
             ]);
 
         var result = await _controller.GetFiles(
-            new GetXrayClientLinksByExternalIdRequest { ExternalId = "legacy-user" }, CancellationToken.None);
+            new ByExternalIdRequest { ExternalId = "legacy-user" }, CancellationToken.None);
 
         var ok = Assert.IsType<OkObjectResult>(result.Result);
-        var response = Assert.IsType<ApiResponse<XrayClientLinksResponse>>(ok.Value);
+        var response = Assert.IsType<ApiResponse<OvpnFilesResponse>>(ok.Value);
         Assert.True(response.Success);
-        Assert.Single(response.Data!.IssuedXrayClientLinks);
+        Assert.Single(response.Data!.IssuedOvpnFiles);
         _service.Verify(s => s.GetAllByExternalId("legacy-user", It.IsAny<CancellationToken>()), Times.Once);
         _quotaAllowed.Verify(q => q.GetVpnServerIdsByQuotaPlanId(It.IsAny<int>(), It.IsAny<CancellationToken>()),
             Times.Never);
@@ -352,14 +373,14 @@ public class XrayClientLinksControllerTests
             ]);
 
         var result = await _controller.GetFiles(
-            new GetXrayClientLinksByExternalIdRequest { ExternalId = "quota-user" }, CancellationToken.None);
+            new ByExternalIdRequest { ExternalId = "quota-user" }, CancellationToken.None);
 
         var ok = Assert.IsType<OkObjectResult>(result.Result);
-        var response = Assert.IsType<ApiResponse<XrayClientLinksResponse>>(ok.Value);
+        var response = Assert.IsType<ApiResponse<OvpnFilesResponse>>(ok.Value);
         Assert.True(response.Success);
-        Assert.Single(response.Data!.IssuedXrayClientLinks);
-        Assert.Equal(10, response.Data.IssuedXrayClientLinks[0].VpnServerId);
-        Assert.Equal("allowed", response.Data.IssuedXrayClientLinks[0].CommonName);
+        Assert.Single(response.Data!.IssuedOvpnFiles);
+        Assert.Equal(10, response.Data.IssuedOvpnFiles[0].VpnServerId);
+        Assert.Equal("allowed", response.Data.IssuedOvpnFiles[0].CommonName);
     }
 
     [Fact]
@@ -369,10 +390,10 @@ public class XrayClientLinksControllerTests
             .ThrowsAsync(new Exception("err"));
 
         var result = await _controller.GetFiles(
-            new GetXrayClientLinksByExternalIdRequest { ExternalId = "ext2" }, CancellationToken.None);
+            new ByExternalIdRequest { ExternalId = "ext2" }, CancellationToken.None);
 
         var bad = Assert.IsType<BadRequestObjectResult>(result.Result);
-        Assert.False(Assert.IsType<ApiResponse<XrayClientLinksResponse>>(bad.Value).Success);
+        Assert.False(Assert.IsType<ApiResponse<OvpnFilesResponse>>(bad.Value).Success);
     }
 
     [Fact]
@@ -382,11 +403,11 @@ public class XrayClientLinksControllerTests
             .ThrowsAsync(new Exception("err"));
 
         var result = await _controller.AddFileWithToken(
-            new AddXrayClientLinkRequest { CommonName = "cn", VpnServerId = 1, ExternalId = "e" },
+            new AddFileRequest { CommonName = "cn", VpnServerId = 1, ExternalId = "e" },
             CancellationToken.None);
 
         var bad = Assert.IsType<BadRequestObjectResult>(result.Result);
-        Assert.False(Assert.IsType<ApiResponse<XrayClientLinkWithTokenResponse>>(bad.Value).Success);
+        Assert.False(Assert.IsType<ApiResponse<OvpnFileWithTokenResponse>>(bad.Value).Success);
     }
 
     [Fact]
@@ -397,11 +418,11 @@ public class XrayClientLinksControllerTests
             .ThrowsAsync(new Exception("err"));
 
         var result = await _controller.DownloadFile(
-            new DownloadXrayClientLinkRequest { IssuedXrayClientLinkId = 1, VpnServerId = 1 },
+            new DownloadFileRequest { IssuedOvpnFileId = 1, VpnServerId = 1 },
             CancellationToken.None);
 
         var bad = Assert.IsType<BadRequestObjectResult>(result.Result);
-        Assert.False(Assert.IsType<ApiResponse<DownloadXrayClientLinkResponse>>(bad.Value).Success);
+        Assert.False(Assert.IsType<ApiResponse<DownloadFileResponse>>(bad.Value).Success);
     }
 
     [Fact]
@@ -411,11 +432,11 @@ public class XrayClientLinksControllerTests
             .ThrowsAsync(new Exception("err"));
 
         var result = await _controller.RevokeFile(
-            new RevokeXrayClientLinkRequest { CommonName = "cn", VpnServerId = 5, IssuedXrayClientLinkId = 4 },
+            new RevokeFileRequest { CommonName = "cn", VpnServerId = 5, OvpnFileId = 4 },
             CancellationToken.None);
 
         var bad = Assert.IsType<BadRequestObjectResult>(result.Result);
-        Assert.False(Assert.IsType<ApiResponse<XrayClientLinkResponse>>(bad.Value).Success);
+        Assert.False(Assert.IsType<ApiResponse<OvpnFileResponse>>(bad.Value).Success);
     }
 
     [Fact]
@@ -426,11 +447,11 @@ public class XrayClientLinksControllerTests
             .ReturnsAsync(new List<(IssuedXrayClientLink, IssuedXrayClientLinkToken?)>());
 
         var result = await _controller.GetAllWithToken(
-            new GetXrayClientLinksByExternalIdAndVpnServerIdRequest { VpnServerId = 2, ExternalId = "e1" },
+            new ByExternalIdAndVpnServerIdRequest { VpnServerId = 2, ExternalId = "e1" },
             CancellationToken.None);
 
         var ok = Assert.IsType<OkObjectResult>(result.Result);
-        Assert.True(Assert.IsType<ApiResponse<XrayClientLinksWithTokensResponse>>(ok.Value).Success);
+        Assert.True(Assert.IsType<ApiResponse<OvpnFilesWithTokensResponse>>(ok.Value).Success);
     }
 
     [Fact]
@@ -440,10 +461,10 @@ public class XrayClientLinksControllerTests
             .ThrowsAsync(new Exception("err"));
 
         var result = await _controller.GetAllByExternalIdAndVpnServerId(
-            new GetXrayClientLinksByExternalIdAndVpnServerIdRequest { VpnServerId = 3, ExternalId = "ext" },
+            new ByExternalIdAndVpnServerIdRequest { VpnServerId = 3, ExternalId = "ext" },
             CancellationToken.None);
 
         var bad = Assert.IsType<BadRequestObjectResult>(result.Result);
-        Assert.False(Assert.IsType<ApiResponse<XrayClientLinksResponse>>(bad.Value).Success);
+        Assert.False(Assert.IsType<ApiResponse<OvpnFilesResponse>>(bad.Value).Success);
     }
 }
