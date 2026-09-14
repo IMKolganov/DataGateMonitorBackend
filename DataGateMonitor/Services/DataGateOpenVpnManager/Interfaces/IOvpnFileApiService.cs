@@ -5,8 +5,9 @@ using DataGateMonitor.SharedModels.DataGateMonitor.OpenVpnFiles.Responses;
 namespace DataGateMonitor.Services.DataGateOpenVpnManager.Interfaces;
 
 /// <summary>
-/// Application service for issued client material per VPN server: OpenVPN (.ovpn via DataGateOpenVpnManager)
-/// or Xray (client links via DataGateXRayManager). Persistence uses <see cref="IssuedOvpnFile"/> regardless of stack.
+/// Application service for issued OpenVPN client files (.ovpn via DataGateOpenVpnManager).
+/// Persistence uses <see cref="IssuedOvpnFile"/>. Xray VLESS links use
+/// <c>IXrayClientLinkService</c> and <see cref="IssuedXrayClientLink"/> instead.
 /// </summary>
 public interface IOvpnFileApiService
 {

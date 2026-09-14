@@ -80,6 +80,20 @@ public class UserMergeServiceDryRunTests
     }
 
     [Fact]
+    public async Task DryRun_WarnsWhenMergedUserHasPersonalAccessRules()
+    {
+        await using var harness = UserMergeServiceTestHarness.Create();
+        var (telegram, google) = await harness.SeedTelegramGooglePairAsync(TelegramExternalId, GoogleExternalId);
+        await harness.SeedAccessRuleAsync(google.Id, vpnServerId: 9);
+
+        var response = await harness.MergeAsync(telegram, google, dryRun: true);
+
+        Assert.Contains(response.Warnings, w =>
+            w.Contains("personal VPN access rule", StringComparison.OrdinalIgnoreCase));
+        Assert.Equal(1, await harness.Context.UserVpnServerAccessRules.CountAsync(r => r.UserId == google.Id));
+    }
+
+    [Fact]
     public async Task DryRun_ReassignsCredentialCount_WhenOnlyMergedHasCredential()
     {
         await using var harness = UserMergeServiceTestHarness.Create();

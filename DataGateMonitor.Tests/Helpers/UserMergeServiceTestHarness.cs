@@ -268,6 +268,25 @@ internal sealed class UserMergeServiceTestHarness : IAsyncDisposable
         return plan;
     }
 
+    public async Task<UserVpnServerAccessRule> SeedAccessRuleAsync(
+        int userId,
+        int vpnServerId,
+        VpnServerAccessRuleMode mode = VpnServerAccessRuleMode.Allow)
+    {
+        var now = DateTimeOffset.UtcNow;
+        var rule = new UserVpnServerAccessRule
+        {
+            UserId = userId,
+            VpnServerId = vpnServerId,
+            Mode = mode,
+            CreateDate = now,
+            LastUpdate = now,
+        };
+        _context.UserVpnServerAccessRules.Add(rule);
+        await _context.SaveChangesAsync();
+        return rule;
+    }
+
     public async Task SeedUserRoleAsync(int userId, int roleId)
     {
         var now = DateTimeOffset.UtcNow;

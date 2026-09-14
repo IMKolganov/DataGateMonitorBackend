@@ -1,5 +1,6 @@
 using Microsoft.EntityFrameworkCore;
 using DataGateMonitor.Models;
+using DataGateMonitor.SharedModels.Enums;
 using DataGateMonitor.Tests.Helpers;
 
 namespace DataGateMonitor.Tests.Services.Users;
@@ -52,6 +53,46 @@ public class UserMergeServiceRelatedDataTests
     }
 
     [Fact]
+    public async Task ReassignsPersonalAccessRules_ToSurvivor()
+    {
+        await using var harness = UserMergeServiceTestHarness.Create();
+        var (telegram, google) = await harness.SeedTelegramGooglePairAsync(TelegramExternalId, GoogleExternalId);
+        await harness.SeedAccessRuleAsync(google.Id, vpnServerId: 7, VpnServerAccessRuleMode.Allow);
+        await harness.SeedAccessRuleAsync(google.Id, vpnServerId: 8, VpnServerAccessRuleMode.Deny);
+
+        var response = await harness.MergeAsync(telegram, google);
+
+        var rules = await harness.Context.UserVpnServerAccessRules.ToListAsync();
+        Assert.Equal(2, rules.Count);
+        Assert.All(rules, r => Assert.Equal(telegram.Id, r.UserId));
+        Assert.Contains(rules, r => r.VpnServerId == 7 && r.Mode == VpnServerAccessRuleMode.Allow);
+        Assert.Contains(rules, r => r.VpnServerId == 8 && r.Mode == VpnServerAccessRuleMode.Deny);
+        Assert.DoesNotContain(response.Warnings, w => w.Contains("overlapping", StringComparison.OrdinalIgnoreCase));
+    }
+
+    [Fact]
+    public async Task KeepsSurvivorAccessRule_WhenBothUsersHaveTheSameServer()
+    {
+        await using var harness = UserMergeServiceTestHarness.Create();
+        var (telegram, google) = await harness.SeedTelegramGooglePairAsync(TelegramExternalId, GoogleExternalId);
+        await harness.SeedAccessRuleAsync(telegram.Id, vpnServerId: 3, VpnServerAccessRuleMode.Allow);
+        await harness.SeedAccessRuleAsync(google.Id, vpnServerId: 3, VpnServerAccessRuleMode.Deny);
+        await harness.SeedAccessRuleAsync(google.Id, vpnServerId: 4, VpnServerAccessRuleMode.Allow);
+
+        var response = await harness.MergeAsync(telegram, google);
+
+        var rules = await harness.Context.UserVpnServerAccessRules
+            .OrderBy(r => r.VpnServerId)
+            .ToListAsync();
+        Assert.Equal(2, rules.Count);
+        Assert.All(rules, r => Assert.Equal(telegram.Id, r.UserId));
+        Assert.Equal(VpnServerAccessRuleMode.Allow, rules[0].Mode);
+        Assert.Equal(3, rules[0].VpnServerId);
+        Assert.Equal(4, rules[1].VpnServerId);
+        Assert.Contains(response.Warnings, w => w.Contains("overlapping server", StringComparison.OrdinalIgnoreCase));
+    }
+
+    [Fact]
     public async Task KeepsGoogleExternalId_OnMergedUserXrayLink()
     {
         await using var harness = UserMergeServiceTestHarness.Create();
@@ -61,6 +102,19 @@ public class UserMergeServiceRelatedDataTests
         var response = await harness.MergeAsync(telegram, google);
 
         Assert.Equal(0, response.Stats.IssuedXrayClientLinksExternalIdUpdated);
+        Assert.Equal(GoogleExternalId, (await harness.Context.IssuedXrayClientLinks.SingleAsync()).ExternalId);
+    }
+
+    [Fact]
+    public async Task RewritesSurvivorTelegramExternalId_OnXrayLinks_ToGoogleSub()
+    {
+        await using var harness = UserMergeServiceTestHarness.Create();
+        var (telegram, google) = await harness.SeedTelegramGooglePairAsync(TelegramExternalId, GoogleExternalId);
+        await harness.SeedIssuedXrayClientLinkAsync(TelegramExternalId);
+
+        var response = await harness.MergeAsync(telegram, google);
+
+        Assert.Equal(1, response.Stats.IssuedXrayClientLinksExternalIdUpdated);
         Assert.Equal(GoogleExternalId, (await harness.Context.IssuedXrayClientLinks.SingleAsync()).ExternalId);
     }
 

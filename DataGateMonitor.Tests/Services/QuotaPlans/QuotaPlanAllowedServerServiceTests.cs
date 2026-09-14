@@ -103,6 +103,22 @@ public class QuotaPlanAllowedServerServiceTests
     }
 
     [Fact]
+    public async Task GetListByVpnServerIdAsync_ReturnsList()
+    {
+        var list = new List<QuotaPlanAllowedServer>
+        {
+            new() { Id = 1, QuotaPlanId = 10, VpnServerId = 5, CreateDate = DateTimeOffset.UtcNow, LastUpdate = DateTimeOffset.UtcNow }
+        };
+        _query.Setup(q => q.GetListByVpnServerId(5, It.IsAny<CancellationToken>())).ReturnsAsync(list);
+
+        var result = await _sut.GetListByVpnServerIdAsync(5, CancellationToken.None);
+
+        result.Should().HaveCount(1);
+        result[0].VpnServerId.Should().Be(5);
+        _query.VerifyAll();
+    }
+
+    [Fact]
     public async Task CreateAsync_WhenNotExists_AddsAndReturns()
     {
         _query.Setup(q => q.GetByQuotaPlanIdAndServerId(10, 5, It.IsAny<CancellationToken>())).ReturnsAsync((QuotaPlanAllowedServer?)null);

@@ -9,9 +9,11 @@ using DataGateMonitor.Services.Api.Auth.Users;
 using DataGateMonitor.Services.Helpers;
 using DataGateMonitor.Services.Others.Notifications.OvpnFileApi;
 using DataGateMonitor.Services.VpnAccess;
-using DataGateMonitor.SharedModels.DataGateMonitor.OpenVpnFiles.Requests;
-using DataGateMonitor.SharedModels.DataGateMonitor.OpenVpnFiles.Responses;
-using DataGateMonitor.SharedModels.DataGateMonitor.OpenVpnFiles.Responses.Dto;
+using DataGateMonitor.SharedModels.DataGateMonitor.XrayClientLinks.Requests;
+using DataGateMonitor.SharedModels.DataGateMonitor.XrayClientLinks.Responses;
+using DataGateMonitor.SharedModels.DataGateMonitor.XrayClientLinks.Responses.Dto;
+using DataGateMonitor.SharedModels.DataGateXRayManager.ClientLink.Requests;
+using DataGateMonitor.SharedModels.DataGateXRayManager.ClientLink.Responses;
 using DataGateMonitor.SharedModels.Enums;
 using Mapster;
 using System.Text.RegularExpressions;
@@ -133,7 +135,7 @@ public sealed class XrayClientLinkService(
     }
 
     public async Task<(IssuedXrayClientLink File, IssuedXrayClientLinkToken Token)> AddClientLinkWithToken(
-        AddFileRequest request, CancellationToken ct)
+        AddXrayClientLinkRequest request, CancellationToken ct)
     {
         var link = await AddClientLink(request, ct);
         var token = await MakeTokenForLink(link, ct);
@@ -142,7 +144,7 @@ public sealed class XrayClientLinkService(
         return (link, token);
     }
 
-    public async Task<IssuedXrayClientLink> AddClientLink(AddFileRequest request, CancellationToken ct)
+    public async Task<IssuedXrayClientLink> AddClientLink(AddXrayClientLinkRequest request, CancellationToken ct)
     {
         logger.LogInformation("Add Xray client link: CommonName={Cn}, VpnServerId={Id}", request.CommonName,
             request.VpnServerId);
@@ -166,7 +168,7 @@ public sealed class XrayClientLinkService(
                 "VpnServerOvpnFileConfig endpoint normalized (host had :port while VpnServerPort was also set). VpnServerId={Id}, before {BeforeIp} port {BeforePort}, after {AfterIp} port {AfterPort}.",
                 request.VpnServerId, exportConfig.VpnServerIp, exportConfig.VpnServerPort, serverIp, serverPort);
 
-        var microRequest = new GenerateClientLinkMicroserviceRequest
+        var microRequest = new GenerateClientLinkRequest
         {
             CommonName = request.CommonName,
             FriendlyName = friendlyName,
@@ -174,7 +176,7 @@ public sealed class XrayClientLinkService(
             ServerIp = serverIp,
             ServerPort = serverPort,
             IssuedTo = request.IssuedTo,
-            LinkExpireDays = request.OvpnFileExpireDays
+            LinkExpireDays = request.LinkExpireDays
         };
 
         var meta = await xrayClientLinkMicroserviceClient.AddClientLink(request.VpnServerId, microRequest, ct);
@@ -193,20 +195,20 @@ public sealed class XrayClientLinkService(
                ?? throw new InvalidOperationException("Client link was added but could not be reloaded.");
     }
 
-    public async Task<IssuedXrayClientLink> RevokeClientLink(RevokeFileRequest request, CancellationToken ct)
+    public async Task<IssuedXrayClientLink> RevokeClientLink(RevokeXrayClientLinkRequest request, CancellationToken ct)
     {
         await RequireXrayServerAsync(request.VpnServerId, ct);
 
         var link = await issuedXrayClientLinkQueryService.GetByIdAndVpnServerIdAndCommonNameAndIsRevoked(
-            request.VpnServerId, request.OvpnFileId, request.CommonName, request.IsRevoked, ct);
+            request.VpnServerId, request.IssuedXrayClientLinkId, request.CommonName, request.IsRevoked, ct);
 
         if (link is null)
         {
             throw new InvalidOperationException(
-                $"Issued Xray client link not found for revocation. LinkId={request.OvpnFileId}, VpnServerId={request.VpnServerId}, CommonName={request.CommonName}, IsRevokedFilter={request.IsRevoked}.");
+                $"Issued Xray client link not found for revocation. LinkId={request.IssuedXrayClientLinkId}, VpnServerId={request.VpnServerId}, CommonName={request.CommonName}, IsRevokedFilter={request.IsRevoked}.");
         }
 
-        var revokeRequest = new RevokeClientLinkMicroserviceRequest
+        var revokeRequest = new RevokeClientLinkRequest
         {
             CommonName = link.CommonName,
             FileName = link.FileName,
@@ -233,17 +235,17 @@ public sealed class XrayClientLinkService(
                ?? throw new InvalidOperationException("Client link was revoked but could not be reloaded.");
     }
 
-    public async Task<DownloadFileResponse> DownloadClientLink(DownloadFileRequest request, CancellationToken ct,
+    public async Task<DownloadXrayClientLinkResponse> DownloadClientLink(DownloadXrayClientLinkRequest request, CancellationToken ct,
         bool isRevoked = false)
     {
         await RequireXrayServerAsync(request.VpnServerId, ct);
 
         var link = await issuedXrayClientLinkQueryService.GetByIdAndVpnServerIdAndIsRevoked(
-                       request.IssuedOvpnFileId, request.VpnServerId, isRevoked, ct)
+                       request.IssuedXrayClientLinkId, request.VpnServerId, isRevoked, ct)
                    ?? throw new InvalidOperationException(
-                       $"Issued Xray client link not found. LinkId={request.IssuedOvpnFileId}, VpnServerId={request.VpnServerId}, IsRevoked={isRevoked}.");
+                       $"Issued Xray client link not found. LinkId={request.IssuedXrayClientLinkId}, VpnServerId={request.VpnServerId}, IsRevoked={isRevoked}.");
 
-        var downloadRequest = new DownloadClientLinkMicroserviceRequest
+        var downloadRequest = new DownloadClientLinkRequest
         {
             CommonName = link.CommonName,
             FileName = link.FileName,
@@ -255,16 +257,16 @@ public sealed class XrayClientLinkService(
         await ovpnFileNotificationService.NotifyDownloaded(
             link.VpnServerId, link.FileName, link.ExternalId, isRevoked, ct, VpnProfileNotificationStack.Xray);
 
-        return new DownloadFileResponse
+        return new DownloadXrayClientLinkResponse
         {
-            IssuedOvpn = link.Adapt<IssuedOvpnFileDto>(),
+            IssuedXrayClientLink = link.Adapt<IssuedXrayClientLinkDto>(),
             FileSizeBytes = result.Content.LongLength,
             Content = result.Content
         };
     }
 
-    public async Task<DownloadFileResponse> DownloadClientLinkByCn(DownloadFileByCnRequest request, CancellationToken ct,
-        bool isRevoked = false)
+    public async Task<DownloadXrayClientLinkResponse> DownloadClientLinkByCn(
+        DownloadXrayClientLinkByCnRequest request, CancellationToken ct, bool isRevoked = false)
     {
         await RequireXrayServerAsync(request.VpnServerId, ct);
 
@@ -273,7 +275,7 @@ public sealed class XrayClientLinkService(
                    ?? throw new InvalidOperationException(
                        $"Issued Xray client link not found. CommonName={request.CommonName}, VpnServerId={request.VpnServerId}, IsRevoked={isRevoked}.");
 
-        var downloadRequest = new DownloadClientLinkMicroserviceRequest
+        var downloadRequest = new DownloadClientLinkRequest
         {
             CommonName = link.CommonName,
             FileName = link.FileName,
@@ -285,9 +287,9 @@ public sealed class XrayClientLinkService(
         await ovpnFileNotificationService.NotifyDownloaded(
             link.VpnServerId, link.FileName, link.ExternalId, isRevoked, ct, VpnProfileNotificationStack.Xray);
 
-        return new DownloadFileResponse
+        return new DownloadXrayClientLinkResponse
         {
-            IssuedOvpn = link.Adapt<IssuedOvpnFileDto>(),
+            IssuedXrayClientLink = link.Adapt<IssuedXrayClientLinkDto>(),
             FileSizeBytes = result.Content.LongLength,
             Content = result.Content
         };
@@ -299,7 +301,7 @@ public sealed class XrayClientLinkService(
             userIdentityLinkQueryService,
             ct);
 
-    private Task RequireTargetUserServerAccessAsync(AddFileRequest request, CancellationToken ct) =>
+    private Task RequireTargetUserServerAccessAsync(AddXrayClientLinkRequest request, CancellationToken ct) =>
         vpnServerQuotaPlanAccessGuard.EnsureTargetUserMayUseServerAsync(
             request.ExternalId,
             request.VpnServerId,
@@ -411,7 +413,7 @@ public sealed class XrayClientLinkService(
         return (vpnServerIp, vpnServerPort);
     }
 
-    private static IssuedXrayClientLink ToNewEntity(AddFileRequest request, ClientLinkMetadataDto meta)
+    private static IssuedXrayClientLink ToNewEntity(AddXrayClientLinkRequest request, ClientLinkMetadata meta)
     {
         var issuedAt = meta.IssuedAt.Kind == DateTimeKind.Unspecified
             ? DateTime.SpecifyKind(meta.IssuedAt, DateTimeKind.Utc)

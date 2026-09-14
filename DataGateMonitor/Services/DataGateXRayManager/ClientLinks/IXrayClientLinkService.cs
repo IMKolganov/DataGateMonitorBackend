@@ -1,6 +1,6 @@
 using DataGateMonitor.Models;
-using DataGateMonitor.SharedModels.DataGateMonitor.OpenVpnFiles.Requests;
-using DataGateMonitor.SharedModels.DataGateMonitor.OpenVpnFiles.Responses;
+using DataGateMonitor.SharedModels.DataGateMonitor.XrayClientLinks.Requests;
+using DataGateMonitor.SharedModels.DataGateMonitor.XrayClientLinks.Responses;
 
 namespace DataGateMonitor.Services.DataGateXRayManager.ClientLinks;
 
@@ -22,16 +22,16 @@ public interface IXrayClientLinkService
         GetAllByExternalIdAndVpnServerIdWithToken(int vpnServerId, string externalId, CancellationToken ct,
             bool isRevoked = false);
 
-    Task<(IssuedXrayClientLink File, IssuedXrayClientLinkToken Token)> AddClientLinkWithToken(AddFileRequest request,
-        CancellationToken ct);
+    Task<(IssuedXrayClientLink File, IssuedXrayClientLinkToken Token)> AddClientLinkWithToken(
+        AddXrayClientLinkRequest request, CancellationToken ct);
 
-    Task<IssuedXrayClientLink> AddClientLink(AddFileRequest request, CancellationToken ct);
+    Task<IssuedXrayClientLink> AddClientLink(AddXrayClientLinkRequest request, CancellationToken ct);
 
-    Task<IssuedXrayClientLink> RevokeClientLink(RevokeFileRequest request, CancellationToken ct);
+    Task<IssuedXrayClientLink> RevokeClientLink(RevokeXrayClientLinkRequest request, CancellationToken ct);
 
-    Task<DownloadFileResponse> DownloadClientLink(DownloadFileRequest request, CancellationToken ct,
-        bool isRevoked = false);
+    Task<DownloadXrayClientLinkResponse> DownloadClientLink(DownloadXrayClientLinkRequest request,
+        CancellationToken ct, bool isRevoked = false);
 
-    Task<DownloadFileResponse> DownloadClientLinkByCn(DownloadFileByCnRequest request, CancellationToken ct,
-        bool isRevoked = false);
+    Task<DownloadXrayClientLinkResponse> DownloadClientLinkByCn(DownloadXrayClientLinkByCnRequest request,
+        CancellationToken ct, bool isRevoked = false);
 }

@@ -3,6 +3,8 @@ using DataGateMonitor.DataBase.Services.Query.VpnServerTable;
 using DataGateMonitor.Serialization;
 using DataGateMonitor.Services.Api.Auth.Registers.Interfaces;
 using DataGateMonitor.Services.Helpers;
+using DataGateMonitor.SharedModels.DataGateXRayManager.ClientLink.Requests;
+using DataGateMonitor.SharedModels.DataGateXRayManager.ClientLink.Responses;
 
 namespace DataGateMonitor.Services.DataGateXRayManager.ClientLinks;
 
@@ -41,8 +43,8 @@ public sealed class XrayClientLinkMicroserviceClient(
             $"Failed to {action}. Status: {(int)response.StatusCode} {response.ReasonPhrase}. Details: {detail}");
     }
 
-    public async Task<ClientLinkMetadataDto> AddClientLink(int vpnServerId,
-        GenerateClientLinkMicroserviceRequest request, CancellationToken cancellationToken)
+    public async Task<ClientLinkMetadata> AddClientLink(int vpnServerId,
+        GenerateClientLinkRequest request, CancellationToken cancellationToken)
     {
         try
         {
@@ -53,7 +55,7 @@ public sealed class XrayClientLinkMicroserviceClient(
             var response = await client.PostAsync(EndpointAdd, ProjectJson.ToJsonContent(request), cancellationToken);
             await ThrowIfNotSuccessAsync(response, "add client link", cancellationToken);
 
-            var result = await MicroserviceApiResponseHelper.ReadSuccessDataAsync<ClientLinkMetadataDto>(
+            var result = await MicroserviceApiResponseHelper.ReadSuccessDataAsync<ClientLinkMetadata>(
                 response, cancellationToken);
             logger.LogInformation("Client link added for {CommonName} on server {Url}, VpnServerId={Id}",
                 request.CommonName, client.BaseAddress, vpnServerId);
@@ -73,8 +75,8 @@ public sealed class XrayClientLinkMicroserviceClient(
         }
     }
 
-    public async Task<ClientLinkMetadataDto> RevokeClientLink(int vpnServerId,
-        RevokeClientLinkMicroserviceRequest request, CancellationToken cancellationToken)
+    public async Task<ClientLinkMetadata> RevokeClientLink(int vpnServerId,
+        RevokeClientLinkRequest request, CancellationToken cancellationToken)
     {
         try
         {
@@ -85,7 +87,7 @@ public sealed class XrayClientLinkMicroserviceClient(
             var response = await client.PostAsync(EndpointRevoke, ProjectJson.ToJsonContent(request), cancellationToken);
             await ThrowIfNotSuccessAsync(response, "revoke client link", cancellationToken);
 
-            var result = await MicroserviceApiResponseHelper.ReadSuccessDataAsync<ClientLinkMetadataDto>(
+            var result = await MicroserviceApiResponseHelper.ReadSuccessDataAsync<ClientLinkMetadata>(
                 response, cancellationToken);
             logger.LogInformation("Client link revoked for {CommonName} on server {Url}",
                 request.CommonName, client.BaseAddress);
@@ -105,8 +107,8 @@ public sealed class XrayClientLinkMicroserviceClient(
         }
     }
 
-    public async Task<ClientLinkDownloadDto> DownloadClientLink(int vpnServerId,
-        DownloadClientLinkMicroserviceRequest request, CancellationToken cancellationToken)
+    public async Task<ClientLinkDownload> DownloadClientLink(int vpnServerId,
+        DownloadClientLinkRequest request, CancellationToken cancellationToken)
     {
         try
         {
@@ -117,7 +119,7 @@ public sealed class XrayClientLinkMicroserviceClient(
             var response = await client.PostAsync(EndpointDownload, ProjectJson.ToJsonContent(request), cancellationToken);
             await ThrowIfNotSuccessAsync(response, "download client link", cancellationToken);
 
-            return await MicroserviceApiResponseHelper.ReadSuccessDataAsync<ClientLinkDownloadDto>(
+            return await MicroserviceApiResponseHelper.ReadSuccessDataAsync<ClientLinkDownload>(
                 response, cancellationToken);
         }
         catch (HttpRequestException ex)
