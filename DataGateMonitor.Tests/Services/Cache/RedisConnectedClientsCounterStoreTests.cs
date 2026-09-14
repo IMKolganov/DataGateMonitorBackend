@@ -131,7 +131,12 @@ public class RedisConnectedClientsCounterStoreWithRedisTests
                 It.IsAny<TimeSpan?>(),
                 It.IsAny<When>(),
                 It.IsAny<CommandFlags>()))
-            .ThrowsAsync(new RedisConnectionException(ConnectionFailureType.UnableToConnect, "down"));
+            .ThrowsAsync(new RedisConnectionException(
+                ConnectionFailureType.UnableToConnect,
+                CommandFlags.None,
+                "down",
+                null,
+                CommandStatus.Unknown));
 
         await sut.SetAsync(7, 1, CancellationToken.None);
     }
@@ -157,7 +162,12 @@ public class RedisConnectedClientsCounterStoreWithRedisTests
     {
         var (sut, db) = CreateSut();
         db.Setup(d => d.StringGetAsync(It.IsAny<RedisKey[]>(), It.IsAny<CommandFlags>()))
-            .ThrowsAsync(new RedisConnectionException(ConnectionFailureType.UnableToConnect, "down"));
+            .ThrowsAsync(new RedisConnectionException(
+                ConnectionFailureType.UnableToConnect,
+                CommandFlags.None,
+                "down",
+                null,
+                CommandStatus.Unknown));
 
         Assert.Empty(await sut.GetManyAsync([7], CancellationToken.None));
     }
@@ -199,7 +209,12 @@ public class ConfigurationRedisDatabaseProviderTests
             {
                 calls++;
                 return Task.FromException<IConnectionMultiplexer>(
-                    new RedisConnectionException(ConnectionFailureType.UnableToConnect, "down"));
+                    new RedisConnectionException(
+                        ConnectionFailureType.UnableToConnect,
+                        CommandFlags.None,
+                        "down",
+                        null,
+                        CommandStatus.Unknown));
             });
 
         var sut = new ConfigurationRedisDatabaseProvider(
