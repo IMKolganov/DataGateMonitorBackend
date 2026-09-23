@@ -5,6 +5,9 @@ public class ApproveVpnServerDiscoveryRequest
     /// <summary>Optional override for the server display name. Falls back to discovery SuggestedName.</summary>
     public string? ServerName { get; set; }
 
+    /// <summary>Optional override for the manager ApiUrl. Falls back to the discovery ApiUrl.</summary>
+    public string? ApiUrl { get; set; }
+
     public bool IsDefault { get; set; }
 
     public bool IsEnableWss { get; set; }
