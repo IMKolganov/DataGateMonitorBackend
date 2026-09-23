@@ -1015,6 +1015,44 @@ public class VpnServerDiscoveryServiceTests
     }
 
     [Fact]
+    public async Task ApproveAsync_WhitespaceApiUrlOverride_FallsBackToDiscoveryUrl()
+    {
+        await using var ctx = CreateContext();
+        ctx.VpnServerDiscoveries.Add(new VpnServerDiscovery
+        {
+            Id = 23,
+            ServerType = VpnServerType.OpenVpn,
+            ApiUrl = "http://10.0.0.23:5010/",
+            SuggestedName = "keep-url",
+            Status = VpnServerDiscoveryStatus.Pending,
+            LastSeenUtc = DateTimeOffset.UtcNow,
+            CreateDate = DateTimeOffset.UtcNow,
+            LastUpdate = DateTimeOffset.UtcNow
+        });
+        await ctx.SaveChangesAsync();
+
+        var sut = CreateSut(ctx, out var discoveryCmd, out _, out var vpnData);
+        WireCommandToContext(ctx, discoveryCmd);
+
+        VpnServer? captured = null;
+        vpnData
+            .Setup(v => v.AddVpnServer(It.IsAny<VpnServer>(), It.IsAny<List<int>>(), It.IsAny<List<int>>(), It.IsAny<CancellationToken>()))
+            .ReturnsAsync((VpnServer s, List<int> _, List<int> _, CancellationToken _) =>
+            {
+                captured = s;
+                s.Id = 6;
+                return s;
+            });
+
+        await sut.ApproveAsync(23, new ApproveVpnServerDiscoveryRequest
+        {
+            ApiUrl = "   "
+        }, CancellationToken.None);
+
+        Assert.Equal("http://10.0.0.23:5010/", captured!.ApiUrl);
+    }
+
+    [Fact]
     public async Task ApproveAsync_Throws_WhenNotFound_OrNotPending()
     {
         await using var ctx = CreateContext();
