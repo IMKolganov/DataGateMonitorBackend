@@ -975,6 +975,46 @@ public class VpnServerDiscoveryServiceTests
     }
 
     [Fact]
+    public async Task ApproveAsync_UsesApiUrlOverride_WhenProvided()
+    {
+        await using var ctx = CreateContext();
+        ctx.VpnServerDiscoveries.Add(new VpnServerDiscovery
+        {
+            Id = 22,
+            ServerType = VpnServerType.Xray,
+            ApiUrl = "http://203.0.113.10:5010/",
+            SuggestedName = "xray-node",
+            Status = VpnServerDiscoveryStatus.Pending,
+            LastSeenUtc = DateTimeOffset.UtcNow,
+            CreateDate = DateTimeOffset.UtcNow,
+            LastUpdate = DateTimeOffset.UtcNow
+        });
+        await ctx.SaveChangesAsync();
+
+        var sut = CreateSut(ctx, out var discoveryCmd, out _, out var vpnData);
+        WireCommandToContext(ctx, discoveryCmd);
+
+        VpnServer? captured = null;
+        vpnData
+            .Setup(v => v.AddVpnServer(It.IsAny<VpnServer>(), It.IsAny<List<int>>(), It.IsAny<List<int>>(), It.IsAny<CancellationToken>()))
+            .ReturnsAsync((VpnServer s, List<int> _, List<int> _, CancellationToken _) =>
+            {
+                captured = s;
+                s.Id = 5;
+                return s;
+            });
+
+        await sut.ApproveAsync(22, new ApproveVpnServerDiscoveryRequest
+        {
+            ApiUrl = "https://xray.example.com:9443"
+        }, CancellationToken.None);
+
+        Assert.Equal("https://xray.example.com:9443/", captured!.ApiUrl);
+        var discovery = await ctx.VpnServerDiscoveries.FindAsync(22);
+        Assert.Equal("https://xray.example.com:9443/", discovery!.ApiUrl);
+    }
+
+    [Fact]
     public async Task ApproveAsync_Throws_WhenNotFound_OrNotPending()
     {
         await using var ctx = CreateContext();

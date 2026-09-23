@@ -199,17 +199,26 @@ public sealed class VpnServerDiscoveryService(
         if (discovery.Status != VpnServerDiscoveryStatus.Pending)
             throw new InvalidOperationException(NotPendingMessage);
 
+        var apiUrl = !string.IsNullOrWhiteSpace(request.ApiUrl)
+            ? VpnServerApiUrlHelper.NormalizeApiUrl(request.ApiUrl)
+            : discovery.ApiUrl;
+        if (string.IsNullOrWhiteSpace(apiUrl))
+            throw new ArgumentException("ApiUrl is required.");
+
         var serverName = !string.IsNullOrWhiteSpace(request.ServerName)
             ? request.ServerName.Trim()
             : (!string.IsNullOrWhiteSpace(discovery.SuggestedName)
                 ? discovery.SuggestedName.Trim()
-                : DeriveNameFromApiUrl(discovery.ApiUrl));
+                : DeriveNameFromApiUrl(apiUrl));
+
+        // Keep discovery row aligned with the URL that was actually approved.
+        discovery.ApiUrl = apiUrl;
 
         var server = new VpnServer
         {
             ServerType = discovery.ServerType,
             ServerName = serverName,
-            ApiUrl = discovery.ApiUrl,
+            ApiUrl = apiUrl,
             IsDefault = request.IsDefault,
             IsEnableWss = request.IsEnableWss || discovery.IsEnableWss,
             IsPiHoleEnabled = request.IsPiHoleEnabled,
