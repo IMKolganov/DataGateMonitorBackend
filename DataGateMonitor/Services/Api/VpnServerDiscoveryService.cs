@@ -131,6 +131,8 @@ public sealed class VpnServerDiscoveryService(
         }
 
         pending.ServerType = request.ServerType;
+        // Announce is source of truth — upgrade IP fallbacks when the node later sends a domain URL.
+        pending.ApiUrl = apiUrl;
         pending.SuggestedName = Truncate(request.SuggestedName?.Trim(), 128) ?? pending.SuggestedName;
         pending.PublicIp = Truncate(request.PublicIp?.Trim(), 64) ?? pending.PublicIp;
         pending.Version = Truncate(request.Version?.Trim(), 64) ?? pending.Version;

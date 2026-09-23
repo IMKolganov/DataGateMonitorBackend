@@ -738,10 +738,51 @@ public class VpnServerDiscoveryServiceTests
         var row = await ctx.VpnServerDiscoveries.FindAsync(7);
         Assert.Equal("new-name", row!.SuggestedName);
         Assert.Equal("9.9.9", row.Version);
+        Assert.Equal("http://10.0.0.2:5010/", row.ApiUrl);
         Assert.True(row.LastSeenUtc > now.AddMinutes(-1));
         notifications.Verify(
             n => n.NotifyDiscovered(It.IsAny<int>(), It.IsAny<string?>(), It.IsAny<string>(), It.IsAny<CancellationToken>()),
             Times.Never);
+    }
+
+    [Fact]
+    public async Task AnnounceAsync_UpgradesPendingApiUrl_WhenSoftMatchedByPublicIpAndPort()
+    {
+        await using var ctx = CreateContext();
+        var now = DateTimeOffset.UtcNow;
+        ctx.VpnServerDiscoveries.Add(new VpnServerDiscovery
+        {
+            Id = 17,
+            ServerType = VpnServerType.OpenVpn,
+            ApiUrl = "http://10.0.0.2:5010/",
+            SuggestedName = "sto-4",
+            PublicIp = "203.0.113.50",
+            Status = VpnServerDiscoveryStatus.Pending,
+            LastSeenUtc = now.AddHours(-1),
+            LastNotifiedUtc = now.AddMinutes(-5),
+            CreateDate = now.AddHours(-2),
+            LastUpdate = now.AddHours(-1)
+        });
+        await ctx.SaveChangesAsync();
+
+        var sut = CreateSut(ctx, out var discoveryCmd, out _, out _);
+        WireCommandToContext(ctx, discoveryCmd);
+
+        // Same public IP + manager port → soft match; ApiUrl must follow the latest announce.
+        var result = await sut.AnnounceAsync(new AnnounceVpnServerRequest
+        {
+            ServerType = VpnServerType.OpenVpn,
+            ApiUrl = "http://203.0.113.50:5010/",
+            SuggestedName = "dg-vpn-sto-4",
+            PublicIp = "203.0.113.50",
+            Version = "1.2.5.103"
+        }, CancellationToken.None);
+
+        Assert.Equal(AnnounceVpnServerResultStatus.Pending, result.Status);
+        Assert.Equal(17, result.DiscoveryId);
+        var row = await ctx.VpnServerDiscoveries.FindAsync(17);
+        Assert.Equal("http://203.0.113.50:5010/", row!.ApiUrl);
+        Assert.Equal("dg-vpn-sto-4", row.SuggestedName);
     }
 
     [Fact]
