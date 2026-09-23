@@ -11,7 +11,7 @@ public class VpnDataServicePresenceAndPublicIpCacheTests
     {
         var h = new VpnDataServiceTestHarness();
         h.ServerQ.Setup(q => q.GetById(9, It.IsAny<CancellationToken>()))
-            .ReturnsAsync(new VpnServer { Id = 9, ServerName = "gone" });
+            .ReturnsAsync(new VpnServer { Id = 9, ServerName = "gone", IsOnline = true });
         h.ServerCmd.Setup(c => c.UpdateWhere(
                 It.IsAny<System.Linq.Expressions.Expression<Func<VpnServer, bool>>>(),
                 It.IsAny<Action<Microsoft.EntityFrameworkCore.Query.UpdateSettersBuilder<VpnServer>>>(),
@@ -23,6 +23,12 @@ public class VpnDataServicePresenceAndPublicIpCacheTests
         var ok = await h.Create().DeleteVpnServer(9, CancellationToken.None);
 
         Assert.True(ok);
+        h.ServerCmd.Verify(
+            c => c.UpdateWhere(
+                It.IsAny<System.Linq.Expressions.Expression<Func<VpnServer, bool>>>(),
+                It.IsAny<Action<Microsoft.EntityFrameworkCore.Query.UpdateSettersBuilder<VpnServer>>>(),
+                It.IsAny<CancellationToken>()),
+            Times.Once);
         h.Presence.Verify(p => p.MarkAllDisconnectedAsync(9, It.IsAny<CancellationToken>()), Times.Once);
         h.PublicIpLookup.Verify(p => p.Invalidate(9), Times.Once);
         h.MicroserviceFactory.Verify(f => f.Invalidate(9), Times.Once);

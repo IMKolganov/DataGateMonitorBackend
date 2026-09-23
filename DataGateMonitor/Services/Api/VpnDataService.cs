@@ -153,9 +153,13 @@ public class VpnDataService(
         var openVpnServer = await openVpnServerQueryService.GetById(vpnServerId, ct)
                             ?? throw new InvalidOperationException("VpnServer not found");
         var now = DateTimeOffset.UtcNow;
+        // Soft-delete only hides the row; stop reporting it as Online and leave polling (GetAll
+        // excludes deleted). Stale IsOnline=true otherwise sticks forever when includeDeleted is on.
         await openVpnServerCommandService.UpdateWhere(
             x => x.Id == vpnServerId,
-            u => u.SetProperty(x => x.IsDeleted, true).SetProperty(x => x.LastUpdate, now),
+            u => u.SetProperty(x => x.IsDeleted, true)
+                .SetProperty(x => x.IsOnline, false)
+                .SetProperty(x => x.LastUpdate, now),
             ct);
         await vpnServerClientPresenceService.MarkAllDisconnectedAsync(vpnServerId, ct);
         await serverOpenVpnNotificationService.NotifyDeleted(openVpnServer.Id, openVpnServer.ServerName, ct);
