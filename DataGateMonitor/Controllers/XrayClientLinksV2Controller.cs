@@ -12,8 +12,9 @@ using DataGateMonitor.SharedModels.Responses;
 namespace DataGateMonitor.Controllers;
 
 /// <summary>
-/// HTTP API v2 for Xray (VLESS) client links. Same DTOs and persistence as v1;
-/// paths drop the leftover <c>file</c> wording. v1 remains at <c>/api/xray-client-links</c>.
+/// HTTP API v2 for Xray (VLESS) client links with dedicated Xray DTOs
+/// (<c>issuedXrayClientLink</c>). Paths drop leftover <c>file</c> wording.
+/// v1 at <c>/api/xray-client-links</c> keeps OpenVPN-shaped wire for Android.
 /// </summary>
 [ApiController]
 [Route("api/v2/xray-client-links")]
