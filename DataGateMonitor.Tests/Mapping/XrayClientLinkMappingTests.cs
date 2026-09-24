@@ -1,5 +1,9 @@
 using DataGateMonitor.Mapping.XrayClientLinks.Mappings;
 using DataGateMonitor.Models;
+using DataGateMonitor.SharedModels.DataGateMonitor.OpenVpnFiles.Requests;
+using DataGateMonitor.SharedModels.DataGateMonitor.OpenVpnFiles.Responses;
+using DataGateMonitor.SharedModels.DataGateMonitor.OpenVpnFiles.Responses.Dto;
+using DataGateMonitor.SharedModels.DataGateMonitor.XrayClientLinks.Requests;
 using DataGateMonitor.SharedModels.DataGateMonitor.XrayClientLinks.Responses;
 using DataGateMonitor.SharedModels.DataGateMonitor.XrayClientLinks.Responses.Dto;
 using Mapster;
@@ -115,5 +119,83 @@ public class XrayClientLinkMappingTests
         Assert.Equal(2, response.IssuedXrayClientLinks.Count);
         Assert.Single(response.IssuedXrayClientLinkTokens);
         Assert.Equal("t1", response.IssuedXrayClientLinkTokens[0].Token);
+    }
+
+    [Fact]
+    [Trait("Compatibility", "LegacyAndroid")]
+    public void Entity_Maps_To_IssuedOvpnFileDto_ForV1Wire()
+    {
+        var config = BuildConfig();
+        var entity = new IssuedXrayClientLink { Id = 11, CommonName = "cn", FileName = "link.txt" };
+
+        var dto = entity.Adapt<IssuedOvpnFileDto>(config);
+
+        Assert.Equal(11, dto.Id);
+        Assert.Equal("cn", dto.CommonName);
+        Assert.Equal("link.txt", dto.FileName);
+    }
+
+    [Fact]
+    [Trait("Compatibility", "LegacyAndroid")]
+    public void Token_Maps_IssuedXrayClientLinkId_To_IssuedOvpnFileId_ForV1Wire()
+    {
+        var config = BuildConfig();
+        var token = new IssuedXrayClientLinkToken { Id = 5, IssuedXrayClientLinkId = 42, Token = "abc" };
+
+        var dto = token.Adapt<IssuedOvpnFileTokenDto>(config);
+
+        Assert.Equal(42, dto.IssuedOvpnFileId);
+    }
+
+    [Fact]
+    [Trait("Compatibility", "LegacyAndroid")]
+    public void DownloadResponse_Maps_IssuedXrayClientLink_To_IssuedOvpn()
+    {
+        var config = BuildConfig();
+        var source = new DownloadXrayClientLinkResponse
+        {
+            Content = [1, 2],
+            FileSizeBytes = 2,
+            IssuedXrayClientLink = new IssuedXrayClientLinkDto { Id = 9, FileName = "x.txt" }
+        };
+
+        var legacy = source.Adapt<DownloadFileResponse>(config);
+
+        Assert.Equal(9, legacy.IssuedOvpn.Id);
+        Assert.Equal("x.txt", legacy.IssuedOvpn.FileName);
+        Assert.Equal(2, legacy.FileSizeBytes);
+        Assert.Equal([1, 2], legacy.Content);
+    }
+
+    [Fact]
+    [Trait("Compatibility", "LegacyAndroid")]
+    public void DownloadFileRequest_Maps_IssuedOvpnFileId_To_IssuedXrayClientLinkId()
+    {
+        var config = BuildConfig();
+        var legacy = new DownloadFileRequest { IssuedOvpnFileId = 7, VpnServerId = 3 };
+
+        var xray = legacy.Adapt<DownloadXrayClientLinkRequest>(config);
+
+        Assert.Equal(7, xray.IssuedXrayClientLinkId);
+        Assert.Equal(3, xray.VpnServerId);
+    }
+
+    [Fact]
+    [Trait("Compatibility", "LegacyAndroid")]
+    public void AddFileRequest_Maps_OvpnFileExpireDays_To_LinkExpireDays()
+    {
+        var config = BuildConfig();
+        var legacy = new AddFileRequest
+        {
+            ExternalId = "e",
+            CommonName = "cn",
+            VpnServerId = 1,
+            OvpnFileExpireDays = 90
+        };
+
+        var xray = legacy.Adapt<AddXrayClientLinkRequest>(config);
+
+        Assert.Equal(90, xray.LinkExpireDays);
+        Assert.Equal("cn", xray.CommonName);
     }
 }
