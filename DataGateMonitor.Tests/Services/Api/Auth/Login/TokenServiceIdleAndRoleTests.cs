@@ -65,6 +65,15 @@ public class TokenServiceIdleAndRoleTests
         refreshCommand
             .Setup(c => c.Update(It.IsAny<UserRefreshToken>(), true, It.IsAny<CancellationToken>()))
             .ReturnsAsync(1);
+        refreshCommand
+            .Setup(c => c.UpdateWhere(
+                It.IsAny<System.Linq.Expressions.Expression<Func<UserRefreshToken, bool>>>(),
+                It.IsAny<Action<Microsoft.EntityFrameworkCore.Query.UpdateSettersBuilder<UserRefreshToken>>>(),
+                It.IsAny<CancellationToken>()))
+            .ReturnsAsync(1);
+        refreshCommand
+            .Setup(c => c.Delete(It.IsAny<UserRefreshToken>(), true, It.IsAny<CancellationToken>()))
+            .ReturnsAsync(1);
 
         var identityLinks = new Mock<IUserIdentityLinkQueryService>();
         identityLinks

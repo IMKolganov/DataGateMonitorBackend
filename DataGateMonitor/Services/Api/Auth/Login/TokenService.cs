@@ -88,14 +88,20 @@ public sealed class TokenService(
         if (existing is null)
             throw new UnauthorizedAccessException("Invalid refresh token.");
 
-        if (existing.RevokedAt != null)
-            throw new UnauthorizedAccessException("Refresh token is revoked.");
-
         if (existing.ExpiresAt <= now)
             throw new UnauthorizedAccessException("Refresh token is expired.");
 
         if (!string.IsNullOrWhiteSpace(deviceId) && existing.DeviceId != null && existing.DeviceId != deviceId)
             throw new UnauthorizedAccessException("Invalid device.");
+
+        // Reuse of an already-rotated token → revoke the whole family (stolen-token signal).
+        if (existing.RevokedAt != null)
+        {
+            if (existing.ReplacedByTokenId != null)
+                await RevokeAllActiveRefreshTokensForUserAsync(existing.UserId, now, ct);
+
+            throw new UnauthorizedAccessException("Refresh token is revoked.");
+        }
 
         var refreshLifetimeDays = configuration.GetValue<int?>("Jwt:RefreshLifetimeDays") ?? 30;
         if (refreshLifetimeDays <= 0)
@@ -119,9 +125,18 @@ public sealed class TokenService(
 
         await refreshTokenCommandService.Add(newEntity, saveChanges: true, ct);
 
-        existing.RevokedAt = now;
-        existing.ReplacedByTokenId = newEntity.Id;
-        await refreshTokenCommandService.Update(existing, saveChanges: true, ct);
+        // Atomic claim: only one concurrent refresh wins. Loser must not revoke the winner's family.
+        var claimed = await refreshTokenCommandService.UpdateWhere(
+            t => t.Id == existing.Id && t.RevokedAt == null,
+            u => u.SetProperty(x => x.RevokedAt, now)
+                .SetProperty(x => x.ReplacedByTokenId, (long?)newEntity.Id),
+            ct);
+
+        if (claimed == 0)
+        {
+            await refreshTokenCommandService.Delete(newEntity, saveChanges: true, ct);
+            throw new UnauthorizedAccessException("Refresh token is revoked.");
+        }
 
         var user = await userQueryService.GetById(existing.UserId, ct)
                    ?? throw new InvalidOperationException("User not found.");
@@ -144,6 +159,15 @@ public sealed class TokenService(
 
         return new TokenPair(accessToken, accessExpiresAt, newRefreshToken, newRefreshExpiresAt);
     }
+
+    private Task<int> RevokeAllActiveRefreshTokensForUserAsync(
+        int userId,
+        DateTimeOffset now,
+        CancellationToken ct) =>
+        refreshTokenCommandService.UpdateWhere(
+            t => t.UserId == userId && t.RevokedAt == null,
+            u => u.SetProperty(x => x.RevokedAt, now),
+            ct);
     
     private async Task<string?> ResolveExternalIdAsync(User user, string? externalId, CancellationToken ct)
     {
