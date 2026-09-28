@@ -150,6 +150,7 @@ public class TokenServiceRefreshRotationTests
                 TokenHash = "old-hash",
                 CreatedAt = DateTimeOffset.UtcNow.AddHours(-2),
                 ExpiresAt = DateTimeOffset.UtcNow.AddDays(20),
+                // Outside default 60s grace → stolen-token family revoke.
                 RevokedAt = DateTimeOffset.UtcNow.AddMinutes(-5),
                 ReplacedByTokenId = 201,
             });
@@ -166,6 +167,69 @@ public class TokenServiceRefreshRotationTests
             Times.Once);
         bundle.RefreshCommand.Verify(
             c => c.Add(It.IsAny<UserRefreshToken>(), true, It.IsAny<CancellationToken>()),
+            Times.Never);
+    }
+
+    [Fact]
+    public async Task RefreshAsync_WhenLoserRetriesWithinGrace_DoesNotRevokeFamily()
+    {
+        var user = new User { Id = 11, DisplayName = "U", IsBlocked = false };
+        var bundle = CreateBundle(user);
+        bundle.RefreshQuery
+            .Setup(q => q.GetByTokenHash(It.IsAny<string>(), It.IsAny<CancellationToken>()))
+            .ReturnsAsync(new UserRefreshToken
+            {
+                Id = 100,
+                UserId = user.Id,
+                TokenHash = "old-hash",
+                CreatedAt = DateTimeOffset.UtcNow.AddMinutes(-1),
+                ExpiresAt = DateTimeOffset.UtcNow.AddDays(20),
+                // Concurrent tab retry shortly after winner rotated.
+                RevokedAt = DateTimeOffset.UtcNow.AddSeconds(-2),
+                ReplacedByTokenId = 201,
+            });
+
+        var ex = await Assert.ThrowsAsync<UnauthorizedAccessException>(
+            () => bundle.Sut.RefreshAsync("stale-concurrent-refresh", null, "ua", CancellationToken.None));
+
+        Assert.Contains("revoked", ex.Message, StringComparison.OrdinalIgnoreCase);
+        bundle.RefreshCommand.Verify(
+            c => c.UpdateWhere(
+                It.IsAny<Expression<Func<UserRefreshToken, bool>>>(),
+                It.IsAny<Action<UpdateSettersBuilder<UserRefreshToken>>>(),
+                It.IsAny<CancellationToken>()),
+            Times.Never);
+        bundle.RefreshCommand.Verify(
+            c => c.Add(It.IsAny<UserRefreshToken>(), true, It.IsAny<CancellationToken>()),
+            Times.Never);
+    }
+
+    [Fact]
+    public async Task RefreshAsync_WhenLogoutRevokedWithoutReplacement_DoesNotRevokeFamily()
+    {
+        var user = new User { Id = 13, DisplayName = "U", IsBlocked = false };
+        var bundle = CreateBundle(user);
+        bundle.RefreshQuery
+            .Setup(q => q.GetByTokenHash(It.IsAny<string>(), It.IsAny<CancellationToken>()))
+            .ReturnsAsync(new UserRefreshToken
+            {
+                Id = 100,
+                UserId = user.Id,
+                TokenHash = "old-hash",
+                CreatedAt = DateTimeOffset.UtcNow.AddHours(-2),
+                ExpiresAt = DateTimeOffset.UtcNow.AddDays(20),
+                RevokedAt = DateTimeOffset.UtcNow.AddMinutes(-1),
+                ReplacedByTokenId = null,
+            });
+
+        await Assert.ThrowsAsync<UnauthorizedAccessException>(
+            () => bundle.Sut.RefreshAsync("logout-revoked", null, "ua", CancellationToken.None));
+
+        bundle.RefreshCommand.Verify(
+            c => c.UpdateWhere(
+                It.IsAny<Expression<Func<UserRefreshToken, bool>>>(),
+                It.IsAny<Action<UpdateSettersBuilder<UserRefreshToken>>>(),
+                It.IsAny<CancellationToken>()),
             Times.Never);
     }
 
@@ -205,7 +269,7 @@ public class TokenServiceRefreshRotationTests
     }
 
     [Fact]
-    public async Task RefreshAsync_WhenUserBlocked_ThrowsUnauthorized()
+    public async Task RefreshAsync_WhenUserBlocked_ThrowsUnauthorized_WithoutRotating()
     {
         var user = new User { Id = 10, DisplayName = "Blocked", IsBlocked = true };
         var bundle = CreateBundle(user);
@@ -217,6 +281,35 @@ public class TokenServiceRefreshRotationTests
             () => bundle.Sut.RefreshAsync("raw-refresh", null, "ua", CancellationToken.None));
 
         Assert.Contains("blocked", ex.Message, StringComparison.OrdinalIgnoreCase);
+        bundle.RefreshCommand.Verify(
+            c => c.Add(It.IsAny<UserRefreshToken>(), true, It.IsAny<CancellationToken>()),
+            Times.Never);
+        bundle.RefreshCommand.Verify(
+            c => c.UpdateWhere(
+                It.IsAny<Expression<Func<UserRefreshToken, bool>>>(),
+                It.IsAny<Action<UpdateSettersBuilder<UserRefreshToken>>>(),
+                It.IsAny<CancellationToken>()),
+            Times.Never);
+    }
+
+    [Fact]
+    public async Task RefreshAsync_WhenAdminIdleExpired_ThrowsUnauthorized_WithoutRotating()
+    {
+        var user = new User { Id = 14, DisplayName = "Admin", IsBlocked = false };
+        var bundle = CreateBundle(user, SystemRoles.AdminName);
+        bundle.IdleTracker.Setup(t => t.IsExpired(user.Id)).Returns(true);
+        bundle.RefreshQuery
+            .Setup(q => q.GetByTokenHash(It.IsAny<string>(), It.IsAny<CancellationToken>()))
+            .ReturnsAsync(ActiveToken(user.Id));
+
+        var ex = await Assert.ThrowsAsync<UnauthorizedAccessException>(
+            () => bundle.Sut.RefreshAsync("raw-refresh", null, "ua", CancellationToken.None));
+
+        Assert.Contains("inactivity", ex.Message, StringComparison.OrdinalIgnoreCase);
+        bundle.RefreshCommand.Verify(
+            c => c.Add(It.IsAny<UserRefreshToken>(), true, It.IsAny<CancellationToken>()),
+            Times.Never);
+        bundle.IdleTracker.Verify(t => t.Touch(user.Id), Times.Never);
     }
 
     [Fact]
