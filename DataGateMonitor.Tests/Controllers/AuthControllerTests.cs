@@ -1,6 +1,8 @@
 using Microsoft.AspNetCore.Http;
+using Microsoft.AspNetCore.Hosting;
 using Microsoft.AspNetCore.Mvc;
 using Microsoft.Extensions.Configuration;
+using Microsoft.Extensions.Hosting;
 using Moq;
 using DataGateMonitor.Controllers;
 using DataGateMonitor.Services.Api.Auth;
@@ -57,8 +59,12 @@ public class AuthControllerTests
             .Setup(p => p.GetMinutesAsync(It.IsAny<CancellationToken>()))
             .ReturnsAsync(20);
 
+        var env = new Mock<IWebHostEnvironment>();
+        env.Setup(e => e.EnvironmentName).Returns(Environments.Development);
+
         var controller = new AuthController(
             config,
+            env.Object,
             _appService.Object,
             Mock.Of<IAppClientTokenRateLimiter>(r => r.TryAcquire(It.IsAny<string?>(), It.IsAny<string?>()) == true),
             _microserviceTokenService.Object,
@@ -152,8 +158,12 @@ public class AuthControllerTests
             .Setup(p => p.GetMinutesAsync(It.IsAny<CancellationToken>()))
             .ReturnsAsync(20);
 
+        var env = new Mock<IWebHostEnvironment>();
+        env.Setup(e => e.EnvironmentName).Returns(Environments.Development);
+
         var controller = new AuthController(
             config,
+            env.Object,
             _appService.Object,
             rateLimiter.Object,
             _microserviceTokenService.Object,
