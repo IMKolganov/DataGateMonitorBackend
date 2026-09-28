@@ -1,7 +1,9 @@
 using Microsoft.AspNetCore.Authentication;
+using Microsoft.AspNetCore.Hosting;
 using Microsoft.AspNetCore.Http;
 using Microsoft.AspNetCore.Mvc;
 using Microsoft.Extensions.DependencyInjection;
+using Microsoft.Extensions.Hosting;
 using Moq;
 using DataGateMonitor.Controllers;
 using DataGateMonitor.Services.Api.Auth;
@@ -43,9 +45,12 @@ public class AuthControllerSessionAndTotpTests
     private readonly Mock<IAdminIdleTimeoutProvider> _adminIdleTimeoutProvider = new();
     private readonly Mock<IUserSessionService> _userSessionService = new();
 
-    private AuthController CreateController(HttpContext? httpContext = null)
+    private AuthController CreateController(
+        HttpContext? httpContext = null,
+        IWebHostEnvironment? environment = null,
+        IConfiguration? configuration = null)
     {
-        var config = new ConfigurationBuilder()
+        var config = configuration ?? new ConfigurationBuilder()
             .AddInMemoryCollection(new Dictionary<string, string?>
             {
                 ["Jwt:Secret"] = "VeryStrongTestSecretKey1234567890",
@@ -57,8 +62,11 @@ public class AuthControllerSessionAndTotpTests
             .Setup(p => p.GetMinutesAsync(It.IsAny<CancellationToken>()))
             .ReturnsAsync(20);
 
+        var envMock = environment ?? CreateEnvironment(Environments.Development);
+
         var controller = new AuthController(
             config,
+            envMock,
             _appService.Object,
             Mock.Of<IAppClientTokenRateLimiter>(r => r.TryAcquire(It.IsAny<string?>(), It.IsAny<string?>()) == true),
             _microserviceTokenService.Object,
@@ -83,6 +91,13 @@ public class AuthControllerSessionAndTotpTests
             controller.ControllerContext = new ControllerContext { HttpContext = httpContext };
 
         return controller;
+    }
+
+    private static IWebHostEnvironment CreateEnvironment(string environmentName)
+    {
+        var env = new Mock<IWebHostEnvironment>();
+        env.Setup(e => e.EnvironmentName).Returns(environmentName);
+        return env.Object;
     }
 
     [Fact]

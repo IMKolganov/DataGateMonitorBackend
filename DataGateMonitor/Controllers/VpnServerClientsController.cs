@@ -10,6 +10,7 @@ using DataGateMonitor.Services.Api;
 using DataGateMonitor.Services.Api.Auth.Handlers.Interfaces;
 using DataGateMonitor.Services.Api.Auth.Users;
 using DataGateMonitor.Services.Api.Privacy;
+using DataGateMonitor.Services.Paging;
 using DataGateMonitor.Services.Users.Interfaces;
 using DataGateMonitor.SharedModels.DataGateMonitor.VpnServerClients.Requests;
 using DataGateMonitor.SharedModels.DataGateMonitor.VpnServerClients.Responses;
@@ -87,17 +88,17 @@ public class VpnServerClientsController(
     public async Task<ActionResult<ApiResponse<ConnectedClientsResponse>>> GetAllConnectedClients(
         [FromQuery] GetConnectedClientsRequest request, CancellationToken cancellationToken)
     {
-        var result =
-            await openVpnServerClientOverviewQuery.GetAllConnectedVpnServerClientsAsync(
-            request, cancellationToken);
-
-        var response = result.Adapt<ConnectedClientsResponse>();
-        var ownExternalId = GetCurrentUserExternalId();
-        var ownDisplayName = User.FindFirstValue(ClaimTypes.Name) ?? User.FindFirstValue("displayName");
-        var ownRows = CaptureOwnConnectedRowIndexes(response, ownExternalId);
-        ClientStatisticsResponseSanitizer.ApplyIfNeeded(User, response);
-        RestoreOwnConnectedRowIdentity(response, ownRows, ownExternalId, ownDisplayName);
+        var response = await LoadConnectedClientsAsync(request, cancellationToken);
         return Ok(ApiResponse<ConnectedClientsResponse>.SuccessResponse(response));
+    }
+
+    /// <summary>v2 connected clients with <c>PagedResponse</c> canon (Page/PageSize echoed).</summary>
+    [HttpGet("get-all-connected-paged")]
+    public async Task<ActionResult<ApiResponse<VpnClientsV2Response>>> GetAllConnectedClientsPaged(
+        [FromQuery] GetConnectedClientsRequest request, CancellationToken cancellationToken)
+    {
+        var response = await LoadConnectedClientsAsync(request, cancellationToken);
+        return Ok(ApiResponse<VpnClientsV2Response>.SuccessResponse(ToVpnClientsV2(response, request.Page, request.PageSize)));
     }
 
     /// <summary>
@@ -126,17 +127,21 @@ public class VpnServerClientsController(
                 User, vpnServerAccessQueryService, request.VpnServerId, ct) is { } deny)
             return deny;
 
-        var result = 
-            await openVpnServerClientOverviewQuery.GetAllHistoryVpnServerClientsAsync(
-            request, ct);
-
-        var response = result.Adapt<ConnectedClientsResponse>();
-        var ownExternalId = GetCurrentUserExternalId();
-        var ownDisplayName = User.FindFirstValue(ClaimTypes.Name) ?? User.FindFirstValue("displayName");
-        var ownRows = CaptureOwnConnectedRowIndexes(response, ownExternalId);
-        ClientStatisticsResponseSanitizer.ApplyIfNeeded(User, response);
-        RestoreOwnConnectedRowIdentity(response, ownRows, ownExternalId, ownDisplayName);
+        var response = await LoadHistoryClientsAsync(request, ct);
         return Ok(ApiResponse<ConnectedClientsResponse>.SuccessResponse(response));
+    }
+
+    /// <summary>v2 history clients with <c>PagedResponse</c> canon (Page/PageSize echoed).</summary>
+    [HttpGet("get-all-history-paged")]
+    public async Task<ActionResult<ApiResponse<VpnClientsV2Response>>> GetAllHistoryClientsPaged(
+        [FromQuery] GetHistoryClientsRequest request, CancellationToken ct)
+    {
+        if (await VpnServerAuthorizationHelper.RequireVpnServerAccessOrForbidAsync<VpnClientsV2Response>(
+                User, vpnServerAccessQueryService, request.VpnServerId, ct) is { } deny)
+            return deny;
+
+        var response = await LoadHistoryClientsAsync(request, ct);
+        return Ok(ApiResponse<VpnClientsV2Response>.SuccessResponse(ToVpnClientsV2(response, request.Page, request.PageSize)));
     }
     
     [HttpGet("overview/series")]
@@ -197,22 +202,22 @@ public class VpnServerClientsController(
         [FromQuery] GetOverviewUsersRequest request,
         CancellationToken ct = default)
     {
-        var externalId = NormalizeExternalId(request.ExternalId);
-
-        var users = await openVpnOverviewSeriesQuery.GetOverviewUsersFromSessionsAsync(
-            request.From,
-            request.To,
-            request.VpnServerId,
-            externalId,
-            request.DisplayName,
-            ct);
-
-        var ownExternalId = GetCurrentUserExternalId();
-        var ownDisplayName = User.FindFirstValue(ClaimTypes.Name) ?? User.FindFirstValue("displayName");
-        var ownRows = CaptureOwnOverviewUsersRowIndexes(users, ownExternalId);
-        ClientStatisticsResponseSanitizer.ApplyIfNeeded(User, users);
-        RestoreOwnOverviewUsersRowIdentity(users, ownRows, ownExternalId, ownDisplayName);
+        var users = await LoadOverviewUsersAsync(request.From, request.To, request.VpnServerId, request.ExternalId, request.DisplayName, ct);
         return Ok(ApiResponse<OverviewUsersResponse>.SuccessResponse(users));
+    }
+
+    /// <summary>v2 overview users with Page/PageSize + PagedResponse.</summary>
+    [HttpGet("overview/users-paged")]
+    public async Task<ActionResult<ApiResponse<OverviewUsersV2Response>>> GetOverviewUsersPaged(
+        [FromQuery] GetOverviewUsersV2Request request,
+        CancellationToken ct = default)
+    {
+        var users = await LoadOverviewUsersAsync(request.From, request.To, request.VpnServerId, request.ExternalId, request.DisplayName, ct);
+        var response = new OverviewUsersV2Response
+        {
+            Users = PagedResponseFactory.FromItems(users.OverviewUserItems, request.Page, request.PageSize)
+        };
+        return Ok(ApiResponse<OverviewUsersV2Response>.SuccessResponse(response));
     }
 
     /// <summary>
@@ -326,6 +331,76 @@ public class VpnServerClientsController(
             }
         }
     }
+
+    private async Task<ConnectedClientsResponse> LoadConnectedClientsAsync(
+        GetConnectedClientsRequest request,
+        CancellationToken cancellationToken)
+    {
+        var result =
+            await openVpnServerClientOverviewQuery.GetAllConnectedVpnServerClientsAsync(
+            request, cancellationToken);
+
+        var response = result.Adapt<ConnectedClientsResponse>();
+        var ownExternalId = GetCurrentUserExternalId();
+        var ownDisplayName = User.FindFirstValue(ClaimTypes.Name) ?? User.FindFirstValue("displayName");
+        var ownRows = CaptureOwnConnectedRowIndexes(response, ownExternalId);
+        ClientStatisticsResponseSanitizer.ApplyIfNeeded(User, response);
+        RestoreOwnConnectedRowIdentity(response, ownRows, ownExternalId, ownDisplayName);
+        return response;
+    }
+
+    private async Task<ConnectedClientsResponse> LoadHistoryClientsAsync(
+        GetHistoryClientsRequest request,
+        CancellationToken ct)
+    {
+        var result =
+            await openVpnServerClientOverviewQuery.GetAllHistoryVpnServerClientsAsync(
+            request, ct);
+
+        var response = result.Adapt<ConnectedClientsResponse>();
+        var ownExternalId = GetCurrentUserExternalId();
+        var ownDisplayName = User.FindFirstValue(ClaimTypes.Name) ?? User.FindFirstValue("displayName");
+        var ownRows = CaptureOwnConnectedRowIndexes(response, ownExternalId);
+        ClientStatisticsResponseSanitizer.ApplyIfNeeded(User, response);
+        RestoreOwnConnectedRowIdentity(response, ownRows, ownExternalId, ownDisplayName);
+        return response;
+    }
+
+    private async Task<OverviewUsersResponse> LoadOverviewUsersAsync(
+        DateTimeOffset from,
+        DateTimeOffset to,
+        int? vpnServerId,
+        string? externalId,
+        string? displayName,
+        CancellationToken ct)
+    {
+        var normalizedExternalId = NormalizeExternalId(externalId);
+
+        var users = await openVpnOverviewSeriesQuery.GetOverviewUsersFromSessionsAsync(
+            from,
+            to,
+            vpnServerId,
+            normalizedExternalId,
+            displayName,
+            ct);
+
+        var ownExternalId = GetCurrentUserExternalId();
+        var ownDisplayName = User.FindFirstValue(ClaimTypes.Name) ?? User.FindFirstValue("displayName");
+        var ownRows = CaptureOwnOverviewUsersRowIndexes(users, ownExternalId);
+        ClientStatisticsResponseSanitizer.ApplyIfNeeded(User, users);
+        RestoreOwnOverviewUsersRowIdentity(users, ownRows, ownExternalId, ownDisplayName);
+        return users;
+    }
+
+    private static VpnClientsV2Response ToVpnClientsV2(ConnectedClientsResponse response, int page, int pageSize) =>
+        new()
+        {
+            Clients = PagedResponseFactory.Create(
+                response.VpnClients,
+                page,
+                pageSize,
+                response.TotalCount)
+        };
 
     private async Task<string?> ResolveEffectiveExternalIdAsync(string? externalId, CancellationToken ct)
     {
