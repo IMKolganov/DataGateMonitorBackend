@@ -22,8 +22,14 @@ public class ServiceStatusDto
 	public int TotalBytesOut { get; set; }
 
 	/// <summary>
-	/// Live reachability of the VPN node (DB <c>VpnServer.IsOnline</c>, false when soft-deleted).
-	/// Pushed on SignalR <c>StatusUpdated</c> for dashboard Online/Offline badges.
+	/// Effective dashboard Online badge: manager poll (<c>VpnServer.IsOnline</c>) and external probe
+	/// (<c>VpnServer.IsAvailableByExternalProbe</c>), false when soft-deleted.
+	/// Pushed on SignalR <c>StatusUpdated</c>.
 	/// </summary>
 	public bool IsOnline { get; set; }
+
+	/// <summary>
+	/// Raw external-probe flag (not composed). Optional for clients that want a separate badge.
+	/// </summary>
+	public bool IsAvailableByExternalProbe { get; set; } = true;
 }

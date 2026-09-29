@@ -14,6 +14,12 @@ public class VpnServerDto
 
 	public bool IsOnline { get; set; }
 
+	/// <summary>
+	/// Last external availability-probe result (e.g. status.rackot.ru). Owned by AvailabilityCheck only —
+	/// independent of <see cref="IsOnline"/> (manager poll). Default true until the first probe.
+	/// </summary>
+	public bool IsAvailableByExternalProbe { get; set; } = true;
+
 	public bool IsDefault { get; set; }
 
 	public string ApiUrl { get; set; } = string.Empty;
