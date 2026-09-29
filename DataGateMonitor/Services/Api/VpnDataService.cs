@@ -31,6 +31,7 @@ public class VpnDataService(
     IOpenVpnMicroserviceClientFactory microserviceClientFactory,
     IOpenVpnEventClientFactory eventClientFactory,
     IVpnNodePublicIpLookup vpnNodePublicIpLookup,
+    IVpnServerCoordinateEnricher vpnServerCoordinateEnricher,
     IVpnServerClientPresenceService vpnServerClientPresenceService) : IVpnDataService
 {
     private static readonly TimeSpan MicroserviceInfoResolveTimeout = TimeSpan.FromSeconds(5);
@@ -38,6 +39,7 @@ public class VpnDataService(
     public async Task<VpnServer> AddVpnServer(VpnServer server, List<int> quotaPlanIds, List<int> tagIds, CancellationToken ct)
     {
         server.ApiUrl = VpnServerApiUrlHelper.NormalizeApiUrl(server.ApiUrl);
+        await TryEnrichCoordinatesSafelyAsync(server, preferredPublicIp: null, ct);
 
         var result = await transactionRunner.RunAsync(async _ =>
         {
@@ -91,6 +93,15 @@ public class VpnDataService(
         server.ApiUrl = VpnServerApiUrlHelper.NormalizeApiUrl(server.ApiUrl);
         var becameDisabled = server.IsDisable && !previous.IsDisable;
         var apiUrlChanged = !VpnServerApiUrlHelper.ApiUrlsEquivalent(previous.ApiUrl, server.ApiUrl);
+
+        if (server.Latitude is null && server.Longitude is null)
+        {
+            // Cache-only: never call node /api/info on the save path (that can take seconds).
+            string? preferredPublicIp = null;
+            if (!apiUrlChanged)
+                preferredPublicIp = vpnNodePublicIpLookup.TryGetCached(server.Id);
+            await TryEnrichCoordinatesSafelyAsync(server, preferredPublicIp, ct);
+        }
 
         var result = await transactionRunner.RunAsync(async _ =>
         {
@@ -370,6 +381,32 @@ public class VpnDataService(
         {
             logger.LogDebug(ex, "VpnServerId: {Id}. Could not load node PublicIp for default export config.", vpnServerId);
             return null;
+        }
+    }
+
+    private async Task TryEnrichCoordinatesSafelyAsync(
+        VpnServer server,
+        string? preferredPublicIp,
+        CancellationToken ct)
+    {
+        try
+        {
+            // Hard budget so a cold GeoLite open cannot stall Add/Update.
+            using var budget = CancellationTokenSource.CreateLinkedTokenSource(ct);
+            budget.CancelAfter(TimeSpan.FromMilliseconds(250));
+            await vpnServerCoordinateEnricher.TryFillMissingAsync(server, preferredPublicIp, budget.Token);
+        }
+        catch (OperationCanceledException) when (ct.IsCancellationRequested)
+        {
+            throw;
+        }
+        catch (OperationCanceledException)
+        {
+            logger.LogDebug("VpnServer coordinate enrichment hit time budget; continuing save without coordinates.");
+        }
+        catch (Exception ex)
+        {
+            logger.LogWarning(ex, "VpnServer coordinate enrichment failed; continuing save without coordinates.");
         }
     }
 }

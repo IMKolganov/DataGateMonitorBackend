@@ -35,6 +35,7 @@ internal sealed class VpnDataServiceTestHarness
     public Mock<IOpenVpnMicroserviceClientFactory> MicroserviceFactory { get; } = new(MockBehavior.Loose);
     public Mock<IOpenVpnEventClientFactory> EventFactory { get; } = new(MockBehavior.Loose);
     public Mock<IVpnNodePublicIpLookup> PublicIpLookup { get; } = new(MockBehavior.Loose);
+    public Mock<IVpnServerCoordinateEnricher> CoordinateEnricher { get; } = new(MockBehavior.Loose);
     public Mock<IVpnServerClientPresenceService> Presence { get; } = new(MockBehavior.Loose);
 
     public List<QuotaPlanAllowedServer> QuotaLinksAdded { get; } = [];
@@ -83,6 +84,7 @@ internal sealed class VpnDataServiceTestHarness
         MicroserviceFactory.Object,
         EventFactory.Object,
         PublicIpLookup.Object,
+        CoordinateEnricher.Object,
         Presence.Object);
 
     public void SetupInsertServer(string name, int assignedId, VpnServer? returnEntity = null)

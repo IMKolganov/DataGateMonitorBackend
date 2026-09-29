@@ -267,6 +267,169 @@ public class VpnServerDiscoveryServiceTests
     }
 
     [Fact]
+    public async Task AnnounceAsync_NginxFrontedUdpAndTcp_CreateSeparatePendingDiscoveries()
+    {
+        // Installer announces https://udp-domain/ and https://tcp-domain/ (both :443) with the same
+        // PUBLIC_IP. Scheme-default ports must not collapse them via node-identity matching.
+        await using var ctx = CreateContext();
+        const string hostIp = "81.27.109.193";
+
+        var sut = CreateSut(ctx, out var discoveryCmd, out var notifications, out _);
+        WireCommandToContext(ctx, discoveryCmd);
+
+        var udp = await sut.AnnounceAsync(new AnnounceVpnServerRequest
+        {
+            ServerType = VpnServerType.OpenVpn,
+            ApiUrl = "https://s1-nor.datagateapp.com/",
+            PublicIp = hostIp,
+            SuggestedName = "nor-udp"
+        }, CancellationToken.None);
+        Assert.Equal(AnnounceVpnServerResultStatus.Pending, udp.Status);
+
+        var tcp = await sut.AnnounceAsync(new AnnounceVpnServerRequest
+        {
+            ServerType = VpnServerType.OpenVpn,
+            ApiUrl = "https://s2-nor.datagateapp.com/",
+            PublicIp = hostIp,
+            SuggestedName = "nor-tcp"
+        }, CancellationToken.None);
+        Assert.Equal(AnnounceVpnServerResultStatus.Pending, tcp.Status);
+        Assert.NotEqual(udp.DiscoveryId, tcp.DiscoveryId);
+
+        var xray = await sut.AnnounceAsync(new AnnounceVpnServerRequest
+        {
+            ServerType = VpnServerType.Xray,
+            ApiUrl = "https://xs1-nor.datagateapp.com:9443/",
+            PublicIp = hostIp,
+            SuggestedName = "nor-xray"
+        }, CancellationToken.None);
+        Assert.Equal(AnnounceVpnServerResultStatus.Pending, xray.Status);
+
+        var pending = await sut.ListPendingAsync(CancellationToken.None);
+        Assert.Equal(3, pending.Discoveries.Count);
+        Assert.Contains(pending.Discoveries, d => d.ApiUrl == "https://s1-nor.datagateapp.com/");
+        Assert.Contains(pending.Discoveries, d => d.ApiUrl == "https://s2-nor.datagateapp.com/");
+        Assert.Contains(pending.Discoveries, d => d.ApiUrl == "https://xs1-nor.datagateapp.com:9443/");
+        notifications.Verify(
+            n => n.NotifyDiscovered(It.IsAny<int>(), It.IsAny<string?>(), It.IsAny<string>(), It.IsAny<CancellationToken>()),
+            Times.Exactly(3));
+    }
+
+    [Fact]
+    public async Task AnnounceAsync_NginxFrontedUdpAndTcp_WithoutPublicIp_StillCreateSeparatePending()
+    {
+        await using var ctx = CreateContext();
+
+        var sut = CreateSut(ctx, out var discoveryCmd, out var notifications, out _);
+        WireCommandToContext(ctx, discoveryCmd);
+
+        var udp = await sut.AnnounceAsync(new AnnounceVpnServerRequest
+        {
+            ServerType = VpnServerType.OpenVpn,
+            ApiUrl = "https://s1-nor.datagateapp.com/",
+            PublicIp = null,
+            SuggestedName = "nor-udp"
+        }, CancellationToken.None);
+        var tcp = await sut.AnnounceAsync(new AnnounceVpnServerRequest
+        {
+            ServerType = VpnServerType.OpenVpn,
+            ApiUrl = "https://s2-nor.datagateapp.com/",
+            PublicIp = "  ",
+            SuggestedName = "nor-tcp"
+        }, CancellationToken.None);
+
+        Assert.Equal(AnnounceVpnServerResultStatus.Pending, udp.Status);
+        Assert.Equal(AnnounceVpnServerResultStatus.Pending, tcp.Status);
+        Assert.NotEqual(udp.DiscoveryId, tcp.DiscoveryId);
+
+        var pending = await sut.ListPendingAsync(CancellationToken.None);
+        Assert.Equal(2, pending.Discoveries.Count);
+        notifications.Verify(
+            n => n.NotifyDiscovered(It.IsAny<int>(), It.IsAny<string?>(), It.IsAny<string>(), It.IsAny<CancellationToken>()),
+            Times.Exactly(2));
+    }
+
+    [Fact]
+    public async Task AnnounceAsync_NginxFronted_SameUrlRefresh_KeepsSinglePending_AndFillsPublicIpLater()
+    {
+        await using var ctx = CreateContext();
+
+        var sut = CreateSut(ctx, out var discoveryCmd, out var notifications, out _);
+        WireCommandToContext(ctx, discoveryCmd);
+
+        var first = await sut.AnnounceAsync(new AnnounceVpnServerRequest
+        {
+            ServerType = VpnServerType.OpenVpn,
+            ApiUrl = "https://s1-nor.datagateapp.com/",
+            PublicIp = null,
+            SuggestedName = "nor-udp"
+        }, CancellationToken.None);
+        Assert.Equal(AnnounceVpnServerResultStatus.Pending, first.Status);
+
+        var second = await sut.AnnounceAsync(new AnnounceVpnServerRequest
+        {
+            ServerType = VpnServerType.OpenVpn,
+            ApiUrl = "https://s1-nor.datagateapp.com/",
+            PublicIp = "81.27.109.193",
+            SuggestedName = "nor-udp-2",
+            Version = "1.2.3"
+        }, CancellationToken.None);
+
+        Assert.Equal(AnnounceVpnServerResultStatus.Pending, second.Status);
+        Assert.Equal(first.DiscoveryId, second.DiscoveryId);
+
+        var row = await ctx.VpnServerDiscoveries.FindAsync(first.DiscoveryId);
+        Assert.Equal("https://s1-nor.datagateapp.com/", row!.ApiUrl);
+        Assert.Equal("81.27.109.193", row.PublicIp);
+        Assert.Equal("nor-udp-2", row.SuggestedName);
+        Assert.Equal("1.2.3", row.Version);
+        Assert.Single((await sut.ListPendingAsync(CancellationToken.None)).Discoveries);
+        notifications.Verify(
+            n => n.NotifyDiscovered(It.IsAny<int>(), It.IsAny<string?>(), It.IsAny<string>(), It.IsAny<CancellationToken>()),
+            Times.Once);
+    }
+
+    [Fact]
+    public async Task AnnounceAsync_AfterUdpApproved_TcpNginxUrl_StillCreatesPending()
+    {
+        await using var ctx = CreateContext();
+        const string hostIp = "81.27.109.193";
+
+        SeedServer(ctx, id: 94, name: "nor-udp", apiUrl: "https://s1-nor.datagateapp.com/", deleted: false);
+        SeedOvpnConfig(ctx, 94, hostIp);
+        SeedConflog(ctx, 94, VpnServerType.OpenVpn, 5010);
+        await ctx.SaveChangesAsync();
+
+        var sut = CreateSut(ctx, out var discoveryCmd, out var notifications, out _);
+        WireCommandToContext(ctx, discoveryCmd);
+
+        var udpAgain = await sut.AnnounceAsync(new AnnounceVpnServerRequest
+        {
+            ServerType = VpnServerType.OpenVpn,
+            ApiUrl = "https://s1-nor.datagateapp.com/",
+            PublicIp = hostIp
+        }, CancellationToken.None);
+        Assert.Equal(AnnounceVpnServerResultStatus.AlreadyRegistered, udpAgain.Status);
+        Assert.Equal(94, udpAgain.ExistingVpnServerId);
+
+        var tcp = await sut.AnnounceAsync(new AnnounceVpnServerRequest
+        {
+            ServerType = VpnServerType.OpenVpn,
+            ApiUrl = "https://s2-nor.datagateapp.com/",
+            PublicIp = hostIp,
+            SuggestedName = "nor-tcp"
+        }, CancellationToken.None);
+        Assert.Equal(AnnounceVpnServerResultStatus.Pending, tcp.Status);
+
+        var pending = await sut.ListPendingAsync(CancellationToken.None);
+        Assert.Single(pending.Discoveries);
+        Assert.Equal("https://s2-nor.datagateapp.com/", pending.Discoveries[0].ApiUrl);
+        notifications.Verify(
+            n => n.NotifyDiscovered(It.IsAny<int>(), It.IsAny<string?>(), It.IsAny<string>(), It.IsAny<CancellationToken>()),
+            Times.Once);
+    }
+
+    [Fact]
     public async Task AnnounceAsync_ReturnsPending_WhenSameIpPortTypeIsAmbiguousWithoutConflogPorts()
     {
         await using var ctx = CreateContext();

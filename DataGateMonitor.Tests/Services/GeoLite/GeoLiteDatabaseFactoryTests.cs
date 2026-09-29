@@ -32,6 +32,43 @@ public class GeoLiteDatabaseFactoryTests
     }
 
     [Fact]
+    public async Task TryEnsureReadyAsync_ReturnsFalse_When_File_Does_Not_Exist()
+    {
+        var (sut, _) = CreateFactory();
+
+        var ready = await sut.TryEnsureReadyAsync(CancellationToken.None);
+
+        Assert.False(ready);
+        Assert.False(sut.IsDatabaseLoaded);
+    }
+
+    [Fact]
+    public async Task TryEnsureReadyAsync_ReturnsFalse_When_SettingsThrow()
+    {
+        var services = new ServiceCollection();
+        var settings = new Mock<ISettingsService>(MockBehavior.Strict);
+        settings.Setup(s => s.GetValueAsync<string>("GeoIp_Db_Path_Type", It.IsAny<CancellationToken>()))
+            .ThrowsAsync(new InvalidOperationException("settings boom"));
+        services.AddScoped(_ => settings.Object);
+        var sut = new GeoLiteDatabaseFactory(new NullLogger<GeoLiteDatabaseFactory>(), services.BuildServiceProvider());
+
+        var ready = await sut.TryEnsureReadyAsync(CancellationToken.None);
+
+        Assert.False(ready);
+    }
+
+    [Fact]
+    public async Task TryEnsureReadyAsync_ReturnsTrue_When_DatabaseLoaded()
+    {
+        var (factory, _) = await GeoLiteTestHarness.CreateLoadedFactoryAsync();
+
+        var ready = await factory.TryEnsureReadyAsync(CancellationToken.None);
+
+        Assert.True(ready);
+        Assert.True(factory.IsDatabaseLoaded);
+    }
+
+    [Fact]
     public async Task GetDatabasePath_Throws_When_Not_Loaded()
     {
         var (sut, _) = CreateFactory();

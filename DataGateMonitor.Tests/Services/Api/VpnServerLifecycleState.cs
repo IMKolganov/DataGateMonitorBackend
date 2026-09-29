@@ -262,6 +262,7 @@ internal sealed class VpnServerLifecycleEnvironment
             Mock.Of<IOpenVpnMicroserviceClientFactory>(),
             Mock.Of<IOpenVpnEventClientFactory>(),
             Mock.Of<IVpnNodePublicIpLookup>(),
+            Mock.Of<IVpnServerCoordinateEnricher>(),
             Mock.Of<IVpnServerClientPresenceService>());
     }
 }

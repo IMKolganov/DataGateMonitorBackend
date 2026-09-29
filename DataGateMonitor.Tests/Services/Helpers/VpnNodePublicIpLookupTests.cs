@@ -21,6 +21,44 @@ public class VpnNodePublicIpLookupTests
         _logger.Object);
 
     [Fact]
+    public async Task TryGetCached_ReturnsNull_OnMiss_WithoutCallingNode()
+    {
+        var sut = CreateSut();
+        Assert.Null(sut.TryGetCached(7));
+        _info.Verify(i => i.GetInfoAsync(It.IsAny<int>(), It.IsAny<CancellationToken>()), Times.Never);
+        await Task.CompletedTask;
+    }
+
+    [Fact]
+    public async Task TryGetCached_ReturnsCachedIp_WithoutCallingNodeAgain()
+    {
+        _info.Setup(i => i.GetInfoAsync(7, It.IsAny<CancellationToken>()))
+            .ReturnsAsync(new VpnMicroserviceDiagnosticsDto
+            {
+                OpenVpn = new RootOpenVpnInfoResponse { PublicIp = "198.51.100.10" }
+            });
+
+        var sut = CreateSut();
+        await sut.GetAsync(7, VpnServerType.OpenVpn, CancellationToken.None);
+        _info.Invocations.Clear();
+
+        Assert.Equal("198.51.100.10", sut.TryGetCached(7));
+        _info.Verify(i => i.GetInfoAsync(It.IsAny<int>(), It.IsAny<CancellationToken>()), Times.Never);
+    }
+
+    [Fact]
+    public async Task TryGetCached_ReturnsNull_ForNegativeCache()
+    {
+        _info.Setup(i => i.GetInfoAsync(7, It.IsAny<CancellationToken>()))
+            .ReturnsAsync(new VpnMicroserviceDiagnosticsDto { OpenVpn = new RootOpenVpnInfoResponse() });
+
+        var sut = CreateSut();
+        await sut.GetAsync(7, VpnServerType.OpenVpn, CancellationToken.None);
+
+        Assert.Null(sut.TryGetCached(7));
+    }
+
+    [Fact]
     public async Task GetAsync_ReturnsOpenVpnPublicIp_AndCaches()
     {
         var calls = 0;
