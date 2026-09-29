@@ -25,5 +25,8 @@ public static class NotificationTypes
     public const string PiHoleCollectorUnhealthy = "pihole.collector.unhealthy";
     public const string PiHoleCollectorRecovered = "pihole.collector.recovered";
 
+    public const string RfAvailabilityUnreachable = "rf.availability.unreachable";
+    public const string RfAvailabilityRecovered = "rf.availability.recovered";
+
     public const string FreeTierAccessNonCompliant = "user.free_tier.access.non_compliant";
 }
