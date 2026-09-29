@@ -20,4 +20,10 @@ public class ServiceStatusDto
 	public int TotalBytesIn { get; set; }
 
 	public int TotalBytesOut { get; set; }
+
+	/// <summary>
+	/// Live reachability of the VPN node (DB <c>VpnServer.IsOnline</c>, false when soft-deleted).
+	/// Pushed on SignalR <c>StatusUpdated</c> for dashboard Online/Offline badges.
+	/// </summary>
+	public bool IsOnline { get; set; }
 }
