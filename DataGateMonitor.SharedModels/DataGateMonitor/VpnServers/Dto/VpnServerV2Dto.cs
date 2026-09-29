@@ -19,6 +19,11 @@ public class VpnServerV2Dto
 	/// </summary>
 	public bool IsAvailableByExternalProbe { get; set; } = true;
 
+	/// <summary>
+	/// When false, AvailabilityCheck skips this server. Default true.
+	/// </summary>
+	public bool IsAvailabilityCheckEnabled { get; set; } = true;
+
 	public bool IsDefault { get; set; }
 
 	public string ApiUrl { get; set; } = string.Empty;

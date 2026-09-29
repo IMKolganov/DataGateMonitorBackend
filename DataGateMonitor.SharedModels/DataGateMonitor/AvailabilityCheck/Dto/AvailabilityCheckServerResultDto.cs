@@ -11,6 +11,12 @@ public sealed class AvailabilityCheckServerResultDto
 
     public string ApiUrl { get; set; } = string.Empty;
 
+    /// <summary>
+    /// Whether this server is included in the external availability probe cycle.
+    /// Independent of the global AvailabilityCheck kill-switch.
+    /// </summary>
+    public bool IsAvailabilityCheckEnabled { get; set; } = true;
+
     public bool IsAvailableByExternalProbe { get; set; }
 
     public bool? Reachable { get; set; }

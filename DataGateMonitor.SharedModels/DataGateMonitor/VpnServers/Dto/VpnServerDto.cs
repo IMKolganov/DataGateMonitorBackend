@@ -20,6 +20,12 @@ public class VpnServerDto
 	/// </summary>
 	public bool IsAvailableByExternalProbe { get; set; } = true;
 
+	/// <summary>
+	/// When false, AvailabilityCheck skips this server and does not block Online via the probe flag.
+	/// Default true.
+	/// </summary>
+	public bool IsAvailabilityCheckEnabled { get; set; } = true;
+
 	public bool IsDefault { get; set; }
 
 	public string ApiUrl { get; set; } = string.Empty;
