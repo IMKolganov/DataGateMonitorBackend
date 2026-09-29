@@ -450,6 +450,53 @@ public class VpnServerOverviewQueryTests
         Assert.Equal(401, result[0].VpnServerResponses.VpnServer.Id);
     }
 
+    [Fact]
+    public async Task GetOnlineFlagsAsync_Returns_IsOnline_And_False_For_Deleted()
+    {
+        var (sut, ctx) = CreateSutWithContext();
+        var now = DateTimeOffset.UtcNow;
+
+        await ctx.VpnServers.AddRangeAsync(
+            new VpnServer
+            {
+                Id = 1,
+                ServerName = "online",
+                IsOnline = true,
+                IsDeleted = false,
+                ApiUrl = "https://a",
+                CreateDate = now,
+                LastUpdate = now,
+            },
+            new VpnServer
+            {
+                Id = 2,
+                ServerName = "offline",
+                IsOnline = false,
+                IsDeleted = false,
+                ApiUrl = "https://b",
+                CreateDate = now,
+                LastUpdate = now,
+            },
+            new VpnServer
+            {
+                Id = 3,
+                ServerName = "deleted-but-flagged-online",
+                IsOnline = true,
+                IsDeleted = true,
+                ApiUrl = "https://c",
+                CreateDate = now,
+                LastUpdate = now,
+            });
+        await ctx.SaveChangesAsync();
+
+        var flags = await sut.GetOnlineFlagsAsync([1, 2, 3, 99], CancellationToken.None);
+
+        Assert.True(flags[1]);
+        Assert.False(flags[2]);
+        Assert.False(flags[3]);
+        Assert.False(flags.ContainsKey(99));
+    }
+
     // ---- Test DbContext ----
 
     private sealed class TestDbContext : DbContext

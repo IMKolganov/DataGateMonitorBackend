@@ -40,6 +40,8 @@ public sealed class OpenVpnStatusStreamPublisher(
                 using var scope = scopeFactory.CreateScope();
                 var openVpnServerOverviewQuery = scope.ServiceProvider.GetRequiredService<IVpnServerOverviewQuery>();
 
+                var onlineFlags = await openVpnServerOverviewQuery.GetOnlineFlagsAsync(serverIds, stoppingToken);
+
                 foreach (var status in statuses)
                 {
                     var vpnServerId = status.ServiceStatus.VpnServerId;
@@ -50,6 +52,7 @@ public sealed class OpenVpnStatusStreamPublisher(
                     status.ServiceStatus.CountConnectedClients =
                         connectedFromRedis.GetValueOrDefault(vpnServerId, connectedClients);
                     status.ServiceStatus.CountSessions = sessions;
+                    status.ServiceStatus.IsOnline = onlineFlags.GetValueOrDefault(vpnServerId, false);
                 }
 
                 var payload = new StatusStreamPayload

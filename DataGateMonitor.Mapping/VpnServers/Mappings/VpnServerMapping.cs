@@ -65,6 +65,7 @@ public class VpnServerMapping : IRegister
             .Map(dest => dest.ServiceStatus.CountConnectedClients, src => src.CountConnectedClients)
             .Map(dest => dest.ServiceStatus.CountSessions, src => src.CountSessions)
             .Map(dest => dest.ServiceStatus.ErrorMessage, src => src.ErrorMessage)
-            .Map(dest => dest.ServiceStatus.NextRunTime, src => src.NextRunTime);
+            .Map(dest => dest.ServiceStatus.NextRunTime, src => src.NextRunTime)
+            .Map(dest => dest.ServiceStatus.IsOnline, src => src.IsOnline);
     }
 }

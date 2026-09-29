@@ -14,4 +14,11 @@ public interface IVpnServerOverviewQuery
     Task<VpnServerWithStatusDto> GetVpnServerWithStatusAsync(int vpnServerId, CancellationToken ct = default);
     Task<(int CountConnectedClients, int CountSessions)> GetClientCountersAsync(
         int vpnServerId, CancellationToken ct = default);
+
+    /// <summary>
+    /// Batch Online flags for SignalR status stream (one query, no overview compose).
+    /// Value is <c>IsOnline &amp;&amp; !IsDeleted</c> (same rule as REST VpnServerDto mapping).
+    /// </summary>
+    Task<IReadOnlyDictionary<int, bool>> GetOnlineFlagsAsync(
+        IReadOnlyCollection<int> vpnServerIds, CancellationToken ct = default);
 }
