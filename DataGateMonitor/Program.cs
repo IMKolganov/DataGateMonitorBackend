@@ -1,7 +1,7 @@
 ﻿using System.Reflection;
 using DataGateMonitor.Configurations;
 using DataGateMonitor.Services.PiHoleHealth;
-using DataGateMonitor.Services.RfAvailability;
+using DataGateMonitor.Services.AvailabilityCheck;
 using Microsoft.Extensions.Hosting;
 using Serilog;
 
@@ -51,7 +51,7 @@ builder.Services.ConfigureTelegramServices(builder.Configuration);
 builder.Services.ConfigureGeoLiteServices(databaseRuntime);
 builder.Services.ConfigureCertExpiryServices(databaseRuntime);
 builder.Services.ConfigurePiHoleHealthServices(databaseRuntime);
-builder.Services.ConfigureRfAvailabilityServices(databaseRuntime);
+builder.Services.ConfigureAvailabilityCheckServices(databaseRuntime);
 builder.Services.ConfigureAdminEmailBroadcast();
 builder.Services.ConfigureAuthServices(builder.Configuration);
 builder.Services.DataBaseServices(builder.Configuration, logger, databaseRuntime);

@@ -1,8 +1,8 @@
-namespace DataGateMonitor.Services.RfAvailability;
+namespace DataGateMonitor.Services.AvailabilityCheck;
 
-public static class RfAvailabilityEnvironment
+public static class AvailabilityCheckEnvironment
 {
-    public const string DisabledVariable = "RF_AVAILABILITY_CHECK_DISABLED";
+    public const string DisabledVariable = "AVAILABILITY_CHECK_CHECK_DISABLED";
 
     public static bool IsEnabled()
     {

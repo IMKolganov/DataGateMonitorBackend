@@ -1,8 +1,8 @@
 using System.Collections.Concurrent;
 
-namespace DataGateMonitor.Services.RfAvailability;
+namespace DataGateMonitor.Services.AvailabilityCheck;
 
-public sealed class RfAvailabilityNotificationTracker
+public sealed class AvailabilityCheckNotificationTracker
 {
     private readonly ConcurrentDictionary<string, byte> _unreachableSent = new();
     private readonly ConcurrentDictionary<string, byte> _recoveredSent = new();

@@ -1,31 +1,31 @@
 using DataGateMonitor.Services.Others;
-using DataGateMonitor.SharedModels.DataGateMonitor.RfAvailability.Dto;
-using DataGateMonitor.SharedModels.DataGateMonitor.RfAvailability.Responses;
+using DataGateMonitor.SharedModels.DataGateMonitor.AvailabilityCheck.Dto;
+using DataGateMonitor.SharedModels.DataGateMonitor.AvailabilityCheck.Responses;
 
-namespace DataGateMonitor.Services.RfAvailability;
+namespace DataGateMonitor.Services.AvailabilityCheck;
 
-public interface IRfAvailabilityCheckRunner
+public interface IAvailabilityCheckRunner
 {
-    Task<RfAvailabilityStatusResponse> RunAsync(CancellationToken ct, bool force = false);
+    Task<AvailabilityCheckStatusResponse> RunAsync(CancellationToken ct, bool force = false);
 }
 
-public sealed class RfAvailabilityCheckRunner(
-    ILogger<RfAvailabilityCheckRunner> logger,
+public sealed class AvailabilityCheckRunner(
+    ILogger<AvailabilityCheckRunner> logger,
     ISettingsService settingsService,
-    IRfAvailabilityProbeClient probeClient,
-    IRfAvailabilityStatusStore statusStore,
-    IRfAvailabilityNotificationService notificationService,
-    RfAvailabilityNotificationTracker notificationTracker) : IRfAvailabilityCheckRunner
+    IAvailabilityCheckProbeClient probeClient,
+    IAvailabilityCheckStatusStore statusStore,
+    IAvailabilityCheckNotificationService notificationService,
+    AvailabilityCheckNotificationTracker notificationTracker) : IAvailabilityCheckRunner
 {
-    public async Task<RfAvailabilityStatusResponse> RunAsync(CancellationToken ct, bool force = false)
+    public async Task<AvailabilityCheckStatusResponse> RunAsync(CancellationToken ct, bool force = false)
     {
-        var (enabled, targetUrl) = await ResolveSettingsAsync(ct).ConfigureAwait(false);
+        var (enabled, targetUrl, probeUrl) = await ResolveSettingsAsync(ct).ConfigureAwait(false);
 
-        var snapshot = new RfAvailabilityStatusResponse
+        var snapshot = new AvailabilityCheckStatusResponse
         {
             Enabled = enabled,
             TargetUrl = targetUrl,
-            ProbeBaseUrl = RfAvailabilitySettingsKeys.DefaultProbeBaseUrl,
+            ProbeUrl = probeUrl,
         };
 
         if (!enabled && !force)
@@ -43,10 +43,12 @@ public sealed class RfAvailabilityCheckRunner(
             return snapshot;
         }
 
-        logger.LogDebug("RF availability check: probing {TargetUrl}", targetUrl);
+        logger.LogDebug("Availability check: probing {TargetUrl} via {ProbeUrl}", targetUrl, probeUrl);
 
         var checkedAt = DateTimeOffset.UtcNow;
-        var (result, error, durationMs) = await probeClient.ProbeAsync(targetUrl, ct).ConfigureAwait(false);
+        var (result, error, durationMs) = await probeClient
+            .ProbeAsync(probeUrl, targetUrl, ct)
+            .ConfigureAwait(false);
 
         snapshot.LastCheckedAtUtc = checkedAt;
         snapshot.LastDurationMs = durationMs;
@@ -59,33 +61,43 @@ public sealed class RfAvailabilityCheckRunner(
         return snapshot;
     }
 
-    private async Task<(bool Enabled, string TargetUrl)> ResolveSettingsAsync(CancellationToken ct)
+    private async Task<(bool Enabled, string TargetUrl, string ProbeUrl)> ResolveSettingsAsync(CancellationToken ct)
     {
-        // GetValueAsync<bool> returns false both when missing and when explicitly disabled.
-        // TargetUrl is string — null means the feature was never configured → use defaults (enabled).
+        // TargetUrl null ⇒ never configured ⇒ defaults (enabled + default URLs).
         var storedTarget = await settingsService
-            .GetValueAsync<string>(RfAvailabilitySettingsKeys.TargetUrl, ct)
+            .GetValueAsync<string>(AvailabilityCheckSettingsKeys.TargetUrl, ct)
             .ConfigureAwait(false);
+
+        var storedProbe = await settingsService
+            .GetValueAsync<string>(AvailabilityCheckSettingsKeys.ProbeUrl, ct)
+            .ConfigureAwait(false);
+
+        var probeUrl = string.IsNullOrWhiteSpace(storedProbe)
+            ? AvailabilityCheckSettingsKeys.DefaultProbeUrl
+            : storedProbe.Trim();
 
         if (storedTarget is null)
         {
-            return (RfAvailabilitySettingsKeys.DefaultEnabled, RfAvailabilitySettingsKeys.DefaultTargetUrl);
+            return (
+                AvailabilityCheckSettingsKeys.DefaultEnabled,
+                AvailabilityCheckSettingsKeys.DefaultTargetUrl,
+                probeUrl);
         }
 
         var enabled = await settingsService
-            .GetValueAsync<bool>(RfAvailabilitySettingsKeys.Enabled, ct)
+            .GetValueAsync<bool>(AvailabilityCheckSettingsKeys.Enabled, ct)
             .ConfigureAwait(false);
 
         var targetUrl = string.IsNullOrWhiteSpace(storedTarget)
-            ? RfAvailabilitySettingsKeys.DefaultTargetUrl
+            ? AvailabilityCheckSettingsKeys.DefaultTargetUrl
             : storedTarget.Trim();
 
-        return (enabled, targetUrl);
+        return (enabled, targetUrl, probeUrl);
     }
 
     private async Task NotifyIfNeededAsync(
         string targetUrl,
-        RfAvailabilityProbeResultDto? result,
+        AvailabilityProbeResultDto? result,
         string? error,
         CancellationToken ct)
     {

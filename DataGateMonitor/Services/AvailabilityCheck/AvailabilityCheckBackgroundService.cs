@@ -1,9 +1,9 @@
 using Microsoft.Extensions.Hosting;
 
-namespace DataGateMonitor.Services.RfAvailability;
+namespace DataGateMonitor.Services.AvailabilityCheck;
 
-public sealed class RfAvailabilityBackgroundService(
-    ILogger<RfAvailabilityBackgroundService> logger,
+public sealed class AvailabilityCheckBackgroundService(
+    ILogger<AvailabilityCheckBackgroundService> logger,
     IServiceScopeFactory scopeFactory) : BackgroundService
 {
     private static readonly TimeSpan LoopDelay = TimeSpan.FromMinutes(5);
@@ -11,15 +11,15 @@ public sealed class RfAvailabilityBackgroundService(
 
     protected override async Task ExecuteAsync(CancellationToken stoppingToken)
     {
-        if (!RfAvailabilityEnvironment.IsEnabled())
+        if (!AvailabilityCheckEnvironment.IsEnabled())
         {
             logger.LogInformation("{Service} is disabled via {Variable}",
-                nameof(RfAvailabilityBackgroundService),
-                RfAvailabilityEnvironment.DisabledVariable);
+                nameof(AvailabilityCheckBackgroundService),
+                AvailabilityCheckEnvironment.DisabledVariable);
             return;
         }
 
-        logger.LogInformation("{Service} started", nameof(RfAvailabilityBackgroundService));
+        logger.LogInformation("{Service} started", nameof(AvailabilityCheckBackgroundService));
 
         await Task.Delay(StartupDelay, stoppingToken).ConfigureAwait(false);
 
@@ -30,7 +30,7 @@ public sealed class RfAvailabilityBackgroundService(
                 try
                 {
                     await using var scope = scopeFactory.CreateAsyncScope();
-                    var runner = scope.ServiceProvider.GetRequiredService<IRfAvailabilityCheckRunner>();
+                    var runner = scope.ServiceProvider.GetRequiredService<IAvailabilityCheckRunner>();
                     await runner.RunAsync(stoppingToken).ConfigureAwait(false);
                 }
                 catch (OperationCanceledException) when (stoppingToken.IsCancellationRequested)
@@ -39,7 +39,7 @@ public sealed class RfAvailabilityBackgroundService(
                 }
                 catch (Exception ex)
                 {
-                    logger.LogError(ex, "{Service} iteration failed", nameof(RfAvailabilityBackgroundService));
+                    logger.LogError(ex, "{Service} iteration failed", nameof(AvailabilityCheckBackgroundService));
                 }
 
                 await Task.Delay(LoopDelay, stoppingToken).ConfigureAwait(false);
@@ -50,6 +50,6 @@ public sealed class RfAvailabilityBackgroundService(
             // shutdown
         }
 
-        logger.LogInformation("{Service} stopped", nameof(RfAvailabilityBackgroundService));
+        logger.LogInformation("{Service} stopped", nameof(AvailabilityCheckBackgroundService));
     }
 }
