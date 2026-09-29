@@ -18,7 +18,7 @@ namespace DataGateMonitor.DataBase.Migrations
 #pragma warning disable 612, 618
             modelBuilder
                 .HasDefaultSchema("xgb_dashopnvpn")
-                .HasAnnotation("ProductVersion", "10.0.9")
+                .HasAnnotation("ProductVersion", "10.0.12")
                 .HasAnnotation("Relational:MaxIdentifierLength", 63);
 
             NpgsqlModelBuilderExtensions.UseIdentityByDefaultColumns(modelBuilder);
@@ -609,7 +609,7 @@ namespace DataGateMonitor.DataBase.Migrations
                             Key = "BotMenu",
                             Language = 1,
                             LastUpdate = new DateTimeOffset(new DateTime(1, 1, 1, 0, 0, 0, 0, DateTimeKind.Unspecified), new TimeSpan(0, 0, 0, 0, 0)),
-                            Text = "<b><u>Bot Menu</u></b>:\n/get_my_files - get your files for connecting to the VPN\n/make_new_file - create a new file for connecting to the VPN\n/delete_selected_file - Delete a specific file\n/delete_all_files - Delete all files\n/how_to_use - receive information on how to use the VPN\n/install_client - get a link to download the OpenVPN client for connecting to the VPN\n/about_bot - receive information about this bot\n/about_project - receive information about the project\n/contacts - receive contacts developer\n/change_language - Change your language/Изменить язык/Αλλάξτε τη γλώσσα σας"
+                            Text = "<b><u>Bot Menu</u></b>:\n/get_my_files - get your files for connecting to the VPN\n/make_new_file - create a new file for connecting to the VPN\n/delete_selected_file - Delete a specific file\n/delete_all_files - Delete all files\n/how_to_use - receive information on how to use the VPN\n/install_client - get a link to download the OpenVPN client for connecting to the VPN\n/about_bot - receive information about this bot\n/about_project - receive information about the project\n/contacts - receive contacts developer\n/donate - support with Telegram Stars\n/change_language - Change your language/Изменить язык/Αλλάξτε τη γλώσσα σας"
                         },
                         new
                         {
@@ -618,7 +618,7 @@ namespace DataGateMonitor.DataBase.Migrations
                             Key = "BotMenu",
                             Language = 2,
                             LastUpdate = new DateTimeOffset(new DateTime(1, 1, 1, 0, 0, 0, 0, DateTimeKind.Unspecified), new TimeSpan(0, 0, 0, 0, 0)),
-                            Text = "<b><u>Μενού Bot</u></b>:\n/get_my_files - αποκτήστε τα αρχεία σας για σύνδεση στο VPN\n/make_new_file - δημιουργήστε ένα νέο αρχείο για σύνδεση στο VPN\n/delete_selected_file - Διαγραφή συγκεκριμένου αρχείου\n/delete_all_files - Διαγραφή όλων των αρχείων\n/how_to_use - λάβετε πληροφορίες για τη χρήση του VPN\n/install_client - λάβετε σύνδεσμο για λήψη του OpenVPN client\n/about_bot - λάβετε πληροφορίες για αυτό το bot\n/about_project - λάβετε πληροφορίες για το έργο\n/contacts - λάβετε στοιχεία επικοινωνίας του προγραμματιστή\n/change_language - Change your language/Изменить язык/Αλλάξτε τη γλώσσα σας"
+                            Text = "<b><u>Μενού Bot</u></b>:\n/get_my_files - αποκτήστε τα αρχεία σας για σύνδεση στο VPN\n/make_new_file - δημιουργήστε ένα νέο αρχείο για σύνδεση στο VPN\n/delete_selected_file - Διαγραφή συγκεκριμένου αρχείου\n/delete_all_files - Διαγραφή όλων των αρχείων\n/how_to_use - λάβετε πληροφορίες για τη χρήση του VPN\n/install_client - λάβετε σύνδεσμο για λήψη του OpenVPN client\n/about_bot - λάβετε πληροφορίες για αυτό το bot\n/about_project - λάβετε πληροφορίες για το έργο\n/contacts - λάβετε στοιχεία επικοινωνίας του προγραμματιστή\n/donate - υποστήριξη με Telegram Stars\n/change_language - Change your language/Изменить язык/Αλλάξτε τη γλώσσα σας"
                         },
                         new
                         {
@@ -627,7 +627,7 @@ namespace DataGateMonitor.DataBase.Migrations
                             Key = "BotMenu",
                             Language = 3,
                             LastUpdate = new DateTimeOffset(new DateTime(1, 1, 1, 0, 0, 0, 0, DateTimeKind.Unspecified), new TimeSpan(0, 0, 0, 0, 0)),
-                            Text = "<b><u>Меню бота</u></b>:\n/get_my_files - получите свои файлы для подключения к VPN\n/make_new_file - создайте новый файл для подключения к VPN\n/delete_selected_file - Удалить выбранный файл\n/delete_all_files - Удалить все файлы\n/how_to_use - получите информацию о том, как использовать VPN\n/install_client - получите ссылку для загрузки клиента OpenVPN\n/about_bot - информация об этом боте\n/about_project - информация о проекте\n/contacts - контакты разработчика\n/change_language - Change your language/Изменить язык/Αλλάξτε τη γλώσσα σας"
+                            Text = "<b><u>Меню бота</u></b>:\n/get_my_files - получите свои файлы для подключения к VPN\n/make_new_file - создайте новый файл для подключения к VPN\n/delete_selected_file - Удалить выбранный файл\n/delete_all_files - Удалить все файлы\n/how_to_use - получите информацию о том, как использовать VPN\n/install_client - получите ссылку для загрузки клиента OpenVPN\n/about_bot - информация об этом боте\n/about_project - информация о проекте\n/contacts - контакты разработчика\n/donate - поддержать Telegram Stars\n/change_language - Change your language/Изменить язык/Αλλάξτε τη γλώσσα σας"
                         },
                         new
                         {
@@ -1492,6 +1492,303 @@ namespace DataGateMonitor.DataBase.Migrations
                             Language = 3,
                             LastUpdate = new DateTimeOffset(new DateTime(1, 1, 1, 0, 0, 0, 0, DateTimeKind.Unspecified), new TimeSpan(0, 0, 0, 0, 0)),
                             Text = "Этот VPN-сервер недоступен на вашем текущем тарифе. Выберите другой сервер или обновите план."
+                        },
+                        new
+                        {
+                            Id = 109,
+                            CreateDate = new DateTimeOffset(new DateTime(1, 1, 1, 0, 0, 0, 0, DateTimeKind.Unspecified), new TimeSpan(0, 0, 0, 0, 0)),
+                            Key = "DonateIntro",
+                            Language = 1,
+                            LastUpdate = new DateTimeOffset(new DateTime(1, 1, 1, 0, 0, 0, 0, DateTimeKind.Unspecified), new TimeSpan(0, 0, 0, 0, 0)),
+                            Text = "If DataGate helps you, you can send voluntary support with Telegram Stars. VPN plan does not change.\n\nTap a ⭐ amount — pay inside Telegram.\nUSDT row is only if you already have a @CryptoBot balance."
+                        },
+                        new
+                        {
+                            Id = 110,
+                            CreateDate = new DateTimeOffset(new DateTime(1, 1, 1, 0, 0, 0, 0, DateTimeKind.Unspecified), new TimeSpan(0, 0, 0, 0, 0)),
+                            Key = "DonateIntro",
+                            Language = 2,
+                            LastUpdate = new DateTimeOffset(new DateTime(1, 1, 1, 0, 0, 0, 0, DateTimeKind.Unspecified), new TimeSpan(0, 0, 0, 0, 0)),
+                            Text = "Αν το DataGate σας βοηθά, μπορείτε να στείλετε υποστήριξη με Telegram Stars. Το πλάνο VPN δεν αλλάζει.\n\nΠατήστε ποσό ⭐ — πληρωμή μέσα στο Telegram.\nUSDT μόνο αν έχετε ήδη υπόλοιπο στο @CryptoBot."
+                        },
+                        new
+                        {
+                            Id = 111,
+                            CreateDate = new DateTimeOffset(new DateTime(1, 1, 1, 0, 0, 0, 0, DateTimeKind.Unspecified), new TimeSpan(0, 0, 0, 0, 0)),
+                            Key = "DonateIntro",
+                            Language = 3,
+                            LastUpdate = new DateTimeOffset(new DateTime(1, 1, 1, 0, 0, 0, 0, DateTimeKind.Unspecified), new TimeSpan(0, 0, 0, 0, 0)),
+                            Text = "Если DataGate вам помогает — добровольная поддержка Telegram Stars. Тариф VPN не меняется.\n\nНажмите сумму ⭐ — оплата внутри Telegram.\nНижний ряд USDT — только если баланс в @CryptoBot уже есть."
+                        },
+                        new
+                        {
+                            Id = 112,
+                            CreateDate = new DateTimeOffset(new DateTime(1, 1, 1, 0, 0, 0, 0, DateTimeKind.Unspecified), new TimeSpan(0, 0, 0, 0, 0)),
+                            Key = "DonatePayButton",
+                            Language = 1,
+                            LastUpdate = new DateTimeOffset(new DateTime(1, 1, 1, 0, 0, 0, 0, DateTimeKind.Unspecified), new TimeSpan(0, 0, 0, 0, 0)),
+                            Text = "Pay {amount} USD"
+                        },
+                        new
+                        {
+                            Id = 113,
+                            CreateDate = new DateTimeOffset(new DateTime(1, 1, 1, 0, 0, 0, 0, DateTimeKind.Unspecified), new TimeSpan(0, 0, 0, 0, 0)),
+                            Key = "DonatePayButton",
+                            Language = 2,
+                            LastUpdate = new DateTimeOffset(new DateTime(1, 1, 1, 0, 0, 0, 0, DateTimeKind.Unspecified), new TimeSpan(0, 0, 0, 0, 0)),
+                            Text = "Πληρωμή {amount} USD"
+                        },
+                        new
+                        {
+                            Id = 114,
+                            CreateDate = new DateTimeOffset(new DateTime(1, 1, 1, 0, 0, 0, 0, DateTimeKind.Unspecified), new TimeSpan(0, 0, 0, 0, 0)),
+                            Key = "DonatePayButton",
+                            Language = 3,
+                            LastUpdate = new DateTimeOffset(new DateTime(1, 1, 1, 0, 0, 0, 0, DateTimeKind.Unspecified), new TimeSpan(0, 0, 0, 0, 0)),
+                            Text = "Оплатить {amount} USD"
+                        },
+                        new
+                        {
+                            Id = 115,
+                            CreateDate = new DateTimeOffset(new DateTime(1, 1, 1, 0, 0, 0, 0, DateTimeKind.Unspecified), new TimeSpan(0, 0, 0, 0, 0)),
+                            Key = "DonateInvoiceCreated",
+                            Language = 1,
+                            LastUpdate = new DateTimeOffset(new DateTime(1, 1, 1, 0, 0, 0, 0, DateTimeKind.Unspecified), new TimeSpan(0, 0, 0, 0, 0)),
+                            Text = "Invoice for {amount} USD is ready. Pay from an existing @CryptoBot balance."
+                        },
+                        new
+                        {
+                            Id = 116,
+                            CreateDate = new DateTimeOffset(new DateTime(1, 1, 1, 0, 0, 0, 0, DateTimeKind.Unspecified), new TimeSpan(0, 0, 0, 0, 0)),
+                            Key = "DonateInvoiceCreated",
+                            Language = 2,
+                            LastUpdate = new DateTimeOffset(new DateTime(1, 1, 1, 0, 0, 0, 0, DateTimeKind.Unspecified), new TimeSpan(0, 0, 0, 0, 0)),
+                            Text = "Το τιμολόγιο για {amount} USD είναι έτοιμο. Πληρωμή από υπάρχον υπόλοιπο @CryptoBot."
+                        },
+                        new
+                        {
+                            Id = 117,
+                            CreateDate = new DateTimeOffset(new DateTime(1, 1, 1, 0, 0, 0, 0, DateTimeKind.Unspecified), new TimeSpan(0, 0, 0, 0, 0)),
+                            Key = "DonateInvoiceCreated",
+                            Language = 3,
+                            LastUpdate = new DateTimeOffset(new DateTime(1, 1, 1, 0, 0, 0, 0, DateTimeKind.Unspecified), new TimeSpan(0, 0, 0, 0, 0)),
+                            Text = "Счёт на {amount} USD готов. Оплата из уже имеющегося баланса @CryptoBot."
+                        },
+                        new
+                        {
+                            Id = 118,
+                            CreateDate = new DateTimeOffset(new DateTime(1, 1, 1, 0, 0, 0, 0, DateTimeKind.Unspecified), new TimeSpan(0, 0, 0, 0, 0)),
+                            Key = "DonateThanks",
+                            Language = 1,
+                            LastUpdate = new DateTimeOffset(new DateTime(1, 1, 1, 0, 0, 0, 0, DateTimeKind.Unspecified), new TimeSpan(0, 0, 0, 0, 0)),
+                            Text = "Thank you for the {amount} {asset} donation! 💚"
+                        },
+                        new
+                        {
+                            Id = 119,
+                            CreateDate = new DateTimeOffset(new DateTime(1, 1, 1, 0, 0, 0, 0, DateTimeKind.Unspecified), new TimeSpan(0, 0, 0, 0, 0)),
+                            Key = "DonateThanks",
+                            Language = 2,
+                            LastUpdate = new DateTimeOffset(new DateTime(1, 1, 1, 0, 0, 0, 0, DateTimeKind.Unspecified), new TimeSpan(0, 0, 0, 0, 0)),
+                            Text = "Ευχαριστούμε για τη δωρεά {amount} {asset}! 💚"
+                        },
+                        new
+                        {
+                            Id = 120,
+                            CreateDate = new DateTimeOffset(new DateTime(1, 1, 1, 0, 0, 0, 0, DateTimeKind.Unspecified), new TimeSpan(0, 0, 0, 0, 0)),
+                            Key = "DonateThanks",
+                            Language = 3,
+                            LastUpdate = new DateTimeOffset(new DateTime(1, 1, 1, 0, 0, 0, 0, DateTimeKind.Unspecified), new TimeSpan(0, 0, 0, 0, 0)),
+                            Text = "Спасибо за донат {amount} {asset}! 💚"
+                        },
+                        new
+                        {
+                            Id = 121,
+                            CreateDate = new DateTimeOffset(new DateTime(1, 1, 1, 0, 0, 0, 0, DateTimeKind.Unspecified), new TimeSpan(0, 0, 0, 0, 0)),
+                            Key = "DonateDisabled",
+                            Language = 1,
+                            LastUpdate = new DateTimeOffset(new DateTime(1, 1, 1, 0, 0, 0, 0, DateTimeKind.Unspecified), new TimeSpan(0, 0, 0, 0, 0)),
+                            Text = "Donations are turned off right now."
+                        },
+                        new
+                        {
+                            Id = 122,
+                            CreateDate = new DateTimeOffset(new DateTime(1, 1, 1, 0, 0, 0, 0, DateTimeKind.Unspecified), new TimeSpan(0, 0, 0, 0, 0)),
+                            Key = "DonateDisabled",
+                            Language = 2,
+                            LastUpdate = new DateTimeOffset(new DateTime(1, 1, 1, 0, 0, 0, 0, DateTimeKind.Unspecified), new TimeSpan(0, 0, 0, 0, 0)),
+                            Text = "Οι δωρεές είναι απενεργοποιημένες."
+                        },
+                        new
+                        {
+                            Id = 123,
+                            CreateDate = new DateTimeOffset(new DateTime(1, 1, 1, 0, 0, 0, 0, DateTimeKind.Unspecified), new TimeSpan(0, 0, 0, 0, 0)),
+                            Key = "DonateDisabled",
+                            Language = 3,
+                            LastUpdate = new DateTimeOffset(new DateTime(1, 1, 1, 0, 0, 0, 0, DateTimeKind.Unspecified), new TimeSpan(0, 0, 0, 0, 0)),
+                            Text = "Донаты сейчас выключены."
+                        },
+                        new
+                        {
+                            Id = 124,
+                            CreateDate = new DateTimeOffset(new DateTime(1, 1, 1, 0, 0, 0, 0, DateTimeKind.Unspecified), new TimeSpan(0, 0, 0, 0, 0)),
+                            Key = "DonateInvoiceFailed",
+                            Language = 1,
+                            LastUpdate = new DateTimeOffset(new DateTime(1, 1, 1, 0, 0, 0, 0, DateTimeKind.Unspecified), new TimeSpan(0, 0, 0, 0, 0)),
+                            Text = "Could not create a payment invoice. Please try again later."
+                        },
+                        new
+                        {
+                            Id = 125,
+                            CreateDate = new DateTimeOffset(new DateTime(1, 1, 1, 0, 0, 0, 0, DateTimeKind.Unspecified), new TimeSpan(0, 0, 0, 0, 0)),
+                            Key = "DonateInvoiceFailed",
+                            Language = 2,
+                            LastUpdate = new DateTimeOffset(new DateTime(1, 1, 1, 0, 0, 0, 0, DateTimeKind.Unspecified), new TimeSpan(0, 0, 0, 0, 0)),
+                            Text = "Δεν ήταν δυνατή η δημιουργία τιμολογίου. Δοκιμάστε ξανά αργότερα."
+                        },
+                        new
+                        {
+                            Id = 126,
+                            CreateDate = new DateTimeOffset(new DateTime(1, 1, 1, 0, 0, 0, 0, DateTimeKind.Unspecified), new TimeSpan(0, 0, 0, 0, 0)),
+                            Key = "DonateInvoiceFailed",
+                            Language = 3,
+                            LastUpdate = new DateTimeOffset(new DateTime(1, 1, 1, 0, 0, 0, 0, DateTimeKind.Unspecified), new TimeSpan(0, 0, 0, 0, 0)),
+                            Text = "Не удалось создать счёт. Попробуйте позже."
+                        },
+                        new
+                        {
+                            Id = 127,
+                            CreateDate = new DateTimeOffset(new DateTime(1, 1, 1, 0, 0, 0, 0, DateTimeKind.Unspecified), new TimeSpan(0, 0, 0, 0, 0)),
+                            Key = "DonateStarsTitle",
+                            Language = 1,
+                            LastUpdate = new DateTimeOffset(new DateTime(1, 1, 1, 0, 0, 0, 0, DateTimeKind.Unspecified), new TimeSpan(0, 0, 0, 0, 0)),
+                            Text = "Support DataGate"
+                        },
+                        new
+                        {
+                            Id = 128,
+                            CreateDate = new DateTimeOffset(new DateTime(1, 1, 1, 0, 0, 0, 0, DateTimeKind.Unspecified), new TimeSpan(0, 0, 0, 0, 0)),
+                            Key = "DonateStarsTitle",
+                            Language = 2,
+                            LastUpdate = new DateTimeOffset(new DateTime(1, 1, 1, 0, 0, 0, 0, DateTimeKind.Unspecified), new TimeSpan(0, 0, 0, 0, 0)),
+                            Text = "Υποστήριξη DataGate"
+                        },
+                        new
+                        {
+                            Id = 129,
+                            CreateDate = new DateTimeOffset(new DateTime(1, 1, 1, 0, 0, 0, 0, DateTimeKind.Unspecified), new TimeSpan(0, 0, 0, 0, 0)),
+                            Key = "DonateStarsTitle",
+                            Language = 3,
+                            LastUpdate = new DateTimeOffset(new DateTime(1, 1, 1, 0, 0, 0, 0, DateTimeKind.Unspecified), new TimeSpan(0, 0, 0, 0, 0)),
+                            Text = "Поддержка DataGate"
+                        },
+                        new
+                        {
+                            Id = 130,
+                            CreateDate = new DateTimeOffset(new DateTime(1, 1, 1, 0, 0, 0, 0, DateTimeKind.Unspecified), new TimeSpan(0, 0, 0, 0, 0)),
+                            Key = "DonateStarsDescription",
+                            Language = 1,
+                            LastUpdate = new DateTimeOffset(new DateTime(1, 1, 1, 0, 0, 0, 0, DateTimeKind.Unspecified), new TimeSpan(0, 0, 0, 0, 0)),
+                            Text = "Voluntary support. VPN plan does not change."
+                        },
+                        new
+                        {
+                            Id = 131,
+                            CreateDate = new DateTimeOffset(new DateTime(1, 1, 1, 0, 0, 0, 0, DateTimeKind.Unspecified), new TimeSpan(0, 0, 0, 0, 0)),
+                            Key = "DonateStarsDescription",
+                            Language = 2,
+                            LastUpdate = new DateTimeOffset(new DateTime(1, 1, 1, 0, 0, 0, 0, DateTimeKind.Unspecified), new TimeSpan(0, 0, 0, 0, 0)),
+                            Text = "Εθελοντική υποστήριξη. Το πλάνο VPN δεν αλλάζει."
+                        },
+                        new
+                        {
+                            Id = 132,
+                            CreateDate = new DateTimeOffset(new DateTime(1, 1, 1, 0, 0, 0, 0, DateTimeKind.Unspecified), new TimeSpan(0, 0, 0, 0, 0)),
+                            Key = "DonateStarsDescription",
+                            Language = 3,
+                            LastUpdate = new DateTimeOffset(new DateTime(1, 1, 1, 0, 0, 0, 0, DateTimeKind.Unspecified), new TimeSpan(0, 0, 0, 0, 0)),
+                            Text = "Добровольная поддержка. Тариф VPN не меняется."
+                        },
+                        new
+                        {
+                            Id = 133,
+                            CreateDate = new DateTimeOffset(new DateTime(1, 1, 1, 0, 0, 0, 0, DateTimeKind.Unspecified), new TimeSpan(0, 0, 0, 0, 0)),
+                            Key = "DonateCryptoRiskBanner",
+                            Language = 1,
+                            LastUpdate = new DateTimeOffset(new DateTime(1, 1, 1, 0, 0, 0, 0, DateTimeKind.Unspecified), new TimeSpan(0, 0, 0, 0, 0)),
+                            Text = "<b>⚠️ Attention: risk!!!</b>\n\nYou chose support via @CryptoBot for {amount} USD.\n\nIn many countries, topping up @CryptoBot is done through P2P — a person-to-person transfer. That can expose you to legal and financial risks and problems.\n\nThrough P2P you may unwittingly take part in a scheme involving other people's or stolen money, or in other financial or criminal activity.\n\nIf you are not sufficiently informed about this payment method, please ignore it. Use @CryptoBot only at your own risk.\n\nContinue only if you already have a @CryptoBot balance and you understand these risks. A donation does not change the VPN plan."
+                        },
+                        new
+                        {
+                            Id = 134,
+                            CreateDate = new DateTimeOffset(new DateTime(1, 1, 1, 0, 0, 0, 0, DateTimeKind.Unspecified), new TimeSpan(0, 0, 0, 0, 0)),
+                            Key = "DonateCryptoRiskBanner",
+                            Language = 2,
+                            LastUpdate = new DateTimeOffset(new DateTime(1, 1, 1, 0, 0, 0, 0, DateTimeKind.Unspecified), new TimeSpan(0, 0, 0, 0, 0)),
+                            Text = "<b>⚠️ Προσοχή: κίνδυνος!!!</b>\n\nΕπιλέξατε υποστήριξη μέσω @CryptoBot για {amount} USD.\n\nΣε πολλές χώρες η φόρτιση του @CryptoBot γίνεται με P2P — μεταφορά από άνθρωπο σε άνθρωπο. Αυτό μπορεί να σας εκθέσει σε νομικούς και οικονομικούς κινδύνους.\n\nΜέσω P2P μπορείτε άθελά σας να συμμετάσχετε σε σχήμα με χρήματα τρίτων ή κλεμμένα χρήματα, ή σε άλλη οικονομική ή ποινική υπόθεση.\n\nΑν δεν γνωρίζετε αρκετά αυτόν τον τρόπο πληρωμής, αγνοήστε τον. Χρησιμοποιήστε το @CryptoBot αποκλειστικά με δική σας ευθύνη.\n\nΣυνεχίστε μόνο αν έχετε ήδη υπόλοιπο στο @CryptoBot και κατανοείτε τους κινδύνους. Το πλάνο VPN δεν αλλάζει."
+                        },
+                        new
+                        {
+                            Id = 135,
+                            CreateDate = new DateTimeOffset(new DateTime(1, 1, 1, 0, 0, 0, 0, DateTimeKind.Unspecified), new TimeSpan(0, 0, 0, 0, 0)),
+                            Key = "DonateCryptoRiskBanner",
+                            Language = 3,
+                            LastUpdate = new DateTimeOffset(new DateTime(1, 1, 1, 0, 0, 0, 0, DateTimeKind.Unspecified), new TimeSpan(0, 0, 0, 0, 0)),
+                            Text = "<b>⚠️ Внимание: риск!!!</b>\n\nВы выбрали поддержку через @CryptoBot на {amount} USD.\n\nПополнение @CryptoBot во многих странах идёт через P2P — перевод от человека человеку. Это может повлечь для вас юридические и финансовые риски и проблемы.\n\nЧерез P2P вы можете невольно участвовать в схеме с чужими или крадеными деньгами либо в другом финансовом или уголовном деле.\n\nЕсли вы недостаточно осведомлены об этом способе оплаты — проигнорируйте его. Используйте @CryptoBot только на свой страх и риск.\n\nПродолжайте только если баланс в @CryptoBot у вас уже есть и вы понимаете эти риски. Тариф VPN от доната не меняется."
+                        },
+                        new
+                        {
+                            Id = 136,
+                            CreateDate = new DateTimeOffset(new DateTime(1, 1, 1, 0, 0, 0, 0, DateTimeKind.Unspecified), new TimeSpan(0, 0, 0, 0, 0)),
+                            Key = "DonateCryptoRiskContinue",
+                            Language = 1,
+                            LastUpdate = new DateTimeOffset(new DateTime(1, 1, 1, 0, 0, 0, 0, DateTimeKind.Unspecified), new TimeSpan(0, 0, 0, 0, 0)),
+                            Text = "I understand the risk, continue"
+                        },
+                        new
+                        {
+                            Id = 137,
+                            CreateDate = new DateTimeOffset(new DateTime(1, 1, 1, 0, 0, 0, 0, DateTimeKind.Unspecified), new TimeSpan(0, 0, 0, 0, 0)),
+                            Key = "DonateCryptoRiskContinue",
+                            Language = 2,
+                            LastUpdate = new DateTimeOffset(new DateTime(1, 1, 1, 0, 0, 0, 0, DateTimeKind.Unspecified), new TimeSpan(0, 0, 0, 0, 0)),
+                            Text = "Κατανοώ τον κίνδυνο, συνέχεια"
+                        },
+                        new
+                        {
+                            Id = 138,
+                            CreateDate = new DateTimeOffset(new DateTime(1, 1, 1, 0, 0, 0, 0, DateTimeKind.Unspecified), new TimeSpan(0, 0, 0, 0, 0)),
+                            Key = "DonateCryptoRiskContinue",
+                            Language = 3,
+                            LastUpdate = new DateTimeOffset(new DateTime(1, 1, 1, 0, 0, 0, 0, DateTimeKind.Unspecified), new TimeSpan(0, 0, 0, 0, 0)),
+                            Text = "Понимаю риск, продолжить"
+                        },
+                        new
+                        {
+                            Id = 139,
+                            CreateDate = new DateTimeOffset(new DateTime(1, 1, 1, 0, 0, 0, 0, DateTimeKind.Unspecified), new TimeSpan(0, 0, 0, 0, 0)),
+                            Key = "DonateCryptoRiskIgnore",
+                            Language = 1,
+                            LastUpdate = new DateTimeOffset(new DateTime(1, 1, 1, 0, 0, 0, 0, DateTimeKind.Unspecified), new TimeSpan(0, 0, 0, 0, 0)),
+                            Text = "Ignore this method"
+                        },
+                        new
+                        {
+                            Id = 140,
+                            CreateDate = new DateTimeOffset(new DateTime(1, 1, 1, 0, 0, 0, 0, DateTimeKind.Unspecified), new TimeSpan(0, 0, 0, 0, 0)),
+                            Key = "DonateCryptoRiskIgnore",
+                            Language = 2,
+                            LastUpdate = new DateTimeOffset(new DateTime(1, 1, 1, 0, 0, 0, 0, DateTimeKind.Unspecified), new TimeSpan(0, 0, 0, 0, 0)),
+                            Text = "Αγνόηση αυτής της μεθόδου"
+                        },
+                        new
+                        {
+                            Id = 141,
+                            CreateDate = new DateTimeOffset(new DateTime(1, 1, 1, 0, 0, 0, 0, DateTimeKind.Unspecified), new TimeSpan(0, 0, 0, 0, 0)),
+                            Key = "DonateCryptoRiskIgnore",
+                            Language = 3,
+                            LastUpdate = new DateTimeOffset(new DateTime(1, 1, 1, 0, 0, 0, 0, DateTimeKind.Unspecified), new TimeSpan(0, 0, 0, 0, 0)),
+                            Text = "Игнорировать этот способ"
                         });
                 });
 
@@ -3402,6 +3699,23 @@ namespace DataGateMonitor.DataBase.Migrations
                     b.Property<bool?>("DcoIsEnabled")
                         .HasColumnType("boolean");
 
+                    b.Property<DateTimeOffset?>("ExternalProbeCheckedAtUtc")
+                        .HasColumnType("timestamp with time zone");
+
+                    b.Property<string>("ExternalProbeSummary")
+                        .HasMaxLength(500)
+                        .HasColumnType("character varying(500)");
+
+                    b.Property<bool>("IsAvailabilityCheckEnabled")
+                        .ValueGeneratedOnAdd()
+                        .HasColumnType("boolean")
+                        .HasDefaultValue(true);
+
+                    b.Property<bool>("IsAvailableByExternalProbe")
+                        .ValueGeneratedOnAdd()
+                        .HasColumnType("boolean")
+                        .HasDefaultValue(true);
+
                     b.Property<bool>("IsDefault")
                         .HasColumnType("boolean");
 
@@ -3467,6 +3781,8 @@ namespace DataGateMonitor.DataBase.Migrations
 
                     b.HasKey("Id");
 
+                    b.HasIndex("IsAvailableByExternalProbe");
+
                     b.HasIndex("IsDefault");
 
                     b.HasIndex("IsDeleted");
@@ -3497,6 +3813,8 @@ namespace DataGateMonitor.DataBase.Migrations
                             Id = 1,
                             ApiUrl = "http://openvpn_udp:5010/",
                             CreateDate = new DateTimeOffset(new DateTime(1, 1, 1, 0, 0, 0, 0, DateTimeKind.Unspecified), new TimeSpan(0, 0, 0, 0, 0)),
+                            IsAvailabilityCheckEnabled = true,
+                            IsAvailableByExternalProbe = true,
                             IsDefault = true,
                             IsDeleted = false,
                             IsDisable = false,
@@ -3515,6 +3833,8 @@ namespace DataGateMonitor.DataBase.Migrations
                             Id = 2,
                             ApiUrl = "http://openvpn_tcp:5011/",
                             CreateDate = new DateTimeOffset(new DateTime(1, 1, 1, 0, 0, 0, 0, DateTimeKind.Unspecified), new TimeSpan(0, 0, 0, 0, 0)),
+                            IsAvailabilityCheckEnabled = true,
+                            IsAvailableByExternalProbe = true,
                             IsDefault = false,
                             IsDeleted = false,
                             IsDisable = false,
@@ -3533,6 +3853,8 @@ namespace DataGateMonitor.DataBase.Migrations
                             Id = 3,
                             ApiUrl = "http://xray:5010/",
                             CreateDate = new DateTimeOffset(new DateTime(1, 1, 1, 0, 0, 0, 0, DateTimeKind.Unspecified), new TimeSpan(0, 0, 0, 0, 0)),
+                            IsAvailabilityCheckEnabled = true,
+                            IsAvailableByExternalProbe = true,
                             IsDefault = false,
                             IsDeleted = false,
                             IsDisable = false,

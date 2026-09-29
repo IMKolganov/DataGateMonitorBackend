@@ -31,6 +31,7 @@ public class VpnDataService(
     IOpenVpnMicroserviceClientFactory microserviceClientFactory,
     IOpenVpnEventClientFactory eventClientFactory,
     IVpnNodePublicIpLookup vpnNodePublicIpLookup,
+    IVpnServerCoordinateEnricher vpnServerCoordinateEnricher,
     IVpnServerClientPresenceService vpnServerClientPresenceService) : IVpnDataService
 {
     private static readonly TimeSpan MicroserviceInfoResolveTimeout = TimeSpan.FromSeconds(5);
@@ -38,6 +39,7 @@ public class VpnDataService(
     public async Task<VpnServer> AddVpnServer(VpnServer server, List<int> quotaPlanIds, List<int> tagIds, CancellationToken ct)
     {
         server.ApiUrl = VpnServerApiUrlHelper.NormalizeApiUrl(server.ApiUrl);
+        await TryEnrichCoordinatesSafelyAsync(server, preferredPublicIp: null, ct);
 
         var result = await transactionRunner.RunAsync(async _ =>
         {
@@ -92,6 +94,15 @@ public class VpnDataService(
         var becameDisabled = server.IsDisable && !previous.IsDisable;
         var apiUrlChanged = !VpnServerApiUrlHelper.ApiUrlsEquivalent(previous.ApiUrl, server.ApiUrl);
 
+        if (server.Latitude is null && server.Longitude is null)
+        {
+            // Cache-only: never call node /api/info on the save path (that can take seconds).
+            string? preferredPublicIp = null;
+            if (!apiUrlChanged)
+                preferredPublicIp = vpnNodePublicIpLookup.TryGetCached(server.Id);
+            await TryEnrichCoordinatesSafelyAsync(server, preferredPublicIp, ct);
+        }
+
         var result = await transactionRunner.RunAsync(async _ =>
         {
             var now = DateTimeOffset.UtcNow;
@@ -112,7 +123,7 @@ public class VpnDataService(
                     ct);
             }
 
-            // UpdateServerRequest does not carry list layout fields — preserve them.
+            // UpdateServerRequest must not overwrite poller/probe-owned or list-layout fields.
             server.VpnServerGroupId = previous.VpnServerGroupId;
             server.SortOrder = previous.SortOrder;
             server.CreateDate = previous.CreateDate;
@@ -120,6 +131,13 @@ public class VpnDataService(
             server.DcoIsEnabled = previous.DcoIsEnabled;
             server.XrayClientsPolledAt = previous.XrayClientsPolledAt;
             server.XrayClientsPollError = previous.XrayClientsPollError;
+            server.ManagerVersion = previous.ManagerVersion;
+            // Manager poll flag — never take composed DTO IsOnline from the form.
+            server.IsOnline = previous.IsOnline;
+            // AvailabilityCheck-owned — never reset from Adapt defaults.
+            server.IsAvailableByExternalProbe = previous.IsAvailableByExternalProbe;
+            server.ExternalProbeCheckedAtUtc = previous.ExternalProbeCheckedAtUtc;
+            server.ExternalProbeSummary = previous.ExternalProbeSummary;
 
             // Update this server
             server.LastUpdate = now;
@@ -294,6 +312,7 @@ public class VpnDataService(
             return;
 
         var links = quotaPlanIds
+            .Where(id => id > 0)
             .Distinct()
             .Select(planId => new QuotaPlanAllowedServer
             {
@@ -301,6 +320,9 @@ public class VpnDataService(
                 QuotaPlanId = planId
             })
             .ToList();
+
+        if (links.Count == 0)
+            return;
 
         await quotaPlanAllowedServerCommandService.AddRange(links, saveChanges: true, ct);
     }
@@ -359,6 +381,32 @@ public class VpnDataService(
         {
             logger.LogDebug(ex, "VpnServerId: {Id}. Could not load node PublicIp for default export config.", vpnServerId);
             return null;
+        }
+    }
+
+    private async Task TryEnrichCoordinatesSafelyAsync(
+        VpnServer server,
+        string? preferredPublicIp,
+        CancellationToken ct)
+    {
+        try
+        {
+            // Hard budget so a cold GeoLite open cannot stall Add/Update.
+            using var budget = CancellationTokenSource.CreateLinkedTokenSource(ct);
+            budget.CancelAfter(TimeSpan.FromMilliseconds(250));
+            await vpnServerCoordinateEnricher.TryFillMissingAsync(server, preferredPublicIp, budget.Token);
+        }
+        catch (OperationCanceledException) when (ct.IsCancellationRequested)
+        {
+            throw;
+        }
+        catch (OperationCanceledException)
+        {
+            logger.LogDebug("VpnServer coordinate enrichment hit time budget; continuing save without coordinates.");
+        }
+        catch (Exception ex)
+        {
+            logger.LogWarning(ex, "VpnServer coordinate enrichment failed; continuing save without coordinates.");
         }
     }
 }

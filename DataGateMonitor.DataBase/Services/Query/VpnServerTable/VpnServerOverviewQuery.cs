@@ -81,6 +81,48 @@ public class VpnServerOverviewQuery(IUnitOfWork uow) : IVpnServerOverviewQuery
             : (counters.CountConnectedClients, counters.CountSessions);
     }
 
+    public async Task<IReadOnlyDictionary<int, bool>> GetOnlineFlagsAsync(
+        IReadOnlyCollection<int> vpnServerIds, CancellationToken ct = default)
+    {
+        if (vpnServerIds == null || vpnServerIds.Count == 0)
+            return new Dictionary<int, bool>();
+
+        var ids = vpnServerIds.Where(id => id > 0).Distinct().ToArray();
+        if (ids.Length == 0)
+            return new Dictionary<int, bool>();
+
+        var rows = await uow.GetQuery<VpnServer>().AsQueryable()
+            .AsNoTracking()
+            .Where(s => ids.Contains(s.Id))
+            .Select(s => new
+            {
+                s.Id,
+                Online = s.IsOnline && !s.IsDeleted && s.IsAvailableByExternalProbe,
+            })
+            .ToListAsync(ct);
+
+        return rows.ToDictionary(r => r.Id, r => r.Online);
+    }
+
+    public async Task<IReadOnlyDictionary<int, bool>> GetExternalProbeFlagsAsync(
+        IReadOnlyCollection<int> vpnServerIds, CancellationToken ct = default)
+    {
+        if (vpnServerIds == null || vpnServerIds.Count == 0)
+            return new Dictionary<int, bool>();
+
+        var ids = vpnServerIds.Where(id => id > 0).Distinct().ToArray();
+        if (ids.Length == 0)
+            return new Dictionary<int, bool>();
+
+        var rows = await uow.GetQuery<VpnServer>().AsQueryable()
+            .AsNoTracking()
+            .Where(s => ids.Contains(s.Id))
+            .Select(s => new { s.Id, s.IsAvailableByExternalProbe })
+            .ToListAsync(ct);
+
+        return rows.ToDictionary(r => r.Id, r => r.IsAvailableByExternalProbe);
+    }
+
     private async Task<List<VpnServerWithStatusDto>> ComposeWithStatusAsync(
         List<VpnServer> serverList,
         CancellationToken ct)

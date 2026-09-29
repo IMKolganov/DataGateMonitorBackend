@@ -11,6 +11,11 @@ public interface IVpnNodePublicIpLookup
     /// </summary>
     Task<string?> GetAsync(int vpnServerId, VpnServerType serverType, CancellationToken cancellationToken);
 
+    /// <summary>
+    /// Returns a previously cached PublicIp without calling the node. Null = miss or negative cache.
+    /// </summary>
+    string? TryGetCached(int vpnServerId);
+
     /// <summary>Drop cached PublicIp for a server (e.g. after ApiUrl change or delete).</summary>
     void Invalidate(int vpnServerId);
 }
@@ -54,6 +59,14 @@ public sealed class VpnNodePublicIpLookup(
 
         memoryCache.Set(cacheKey, ip ?? string.Empty, ip is null ? NegativeTtl : PositiveTtl);
         return ip;
+    }
+
+    public string? TryGetCached(int vpnServerId)
+    {
+        if (!memoryCache.TryGetValue(CacheKey(vpnServerId), out string? cached))
+            return null;
+
+        return string.IsNullOrEmpty(cached) ? null : cached;
     }
 
     public void Invalidate(int vpnServerId)

@@ -159,6 +159,7 @@ public static class ServiceConfiguration
             client.Timeout = TimeSpan.FromSeconds(10);
         });
         services.AddScoped<IVpnNodePublicIpLookup, VpnNodePublicIpLookup>();
+        services.AddScoped<IVpnServerCoordinateEnricher, VpnServerCoordinateEnricher>();
         services.AddScoped<IVpnServerClientPresenceService, VpnServerClientPresenceService>();
 
         services.AddScoped<IUserService, UserService>();

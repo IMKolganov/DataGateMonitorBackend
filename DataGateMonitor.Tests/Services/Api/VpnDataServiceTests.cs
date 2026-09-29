@@ -79,6 +79,7 @@ public class VpnDataServiceTests
             microserviceFactory.Object,
             eventFactory.Object,
             Mock.Of<IVpnNodePublicIpLookup>(),
+            Mock.Of<IVpnServerCoordinateEnricher>(),
             Mock.Of<IVpnServerClientPresenceService>());
 
         return (svc, log, quotaPlanQ, serverQ, cfgQ, trx, serverCmd, cfgCmd, quotaPlanCmd, tagCmd, notification, statusCacheGeneration, microserviceInfo, microserviceFactory, eventFactory);

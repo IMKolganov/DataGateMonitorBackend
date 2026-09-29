@@ -210,7 +210,41 @@ public class GlobalExceptionMiddleware(
             return true;
         }
 
-        message = "A resource with these values already exists. Change the unique fields and try again.";
+        if (haystack.Contains("QuotaPlanAllowedServer", StringComparison.OrdinalIgnoreCase))
+        {
+            message = "This server is already linked to one of the selected quota plans.";
+            return true;
+        }
+
+        if (haystack.Contains("VpnServerTag", StringComparison.OrdinalIgnoreCase)
+            || haystack.Contains("IX_VpnServerTags", StringComparison.OrdinalIgnoreCase))
+        {
+            message = "This server is already linked to one of the selected tags.";
+            return true;
+        }
+
+        if (haystack.Contains("VpnServerDiscover", StringComparison.OrdinalIgnoreCase)
+            || haystack.Contains("ApiUrl", StringComparison.OrdinalIgnoreCase)
+               && haystack.Contains("Discover", StringComparison.OrdinalIgnoreCase))
+        {
+            message = "A server discovery with the same API URL already exists.";
+            return true;
+        }
+
+        // Settings PK collisions usually mean identity sequence lag after HasData seeds,
+        // not a user-facing "change your unique fields" mistake.
+        if (haystack.Contains("PK_Settings", StringComparison.OrdinalIgnoreCase)
+            || (haystack.Contains("Settings", StringComparison.OrdinalIgnoreCase)
+                && haystack.Contains("Id", StringComparison.OrdinalIgnoreCase)))
+        {
+            message = "Could not save setting due to an ID conflict. Retry; if it persists, reset the Settings identity sequence.";
+            return true;
+        }
+
+        // Keep constraint name so ops can see which unique index fired (no SQLSTATE dump).
+        message = string.IsNullOrWhiteSpace(constraint)
+            ? "A resource with these values already exists. Change the unique fields and try again."
+            : $"A resource with these values already exists ({constraint}). Change the unique fields and try again.";
         return true;
     }
 

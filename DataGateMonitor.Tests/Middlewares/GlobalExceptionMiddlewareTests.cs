@@ -126,6 +126,50 @@ public class GlobalExceptionMiddlewareTests
     }
 
     [Fact]
+    public async Task InvokeAsync_WhenDbUniqueQuotaPlanLink_Returns409_FriendlyMessage()
+    {
+        var context = CreateContext();
+        var pg = new Npgsql.PostgresException(
+            "duplicate key value violates unique constraint \"PK_QuotaPlanAllowedServers\"",
+            severity: "ERROR",
+            invariantSeverity: "ERROR",
+            sqlState: "23505");
+        RequestDelegate next = _ => throw new Microsoft.EntityFrameworkCore.DbUpdateException("Save failed", pg);
+        var (middleware, _) = CreateMiddleware(next);
+
+        await middleware.InvokeAsync(context);
+
+        Assert.Equal(StatusCodes.Status409Conflict, context.Response.StatusCode);
+        var body = await ReadResponseBodyAsync(context.Response);
+        var json = JObject.Parse(body);
+        Assert.Equal(
+            "This server is already linked to one of the selected quota plans.",
+            json["message"]?.Value<string>());
+    }
+
+    [Fact]
+    public async Task InvokeAsync_WhenDbUniqueSettingsPk_Returns409_FriendlyMessage()
+    {
+        var context = CreateContext();
+        var pg = new Npgsql.PostgresException(
+            "duplicate key value violates unique constraint \"PK_Settings\"",
+            severity: "ERROR",
+            invariantSeverity: "ERROR",
+            sqlState: "23505");
+        RequestDelegate next = _ => throw new Microsoft.EntityFrameworkCore.DbUpdateException("Save failed", pg);
+        var (middleware, _) = CreateMiddleware(next);
+
+        await middleware.InvokeAsync(context);
+
+        Assert.Equal(StatusCodes.Status409Conflict, context.Response.StatusCode);
+        var body = await ReadResponseBodyAsync(context.Response);
+        var json = JObject.Parse(body);
+        Assert.Equal(
+            "Could not save setting due to an ID conflict. Retry; if it persists, reset the Settings identity sequence.",
+            json["message"]?.Value<string>());
+    }
+
+    [Fact]
     public async Task InvokeAsync_WhenDbUniqueVpnServerName_Returns409_WithoutSqlLeak()
     {
         var context = CreateContext();

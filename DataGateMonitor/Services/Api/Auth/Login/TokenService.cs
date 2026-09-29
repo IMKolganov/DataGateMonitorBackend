@@ -94,13 +94,29 @@ public sealed class TokenService(
         if (!string.IsNullOrWhiteSpace(deviceId) && existing.DeviceId != null && existing.DeviceId != deviceId)
             throw new UnauthorizedAccessException("Invalid device.");
 
-        // Reuse of an already-rotated token → revoke the whole family (stolen-token signal).
+        // Reuse of an already-rotated token. Concurrent tabs often retry the old token right after
+        // another request won the rotation — that must NOT wipe the winner's session. Only treat as
+        // theft (family revoke) when reuse happens after the grace window.
         if (existing.RevokedAt != null)
         {
-            if (existing.ReplacedByTokenId != null)
+            if (existing.ReplacedByTokenId != null && !IsWithinRefreshReuseGrace(existing.RevokedAt.Value, now))
                 await RevokeAllActiveRefreshTokensForUserAsync(existing.UserId, now, ct);
 
             throw new UnauthorizedAccessException("Refresh token is revoked.");
+        }
+
+        // Fail closed before rotating so a blocked/idle user does not orphan a new refresh row.
+        var user = await userQueryService.GetById(existing.UserId, ct)
+                   ?? throw new InvalidOperationException("User not found.");
+
+        if (user.IsBlocked)
+            throw new UnauthorizedAccessException("User account is blocked.");
+
+        var roleOnRefresh = await userRoleService.GetUserRoleNameAsync(user.Id, ct);
+        if (AdminIdleSessionTracker.IsAdminRole(roleOnRefresh))
+        {
+            if (adminIdleSessionTracker.IsExpired(user.Id))
+                throw new UnauthorizedAccessException("Administrator session expired due to inactivity.");
         }
 
         var refreshLifetimeDays = configuration.GetValue<int?>("Jwt:RefreshLifetimeDays") ?? 30;
@@ -138,26 +154,22 @@ public sealed class TokenService(
             throw new UnauthorizedAccessException("Refresh token is revoked.");
         }
 
-        var user = await userQueryService.GetById(existing.UserId, ct)
-                   ?? throw new InvalidOperationException("User not found.");
-
-        if (user.IsBlocked)
-            throw new UnauthorizedAccessException("User account is blocked.");
-
-        var roleOnRefresh = await userRoleService.GetUserRoleNameAsync(user.Id, ct);
         if (AdminIdleSessionTracker.IsAdminRole(roleOnRefresh))
-        {
-            if (adminIdleSessionTracker.IsExpired(user.Id))
-                throw new UnauthorizedAccessException("Administrator session expired due to inactivity.");
-
             adminIdleSessionTracker.Touch(user.Id);
-        }
 
         var resolvedExternalId = await ResolveExternalIdAsync(user, externalId: null, ct);
 
         var (accessToken, accessExpiresAt) = await CreateAccessTokenAsync(user, resolvedExternalId, ct);
 
         return new TokenPair(accessToken, accessExpiresAt, newRefreshToken, newRefreshExpiresAt);
+    }
+
+    private bool IsWithinRefreshReuseGrace(DateTimeOffset revokedAt, DateTimeOffset now)
+    {
+        var graceSeconds = configuration.GetValue<int?>("Jwt:RefreshReuseGraceSeconds") ?? 60;
+        if (graceSeconds <= 0)
+            return false;
+        return revokedAt.AddSeconds(graceSeconds) >= now;
     }
 
     private Task<int> RevokeAllActiveRefreshTokensForUserAsync(

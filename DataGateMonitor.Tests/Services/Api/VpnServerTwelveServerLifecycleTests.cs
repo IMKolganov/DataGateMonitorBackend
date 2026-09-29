@@ -100,17 +100,18 @@ public class VpnServerTwelveServerLifecycleTests
             VpnServerLifecycleEnvironment.AssertSnapshot(state.Snapshot(id), expected[id]);
         }
 
-        // —— Phase 4: IsOnline only ——
+        // —— Phase 4: UpdateVpnServer must NOT rewrite manager IsOnline (poller-owned) ——
         for (var i = 0; i < ServerCount; i++)
         {
             var id = serverIds[i];
             var before = state.CaptureAllSnapshots();
             var entity = CloneServer(state.GetServer(id));
-            entity.IsOnline = !expected[id].IsOnline;
+            var onlineBefore = expected[id].IsOnline;
+            entity.IsOnline = !onlineBefore;
 
             await svc.UpdateVpnServer(entity, expected[id].QuotaPlanIds.ToList(), expected[id].TagIds.ToList(), CancellationToken.None);
 
-            expected[id] = SyncExportConfig(expected[id] with { IsOnline = entity.IsOnline }, state);
+            Assert.Equal(onlineBefore, state.GetServer(id).IsOnline);
             env.AssertUnchangedExcept(id, before);
             VpnServerLifecycleEnvironment.AssertSnapshot(state.Snapshot(id), expected[id]);
         }
@@ -210,9 +211,10 @@ public class VpnServerTwelveServerLifecycleTests
             var id = serverIds[i];
             var before = state.CaptureAllSnapshots();
             var entity = CloneServer(state.GetServer(id));
+            var onlineBefore = state.GetServer(id).IsOnline;
             entity.ServerName = $"lifecycle-final-{i + 1:D2}";
             entity.ApiUrl = $"https://final-{i + 1:D2}.example.test/";
-            entity.IsOnline = i % 2 == 1;
+            entity.IsOnline = i % 2 == 1; // ignored by UpdateVpnServer — poller-owned
             entity.IsDefault = i == ServerCount - 1;
             entity.IsDisable = false;
             entity.Latitude = 10 * i;
@@ -234,7 +236,7 @@ public class VpnServerTwelveServerLifecycleTests
                     id,
                     entity.ServerName,
                     entity.ApiUrl,
-                    entity.IsOnline,
+                    onlineBefore,
                     entity.IsDefault,
                     entity.IsDisable,
                     entity.Latitude,
