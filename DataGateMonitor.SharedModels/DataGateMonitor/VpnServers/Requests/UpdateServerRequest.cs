@@ -28,6 +28,9 @@ public class UpdateServerRequest
 
     public bool IsPiHoleEnabled { get; set; }
 
+    /// <summary>When false, external availability probe skips this server.</summary>
+    public bool IsAvailabilityCheckEnabled { get; set; } = true;
+
     public List<int> QuotaPlanIds { get; set; } = new();
 
     public List<int> TagIds { get; set; } = new();

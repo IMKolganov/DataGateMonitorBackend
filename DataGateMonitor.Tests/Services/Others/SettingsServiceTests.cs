@@ -116,6 +116,8 @@ public class SettingsServiceTests
         var (svc, q, cmd) = CreateService();
         q.Setup(x => x.FirstOrDefault(It.IsAny<Expression<Func<Setting, bool>>>(), null, false, It.IsAny<CancellationToken>(), It.IsAny<Expression<Func<Setting, object>>[]>()))
             .ReturnsAsync((Setting?)null);
+        q.Setup(x => x.FirstOrDefault(null, It.IsAny<Func<IQueryable<Setting>, IOrderedQueryable<Setting>>>(), true, It.IsAny<CancellationToken>(), It.IsAny<Expression<Func<Setting, object>>[]>()))
+            .ReturnsAsync(new Setting { Id = 22, Key = "seed", ValueType = "int" });
 
         Setting? saved = null;
         cmd.Setup(c => c.Add(It.IsAny<Setting>(), true, It.IsAny<CancellationToken>()))
@@ -125,7 +127,8 @@ public class SettingsServiceTests
         await svc.SetValueAsync<object?>("K", null, CancellationToken.None);
 
         saved.Should().NotBeNull();
-        saved!.Key.Should().Be("K");
+        saved!.Id.Should().Be(23);
+        saved.Key.Should().Be("K");
         saved.ValueType.Should().Be("null");
         saved.IntValue.Should().BeNull();
         saved.BoolValue.Should().BeNull();
@@ -146,6 +149,8 @@ public class SettingsServiceTests
         var (svc, q, cmd) = CreateService();
         q.Setup(x => x.FirstOrDefault(It.IsAny<Expression<Func<Setting, bool>>>(), null, false, It.IsAny<CancellationToken>(), It.IsAny<Expression<Func<Setting, object>>[]>()))
             .ReturnsAsync((Setting?)null);
+        q.Setup(x => x.FirstOrDefault(null, It.IsAny<Func<IQueryable<Setting>, IOrderedQueryable<Setting>>>(), true, It.IsAny<CancellationToken>(), It.IsAny<Expression<Func<Setting, object>>[]>()))
+            .ReturnsAsync((Setting?)null);
 
         Setting? saved = null;
         cmd.Setup(c => c.Add(It.IsAny<Setting>(), true, It.IsAny<CancellationToken>()))
@@ -155,7 +160,8 @@ public class SettingsServiceTests
         await svc.SetValueAsync("Age", 33, CancellationToken.None);
 
         saved.Should().NotBeNull();
-        saved!.Key.Should().Be("Age");
+        saved!.Id.Should().Be(1);
+        saved.Key.Should().Be("Age");
         saved.ValueType.Should().Be("int");
         saved.IntValue.Should().Be(33);
         saved.BoolValue.Should().BeNull();

@@ -17,6 +17,31 @@ public class GeoLiteDatabaseFactory
     public bool IsDatabaseLoaded => _currentDb != null;
     public string DatabasePath => _dbPath ?? string.Empty;
 
+    /// <summary>
+    /// Best-effort: returns true when the GeoLite2 City DB is loaded (or can be loaded from the configured path).
+    /// Never throws for missing/misconfigured databases.
+    /// </summary>
+    public virtual async Task<bool> TryEnsureReadyAsync(CancellationToken cancellationToken)
+    {
+        if (IsDatabaseLoaded)
+            return true;
+
+        try
+        {
+            await EnsureDatabaseLoadedAsync(cancellationToken).ConfigureAwait(false);
+            return IsDatabaseLoaded;
+        }
+        catch (OperationCanceledException) when (cancellationToken.IsCancellationRequested)
+        {
+            throw;
+        }
+        catch (Exception ex)
+        {
+            _logger.LogDebug(ex, "GeoLite2 database is not ready.");
+            return false;
+        }
+    }
+
     public GeoLiteDatabaseFactory(ILogger<GeoLiteDatabaseFactory> logger, IServiceProvider serviceProvider)
     {
         _serviceProvider = serviceProvider;

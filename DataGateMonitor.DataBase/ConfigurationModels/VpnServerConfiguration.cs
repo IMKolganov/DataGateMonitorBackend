@@ -21,6 +21,13 @@ public class VpnServerConfiguration : BaseEntityConfiguration<VpnServer, int>
             .IsRequired();
 
         entity.Property(e => e.IsOnline);
+        entity.Property(e => e.IsAvailableByExternalProbe)
+            .HasDefaultValue(true);
+        entity.Property(e => e.ExternalProbeCheckedAtUtc);
+        entity.Property(e => e.ExternalProbeSummary)
+            .HasMaxLength(500);
+        entity.Property(e => e.IsAvailabilityCheckEnabled)
+            .HasDefaultValue(true);
         entity.Property(e => e.IsDefault);
         entity.Property(e => e.IsDisable);
 
@@ -63,6 +70,7 @@ public class VpnServerConfiguration : BaseEntityConfiguration<VpnServer, int>
             .HasFilter("\"IsDeleted\" = FALSE");
 
         entity.HasIndex(e => e.IsOnline);
+        entity.HasIndex(e => e.IsAvailableByExternalProbe);
 
         entity.HasIndex(e => e.IsDefault);
 

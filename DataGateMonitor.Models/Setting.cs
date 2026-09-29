@@ -4,7 +4,8 @@ namespace DataGateMonitor.Models;
 
 public class Setting : BaseEntity<int>
 {
-    [Key]
+    // Key is the logical unique name; numeric Id (BaseEntity) is the PK.
+    // Do not mark Key as [Key] — that fights HasKey(Id) and confuses upserts.
     [Required]
     public string Key { get; set; } = null!;
     public string? StringValue { get; set; }

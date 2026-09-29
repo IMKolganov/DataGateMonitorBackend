@@ -468,6 +468,12 @@ public sealed class VpnServerDiscoveryService(
         if (!VpnServerApiUrlHelper.TryGetEndpointHostPort(normalizedApiUrl, out var host, out var managerApiPort))
             return null;
 
+        // nginx-fronted HTTPS :443 / HTTP :80 is not a manager API port — same rule as
+        // TryResolveManagerApiPort. Otherwise UDP+TCP (and any stacks sharing one public IP)
+        // collapse into one pending discovery when both announce https://*.domain/.
+        if (VpnServerApiUrlHelper.UsesSchemeDefaultPort(normalizedApiUrl))
+            return null;
+
         var hostIp = VpnServerApiUrlHelper.TryParseHostIp(host)
             ?? await ResolveHostIpAsync(host, ct);
         var resolvedPublicIp = VpnServerNodeIdentityResolver.TryResolvePublicIp(
@@ -514,6 +520,9 @@ public sealed class VpnServerDiscoveryService(
     private static VpnServerApiUrlHelper.ManagerEndpointKey? BuildDiscoveryNodeIdentityKey(VpnServerDiscovery discovery)
     {
         if (!VpnServerApiUrlHelper.TryGetEndpointHostPort(discovery.ApiUrl, out _, out var managerApiPort))
+            return null;
+
+        if (VpnServerApiUrlHelper.UsesSchemeDefaultPort(discovery.ApiUrl))
             return null;
 
         var publicIp = VpnServerNodeIdentityResolver.TryResolvePublicIp(
