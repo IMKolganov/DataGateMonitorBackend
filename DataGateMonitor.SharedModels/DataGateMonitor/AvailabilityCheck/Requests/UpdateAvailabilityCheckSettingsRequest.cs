@@ -10,4 +10,9 @@ public sealed class UpdateAvailabilityCheckSettingsRequest
     /// Each VPN server is probed using its <c>ApiUrl</c> as the target.
     /// </summary>
     public string ProbeUrl { get; set; } = string.Empty;
+
+    /// <summary>
+    /// Background probe interval in seconds (clamped server-side). Default 300 (5 minutes).
+    /// </summary>
+    public int IntervalSeconds { get; set; } = 300;
 }

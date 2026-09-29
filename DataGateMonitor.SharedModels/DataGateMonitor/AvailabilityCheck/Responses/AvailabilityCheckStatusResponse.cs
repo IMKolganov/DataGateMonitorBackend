@@ -8,6 +8,9 @@ public sealed class AvailabilityCheckStatusResponse
 
     public string ProbeUrl { get; set; } = string.Empty;
 
+    /// <summary>Background probe interval in seconds.</summary>
+    public int IntervalSeconds { get; set; } = 300;
+
     public DateTimeOffset? LastCheckedAtUtc { get; set; }
 
     public List<AvailabilityCheckServerResultDto> Servers { get; set; } = [];
