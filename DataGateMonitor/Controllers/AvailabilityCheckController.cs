@@ -36,17 +36,6 @@ public class AvailabilityCheckController(
         if (request is null)
             return BadRequest(ApiResponse<AvailabilityCheckStatusResponse>.ErrorResponse("Request body is required."));
 
-        var targetUrl = (request.TargetUrl ?? string.Empty).Trim();
-        if (string.IsNullOrWhiteSpace(targetUrl))
-            targetUrl = AvailabilityCheckSettingsKeys.DefaultTargetUrl;
-
-        if (!Uri.TryCreate(targetUrl, UriKind.Absolute, out var targetUri)
-            || (targetUri.Scheme != Uri.UriSchemeHttp && targetUri.Scheme != Uri.UriSchemeHttps))
-        {
-            return BadRequest(ApiResponse<AvailabilityCheckStatusResponse>.ErrorResponse(
-                "TargetUrl must be an absolute http(s) URL."));
-        }
-
         var probeUrl = (request.ProbeUrl ?? string.Empty).Trim();
         if (string.IsNullOrWhiteSpace(probeUrl))
             probeUrl = AvailabilityCheckSettingsKeys.DefaultProbeUrl;
@@ -60,9 +49,6 @@ public class AvailabilityCheckController(
 
         await settingsService
             .SetValueAsync(AvailabilityCheckSettingsKeys.Enabled, request.Enabled, ct)
-            .ConfigureAwait(false);
-        await settingsService
-            .SetValueAsync(AvailabilityCheckSettingsKeys.TargetUrl, targetUrl, ct)
             .ConfigureAwait(false);
         await settingsService
             .SetValueAsync(AvailabilityCheckSettingsKeys.ProbeUrl, probeUrl, ct)

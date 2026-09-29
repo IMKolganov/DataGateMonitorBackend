@@ -9,6 +9,18 @@ public class VpnServer : BaseEntity<int>
 
     public string ServerName { get; set; } = string.Empty;
     public bool IsOnline { get; set; } = false;
+
+    /// <summary>
+    /// Result of the external availability probe (status.rackot.ru-compatible).
+    /// Written only by AvailabilityCheck — never by OpenVPN/Xray pollers (<see cref="IsOnline"/>).
+    /// Default true so servers are not marked blocked before the first probe.
+    /// </summary>
+    public bool IsAvailableByExternalProbe { get; set; } = true;
+
+    public DateTimeOffset? ExternalProbeCheckedAtUtc { get; set; }
+
+    public string? ExternalProbeSummary { get; set; }
+
     public bool IsDefault { get; set; } = false;
     public bool IsDisable { get; set; } = false;
     public string ApiUrl { get; set; } = string.Empty;

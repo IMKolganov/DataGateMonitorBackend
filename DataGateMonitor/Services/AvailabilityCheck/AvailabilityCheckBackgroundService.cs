@@ -6,8 +6,11 @@ public sealed class AvailabilityCheckBackgroundService(
     ILogger<AvailabilityCheckBackgroundService> logger,
     IServiceScopeFactory scopeFactory) : BackgroundService
 {
-    private static readonly TimeSpan LoopDelay = TimeSpan.FromMinutes(5);
-    private static readonly TimeSpan StartupDelay = TimeSpan.FromSeconds(30);
+    /// <summary>Overridable for unit tests (defaults: 30s startup, 5m loop).</summary>
+    internal static TimeSpan StartupDelay { get; set; } = TimeSpan.FromSeconds(30);
+
+    /// <summary>Overridable for unit tests.</summary>
+    internal static TimeSpan LoopDelay { get; set; } = TimeSpan.FromMinutes(5);
 
     protected override async Task ExecuteAsync(CancellationToken stoppingToken)
     {

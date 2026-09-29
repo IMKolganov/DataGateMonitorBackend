@@ -15,7 +15,8 @@ public class VpnServerMapping : IRegister
             .Map(dest => dest.Id, src => src.Id)
             .Map(dest => dest.ServerType, src => src.ServerType)
             .Map(dest => dest.ServerName, src => src.ServerName)
-            .Map(dest => dest.IsOnline, src => src.IsOnline && !src.IsDeleted)
+            .Map(dest => dest.IsOnline, src => src.IsOnline && !src.IsDeleted && src.IsAvailableByExternalProbe)
+            .Map(dest => dest.IsAvailableByExternalProbe, src => src.IsAvailableByExternalProbe)
             .Map(dest => dest.IsDefault, src => src.IsDefault)
             .Map(dest => dest.ApiUrl, src => src.ApiUrl)
             .Map(dest => dest.Latitude, src => src.Latitude)
@@ -35,7 +36,19 @@ public class VpnServerMapping : IRegister
             .Ignore(dest => dest.Tags);
 
         config.NewConfig<UpdateServerRequest, VpnServer>()
-            .Map(dest => dest.IsDisable, src => src.IsDisabled);
+            .Map(dest => dest.IsDisable, src => src.IsDisabled)
+            // IsOnline on the request is the composed dashboard badge — never write it to the entity.
+            .Ignore(dest => dest.IsOnline)
+            .Ignore(dest => dest.IsAvailableByExternalProbe)
+            .Ignore(dest => dest.ExternalProbeCheckedAtUtc)
+            .Ignore(dest => dest.ExternalProbeSummary)
+            .Ignore(dest => dest.ManagerVersion)
+            .Ignore(dest => dest.IsDeleted)
+            .Ignore(dest => dest.DcoIsEnabled)
+            .Ignore(dest => dest.XrayClientsPolledAt)
+            .Ignore(dest => dest.XrayClientsPollError)
+            .Ignore(dest => dest.VpnServerGroupId)
+            .Ignore(dest => dest.SortOrder);
 
         config.NewConfig<AddServerRequest, VpnServer>()
             .Map(dest => dest.IsDisable, src => src.IsDisabled);
@@ -66,6 +79,7 @@ public class VpnServerMapping : IRegister
             .Map(dest => dest.ServiceStatus.CountSessions, src => src.CountSessions)
             .Map(dest => dest.ServiceStatus.ErrorMessage, src => src.ErrorMessage)
             .Map(dest => dest.ServiceStatus.NextRunTime, src => src.NextRunTime)
-            .Map(dest => dest.ServiceStatus.IsOnline, src => src.IsOnline);
+            .Map(dest => dest.ServiceStatus.IsOnline, src => src.IsOnline)
+            .Map(dest => dest.ServiceStatus.IsAvailableByExternalProbe, src => src.IsAvailableByExternalProbe);
     }
 }

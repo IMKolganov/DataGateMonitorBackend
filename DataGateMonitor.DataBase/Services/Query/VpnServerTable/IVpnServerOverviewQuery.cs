@@ -17,8 +17,13 @@ public interface IVpnServerOverviewQuery
 
     /// <summary>
     /// Batch Online flags for SignalR status stream (one query, no overview compose).
-    /// Value is <c>IsOnline &amp;&amp; !IsDeleted</c> (same rule as REST VpnServerDto mapping).
+    /// Value is <c>IsOnline &amp;&amp; !IsDeleted &amp;&amp; IsAvailableByExternalProbe</c>
+    /// (same rule as REST VpnServerDto mapping).
     /// </summary>
     Task<IReadOnlyDictionary<int, bool>> GetOnlineFlagsAsync(
+        IReadOnlyCollection<int> vpnServerIds, CancellationToken ct = default);
+
+    /// <summary>Raw <c>IsAvailableByExternalProbe</c> flags (AvailabilityCheck-owned).</summary>
+    Task<IReadOnlyDictionary<int, bool>> GetExternalProbeFlagsAsync(
         IReadOnlyCollection<int> vpnServerIds, CancellationToken ct = default);
 }

@@ -1,6 +1,7 @@
 using System.Diagnostics;
 using DataGateMonitor.SharedModels.DataGateMonitor.AvailabilityCheck.Dto;
 using Newtonsoft.Json;
+using Newtonsoft.Json.Serialization;
 
 namespace DataGateMonitor.Services.AvailabilityCheck;
 
@@ -18,10 +19,17 @@ public sealed class AvailabilityCheckProbeClient(
 {
     public const string HttpClientName = "AvailabilityCheckProbe";
 
+    /// <summary>
+    /// check.cgi (and compatible probes) return snake_case JSON; map onto PascalCase DTOs.
+    /// </summary>
     private static readonly JsonSerializerSettings JsonSettings = new()
     {
         NullValueHandling = NullValueHandling.Include,
         MissingMemberHandling = MissingMemberHandling.Ignore,
+        ContractResolver = new DefaultContractResolver
+        {
+            NamingStrategy = new SnakeCaseNamingStrategy(),
+        },
     };
 
     public async Task<(AvailabilityProbeResultDto? Result, string? Error, long DurationMs)> ProbeAsync(
@@ -68,8 +76,7 @@ public sealed class AvailabilityCheckProbeClient(
     }
 
     /// <summary>
-    /// Builds <c>{probeUrl}?target={urlencoded}</c>. Any existing query string on <paramref name="probeUrl"/> is dropped
-    /// so callers can point at any compatible check.cgi-style endpoint.
+    /// Builds <c>{probeUrl}?target={urlencoded}</c>. Any existing query string on <paramref name="probeUrl"/> is dropped.
     /// </summary>
     internal static string BuildProbeRequestUrl(string probeUrl, string targetUrl)
     {

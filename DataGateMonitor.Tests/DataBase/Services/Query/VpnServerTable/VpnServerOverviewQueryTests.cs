@@ -451,7 +451,7 @@ public class VpnServerOverviewQueryTests
     }
 
     [Fact]
-    public async Task GetOnlineFlagsAsync_Returns_IsOnline_And_False_For_Deleted()
+    public async Task GetOnlineFlagsAsync_Returns_IsOnline_And_False_For_Deleted_Or_ExternalProbeBlocked()
     {
         var (sut, ctx) = CreateSutWithContext();
         var now = DateTimeOffset.UtcNow;
@@ -462,6 +462,7 @@ public class VpnServerOverviewQueryTests
                 Id = 1,
                 ServerName = "online",
                 IsOnline = true,
+                IsAvailableByExternalProbe = true,
                 IsDeleted = false,
                 ApiUrl = "https://a",
                 CreateDate = now,
@@ -472,6 +473,7 @@ public class VpnServerOverviewQueryTests
                 Id = 2,
                 ServerName = "offline",
                 IsOnline = false,
+                IsAvailableByExternalProbe = true,
                 IsDeleted = false,
                 ApiUrl = "https://b",
                 CreateDate = now,
@@ -482,19 +484,73 @@ public class VpnServerOverviewQueryTests
                 Id = 3,
                 ServerName = "deleted-but-flagged-online",
                 IsOnline = true,
+                IsAvailableByExternalProbe = true,
                 IsDeleted = true,
                 ApiUrl = "https://c",
+                CreateDate = now,
+                LastUpdate = now,
+            },
+            new VpnServer
+            {
+                Id = 4,
+                ServerName = "manager-online-but-externally-blocked",
+                IsOnline = true,
+                IsAvailableByExternalProbe = false,
+                IsDeleted = false,
+                ApiUrl = "https://d",
                 CreateDate = now,
                 LastUpdate = now,
             });
         await ctx.SaveChangesAsync();
 
-        var flags = await sut.GetOnlineFlagsAsync([1, 2, 3, 99], CancellationToken.None);
+        var flags = await sut.GetOnlineFlagsAsync([1, 2, 3, 4, 99], CancellationToken.None);
 
         Assert.True(flags[1]);
         Assert.False(flags[2]);
         Assert.False(flags[3]);
+        Assert.False(flags[4]);
         Assert.False(flags.ContainsKey(99));
+    }
+
+    [Fact]
+    public async Task GetExternalProbeFlagsAsync_ReturnsRawFlag_NotComposedWithIsOnline()
+    {
+        var (sut, ctx) = CreateSutWithContext();
+        var now = DateTimeOffset.UtcNow;
+
+        await ctx.VpnServers.AddRangeAsync(
+            new VpnServer
+            {
+                Id = 21,
+                ServerName = "manager-offline-probe-ok",
+                IsOnline = false,
+                IsAvailableByExternalProbe = true,
+                IsDeleted = false,
+                ApiUrl = "https://a",
+                CreateDate = now,
+                LastUpdate = now,
+            },
+            new VpnServer
+            {
+                Id = 22,
+                ServerName = "manager-online-probe-blocked",
+                IsOnline = true,
+                IsAvailableByExternalProbe = false,
+                IsDeleted = false,
+                ApiUrl = "https://b",
+                CreateDate = now,
+                LastUpdate = now,
+            });
+        await ctx.SaveChangesAsync();
+
+        var probeFlags = await sut.GetExternalProbeFlagsAsync([21, 22], CancellationToken.None);
+        var onlineFlags = await sut.GetOnlineFlagsAsync([21, 22], CancellationToken.None);
+
+        Assert.True(probeFlags[21]);
+        Assert.False(probeFlags[22]);
+        // Raw probe flag stays true even when manager is offline.
+        Assert.False(onlineFlags[21]);
+        Assert.False(onlineFlags[22]);
     }
 
     // ---- Test DbContext ----

@@ -112,7 +112,7 @@ public class VpnDataService(
                     ct);
             }
 
-            // UpdateServerRequest does not carry list layout fields — preserve them.
+            // UpdateServerRequest must not overwrite poller/probe-owned or list-layout fields.
             server.VpnServerGroupId = previous.VpnServerGroupId;
             server.SortOrder = previous.SortOrder;
             server.CreateDate = previous.CreateDate;
@@ -120,6 +120,13 @@ public class VpnDataService(
             server.DcoIsEnabled = previous.DcoIsEnabled;
             server.XrayClientsPolledAt = previous.XrayClientsPolledAt;
             server.XrayClientsPollError = previous.XrayClientsPollError;
+            server.ManagerVersion = previous.ManagerVersion;
+            // Manager poll flag — never take composed DTO IsOnline from the form.
+            server.IsOnline = previous.IsOnline;
+            // AvailabilityCheck-owned — never reset from Adapt defaults.
+            server.IsAvailableByExternalProbe = previous.IsAvailableByExternalProbe;
+            server.ExternalProbeCheckedAtUtc = previous.ExternalProbeCheckedAtUtc;
+            server.ExternalProbeSummary = previous.ExternalProbeSummary;
 
             // Update this server
             server.LastUpdate = now;
@@ -294,6 +301,7 @@ public class VpnDataService(
             return;
 
         var links = quotaPlanIds
+            .Where(id => id > 0)
             .Distinct()
             .Select(planId => new QuotaPlanAllowedServer
             {
@@ -301,6 +309,9 @@ public class VpnDataService(
                 QuotaPlanId = planId
             })
             .ToList();
+
+        if (links.Count == 0)
+            return;
 
         await quotaPlanAllowedServerCommandService.AddRange(links, saveChanges: true, ct);
     }

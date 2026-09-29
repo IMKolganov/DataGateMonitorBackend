@@ -155,6 +155,58 @@ public class VpnDataServiceAddUpdateExoticTests
     }
 
     [Fact]
+    public async Task UpdateVpnServer_PreservesManagerOnlineAndExternalProbeFlags()
+    {
+        var h = new VpnDataServiceTestHarness();
+        var previous = new VpnServer
+        {
+            Id = 1,
+            ServerName = "🇨🇾 Cyprus",
+            ApiUrl = "http://164.215.15.224:5010/",
+            IsOnline = true,
+            IsAvailableByExternalProbe = false,
+            ExternalProbeSummary = "unreachable",
+            ExternalProbeCheckedAtUtc = DateTimeOffset.Parse("2026-09-29T18:22:25Z"),
+            ManagerVersion = "1.2.3",
+            IsDisable = false,
+        };
+        h.ServerQ.Setup(q => q.GetById(1, It.IsAny<CancellationToken>())).ReturnsAsync(previous);
+        h.ServerQ.Setup(q => q.AnyByServerNameExceptId("🇨🇾 Cyprus", 1, It.IsAny<CancellationToken>()))
+            .ReturnsAsync(false);
+        VpnServer? updated = null;
+        h.ServerCmd.Setup(c => c.Update(It.IsAny<VpnServer>(), true, It.IsAny<CancellationToken>()))
+            .Callback<VpnServer, bool, CancellationToken>((s, _, _) => updated = s)
+            .Returns(Task.FromResult(1));
+        h.CfgQ.Setup(q => q.AnyByVpnServerId(1, It.IsAny<CancellationToken>())).ReturnsAsync(true);
+        var svc = h.Create();
+
+        // Incoming payload mimics form Adapt: composed Online=false, probe default true.
+        await svc.UpdateVpnServer(
+            new VpnServer
+            {
+                Id = 1,
+                ServerName = "🇨🇾 Cyprus",
+                ApiUrl = "http://164.215.15.224:5010/",
+                IsOnline = false,
+                IsAvailableByExternalProbe = true,
+                IsDisable = true,
+                ExternalProbeSummary = null,
+                ManagerVersion = null,
+            },
+            [],
+            [],
+            CancellationToken.None);
+
+        Assert.NotNull(updated);
+        Assert.True(updated!.IsDisable);
+        Assert.True(updated.IsOnline);
+        Assert.False(updated.IsAvailableByExternalProbe);
+        Assert.Equal("unreachable", updated.ExternalProbeSummary);
+        Assert.Equal(previous.ExternalProbeCheckedAtUtc, updated.ExternalProbeCheckedAtUtc);
+        Assert.Equal("1.2.3", updated.ManagerVersion);
+    }
+
+    [Fact]
     public async Task UpdateVpnServer_ReplacesQuotaPlans_ForServerOnly()
     {
         var h = new VpnDataServiceTestHarness();
