@@ -1,3 +1,4 @@
+using DataGateMonitor.Services.Others;
 using Microsoft.Extensions.Hosting;
 
 namespace DataGateMonitor.Services.AvailabilityCheck;
@@ -6,11 +7,8 @@ public sealed class AvailabilityCheckBackgroundService(
     ILogger<AvailabilityCheckBackgroundService> logger,
     IServiceScopeFactory scopeFactory) : BackgroundService
 {
-    /// <summary>Overridable for unit tests (defaults: 30s startup, 5m loop).</summary>
+    /// <summary>Overridable for unit tests (default 30s).</summary>
     internal static TimeSpan StartupDelay { get; set; } = TimeSpan.FromSeconds(30);
-
-    /// <summary>Overridable for unit tests.</summary>
-    internal static TimeSpan LoopDelay { get; set; } = TimeSpan.FromMinutes(5);
 
     protected override async Task ExecuteAsync(CancellationToken stoppingToken)
     {
@@ -45,7 +43,8 @@ public sealed class AvailabilityCheckBackgroundService(
                     logger.LogError(ex, "{Service} iteration failed", nameof(AvailabilityCheckBackgroundService));
                 }
 
-                await Task.Delay(LoopDelay, stoppingToken).ConfigureAwait(false);
+                var delay = await ResolveLoopDelayAsync(stoppingToken).ConfigureAwait(false);
+                await Task.Delay(delay, stoppingToken).ConfigureAwait(false);
             }
         }
         catch (OperationCanceledException)
@@ -54,5 +53,31 @@ public sealed class AvailabilityCheckBackgroundService(
         }
 
         logger.LogInformation("{Service} stopped", nameof(AvailabilityCheckBackgroundService));
+    }
+
+    private async Task<TimeSpan> ResolveLoopDelayAsync(CancellationToken ct)
+    {
+        try
+        {
+            await using var scope = scopeFactory.CreateAsyncScope();
+            var settings = scope.ServiceProvider.GetRequiredService<ISettingsService>();
+            var stored = await settings
+                .GetValueAsync<int>(AvailabilityCheckSettingsKeys.IntervalSeconds, ct)
+                .ConfigureAwait(false);
+
+            // Missing key → GetValueAsync<int> returns 0; treat as default.
+            var seconds = stored > 0
+                ? AvailabilityCheckSettingsKeys.ClampIntervalSeconds(stored)
+                : AvailabilityCheckSettingsKeys.DefaultIntervalSeconds;
+
+            return TimeSpan.FromSeconds(seconds);
+        }
+        catch (Exception ex) when (ex is not OperationCanceledException)
+        {
+            logger.LogWarning(ex, "{Service}: failed to read interval; using default {Seconds}s",
+                nameof(AvailabilityCheckBackgroundService),
+                AvailabilityCheckSettingsKeys.DefaultIntervalSeconds);
+            return TimeSpan.FromSeconds(AvailabilityCheckSettingsKeys.DefaultIntervalSeconds);
+        }
     }
 }

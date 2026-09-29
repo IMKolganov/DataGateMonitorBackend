@@ -17,6 +17,7 @@ public class VpnServerMapping : IRegister
             .Map(dest => dest.ServerName, src => src.ServerName)
             .Map(dest => dest.IsOnline, src => src.IsOnline && !src.IsDeleted && src.IsAvailableByExternalProbe)
             .Map(dest => dest.IsAvailableByExternalProbe, src => src.IsAvailableByExternalProbe)
+            .Map(dest => dest.IsAvailabilityCheckEnabled, src => src.IsAvailabilityCheckEnabled)
             .Map(dest => dest.IsDefault, src => src.IsDefault)
             .Map(dest => dest.ApiUrl, src => src.ApiUrl)
             .Map(dest => dest.Latitude, src => src.Latitude)

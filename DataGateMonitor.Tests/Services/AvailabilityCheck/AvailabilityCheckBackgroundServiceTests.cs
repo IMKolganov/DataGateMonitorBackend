@@ -1,4 +1,5 @@
 using DataGateMonitor.Services.AvailabilityCheck;
+using DataGateMonitor.Services.Others;
 using FluentAssertions;
 using Microsoft.Extensions.DependencyInjection;
 using Microsoft.Extensions.Logging.Abstractions;
@@ -31,6 +32,19 @@ public class AvailabilityCheckEnvironmentTests
     }
 }
 
+public class AvailabilityCheckSettingsKeysTests
+{
+    [Theory]
+    [InlineData(0, 60)]
+    [InlineData(30, 60)]
+    [InlineData(60, 60)]
+    [InlineData(300, 300)]
+    [InlineData(86_400, 86_400)]
+    [InlineData(100_000, 86_400)]
+    public void ClampIntervalSeconds_Bounds(int input, int expected)
+        => AvailabilityCheckSettingsKeys.ClampIntervalSeconds(input).Should().Be(expected);
+}
+
 public class AvailabilityCheckBackgroundServiceTests
 {
     [Fact]
@@ -38,12 +52,10 @@ public class AvailabilityCheckBackgroundServiceTests
     {
         var prev = Environment.GetEnvironmentVariable(AvailabilityCheckEnvironment.DisabledVariable);
         var prevStartup = AvailabilityCheckBackgroundService.StartupDelay;
-        var prevLoop = AvailabilityCheckBackgroundService.LoopDelay;
         try
         {
             Environment.SetEnvironmentVariable(AvailabilityCheckEnvironment.DisabledVariable, "true");
             AvailabilityCheckBackgroundService.StartupDelay = TimeSpan.Zero;
-            AvailabilityCheckBackgroundService.LoopDelay = TimeSpan.FromMilliseconds(50);
 
             var scopeFactory = new Mock<IServiceScopeFactory>(MockBehavior.Strict);
             var sut = new AvailabilityCheckBackgroundService(
@@ -60,7 +72,6 @@ public class AvailabilityCheckBackgroundServiceTests
         {
             Environment.SetEnvironmentVariable(AvailabilityCheckEnvironment.DisabledVariable, prev);
             AvailabilityCheckBackgroundService.StartupDelay = prevStartup;
-            AvailabilityCheckBackgroundService.LoopDelay = prevLoop;
         }
     }
 
@@ -69,12 +80,10 @@ public class AvailabilityCheckBackgroundServiceTests
     {
         var prev = Environment.GetEnvironmentVariable(AvailabilityCheckEnvironment.DisabledVariable);
         var prevStartup = AvailabilityCheckBackgroundService.StartupDelay;
-        var prevLoop = AvailabilityCheckBackgroundService.LoopDelay;
         try
         {
             Environment.SetEnvironmentVariable(AvailabilityCheckEnvironment.DisabledVariable, null);
             AvailabilityCheckBackgroundService.StartupDelay = TimeSpan.Zero;
-            AvailabilityCheckBackgroundService.LoopDelay = TimeSpan.FromHours(1);
 
             var runner = new Mock<IAvailabilityCheckRunner>();
             var ran = new TaskCompletionSource(TaskCreationOptions.RunContinuationsAsynchronously);
@@ -83,8 +92,15 @@ public class AvailabilityCheckBackgroundServiceTests
                 .ReturnsAsync(new DataGateMonitor.SharedModels.DataGateMonitor.AvailabilityCheck.Responses.AvailabilityCheckStatusResponse())
                 .Callback(() => ran.TrySetResult());
 
+            var settings = new Mock<ISettingsService>();
+            // Large interval so the loop doesn't spin after the first run.
+            settings
+                .Setup(s => s.GetValueAsync<int>(AvailabilityCheckSettingsKeys.IntervalSeconds, It.IsAny<CancellationToken>()))
+                .ReturnsAsync(3600);
+
             var services = new ServiceCollection();
             services.AddSingleton(runner.Object);
+            services.AddSingleton(settings.Object);
             await using var provider = services.BuildServiceProvider();
 
             var scopeFactory = provider.GetRequiredService<IServiceScopeFactory>();
@@ -102,7 +118,6 @@ public class AvailabilityCheckBackgroundServiceTests
         {
             Environment.SetEnvironmentVariable(AvailabilityCheckEnvironment.DisabledVariable, prev);
             AvailabilityCheckBackgroundService.StartupDelay = prevStartup;
-            AvailabilityCheckBackgroundService.LoopDelay = prevLoop;
         }
     }
 }

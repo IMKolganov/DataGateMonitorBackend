@@ -21,6 +21,12 @@ public class VpnServer : BaseEntity<int>
 
     public string? ExternalProbeSummary { get; set; }
 
+    /// <summary>
+    /// When false, AvailabilityCheck skips this server and clears probe blocks.
+    /// Default true. Distinct from the global AvailabilityCheck kill-switch in Settings.
+    /// </summary>
+    public bool IsAvailabilityCheckEnabled { get; set; } = true;
+
     public bool IsDefault { get; set; } = false;
     public bool IsDisable { get; set; } = false;
     public string ApiUrl { get; set; } = string.Empty;

@@ -231,6 +231,16 @@ public class GlobalExceptionMiddleware(
             return true;
         }
 
+        // Settings PK collisions usually mean identity sequence lag after HasData seeds,
+        // not a user-facing "change your unique fields" mistake.
+        if (haystack.Contains("PK_Settings", StringComparison.OrdinalIgnoreCase)
+            || (haystack.Contains("Settings", StringComparison.OrdinalIgnoreCase)
+                && haystack.Contains("Id", StringComparison.OrdinalIgnoreCase)))
+        {
+            message = "Could not save setting due to an ID conflict. Retry; if it persists, reset the Settings identity sequence.";
+            return true;
+        }
+
         // Keep constraint name so ops can see which unique index fired (no SQLSTATE dump).
         message = string.IsNullOrWhiteSpace(constraint)
             ? "A resource with these values already exists. Change the unique fields and try again."

@@ -47,6 +47,7 @@ public class AvailabilityCheckController(
                 "ProbeUrl must be an absolute http(s) URL."));
         }
 
+        // Global kill-switch + shared probe endpoint (not per-server).
         await settingsService
             .SetValueAsync(AvailabilityCheckSettingsKeys.Enabled, request.Enabled, ct)
             .ConfigureAwait(false);
@@ -54,7 +55,34 @@ public class AvailabilityCheckController(
             .SetValueAsync(AvailabilityCheckSettingsKeys.ProbeUrl, probeUrl, ct)
             .ConfigureAwait(false);
 
+        var intervalSeconds = AvailabilityCheckSettingsKeys.ClampIntervalSeconds(
+            request.IntervalSeconds > 0
+                ? request.IntervalSeconds
+                : AvailabilityCheckSettingsKeys.DefaultIntervalSeconds);
+        await settingsService
+            .SetValueAsync(AvailabilityCheckSettingsKeys.IntervalSeconds, intervalSeconds, ct)
+            .ConfigureAwait(false);
+
         var snapshot = await checkRunner.RunAsync(ct, force: request.Enabled).ConfigureAwait(false);
+        return Ok(ApiResponse<AvailabilityCheckStatusResponse>.SuccessResponse(snapshot));
+    }
+
+    /// <summary>Enable/disable the external probe for one VPN server only.</summary>
+    [HttpPut("servers/{vpnServerId:int}")]
+    public async Task<ActionResult<ApiResponse<AvailabilityCheckStatusResponse>>> UpdateServerSettings(
+        int vpnServerId,
+        [FromBody] UpdateAvailabilityCheckServerSettingsRequest request,
+        CancellationToken ct)
+    {
+        if (request is null)
+            return BadRequest(ApiResponse<AvailabilityCheckStatusResponse>.ErrorResponse("Request body is required."));
+
+        var snapshot = await checkRunner
+            .SetServerEnabledAsync(vpnServerId, request.Enabled, ct)
+            .ConfigureAwait(false);
+        if (snapshot is null)
+            return NotFound(ApiResponse<AvailabilityCheckStatusResponse>.ErrorResponse("VPN server not found."));
+
         return Ok(ApiResponse<AvailabilityCheckStatusResponse>.SuccessResponse(snapshot));
     }
 

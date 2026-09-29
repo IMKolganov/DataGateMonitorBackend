@@ -10,6 +10,14 @@ namespace DataGateMonitor.Services.AvailabilityCheck;
 public interface IAvailabilityCheckRunner
 {
     Task<AvailabilityCheckStatusResponse> RunAsync(CancellationToken ct, bool force = false);
+
+    /// <summary>
+    /// Enable/disable the probe for one VPN server, then refresh the status snapshot.
+    /// </summary>
+    Task<AvailabilityCheckStatusResponse?> SetServerEnabledAsync(
+        int vpnServerId,
+        bool enabled,
+        CancellationToken ct);
 }
 
 public sealed class AvailabilityCheckRunner(
@@ -21,14 +29,42 @@ public sealed class AvailabilityCheckRunner(
     AvailabilityCheckNotificationTracker notificationTracker,
     ApplicationDbContext db) : IAvailabilityCheckRunner
 {
+    public async Task<AvailabilityCheckStatusResponse?> SetServerEnabledAsync(
+        int vpnServerId,
+        bool enabled,
+        CancellationToken ct)
+    {
+        var server = await db.Set<VpnServer>()
+            .FirstOrDefaultAsync(s => s.Id == vpnServerId && !s.IsDeleted, ct)
+            .ConfigureAwait(false);
+        if (server is null)
+            return null;
+
+        server.IsAvailabilityCheckEnabled = enabled;
+        if (!enabled)
+        {
+            // Opting out must not leave Online blocked by a stale probe result.
+            server.IsAvailableByExternalProbe = true;
+            server.ExternalProbeSummary = "check disabled for this server";
+            server.ExternalProbeCheckedAtUtc = DateTimeOffset.UtcNow;
+            notificationTracker.ClearUnreachable($"server:{server.Id}");
+        }
+
+        await db.SaveChangesAsync(ct).ConfigureAwait(false);
+
+        // Re-run: probes only servers that still have the per-server flag on.
+        return await RunAsync(ct, force: enabled).ConfigureAwait(false);
+    }
+
     public async Task<AvailabilityCheckStatusResponse> RunAsync(CancellationToken ct, bool force = false)
     {
-        var (enabled, probeUrl) = await ResolveSettingsAsync(ct).ConfigureAwait(false);
+        var (enabled, probeUrl, intervalSeconds) = await ResolveSettingsAsync(ct).ConfigureAwait(false);
 
         var snapshot = new AvailabilityCheckStatusResponse
         {
             Enabled = enabled,
             ProbeUrl = probeUrl,
+            IntervalSeconds = intervalSeconds,
             LastCheckedAtUtc = DateTimeOffset.UtcNow,
         };
 
@@ -40,7 +76,7 @@ public sealed class AvailabilityCheckRunner(
 
         if (!enabled && !force)
         {
-            // Feature off → clear blocks so manager IsOnline alone drives the badge.
+            // Global kill-switch off → clear blocks so manager IsOnline alone drives the badge.
             foreach (var server in servers.Where(s => !s.IsAvailableByExternalProbe))
             {
                 server.IsAvailableByExternalProbe = true;
@@ -56,14 +92,29 @@ public sealed class AvailabilityCheckRunner(
             return snapshot;
         }
 
+        var toProbe = servers.Where(s => s.IsAvailabilityCheckEnabled).ToList();
         logger.LogDebug(
-            "Availability check: probing {Count} server(s) via {ProbeUrl}",
+            "Availability check: probing {Count}/{Total} server(s) via {ProbeUrl}",
+            toProbe.Count,
             servers.Count,
             probeUrl);
 
         foreach (var server in servers)
         {
             ct.ThrowIfCancellationRequested();
+
+            if (!server.IsAvailabilityCheckEnabled)
+            {
+                if (!server.IsAvailableByExternalProbe)
+                {
+                    server.IsAvailableByExternalProbe = true;
+                    server.ExternalProbeSummary = "check disabled for this server";
+                    server.ExternalProbeCheckedAtUtc = DateTimeOffset.UtcNow;
+                }
+
+                snapshot.Servers.Add(ToDtoWithoutProbe(server));
+                continue;
+            }
 
             var apiUrl = (server.ApiUrl ?? string.Empty).Trim();
             if (string.IsNullOrWhiteSpace(apiUrl))
@@ -73,6 +124,7 @@ public sealed class AvailabilityCheckRunner(
                     VpnServerId = server.Id,
                     ServerName = server.ServerName,
                     ApiUrl = apiUrl,
+                    IsAvailabilityCheckEnabled = true,
                     IsAvailableByExternalProbe = server.IsAvailableByExternalProbe,
                     Summary = "no ApiUrl configured — skipped",
                     CheckedAtUtc = DateTimeOffset.UtcNow,
@@ -95,6 +147,7 @@ public sealed class AvailabilityCheckRunner(
                     VpnServerId = server.Id,
                     ServerName = server.ServerName,
                     ApiUrl = apiUrl,
+                    IsAvailabilityCheckEnabled = true,
                     IsAvailableByExternalProbe = server.IsAvailableByExternalProbe,
                     Reachable = null,
                     Summary = server.ExternalProbeSummary,
@@ -117,6 +170,7 @@ public sealed class AvailabilityCheckRunner(
                 VpnServerId = server.Id,
                 ServerName = server.ServerName,
                 ApiUrl = apiUrl,
+                IsAvailabilityCheckEnabled = true,
                 IsAvailableByExternalProbe = reachable,
                 Reachable = reachable,
                 Summary = server.ExternalProbeSummary,
@@ -134,7 +188,7 @@ public sealed class AvailabilityCheckRunner(
         return snapshot;
     }
 
-    private async Task<(bool Enabled, string ProbeUrl)> ResolveSettingsAsync(CancellationToken ct)
+    private async Task<(bool Enabled, string ProbeUrl, int IntervalSeconds)> ResolveSettingsAsync(CancellationToken ct)
     {
         var storedProbe = await settingsService
             .GetValueAsync<string>(AvailabilityCheckSettingsKeys.ProbeUrl, ct)
@@ -144,20 +198,21 @@ public sealed class AvailabilityCheckRunner(
             ? AvailabilityCheckSettingsKeys.DefaultProbeUrl
             : storedProbe.Trim();
 
-        // Enabled key missing → default true. bool GetValueAsync returns false for missing,
-        // so treat "ProbeUrl never set" as never configured only when Enabled also never saved:
-        // use ProbeUrl presence OR Enabled string companion is hard; instead read Enabled and
-        // if ProbeUrl is null AND we never stored Enabled, default true.
+        var storedInterval = await settingsService
+            .GetValueAsync<int>(AvailabilityCheckSettingsKeys.IntervalSeconds, ct)
+            .ConfigureAwait(false);
+        var intervalSeconds = storedInterval > 0
+            ? AvailabilityCheckSettingsKeys.ClampIntervalSeconds(storedInterval)
+            : AvailabilityCheckSettingsKeys.DefaultIntervalSeconds;
+
         var storedEnabled = await settingsService
             .GetValueAsync<bool>(AvailabilityCheckSettingsKeys.Enabled, ct)
             .ConfigureAwait(false);
 
-        // If neither setting exists yet, Enabled defaults to true.
-        // We detect "never configured" when ProbeUrl is null — first run before any Save.
         if (storedProbe is null)
-            return (AvailabilityCheckSettingsKeys.DefaultEnabled, probeUrl);
+            return (AvailabilityCheckSettingsKeys.DefaultEnabled, probeUrl, intervalSeconds);
 
-        return (storedEnabled, probeUrl);
+        return (storedEnabled, probeUrl, intervalSeconds);
     }
 
     private async Task NotifyIfNeededAsync(
@@ -181,7 +236,6 @@ public sealed class AvailabilityCheckRunner(
             return;
         }
 
-        // Dedupe by server id only (not summary) to avoid alert spam when error text changes.
         if (!notificationTracker.TryMarkUnreachableNotified(key, "unreachable"))
             return;
 
@@ -195,8 +249,11 @@ public sealed class AvailabilityCheckRunner(
         VpnServerId = server.Id,
         ServerName = server.ServerName,
         ApiUrl = server.ApiUrl,
+        IsAvailabilityCheckEnabled = server.IsAvailabilityCheckEnabled,
         IsAvailableByExternalProbe = server.IsAvailableByExternalProbe,
-        Summary = server.ExternalProbeSummary,
+        Summary = server.IsAvailabilityCheckEnabled
+            ? server.ExternalProbeSummary
+            : (server.ExternalProbeSummary ?? "check disabled for this server"),
         CheckedAtUtc = server.ExternalProbeCheckedAtUtc,
     };
 

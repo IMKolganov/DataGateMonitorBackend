@@ -348,6 +348,72 @@ public class AvailabilityCheckRunnerTests
             Times.Once);
     }
 
+    [Fact]
+    public async Task RunAsync_SkipsServer_WhenAvailabilityCheckDisabledForServer()
+    {
+        await using var db = CreateContext();
+        var skipped = SeedServer(db, id: 40, apiUrl: "https://skip.example/", isOnline: true, probeOk: false,
+            availabilityCheckEnabled: false);
+        var probed = SeedServer(db, id: 41, apiUrl: "https://probe.example/", isOnline: true, probeOk: true);
+
+        var probe = new Mock<IAvailabilityCheckProbeClient>();
+        probe.Setup(p => p.ProbeAsync(ProbeUrl, probed.ApiUrl, It.IsAny<CancellationToken>()))
+            .ReturnsAsync((
+                new AvailabilityProbeResultDto { Reachable = true, Summary = "reachable" },
+                (string?)null,
+                1L));
+
+        var sut = CreateRunner(db, settings: EnabledSettings(intervalSeconds: 180), probe.Object, new AvailabilityCheckStatusStore());
+
+        var result = await sut.RunAsync(CancellationToken.None);
+
+        result.IntervalSeconds.Should().Be(180);
+        result.Servers.Should().HaveCount(2);
+
+        var skippedDto = result.Servers.Single(s => s.VpnServerId == 40);
+        skippedDto.IsAvailabilityCheckEnabled.Should().BeFalse();
+        skippedDto.IsAvailableByExternalProbe.Should().BeTrue();
+        skippedDto.Summary.Should().Contain("disabled");
+
+        (await db.VpnServers.FindAsync(40))!.IsAvailableByExternalProbe.Should().BeTrue();
+        probe.Verify(p => p.ProbeAsync(ProbeUrl, skipped.ApiUrl, It.IsAny<CancellationToken>()), Times.Never);
+        probe.Verify(p => p.ProbeAsync(ProbeUrl, probed.ApiUrl, It.IsAny<CancellationToken>()), Times.Once);
+    }
+
+    [Fact]
+    public async Task SetServerEnabledAsync_DisablesProbeAndClearsBlock()
+    {
+        await using var db = CreateContext();
+        SeedServer(db, id: 50, apiUrl: "https://cy.example/", isOnline: true, probeOk: false);
+
+        var probe = new Mock<IAvailabilityCheckProbeClient>(MockBehavior.Strict);
+        var sut = CreateRunner(db, settings: EnabledSettings(), probe.Object, new AvailabilityCheckStatusStore());
+
+        var snapshot = await sut.SetServerEnabledAsync(50, enabled: false, CancellationToken.None);
+
+        snapshot.Should().NotBeNull();
+        var server = await db.VpnServers.FindAsync(50);
+        server!.IsAvailabilityCheckEnabled.Should().BeFalse();
+        server.IsAvailableByExternalProbe.Should().BeTrue();
+        server.ExternalProbeSummary.Should().Contain("disabled");
+        probe.Verify(
+            p => p.ProbeAsync(It.IsAny<string>(), It.IsAny<string>(), It.IsAny<CancellationToken>()),
+            Times.Never);
+    }
+
+    [Fact]
+    public async Task SetServerEnabledAsync_WhenMissing_ReturnsNull()
+    {
+        await using var db = CreateContext();
+        var sut = CreateRunner(
+            db,
+            settings: EnabledSettings(),
+            Mock.Of<IAvailabilityCheckProbeClient>(),
+            new AvailabilityCheckStatusStore());
+
+        (await sut.SetServerEnabledAsync(404, false, CancellationToken.None)).Should().BeNull();
+    }
+
     private static IAvailabilityCheckRunner CreateRunner(
         ApplicationDbContext db,
         ISettingsService settings,
@@ -369,7 +435,7 @@ public class AvailabilityCheckRunnerTests
             db);
     }
 
-    private static ISettingsService EnabledSettings()
+    private static ISettingsService EnabledSettings(int intervalSeconds = 300)
     {
         var settings = new Mock<ISettingsService>();
         settings
@@ -378,6 +444,9 @@ public class AvailabilityCheckRunnerTests
         settings
             .Setup(s => s.GetValueAsync<bool>(AvailabilityCheckSettingsKeys.Enabled, It.IsAny<CancellationToken>()))
             .ReturnsAsync(true);
+        settings
+            .Setup(s => s.GetValueAsync<int>(AvailabilityCheckSettingsKeys.IntervalSeconds, It.IsAny<CancellationToken>()))
+            .ReturnsAsync(intervalSeconds);
         return settings.Object;
     }
 
@@ -391,6 +460,9 @@ public class AvailabilityCheckRunnerTests
         settings
             .Setup(s => s.GetValueAsync<bool>(AvailabilityCheckSettingsKeys.Enabled, It.IsAny<CancellationToken>()))
             .ReturnsAsync(false);
+        settings
+            .Setup(s => s.GetValueAsync<int>(AvailabilityCheckSettingsKeys.IntervalSeconds, It.IsAny<CancellationToken>()))
+            .ReturnsAsync(300);
         return settings.Object;
     }
 
@@ -418,7 +490,8 @@ public class AvailabilityCheckRunnerTests
         int id,
         string apiUrl,
         bool isOnline,
-        bool probeOk)
+        bool probeOk,
+        bool availabilityCheckEnabled = true)
     {
         var now = DateTimeOffset.UtcNow;
         var server = new VpnServer
@@ -428,6 +501,7 @@ public class AvailabilityCheckRunnerTests
             ApiUrl = apiUrl,
             IsOnline = isOnline,
             IsAvailableByExternalProbe = probeOk,
+            IsAvailabilityCheckEnabled = availabilityCheckEnabled,
             IsDeleted = false,
             IsDisable = false,
             CreateDate = now,

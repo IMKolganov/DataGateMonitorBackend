@@ -79,10 +79,16 @@ public class AvailabilityCheckControllerTests
                 AvailabilityCheckSettingsKeys.DefaultProbeUrl,
                 It.IsAny<CancellationToken>()))
             .Returns(Task.CompletedTask);
+        _settings
+            .Setup(s => s.SetValueAsync(
+                AvailabilityCheckSettingsKeys.IntervalSeconds,
+                AvailabilityCheckSettingsKeys.DefaultIntervalSeconds,
+                It.IsAny<CancellationToken>()))
+            .Returns(Task.CompletedTask);
         _runner.Setup(r => r.RunAsync(It.IsAny<CancellationToken>(), true)).ReturnsAsync(snapshot);
 
         var result = await _controller.UpdateSettings(
-            new UpdateAvailabilityCheckSettingsRequest { Enabled = true, ProbeUrl = "  " },
+            new UpdateAvailabilityCheckSettingsRequest { Enabled = true, ProbeUrl = "  ", IntervalSeconds = 0 },
             CancellationToken.None);
 
         var ok = Assert.IsType<OkObjectResult>(result.Result);
@@ -97,7 +103,48 @@ public class AvailabilityCheckControllerTests
                 AvailabilityCheckSettingsKeys.DefaultProbeUrl,
                 It.IsAny<CancellationToken>()),
             Times.Once);
+        _settings.Verify(
+            s => s.SetValueAsync(
+                AvailabilityCheckSettingsKeys.IntervalSeconds,
+                AvailabilityCheckSettingsKeys.DefaultIntervalSeconds,
+                It.IsAny<CancellationToken>()),
+            Times.Once);
         _runner.Verify(r => r.RunAsync(It.IsAny<CancellationToken>(), true), Times.Once);
+    }
+
+    [Fact]
+    public async Task UpdateSettings_ClampsIntervalSeconds_AndPersists()
+    {
+        var snapshot = new AvailabilityCheckStatusResponse { Enabled = true, IntervalSeconds = 60 };
+        _settings
+            .Setup(s => s.SetValueAsync(AvailabilityCheckSettingsKeys.Enabled, true, It.IsAny<CancellationToken>()))
+            .Returns(Task.CompletedTask);
+        _settings
+            .Setup(s => s.SetValueAsync(
+                AvailabilityCheckSettingsKeys.ProbeUrl,
+                "https://status.rackot.ru/check.cgi",
+                It.IsAny<CancellationToken>()))
+            .Returns(Task.CompletedTask);
+        _settings
+            .Setup(s => s.SetValueAsync(AvailabilityCheckSettingsKeys.IntervalSeconds, 60, It.IsAny<CancellationToken>()))
+            .Returns(Task.CompletedTask);
+        _runner.Setup(r => r.RunAsync(It.IsAny<CancellationToken>(), true)).ReturnsAsync(snapshot);
+
+        await _controller.UpdateSettings(
+            new UpdateAvailabilityCheckSettingsRequest
+            {
+                Enabled = true,
+                ProbeUrl = "https://status.rackot.ru/check.cgi",
+                IntervalSeconds = 15,
+            },
+            CancellationToken.None);
+
+        _settings.Verify(
+            s => s.SetValueAsync(
+                AvailabilityCheckSettingsKeys.IntervalSeconds,
+                60,
+                It.IsAny<CancellationToken>()),
+            Times.Once);
     }
 
     [Fact]
@@ -113,6 +160,12 @@ public class AvailabilityCheckControllerTests
                 "https://status.rackot.ru/check.cgi",
                 It.IsAny<CancellationToken>()))
             .Returns(Task.CompletedTask);
+        _settings
+            .Setup(s => s.SetValueAsync(
+                AvailabilityCheckSettingsKeys.IntervalSeconds,
+                120,
+                It.IsAny<CancellationToken>()))
+            .Returns(Task.CompletedTask);
         _runner.Setup(r => r.RunAsync(It.IsAny<CancellationToken>(), false)).ReturnsAsync(snapshot);
 
         await _controller.UpdateSettings(
@@ -120,10 +173,44 @@ public class AvailabilityCheckControllerTests
             {
                 Enabled = false,
                 ProbeUrl = "https://status.rackot.ru/check.cgi",
+                IntervalSeconds = 120,
             },
             CancellationToken.None);
 
         _runner.Verify(r => r.RunAsync(It.IsAny<CancellationToken>(), false), Times.Once);
+    }
+
+    [Fact]
+    public async Task UpdateServerSettings_WhenMissing_ReturnsNotFound()
+    {
+        _runner
+            .Setup(r => r.SetServerEnabledAsync(99, false, It.IsAny<CancellationToken>()))
+            .ReturnsAsync((AvailabilityCheckStatusResponse?)null);
+
+        var result = await _controller.UpdateServerSettings(
+            99,
+            new UpdateAvailabilityCheckServerSettingsRequest { Enabled = false },
+            CancellationToken.None);
+
+        Assert.IsType<NotFoundObjectResult>(result.Result);
+    }
+
+    [Fact]
+    public async Task UpdateServerSettings_PersistsPerServerFlag()
+    {
+        var snapshot = new AvailabilityCheckStatusResponse { Enabled = true };
+        _runner
+            .Setup(r => r.SetServerEnabledAsync(1, false, It.IsAny<CancellationToken>()))
+            .ReturnsAsync(snapshot);
+
+        var result = await _controller.UpdateServerSettings(
+            1,
+            new UpdateAvailabilityCheckServerSettingsRequest { Enabled = false },
+            CancellationToken.None);
+
+        var ok = Assert.IsType<OkObjectResult>(result.Result);
+        Assert.IsType<ApiResponse<AvailabilityCheckStatusResponse>>(ok.Value).Data.Should().BeSameAs(snapshot);
+        _runner.Verify(r => r.SetServerEnabledAsync(1, false, It.IsAny<CancellationToken>()), Times.Once);
     }
 
     [Fact]

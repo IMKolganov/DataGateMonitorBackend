@@ -26,6 +26,8 @@ public class VpnServerConfiguration : BaseEntityConfiguration<VpnServer, int>
         entity.Property(e => e.ExternalProbeCheckedAtUtc);
         entity.Property(e => e.ExternalProbeSummary)
             .HasMaxLength(500);
+        entity.Property(e => e.IsAvailabilityCheckEnabled)
+            .HasDefaultValue(true);
         entity.Property(e => e.IsDefault);
         entity.Property(e => e.IsDisable);
 
