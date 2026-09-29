@@ -1,6 +1,6 @@
-namespace DataGateMonitor.SharedModels.DataGateMonitor.RfAvailability.Dto;
+namespace DataGateMonitor.SharedModels.DataGateMonitor.AvailabilityCheck.Dto;
 
-public sealed class RfAvailabilityDnsDto
+public sealed class AvailabilityDnsDto
 {
     public bool Ok { get; set; }
 
