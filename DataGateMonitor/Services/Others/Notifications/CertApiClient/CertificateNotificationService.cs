@@ -8,7 +8,7 @@ namespace DataGateMonitor.Services.Others.Notifications.CertApiClient;
 public class CertificateNotificationService(INotificationService notifications)
     : ICertificateNotificationService
 {
-    private static readonly string[] ReadChannels = ["web"];
+    private static readonly string[] ReadChannels = ["web", "telegram"];
     private static readonly string[] ChangeChannels = ["web", "telegram"];
 
     public Task NotifyReadAllAsync(int vpnServerId, int count, CancellationToken ct)
