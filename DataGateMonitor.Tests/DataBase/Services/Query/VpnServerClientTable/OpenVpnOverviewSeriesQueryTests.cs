@@ -216,4 +216,228 @@ public class OpenVpnOverviewSeriesQueryTests
         Assert.Equal(1, res.Summary.LowActiveUsers);
         Assert.Equal(baseTs, res.Summary.LowActiveUsersAt);
     }
+
+    [Fact]
+    public async Task GetOverviewUsersSeries_EmptyRange_SummaryExtremes_Are_Zero_Without_Timestamps()
+    {
+        var (uow, _) = CreateUow();
+        var from = new DateTimeOffset(2025, 6, 1, 0, 0, 0, TimeSpan.Zero);
+        var to = from.AddHours(3);
+
+        var sut = new OpenVpnOverviewSeriesQuery(uow.Object, OverviewQueryTestHelper.CreateTrafficAggregator(uow.Object));
+        var res = await sut.GetOverviewUsersSeriesFromSessionsAsync(
+            from, to, OverviewGrouping.Hours, vpnServerId: 1, externalId: null, CancellationToken.None);
+
+        Assert.True(res.Rows.Count >= 1); // zero-filled chart buckets still exist
+        Assert.All(res.Rows, r => Assert.Equal(0, r.ActiveUsers));
+
+        Assert.Equal(0, res.Summary.PeakActiveSessions);
+        Assert.Null(res.Summary.PeakActiveSessionsAt);
+        Assert.Equal(0, res.Summary.LowActiveSessions);
+        Assert.Null(res.Summary.LowActiveSessionsAt);
+        Assert.Equal(0, res.Summary.PeakActiveUsers);
+        Assert.Null(res.Summary.PeakActiveUsersAt);
+        Assert.Equal(0, res.Summary.LowActiveUsers);
+        Assert.Null(res.Summary.LowActiveUsersAt);
+    }
+
+    [Fact]
+    public async Task GetOverviewUsersSeries_MidGap_ZeroFill_Does_Not_Pull_Low_To_Zero()
+    {
+        var (uow, ctx) = CreateUow();
+        var baseTs = new DateTimeOffset(2025, 1, 1, 0, 0, 0, TimeSpan.Zero);
+        var from = baseTs;
+        var to = baseTs.AddHours(3); // buckets 00,01,02 + filled 03
+
+        var sA = Guid.NewGuid();
+        var sB = Guid.NewGuid();
+
+        // Samples only in 00:00 and 02:00 — 01:00 is a mid-range gap that FillMissingBuckets zeros out.
+        ctx.Traffic.AddRange(
+        [
+            new VpnServerClientTraffic
+            {
+                Id = 1, VpnServerId = 1, ExternalId = "u1", SessionId = sA,
+                BytesReceived = 10, BytesSent = 1, MeasuredAt = baseTs.AddMinutes(20)
+            },
+            new VpnServerClientTraffic
+            {
+                Id = 2, VpnServerId = 1, ExternalId = "u1", SessionId = sA,
+                BytesReceived = 20, BytesSent = 2, MeasuredAt = baseTs.AddHours(2).AddMinutes(10)
+            },
+            new VpnServerClientTraffic
+            {
+                Id = 3, VpnServerId = 1, ExternalId = "u2", SessionId = sB,
+                BytesReceived = 5, BytesSent = 1, MeasuredAt = baseTs.AddHours(2).AddMinutes(40)
+            },
+        ]);
+        await ctx.SaveChangesAsync();
+
+        var sut = new OpenVpnOverviewSeriesQuery(uow.Object, OverviewQueryTestHelper.CreateTrafficAggregator(uow.Object));
+        var res = await sut.GetOverviewUsersSeriesFromSessionsAsync(
+            from, to, OverviewGrouping.Hours, vpnServerId: 1, externalId: null, CancellationToken.None);
+
+        Assert.Contains(res.Rows, r => r.Ts == baseTs.AddHours(1) && r.ActiveUsers == 0);
+
+        Assert.Equal(2, res.Summary.PeakActiveUsers);
+        Assert.Equal(baseTs.AddHours(2), res.Summary.PeakActiveUsersAt);
+        Assert.Equal(1, res.Summary.LowActiveUsers);
+        Assert.Equal(baseTs, res.Summary.LowActiveUsersAt);
+        Assert.NotEqual(0, res.Summary.LowActiveUsers);
+    }
+
+    [Fact]
+    public async Task GetOverviewUsersSeries_SameDevice_TwoSessions_PeakSessions_Exceeds_PeakUsers()
+    {
+        var (uow, ctx) = CreateUow();
+        var baseTs = new DateTimeOffset(2025, 1, 1, 12, 0, 0, TimeSpan.Zero);
+        var from = baseTs;
+        var to = baseTs.AddHours(1);
+
+        var sA = Guid.NewGuid();
+        var sB = Guid.NewGuid();
+
+        // One externalId, two sessions in the same hour bucket.
+        ctx.Traffic.AddRange(
+        [
+            new VpnServerClientTraffic
+            {
+                Id = 1, VpnServerId = 1, ExternalId = "device-1", SessionId = sA,
+                BytesReceived = 1, BytesSent = 1, MeasuredAt = baseTs.AddMinutes(5)
+            },
+            new VpnServerClientTraffic
+            {
+                Id = 2, VpnServerId = 1, ExternalId = "device-1", SessionId = sB,
+                BytesReceived = 2, BytesSent = 2, MeasuredAt = baseTs.AddMinutes(25)
+            },
+        ]);
+        await ctx.SaveChangesAsync();
+
+        var sut = new OpenVpnOverviewSeriesQuery(uow.Object, OverviewQueryTestHelper.CreateTrafficAggregator(uow.Object));
+        var res = await sut.GetOverviewUsersSeriesFromSessionsAsync(
+            from, to, OverviewGrouping.Hours, vpnServerId: 1, externalId: null, CancellationToken.None);
+
+        Assert.Equal(2, res.Summary.PeakActiveSessions);
+        Assert.Equal(1, res.Summary.PeakActiveUsers);
+        Assert.True(res.Summary.PeakActiveSessions > res.Summary.PeakActiveUsers);
+        Assert.Equal(baseTs, res.Summary.PeakActiveSessionsAt);
+        Assert.Equal(baseTs, res.Summary.PeakActiveUsersAt);
+    }
+
+    [Fact]
+    public async Task GetOverviewUsersSeries_Filters_By_VpnServerId_And_ExternalId()
+    {
+        var (uow, ctx) = CreateUow();
+        var baseTs = new DateTimeOffset(2025, 1, 1, 0, 0, 0, TimeSpan.Zero);
+        var from = baseTs;
+        var to = baseTs.AddHours(2);
+
+        var s1 = Guid.NewGuid();
+        var s2 = Guid.NewGuid();
+        var s3 = Guid.NewGuid();
+
+        ctx.Traffic.AddRange(
+        [
+            // server 1 / u1 — quiet
+            new VpnServerClientTraffic
+            {
+                Id = 1, VpnServerId = 1, ExternalId = "u1", SessionId = s1,
+                BytesReceived = 1, BytesSent = 1, MeasuredAt = baseTs.AddMinutes(10)
+            },
+            // server 1 / u2 — busier hour
+            new VpnServerClientTraffic
+            {
+                Id = 2, VpnServerId = 1, ExternalId = "u2", SessionId = s2,
+                BytesReceived = 1, BytesSent = 1, MeasuredAt = baseTs.AddHours(1).AddMinutes(10)
+            },
+            new VpnServerClientTraffic
+            {
+                Id = 3, VpnServerId = 1, ExternalId = "u1", SessionId = s1,
+                BytesReceived = 5, BytesSent = 2, MeasuredAt = baseTs.AddHours(1).AddMinutes(20)
+            },
+            // server 2 / u1 — must be excluded by VpnServerId filter
+            new VpnServerClientTraffic
+            {
+                Id = 4, VpnServerId = 2, ExternalId = "u1", SessionId = s3,
+                BytesReceived = 100, BytesSent = 100, MeasuredAt = baseTs.AddMinutes(30)
+            },
+        ]);
+        await ctx.SaveChangesAsync();
+
+        var sut = new OpenVpnOverviewSeriesQuery(uow.Object, OverviewQueryTestHelper.CreateTrafficAggregator(uow.Object));
+
+        var byServer = await sut.GetOverviewUsersSeriesFromSessionsAsync(
+            from, to, OverviewGrouping.Hours, vpnServerId: 1, externalId: null, CancellationToken.None);
+        Assert.Equal(2, byServer.Summary.PeakActiveUsers);
+        Assert.Equal(baseTs.AddHours(1), byServer.Summary.PeakActiveUsersAt);
+        Assert.Equal(1, byServer.Summary.LowActiveUsers);
+        Assert.Equal(baseTs, byServer.Summary.LowActiveUsersAt);
+
+        var byExternal = await sut.GetOverviewUsersSeriesFromSessionsAsync(
+            from, to, OverviewGrouping.Hours, vpnServerId: 1, externalId: "u1", CancellationToken.None);
+        Assert.Equal(1, byExternal.Summary.PeakActiveUsers);
+        Assert.Equal(1, byExternal.Summary.PeakActiveSessions);
+        Assert.Equal(1, byExternal.Summary.LowActiveUsers);
+    }
+
+    [Fact]
+    public async Task GetOverviewUsersSeries_TenMinutes_Grouping_Computes_Extremes()
+    {
+        var (uow, ctx) = CreateUow();
+        var baseTs = new DateTimeOffset(2025, 1, 1, 10, 0, 0, TimeSpan.Zero);
+        var from = baseTs;
+        var to = baseTs.AddMinutes(30);
+
+        var sA = Guid.NewGuid();
+        var sB = Guid.NewGuid();
+
+        // 10:00 bucket: 1 user; 10:20 bucket: 2 users (10:10 is mid-gap if nothing lands there).
+        ctx.Traffic.AddRange(
+        [
+            new VpnServerClientTraffic
+            {
+                Id = 1, VpnServerId = 1, ExternalId = "u1", SessionId = sA,
+                BytesReceived = 1, BytesSent = 1, MeasuredAt = baseTs.AddMinutes(3)
+            },
+            new VpnServerClientTraffic
+            {
+                Id = 2, VpnServerId = 1, ExternalId = "u1", SessionId = sA,
+                BytesReceived = 3, BytesSent = 2, MeasuredAt = baseTs.AddMinutes(22)
+            },
+            new VpnServerClientTraffic
+            {
+                Id = 3, VpnServerId = 1, ExternalId = "u2", SessionId = sB,
+                BytesReceived = 1, BytesSent = 1, MeasuredAt = baseTs.AddMinutes(25)
+            },
+        ]);
+        await ctx.SaveChangesAsync();
+
+        var sut = new OpenVpnOverviewSeriesQuery(uow.Object, OverviewQueryTestHelper.CreateTrafficAggregator(uow.Object));
+        var res = await sut.GetOverviewUsersSeriesFromSessionsAsync(
+            from, to, OverviewGrouping.TenMinutes, vpnServerId: 1, externalId: null, CancellationToken.None);
+
+        Assert.Equal(2, res.Summary.PeakActiveUsers);
+        Assert.Equal(baseTs.AddMinutes(20), res.Summary.PeakActiveUsersAt);
+        Assert.Equal(1, res.Summary.LowActiveUsers);
+        Assert.Equal(baseTs, res.Summary.LowActiveUsersAt);
+        Assert.Contains(res.Rows, r => r.ActiveUsers == 0); // zero-filled 10:10 (and possibly trailing)
+        Assert.NotEqual(0, res.Summary.LowActiveUsers);
+    }
+
+    [Fact]
+    public async Task GetOverviewSeries_EmptyRange_SummaryExtremes_Are_Zero_Without_Timestamps()
+    {
+        var (uow, _) = CreateUow();
+        var from = new DateTimeOffset(2025, 6, 1, 0, 0, 0, TimeSpan.Zero);
+        var to = from.AddHours(2);
+
+        var sut = new OpenVpnOverviewSeriesQuery(uow.Object, OverviewQueryTestHelper.CreateTrafficAggregator(uow.Object));
+        var res = await sut.GetOverviewSeriesFromSessionsAsync(
+            from, to, OverviewGrouping.Hours, vpnServerId: 1, externalId: null, CancellationToken.None);
+
+        Assert.Equal(0, res.Summary.PeakActiveClients);
+        Assert.Null(res.Summary.PeakActiveClientsAt);
+        Assert.Equal(0, res.Summary.LowActiveClients);
+        Assert.Null(res.Summary.LowActiveClientsAt);
+    }
 }

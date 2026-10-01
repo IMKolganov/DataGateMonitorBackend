@@ -14,7 +14,7 @@ public class OverviewConcurrentExtremesProdDumpTests
     private const string DbName = "datagate_db_prod";
 
     [SkippableFact]
-    public void ProdDump_2026_09_28_Hourly_Users_Peak40_Low19()
+    public void ProdDump_2026_09_28_Hourly_Users_Peak38_Low15()
     {
         Skip.IfNot(CanQueryDump(), "Docker container datagate-dump-pg is not available / empty.");
 

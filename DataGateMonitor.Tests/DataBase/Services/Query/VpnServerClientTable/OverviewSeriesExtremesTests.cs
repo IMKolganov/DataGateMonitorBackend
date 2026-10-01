@@ -67,4 +67,21 @@ public class OverviewSeriesExtremesTests
         Assert.Equal(11, result.Low!.Value.Count);
         Assert.Equal(night, result.Low.Value.At);
     }
+
+    [Fact]
+    public void Compute_Sampled_Zero_Is_Valid_Low()
+    {
+        var t0 = new DateTimeOffset(2026, 9, 28, 0, 0, 0, TimeSpan.Zero);
+        var t1 = t0.AddHours(1);
+
+        var result = OverviewSeriesExtremes.Compute(
+        [
+            (t0, 0),
+            (t1, 12),
+        ]);
+
+        Assert.Equal(12, result.Peak!.Value.Count);
+        Assert.Equal(0, result.Low!.Value.Count);
+        Assert.Equal(t0, result.Low.Value.At);
+    }
 }
