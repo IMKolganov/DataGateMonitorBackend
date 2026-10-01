@@ -49,6 +49,10 @@ public sealed class OpenVpnOverviewSeriesQuery(
             })
             .ToList();
 
+        // Extremes from sampled buckets only — FillMissingBuckets would pull Low to 0.
+        var clientExtremes = OverviewSeriesExtremes.Compute(
+            series.Select(r => (r.Ts, r.ActiveClients)));
+
         series = FillMissingBuckets(series, fromUtc, toUtc, mode, offset);
 
         return new OverviewSeriesResponse
@@ -66,7 +70,10 @@ public sealed class OpenVpnOverviewSeriesQuery(
             {
                 TotalTrafficInBytes = series.Sum(r => r.TrafficInBytes),
                 TotalTrafficOutBytes = series.Sum(r => r.TrafficOutBytes),
-                PeakActiveClients = series.Count == 0 ? 0 : series.Max(r => r.ActiveClients)
+                PeakActiveClients = clientExtremes.Peak?.Count ?? 0,
+                PeakActiveClientsAt = clientExtremes.Peak?.At,
+                LowActiveClients = clientExtremes.Low?.Count ?? 0,
+                LowActiveClientsAt = clientExtremes.Low?.At
             },
             OverviewSeriesRows = series
         };
@@ -175,6 +182,12 @@ public sealed class OpenVpnOverviewSeriesQuery(
             })
             .ToList();
 
+        // Extremes from sampled buckets only — FillMissingBuckets would pull Low to 0.
+        var sessionExtremes = OverviewSeriesExtremes.Compute(
+            series.Select(r => (r.Ts, r.ActiveSessions)));
+        var userExtremes = OverviewSeriesExtremes.Compute(
+            series.Select(r => (r.Ts, r.ActiveUsers)));
+
         series = FillMissingBucketsForUsersSeries(series, fromUtc, toUtc, mode, offset);
 
         return new OverviewUsersSeriesResponse
@@ -190,8 +203,14 @@ public sealed class OpenVpnOverviewSeriesQuery(
             },
             Summary = new OverviewUsersSeriesSummaryDto
             {
-                PeakActiveSessions = series.Count == 0 ? 0 : series.Max(r => r.ActiveSessions),
-                PeakActiveUsers = series.Count == 0 ? 0 : series.Max(r => r.ActiveUsers)
+                PeakActiveSessions = sessionExtremes.Peak?.Count ?? 0,
+                PeakActiveSessionsAt = sessionExtremes.Peak?.At,
+                LowActiveSessions = sessionExtremes.Low?.Count ?? 0,
+                LowActiveSessionsAt = sessionExtremes.Low?.At,
+                PeakActiveUsers = userExtremes.Peak?.Count ?? 0,
+                PeakActiveUsersAt = userExtremes.Peak?.At,
+                LowActiveUsers = userExtremes.Low?.Count ?? 0,
+                LowActiveUsersAt = userExtremes.Low?.At
             },
             Rows = series
         };
