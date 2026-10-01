@@ -89,9 +89,13 @@ public class OpenVpnOverviewSeriesQueryTests
         Assert.Equal(0, b2.TrafficInBytes);
         Assert.Equal(0, b2.TrafficOutBytes);
 
-        // Summary reflects totals across buckets
+        // Summary reflects totals across buckets; extremes ignore zero-filled gaps.
         Assert.Equal(150, res.Summary.TotalTrafficInBytes);
         Assert.Equal(75, res.Summary.TotalTrafficOutBytes);
+        Assert.Equal(2, res.Summary.PeakActiveClients);
+        Assert.Equal(baseTs.AddHours(1), res.Summary.PeakActiveClientsAt);
+        Assert.Equal(1, res.Summary.LowActiveClients);
+        Assert.Equal(baseTs, res.Summary.LowActiveClientsAt);
     }
 
     [Fact]
@@ -202,7 +206,14 @@ public class OpenVpnOverviewSeriesQueryTests
         Assert.Equal(0, b2.ActiveSessions);
         Assert.Equal(0, b2.ActiveUsers);
 
+        // Summary extremes ignore the zero-filled trailing bucket.
         Assert.Equal(2, res.Summary.PeakActiveSessions);
+        Assert.Equal(baseTs.AddHours(1), res.Summary.PeakActiveSessionsAt);
+        Assert.Equal(1, res.Summary.LowActiveSessions);
+        Assert.Equal(baseTs, res.Summary.LowActiveSessionsAt);
         Assert.Equal(2, res.Summary.PeakActiveUsers);
+        Assert.Equal(baseTs.AddHours(1), res.Summary.PeakActiveUsersAt);
+        Assert.Equal(1, res.Summary.LowActiveUsers);
+        Assert.Equal(baseTs, res.Summary.LowActiveUsersAt);
     }
 }
