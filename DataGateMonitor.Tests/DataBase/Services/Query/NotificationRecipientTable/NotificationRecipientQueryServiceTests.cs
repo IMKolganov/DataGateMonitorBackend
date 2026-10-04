@@ -244,4 +244,63 @@ public class NotificationRecipientQueryServiceTests
         page.Items[0].Type.Should().Be("server.up");
     }
 
+    [Fact]
+    public async Task GetDeliveriesByAdminUserIdAndNotificationIdsAsync_Returns_ChannelStatusesAndErrors()
+    {
+        var (sut, ctx) = CreateSutWithContext();
+        var t = new DateTimeOffset(2025, 1, 1, 0, 0, 0, TimeSpan.Zero);
+        await ctx.Notifications.AddAsync(new Notification
+        {
+            Id = 50,
+            Type = "ovpn.issued",
+            Severity = NotificationSeverity.Info,
+            Title = "Issued",
+            Message = "M",
+            CreateDate = t,
+            LastUpdate = t
+        });
+        await ctx.NotificationRecipients.AddRangeAsync(
+            new NotificationRecipient
+            {
+                Id = 1,
+                NotificationId = 50,
+                AdminUserId = 7,
+                DeliveryChannel = "web",
+                DeliveryStatus = DeliveryStatus.Sent,
+                DeliveredAt = t,
+                CreateDate = t,
+                LastUpdate = t
+            },
+            new NotificationRecipient
+            {
+                Id = 2,
+                NotificationId = 50,
+                AdminUserId = 7,
+                DeliveryChannel = "telegram",
+                DeliveryStatus = DeliveryStatus.Failed,
+                DeliveryError = "Admin user 7 is not linked to Telegram",
+                CreateDate = t,
+                LastUpdate = t
+            },
+            new NotificationRecipient
+            {
+                Id = 3,
+                NotificationId = 50,
+                AdminUserId = 8,
+                DeliveryChannel = "telegram",
+                DeliveryStatus = DeliveryStatus.Sent,
+                CreateDate = t,
+                LastUpdate = t
+            });
+        await ctx.SaveChangesAsync();
+
+        var rows = await sut.GetDeliveriesByAdminUserIdAndNotificationIdsAsync(7, [50], CancellationToken.None);
+
+        rows.Should().HaveCount(2);
+        rows.Select(r => r.Channel).Should().BeEquivalentTo(["telegram", "web"]);
+        rows.Single(r => r.Channel == "telegram").Status.Should().Be(DeliveryStatus.Failed);
+        rows.Single(r => r.Channel == "telegram").Error.Should().Contain("not linked");
+        rows.Single(r => r.Channel == "web").Status.Should().Be(DeliveryStatus.Sent);
+    }
+
 }

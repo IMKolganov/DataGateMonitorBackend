@@ -17,6 +17,9 @@ public sealed class TelegramDirectMessageSender(
     private static readonly JsonSerializerOptions JsonOptions = new() { PropertyNameCaseInsensitive = true };
 
     public async Task<bool> TrySendMessageAsync(long chatId, string text, CancellationToken ct = default)
+        => (await SendMessageAsync(chatId, text, ct)).Success;
+
+    public async Task<TelegramSendOutcome> SendMessageAsync(long chatId, string text, CancellationToken ct = default)
     {
         var settings = options.Value;
         if (string.IsNullOrWhiteSpace(settings.BotToken))
@@ -24,11 +27,14 @@ public sealed class TelegramDirectMessageSender(
             logger.LogWarning(
                 "Telegram bot token is not configured; cannot send direct message to {ChatId}",
                 chatId);
-            return false;
+            return TelegramSendOutcome.Fail("Telegram bot token is not configured (TelegramChannel:BotToken / TELEGRAMBOT_BOT_TOKEN).");
         }
 
-        if (chatId <= 0 || string.IsNullOrWhiteSpace(text))
-            return false;
+        if (chatId <= 0)
+            return TelegramSendOutcome.Fail($"Invalid Telegram chat id: {chatId}.");
+
+        if (string.IsNullOrWhiteSpace(text))
+            return TelegramSendOutcome.Fail("Telegram message text is empty.");
 
         try
         {
@@ -39,12 +45,12 @@ public sealed class TelegramDirectMessageSender(
                 new TelegramSendMessageRequest { ChatId = chatId, Text = text },
                 ct);
 
-            return await IsOkResponseAsync(response, chatId, "sendMessage", ct);
+            return await GetSendOutcomeAsync(response, chatId, "sendMessage", ct);
         }
         catch (Exception ex)
         {
             logger.LogWarning(ex, "Failed to send Telegram direct message to {ChatId}", chatId);
-            return false;
+            return TelegramSendOutcome.Fail($"Telegram sendMessage exception: {ex.Message}");
         }
     }
 
@@ -156,6 +162,13 @@ public sealed class TelegramDirectMessageSender(
         long chatId,
         string method,
         CancellationToken ct)
+        => (await GetSendOutcomeAsync(response, chatId, method, ct)).Success;
+
+    private async Task<TelegramSendOutcome> GetSendOutcomeAsync(
+        HttpResponseMessage response,
+        long chatId,
+        string method,
+        CancellationToken ct)
     {
         if (!response.IsSuccessStatusCode)
         {
@@ -166,20 +179,25 @@ public sealed class TelegramDirectMessageSender(
                 chatId,
                 (int)response.StatusCode,
                 errorBody);
-            return false;
+            var trimmed = string.IsNullOrWhiteSpace(errorBody) ? "no body" : TrimError(errorBody);
+            return TelegramSendOutcome.Fail($"Telegram {method} HTTP {(int)response.StatusCode}: {trimmed}");
         }
 
         var payload = await response.Content.ReadFromJsonAsync<TelegramApiResponse>(JsonOptions, ct);
         if (payload is { Ok: true })
-            return true;
+            return TelegramSendOutcome.Ok();
 
+        var description = payload?.Description ?? "unknown";
         logger.LogWarning(
             "Telegram {Method} returned error for {ChatId}: {Description}",
             method,
             chatId,
-            payload?.Description ?? "unknown");
-        return false;
+            description);
+        return TelegramSendOutcome.Fail($"Telegram {method} error: {description}");
     }
+
+    private static string TrimError(string errorBody)
+        => errorBody.Length <= 400 ? errorBody : errorBody[..400] + "…";
 
     private sealed class TelegramSendMessageRequest
     {

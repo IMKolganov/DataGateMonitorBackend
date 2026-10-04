@@ -23,6 +23,8 @@ public class NotificationRecipientConfiguration : BaseEntityConfiguration<Notifi
         entity.Property(e => e.DeliveredAt);
         entity.Property(e => e.DeliveryStatus)
             .IsRequired();
+        entity.Property(e => e.DeliveryError)
+            .HasMaxLength(1024);
         entity.Property(e => e.ReadAt);
 
         // Indexes
