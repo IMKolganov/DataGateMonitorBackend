@@ -18,7 +18,11 @@ public class TelegramNotifier(
         var telegramId = FreeTierAccessComplianceService.TryGetTelegramId(links);
         if (telegramId is null)
         {
-            throw new InvalidOperationException(
+            logger.LogWarning(
+                "Skipping telegram delivery for AdminId={AdminUserId} NotificationId={NotificationId}: no Telegram identity link",
+                adminUserId,
+                notification.Id);
+            throw new NotificationChannelSkippedException(
                 $"Admin user {adminUserId} is not linked to Telegram (no UserIdentityLink with provider=telegram).");
         }
 

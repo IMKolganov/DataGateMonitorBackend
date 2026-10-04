@@ -275,6 +275,21 @@ public class NotificationService(
                 "Send canceled: NotificationId={NotificationId}, AdminId={AdminId}, Channel={Channel}",
                 notification.Id, adminUserId, notifier.Channel);
         }
+        catch (NotificationChannelSkippedException ex)
+        {
+            // Expected when the admin has no linked channel identity — do not LogError (Wazuh noise).
+            var error = TruncateError(ex.Message);
+            await notificationRecipientCommandServices.UpdateWhere(
+                predicate: r => r.NotificationId == notification.Id
+                                && r.AdminUserId == adminUserId
+                                && r.DeliveryChannel == notifier.Channel,
+                set: calls => calls
+                    .SetProperty(r => r.DeliveryStatus, DeliveryStatus.Failed)
+                    .SetProperty(r => r.DeliveryError, error)
+                    .SetProperty(r => r.LastUpdate, DateTimeOffset.UtcNow),
+                ct: ct
+            );
+        }
         catch (Exception ex)
         {
             logger.LogError(

@@ -47,13 +47,13 @@ public class TelegramNotifierTests
     }
 
     [Fact]
-    public async Task Send_WhenAdminNotLinked_ThrowsWithClearMessage()
+    public async Task Send_WhenAdminNotLinked_ThrowsSkippedWithClearMessage()
     {
         const int adminUserId = 11;
         _identityLinks.Setup(q => q.GetListByUserId(adminUserId, It.IsAny<CancellationToken>()))
             .ReturnsAsync([new UserIdentityLink { Provider = "google", ExternalId = "sub-1" }]);
 
-        var ex = await Assert.ThrowsAsync<InvalidOperationException>(
+        var ex = await Assert.ThrowsAsync<NotificationChannelSkippedException>(
             () => CreateSut().Send(SampleNotification(), adminUserId, CancellationToken.None));
 
         Assert.Contains("not linked to Telegram", ex.Message);
