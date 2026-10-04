@@ -137,7 +137,7 @@ public class NotificationServiceTests
 
         var tg = CreateNotifier("telegram");
         tg.Setup(n => n.Send(It.IsAny<Notification>(), 11, It.IsAny<CancellationToken>()))
-            .ThrowsAsync(new InvalidOperationException("Admin user 11 is not linked to Telegram"));
+            .ThrowsAsync(new NotificationChannelSkippedException("Admin user 11 is not linked to Telegram"));
 
         Expression<Func<NotificationRecipient, bool>>? failedPredicate = null;
         _recipientCmd
