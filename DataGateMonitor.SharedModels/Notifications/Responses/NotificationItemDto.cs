@@ -12,4 +12,7 @@ public class NotificationItemDto
     public bool IsRead { get; set; }
     public DateTimeOffset CreatedAt { get; set; }
     public DateTimeOffset? ReadAt { get; set; }
+
+    /// <summary>Per-channel delivery attempts for the current admin (web, telegram, …).</summary>
+    public List<NotificationDeliveryDto> Deliveries { get; set; } = [];
 }
