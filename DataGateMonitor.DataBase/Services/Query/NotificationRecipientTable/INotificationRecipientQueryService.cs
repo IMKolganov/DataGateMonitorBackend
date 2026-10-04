@@ -17,4 +17,12 @@ public interface INotificationRecipientQueryService
     Task<IPagedResult<NotificationListRow>> GetNotificationListPageByAdminUserIdAsync(int adminUserId, GetNotificationsRequest request, CancellationToken ct = default);
 
     Task<int> GetUnreadCountByAdminUserIdAsync(int adminUserId, CancellationToken ct = default);
+
+    /// <summary>
+    /// Per-channel delivery rows for the given admin and notification ids.
+    /// </summary>
+    Task<List<NotificationDeliveryRow>> GetDeliveriesByAdminUserIdAndNotificationIdsAsync(
+        int adminUserId,
+        IReadOnlyCollection<int> notificationIds,
+        CancellationToken ct = default);
 }
