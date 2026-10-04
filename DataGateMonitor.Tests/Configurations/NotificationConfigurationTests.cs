@@ -31,6 +31,8 @@ public class NotificationConfigurationTests
         AssertRegistered(services, typeof(IGeoLiteNotificationService));
         AssertRegistered(services, typeof(IAdminNotificationHub));
         AssertRegistered(services, typeof(INotifier));
+        Assert.Contains(services, d => d.ServiceType == typeof(INotifier) && d.ImplementationType == typeof(WebNotifier));
+        Assert.Contains(services, d => d.ServiceType == typeof(INotifier) && d.ImplementationType == typeof(TelegramNotifier));
     }
 
     private static void AssertRegistered(IServiceCollection services, Type serviceType)

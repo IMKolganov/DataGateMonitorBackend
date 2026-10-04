@@ -82,4 +82,29 @@ public class NotificationRecipientQueryService(
             .GroupBy(r => r.NotificationId)
             .CountAsync(g => g.All(r => r.ReadAt == null), ct);
     }
+
+    public async Task<List<NotificationDeliveryRow>> GetDeliveriesByAdminUserIdAndNotificationIdsAsync(
+        int adminUserId,
+        IReadOnlyCollection<int> notificationIds,
+        CancellationToken ct = default)
+    {
+        if (notificationIds.Count == 0)
+            return [];
+
+        var ids = notificationIds.Where(id => id > 0).Distinct().ToList();
+        if (ids.Count == 0)
+            return [];
+
+        return await recipientQuery
+            .Query(asNoTracking: true)
+            .Where(r => r.AdminUserId == adminUserId && ids.Contains(r.NotificationId))
+            .OrderBy(r => r.DeliveryChannel)
+            .Select(r => new NotificationDeliveryRow(
+                r.NotificationId,
+                r.DeliveryChannel,
+                r.DeliveryStatus,
+                r.DeliveryError,
+                r.DeliveredAt))
+            .ToListAsync(ct);
+    }
 }

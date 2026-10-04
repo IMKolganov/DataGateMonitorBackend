@@ -1,29 +1,42 @@
-﻿using DataGateMonitor.Models;
+﻿using DataGateMonitor.DataBase.Services.Query.UserIdentityLinkTable;
+using DataGateMonitor.Models;
 using DataGateMonitor.Services.TelegramBot.Interfaces;
+using DataGateMonitor.Services.Users;
 
 namespace DataGateMonitor.Services.Others;
 
 public class TelegramNotifier(
-    ITelegramUserService telegramUserService,
-    ILogger<TelegramNotifier> logger)
-    : INotifier
+    IUserIdentityLinkQueryService userIdentityLinkQueryService,
+    ITelegramDirectMessageSender telegramDirectMessageSender,
+    ILogger<TelegramNotifier> logger) : INotifier
 {
     public string Channel => "telegram";
 
-    private readonly ITelegramUserService _telegramUserService = telegramUserService;
-    private readonly ILogger<TelegramNotifier> _logger = logger;
-
-    public Task Send(Notification notification, int adminUserId, CancellationToken ct)
+    public async Task Send(Notification notification, int adminUserId, CancellationToken ct)
     {
-        throw new NotImplementedException();
-        // var user = await _telegramUserService.GetUserByAdminIdAsync(adminUserId, ct);
-        // if (user == null)
-        // {
-        //     _logger.LogWarning("Admin {AdminUserId} not linked to Telegram", adminUserId);
-        //     return;
-        // }
-        //
-        // var text = $"🔔 {notification.Title}\n{notification.Message}";
-        // await _telegramUserService.SendMessageAsync(user.TelegramId, text, ct);
+        var links = await userIdentityLinkQueryService.GetListByUserId(adminUserId, ct);
+        var telegramId = FreeTierAccessComplianceService.TryGetTelegramId(links);
+        if (telegramId is null)
+        {
+            throw new InvalidOperationException(
+                $"Admin user {adminUserId} is not linked to Telegram (no UserIdentityLink with provider=telegram).");
+        }
+
+        // Keep the production message shape used since telegram-notifier-admin-alerts:
+        // "{Title}\n{Message}" (matches DataGateVPNBot admin DMs).
+        var text = $"{notification.Title}\n{notification.Message}";
+        var outcome = await telegramDirectMessageSender.SendMessageAsync(telegramId.Value, text, ct);
+        if (!outcome.Success)
+        {
+            logger.LogWarning(
+                "Telegram notify failed for admin {AdminUserId} chat {TelegramId} NotificationId={NotificationId}: {Error}",
+                adminUserId,
+                telegramId.Value,
+                notification.Id,
+                outcome.ErrorMessage);
+            throw new InvalidOperationException(
+                outcome.ErrorMessage
+                ?? $"Failed to deliver notification {notification.Id} to Telegram chat {telegramId.Value} for admin {adminUserId}.");
+        }
     }
 }

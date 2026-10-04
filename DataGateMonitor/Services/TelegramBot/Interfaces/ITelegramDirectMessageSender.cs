@@ -15,6 +15,11 @@ public interface ITelegramDirectMessageSender
     Task<bool> TrySendMessageAsync(long chatId, string text, CancellationToken ct = default);
 
     /// <summary>
+    /// Same as <see cref="TrySendMessageAsync"/> but returns a structured outcome with an error message.
+    /// </summary>
+    Task<TelegramSendOutcome> SendMessageAsync(long chatId, string text, CancellationToken ct = default);
+
+    /// <summary>
     /// Attempts to send a photo with caption. Falls back to text-only when <paramref name="photoBytes"/>
     /// is empty. Never throws.
     /// </summary>

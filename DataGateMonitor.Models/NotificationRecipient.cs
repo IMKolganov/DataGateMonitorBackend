@@ -14,5 +14,9 @@ public class NotificationRecipient : BaseEntity<int>
 
     public DateTimeOffset? DeliveredAt { get; set; }
     public DeliveryStatus DeliveryStatus { get; set; } = DeliveryStatus.Pending;
+
+    /// <summary>Last delivery failure reason for this channel (cleared on success).</summary>
+    public string? DeliveryError { get; set; }
+
     public DateTimeOffset? ReadAt { get; set; }
 }

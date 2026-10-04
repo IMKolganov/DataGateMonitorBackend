@@ -37,7 +37,7 @@ public static class NotificationConfiguration
 
         // Channel notifiers
         services.AddScoped<INotifier, WebNotifier>();
-        // services.AddScoped<INotifier, TelegramNotifier>(); // Uncomment only if implemented
+        services.AddScoped<INotifier, TelegramNotifier>();
 
         // Provide Dictionary<string, INotifier> for NotificationService
         services.AddScoped<Dictionary<string, INotifier>>(sp =>
