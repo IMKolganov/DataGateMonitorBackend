@@ -1,12 +1,13 @@
 ﻿using DataGateMonitor.DataBase.Services.Query.UserIdentityLinkTable;
 using DataGateMonitor.Models;
 using DataGateMonitor.Services.TelegramBot.Interfaces;
+using DataGateMonitor.Services.Users;
 
 namespace DataGateMonitor.Services.Others;
 
 public class TelegramNotifier(
     IUserIdentityLinkQueryService userIdentityLinkQueryService,
-    ITelegramDirectMessageSender directMessageSender,
+    ITelegramDirectMessageSender telegramDirectMessageSender,
     ILogger<TelegramNotifier> logger) : INotifier
 {
     public string Channel => "telegram";
@@ -14,42 +15,28 @@ public class TelegramNotifier(
     public async Task Send(Notification notification, int adminUserId, CancellationToken ct)
     {
         var links = await userIdentityLinkQueryService.GetListByUserId(adminUserId, ct);
-        var telegramLink = links.FirstOrDefault(l =>
-            string.Equals(l.Provider, AuthIdentityProviders.Telegram, StringComparison.OrdinalIgnoreCase));
-
-        if (telegramLink is null)
+        var telegramId = FreeTierAccessComplianceService.TryGetTelegramId(links);
+        if (telegramId is null)
         {
             throw new InvalidOperationException(
                 $"Admin user {adminUserId} is not linked to Telegram (no UserIdentityLink with provider=telegram).");
         }
 
-        if (!long.TryParse(telegramLink.ExternalId, out var telegramId) || telegramId <= 0)
-        {
-            throw new InvalidOperationException(
-                $"Admin user {adminUserId} has invalid Telegram ExternalId '{telegramLink.ExternalId}'.");
-        }
-
-        var text = FormatMessage(notification);
-        var outcome = await directMessageSender.SendMessageAsync(telegramId, text, ct);
+        // Keep the production message shape used since telegram-notifier-admin-alerts:
+        // "{Title}\n{Message}" (matches DataGateVPNBot admin DMs).
+        var text = $"{notification.Title}\n{notification.Message}";
+        var outcome = await telegramDirectMessageSender.SendMessageAsync(telegramId.Value, text, ct);
         if (!outcome.Success)
         {
             logger.LogWarning(
-                "Telegram notify failed for admin {AdminUserId} chat {TelegramId}: {Error}",
+                "Telegram notify failed for admin {AdminUserId} chat {TelegramId} NotificationId={NotificationId}: {Error}",
                 adminUserId,
-                telegramId,
+                telegramId.Value,
+                notification.Id,
                 outcome.ErrorMessage);
-            throw new InvalidOperationException(outcome.ErrorMessage ?? "Telegram sendMessage failed.");
+            throw new InvalidOperationException(
+                outcome.ErrorMessage
+                ?? $"Failed to deliver notification {notification.Id} to Telegram chat {telegramId.Value} for admin {adminUserId}.");
         }
-    }
-
-    private static string FormatMessage(Notification notification)
-    {
-        var severity = notification.Severity.ToString();
-        var title = notification.Title?.Trim() ?? "(no title)";
-        var message = notification.Message?.Trim();
-        if (string.IsNullOrEmpty(message))
-            return $"[{severity}] {title}";
-
-        return $"[{severity}] {title}\n{message}";
     }
 }

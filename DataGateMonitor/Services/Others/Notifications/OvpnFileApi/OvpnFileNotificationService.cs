@@ -5,7 +5,7 @@ namespace DataGateMonitor.Services.Others.Notifications.OvpnFileApi;
 
 public class OvpnFileNotificationService(INotificationService notifications) : IOvpnFileNotificationService
 {
-    private static readonly string[] ReadChannels = ["web"];
+    private static readonly string[] ReadChannels = ["web", "telegram"];
     private static readonly string[] ChangeChannels = ["web", "telegram"];
 
     public Task NotifyReadByToken(string token, int fileId, int vpnServerId, bool isRevoked, CancellationToken ct,
