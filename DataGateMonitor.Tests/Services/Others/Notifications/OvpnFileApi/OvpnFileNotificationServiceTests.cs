@@ -1,5 +1,8 @@
 using FluentAssertions;
+using Microsoft.EntityFrameworkCore;
+using Microsoft.Extensions.Configuration;
 using Moq;
+using DataGateMonitor.DataBase.Contexts;
 using DataGateMonitor.Services.Others;
 using DataGateMonitor.SharedModels.Notifications.Requests;
 using DataGateMonitor.Services.Others.Notifications.OvpnFileApi;
@@ -11,11 +14,16 @@ namespace DataGateMonitor.Tests.Services.Others.Notifications.OvpnFileApi;
 public class OvpnFileNotificationServiceTests
 {
     private readonly Mock<INotificationService> _notifications = new(MockBehavior.Strict);
+    private readonly ApplicationDbContext _db;
     private readonly OvpnFileNotificationService _sut;
 
     public OvpnFileNotificationServiceTests()
     {
-        _sut = new OvpnFileNotificationService(_notifications.Object);
+        var options = new DbContextOptionsBuilder<ApplicationDbContext>()
+            .UseInMemoryDatabase(Guid.NewGuid().ToString("N"))
+            .Options;
+        _db = new ApplicationDbContext(options, new ConfigurationBuilder().Build());
+        _sut = new OvpnFileNotificationService(_notifications.Object, _db);
     }
 
     [Fact]
@@ -51,6 +59,40 @@ public class OvpnFileNotificationServiceTests
         await _sut.NotifyIssued(1, 10, "a.ovpn", "ext", CancellationToken.None);
 
         channels.Should().BeEquivalentTo("web", "telegram");
+    }
+
+    [Fact]
+    public async Task NotifyIssued_IncludesDisplayNameWhenIdentityExists()
+    {
+        NotifyAdminsRequest? request = null;
+        _db.Users.Add(new DataGateMonitor.Models.User
+        {
+            Id = 42,
+            DisplayName = "Bob Client",
+            CreateDate = DateTimeOffset.UtcNow,
+            LastUpdate = DateTimeOffset.UtcNow,
+        });
+        _db.UserIdentityLinks.Add(new DataGateMonitor.Models.UserIdentityLink
+        {
+            Id = 1,
+            UserId = 42,
+            Provider = "google",
+            ExternalId = "ext-bob",
+            CreateDate = DateTimeOffset.UtcNow,
+            LastUpdate = DateTimeOffset.UtcNow,
+        });
+        await _db.SaveChangesAsync();
+
+        _notifications
+            .Setup(s => s.NotifyAdmins(It.IsAny<NotifyAdminsRequest>(), It.IsAny<IEnumerable<string>?>(), It.IsAny<CancellationToken>()))
+            .Callback<NotifyAdminsRequest, IEnumerable<string>?, CancellationToken>((req, _, _) => request = req)
+            .ReturnsAsync(1);
+
+        await _sut.NotifyIssued(1, 10, "a.ovpn", "ext-bob", CancellationToken.None);
+
+        request!.Message.Should().Contain("DisplayName=Bob Client");
+        request.Message.Should().Contain("ExternalId=ext-bob");
+        request.Message.Should().Contain("FileName=a.ovpn");
     }
 
     [Fact]

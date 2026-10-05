@@ -1,7 +1,10 @@
+using DataGateMonitor.DataBase.Contexts;
 using DataGateMonitor.DataBase.Services.Query.UserIdentityLinkTable;
 using DataGateMonitor.Models;
 using DataGateMonitor.Services.Others;
 using DataGateMonitor.Services.TelegramBot.Interfaces;
+using Microsoft.EntityFrameworkCore;
+using Microsoft.Extensions.Configuration;
 using Microsoft.Extensions.Logging.Abstractions;
 using Moq;
 
@@ -12,8 +15,27 @@ public class TelegramNotifierTests
     private readonly Mock<IUserIdentityLinkQueryService> _identityLinks = new(MockBehavior.Strict);
     private readonly Mock<ITelegramDirectMessageSender> _dmSender = new(MockBehavior.Strict);
 
-    private TelegramNotifier CreateSut()
-        => new(_identityLinks.Object, _dmSender.Object, NullLogger<TelegramNotifier>.Instance);
+    private static ApplicationDbContext CreateDb(params User[] users)
+    {
+        var options = new DbContextOptionsBuilder<ApplicationDbContext>()
+            .UseInMemoryDatabase(Guid.NewGuid().ToString("N"))
+            .Options;
+        var config = new ConfigurationBuilder().Build();
+        var db = new ApplicationDbContext(options, config);
+        if (users.Length > 0)
+        {
+            db.Users.AddRange(users);
+            db.SaveChanges();
+        }
+        return db;
+    }
+
+    private TelegramNotifier CreateSut(ApplicationDbContext? db = null)
+        => new(
+            _identityLinks.Object,
+            db ?? CreateDb(),
+            _dmSender.Object,
+            NullLogger<TelegramNotifier>.Instance);
 
     private static Notification SampleNotification()
         => new()
@@ -52,11 +74,21 @@ public class TelegramNotifierTests
         const int adminUserId = 11;
         _identityLinks.Setup(q => q.GetListByUserId(adminUserId, It.IsAny<CancellationToken>()))
             .ReturnsAsync([new UserIdentityLink { Provider = "google", ExternalId = "sub-1" }]);
+        await using var db = CreateDb(new User
+        {
+            Id = adminUserId,
+            DisplayName = "Alice Admin",
+            CreateDate = DateTimeOffset.UtcNow,
+            LastUpdate = DateTimeOffset.UtcNow,
+        });
 
         var ex = await Assert.ThrowsAsync<NotificationChannelSkippedException>(
-            () => CreateSut().Send(SampleNotification(), adminUserId, CancellationToken.None));
+            () => CreateSut(db).Send(SampleNotification(), adminUserId, CancellationToken.None));
 
         Assert.Contains("not linked to Telegram", ex.Message);
+        Assert.Contains("Alice Admin", ex.Message);
+        Assert.Contains("(11)", ex.Message);
+        Assert.DoesNotContain("UserIdentityLink", ex.Message);
         _dmSender.Verify(
             s => s.SendMessageAsync(It.IsAny<long>(), It.IsAny<string>(), It.IsAny<CancellationToken>()),
             Times.Never);

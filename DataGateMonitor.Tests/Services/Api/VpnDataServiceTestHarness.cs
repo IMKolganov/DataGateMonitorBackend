@@ -28,6 +28,7 @@ internal sealed class VpnDataServiceTestHarness
     public Mock<ICommandService<VpnServer, int>> ServerCmd { get; } = new(MockBehavior.Strict);
     public Mock<ICommandService<VpnServerOvpnFileConfig, int>> CfgCmd { get; } = new(MockBehavior.Strict);
     public Mock<ICommandService<QuotaPlanAllowedServer, int>> QuotaPlanCmd { get; } = new(MockBehavior.Strict);
+    public Mock<ICommandService<UserVpnServerAccessRule, int>> AccessRuleCmd { get; } = new(MockBehavior.Strict);
     public Mock<ICommandService<VpnServerTag, int>> TagCmd { get; } = new(MockBehavior.Strict);
     public Mock<IServerOpenVpnNotificationService> Notification { get; } = new(MockBehavior.Loose);
     public Mock<IStatusCacheGenerationService> StatusCache { get; } = new(MockBehavior.Loose);
@@ -57,6 +58,9 @@ internal sealed class VpnDataServiceTestHarness
             .Callback<IEnumerable<QuotaPlanAllowedServer>, bool, CancellationToken>((xs, _, _) => QuotaLinksAdded.AddRange(xs))
             .ReturnsAsync(1);
 
+        AccessRuleCmd.Setup(c => c.DeleteWhere(It.IsAny<Expression<Func<UserVpnServerAccessRule, bool>>>(), It.IsAny<CancellationToken>()))
+            .Returns(Task.FromResult(0));
+
         TagCmd.Setup(c => c.DeleteWhere(It.IsAny<Expression<Func<VpnServerTag, bool>>>(), It.IsAny<CancellationToken>()))
             .Returns(Task.FromResult(0));
         TagCmd.Setup(c => c.AddRange(It.IsAny<IEnumerable<VpnServerTag>>(), true, It.IsAny<CancellationToken>()))
@@ -77,6 +81,7 @@ internal sealed class VpnDataServiceTestHarness
         ServerCmd.Object,
         CfgCmd.Object,
         QuotaPlanCmd.Object,
+        AccessRuleCmd.Object,
         TagCmd.Object,
         Notification.Object,
         StatusCache.Object,

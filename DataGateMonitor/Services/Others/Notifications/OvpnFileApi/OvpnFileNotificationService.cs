@@ -1,9 +1,13 @@
-﻿using DataGateMonitor.SharedModels.Notifications.Requests;
+﻿using DataGateMonitor.DataBase.Contexts;
+using DataGateMonitor.SharedModels.Notifications.Requests;
 using DataGateMonitor.SharedModels.Enums;
+using Microsoft.EntityFrameworkCore;
 
 namespace DataGateMonitor.Services.Others.Notifications.OvpnFileApi;
 
-public class OvpnFileNotificationService(INotificationService notifications) : IOvpnFileNotificationService
+public class OvpnFileNotificationService(
+    INotificationService notifications,
+    ApplicationDbContext db) : IOvpnFileNotificationService
 {
     private static readonly string[] ReadChannels = ["web", "telegram"];
     private static readonly string[] ChangeChannels = ["web", "telegram"];
@@ -46,94 +50,108 @@ public class OvpnFileNotificationService(INotificationService notifications) : I
             ReadChannels, ct);
     }
 
-    public Task NotifyReadByExternalId(string externalId, int count, CancellationToken ct,
+    public async Task NotifyReadByExternalId(string externalId, int count, CancellationToken ct,
         VpnProfileNotificationStack stack = VpnProfileNotificationStack.OpenVpn)
     {
         var label = stack == VpnProfileNotificationStack.Xray ? "Xray client links" : "OpenVPN profiles";
-        return NotifyAsync(
+        var displayName = await ResolveDisplayNameAsync(externalId, ct);
+        await NotifyAsync(
             stack,
             VpnProfileNotificationKindMapping.FromStackAndCategory(stack, VpnProfileNotificationCategory.Read),
             stack == VpnProfileNotificationStack.Xray ? "xray.vless.read.by-external" : "ovpn.read.by-external",
             $"{label} listed by external id",
-            $"ExternalId={externalId}; Count={count};", null, NotificationSeverity.Info, ReadChannels, ct);
-    }
-
-    public Task NotifyReadByExternalIdAndVpnServerId(int vpnServerId, string externalId, int count, bool isRevoked,
-        CancellationToken ct, VpnProfileNotificationStack stack = VpnProfileNotificationStack.OpenVpn)
-    {
-        var label = stack == VpnProfileNotificationStack.Xray ? "Xray client links" : "OpenVPN profiles";
-        return NotifyAsync(
-            stack,
-            VpnProfileNotificationKindMapping.FromStackAndCategory(stack, VpnProfileNotificationCategory.Read),
-            stack == VpnProfileNotificationStack.Xray ? "xray.vless.read.by-external" : "ovpn.read.by-external",
-            $"{label} listed by external id",
-            $"ServerId={vpnServerId}; ExternalId={externalId}; Count={count}; Revoked={isRevoked}", vpnServerId,
+            AppendDisplayName($"ExternalId={externalId}; Count={count};", displayName), null,
             NotificationSeverity.Info, ReadChannels, ct);
     }
 
-    public Task NotifyReadByExternalIdWithToken(int vpnServerId, string externalId, int count, bool isRevoked,
+    public async Task NotifyReadByExternalIdAndVpnServerId(int vpnServerId, string externalId, int count, bool isRevoked,
         CancellationToken ct, VpnProfileNotificationStack stack = VpnProfileNotificationStack.OpenVpn)
     {
         var label = stack == VpnProfileNotificationStack.Xray ? "Xray client links" : "OpenVPN profiles";
-        return NotifyAsync(
+        var displayName = await ResolveDisplayNameAsync(externalId, ct);
+        await NotifyAsync(
+            stack,
+            VpnProfileNotificationKindMapping.FromStackAndCategory(stack, VpnProfileNotificationCategory.Read),
+            stack == VpnProfileNotificationStack.Xray ? "xray.vless.read.by-external" : "ovpn.read.by-external",
+            $"{label} listed by external id",
+            AppendDisplayName(
+                $"ServerId={vpnServerId}; ExternalId={externalId}; Count={count}; Revoked={isRevoked}",
+                displayName),
+            vpnServerId, NotificationSeverity.Info, ReadChannels, ct);
+    }
+
+    public async Task NotifyReadByExternalIdWithToken(int vpnServerId, string externalId, int count, bool isRevoked,
+        CancellationToken ct, VpnProfileNotificationStack stack = VpnProfileNotificationStack.OpenVpn)
+    {
+        var label = stack == VpnProfileNotificationStack.Xray ? "Xray client links" : "OpenVPN profiles";
+        var displayName = await ResolveDisplayNameAsync(externalId, ct);
+        await NotifyAsync(
             stack,
             VpnProfileNotificationKindMapping.FromStackAndCategory(stack, VpnProfileNotificationCategory.Read),
             stack == VpnProfileNotificationStack.Xray ? "xray.vless.read.by-external-with-token" : "ovpn.read.by-external-with-token",
             $"{label} (with tokens) listed by external id",
-            $"ServerId={vpnServerId}; ExternalId={externalId}; Count={count}; Revoked={isRevoked}", vpnServerId,
-            NotificationSeverity.Info, ReadChannels, ct);
+            AppendDisplayName(
+                $"ServerId={vpnServerId}; ExternalId={externalId}; Count={count}; Revoked={isRevoked}",
+                displayName),
+            vpnServerId, NotificationSeverity.Info, ReadChannels, ct);
     }
 
-    public Task NotifyIssued(int vpnServerId, int fileId, string fileName, string externalId, CancellationToken ct,
+    public async Task NotifyIssued(int vpnServerId, int fileId, string fileName, string externalId, CancellationToken ct,
         VpnProfileNotificationStack stack = VpnProfileNotificationStack.OpenVpn)
     {
         var label = stack == VpnProfileNotificationStack.Xray ? "Xray client link" : "OpenVPN profile";
-        return NotifyAsync(
+        var displayName = await ResolveDisplayNameAsync(externalId, ct);
+        await NotifyAsync(
             stack,
             VpnProfileNotificationKindMapping.FromStackAndCategory(stack, VpnProfileNotificationCategory.Mutate),
             stack == VpnProfileNotificationStack.Xray ? "xray.vless.issued" : "ovpn.issued",
             $"{label} issued",
-            $"FileId={fileId}; FileName={fileName}; ExternalId={externalId}", vpnServerId, NotificationSeverity.Info,
-            ChangeChannels, ct);
+            AppendDisplayName($"FileId={fileId}; FileName={fileName}; ExternalId={externalId}", displayName),
+            vpnServerId, NotificationSeverity.Info, ChangeChannels, ct);
     }
 
-    public Task NotifyIssuedWithToken(int vpnServerId, int fileId, string fileName, string externalId, int tokenId,
+    public async Task NotifyIssuedWithToken(int vpnServerId, int fileId, string fileName, string externalId, int tokenId,
         CancellationToken ct, VpnProfileNotificationStack stack = VpnProfileNotificationStack.OpenVpn)
     {
         var label = stack == VpnProfileNotificationStack.Xray ? "Xray client link" : "OpenVPN profile";
-        return NotifyAsync(
+        var displayName = await ResolveDisplayNameAsync(externalId, ct);
+        await NotifyAsync(
             stack,
             VpnProfileNotificationKindMapping.FromStackAndCategory(stack, VpnProfileNotificationCategory.Mutate),
             stack == VpnProfileNotificationStack.Xray ? "xray.vless.issued" : "ovpn.issued",
             $"{label} (with token) issued",
-            $"FileId={fileId}; FileName={fileName}; ExternalId={externalId}; TokenId={tokenId}", vpnServerId,
-            NotificationSeverity.Info, ChangeChannels, ct);
+            AppendDisplayName(
+                $"FileId={fileId}; FileName={fileName}; ExternalId={externalId}; TokenId={tokenId}",
+                displayName),
+            vpnServerId, NotificationSeverity.Info, ChangeChannels, ct);
     }
 
-    public Task NotifyRevoked(int vpnServerId, int fileId, string fileName, string externalId, CancellationToken ct,
+    public async Task NotifyRevoked(int vpnServerId, int fileId, string fileName, string externalId, CancellationToken ct,
         VpnProfileNotificationStack stack = VpnProfileNotificationStack.OpenVpn)
     {
         var label = stack == VpnProfileNotificationStack.Xray ? "Xray client link" : "OpenVPN profile";
-        return NotifyAsync(
+        var displayName = await ResolveDisplayNameAsync(externalId, ct);
+        await NotifyAsync(
             stack,
             VpnProfileNotificationKindMapping.FromStackAndCategory(stack, VpnProfileNotificationCategory.Mutate),
             stack == VpnProfileNotificationStack.Xray ? "xray.vless.revoked" : "ovpn.revoked",
             $"{label} revoked",
-            $"FileId={fileId}; FileName={fileName}; ExternalId={externalId}", vpnServerId, NotificationSeverity.Warning,
-            ChangeChannels, ct);
+            AppendDisplayName($"FileId={fileId}; FileName={fileName}; ExternalId={externalId}", displayName),
+            vpnServerId, NotificationSeverity.Warning, ChangeChannels, ct);
     }
 
-    public Task NotifyDownloaded(int vpnServerId, string fileName, string externalId, bool isRevoked, CancellationToken ct,
-        VpnProfileNotificationStack stack = VpnProfileNotificationStack.OpenVpn)
+    public async Task NotifyDownloaded(int vpnServerId, string fileName, string externalId, bool isRevoked,
+        CancellationToken ct, VpnProfileNotificationStack stack = VpnProfileNotificationStack.OpenVpn)
     {
         var label = stack == VpnProfileNotificationStack.Xray ? "Xray client link" : "OpenVPN profile";
-        return NotifyAsync(
+        var displayName = await ResolveDisplayNameAsync(externalId, ct);
+        await NotifyAsync(
             stack,
             VpnProfileNotificationKindMapping.FromStackAndCategory(stack, VpnProfileNotificationCategory.Download),
             stack == VpnProfileNotificationStack.Xray ? "xray.vless.downloaded" : "ovpn.downloaded",
             $"{label} downloaded",
-            $"FileName={fileName}; ExternalId={externalId}; Revoked={isRevoked}", vpnServerId,
-            NotificationSeverity.Info, ChangeChannels, ct);
+            AppendDisplayName($"FileName={fileName}; ExternalId={externalId}; Revoked={isRevoked}", displayName),
+            vpnServerId, NotificationSeverity.Info, ChangeChannels, ct);
     }
 
     private Task NotifyAsync(
@@ -161,6 +179,25 @@ public class OvpnFileNotificationService(INotificationService notifications) : I
             PreferenceKind = preferenceKind
         }, channels, ct);
     }
+
+    private async Task<string?> ResolveDisplayNameAsync(string? externalId, CancellationToken ct)
+    {
+        if (string.IsNullOrWhiteSpace(externalId)) return null;
+        var userId = await db.UserIdentityLinks.AsNoTracking()
+            .Where(l => l.ExternalId == externalId)
+            .OrderBy(l => l.Id)
+            .Select(l => (int?)l.UserId)
+            .FirstOrDefaultAsync(ct);
+        if (userId is null) return null;
+        var name = await db.Users.AsNoTracking()
+            .Where(u => u.Id == userId.Value)
+            .Select(u => u.DisplayName)
+            .FirstOrDefaultAsync(ct);
+        return string.IsNullOrWhiteSpace(name) ? null : name.Trim();
+    }
+
+    private static string AppendDisplayName(string message, string? displayName)
+        => string.IsNullOrWhiteSpace(displayName) ? message : $"{message}; DisplayName={displayName}";
 
     private static string Short(string token)
         => string.IsNullOrEmpty(token) ? "" : (token.Length > 8 ? $"{token[..4]}…{token[^4..]}" : token);

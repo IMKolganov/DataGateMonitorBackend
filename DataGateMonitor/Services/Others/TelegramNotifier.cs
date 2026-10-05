@@ -1,12 +1,15 @@
-﻿using DataGateMonitor.DataBase.Services.Query.UserIdentityLinkTable;
+﻿using DataGateMonitor.DataBase.Contexts;
+using DataGateMonitor.DataBase.Services.Query.UserIdentityLinkTable;
 using DataGateMonitor.Models;
 using DataGateMonitor.Services.TelegramBot.Interfaces;
 using DataGateMonitor.Services.Users;
+using Microsoft.EntityFrameworkCore;
 
 namespace DataGateMonitor.Services.Others;
 
 public class TelegramNotifier(
     IUserIdentityLinkQueryService userIdentityLinkQueryService,
+    ApplicationDbContext db,
     ITelegramDirectMessageSender telegramDirectMessageSender,
     ILogger<TelegramNotifier> logger) : INotifier
 {
@@ -22,8 +25,15 @@ public class TelegramNotifier(
                 "Skipping telegram delivery for AdminId={AdminUserId} NotificationId={NotificationId}: no Telegram identity link",
                 adminUserId,
                 notification.Id);
+            var displayName = await db.Users.AsNoTracking()
+                .Where(u => u.Id == adminUserId)
+                .Select(u => u.DisplayName)
+                .FirstOrDefaultAsync(ct);
+            var who = string.IsNullOrWhiteSpace(displayName)
+                ? $"Admin user {adminUserId}"
+                : $"Admin {displayName.Trim()} ({adminUserId})";
             throw new NotificationChannelSkippedException(
-                $"Admin user {adminUserId} is not linked to Telegram (no UserIdentityLink with provider=telegram).");
+                $"{who} is not linked to Telegram. Link a Telegram identity for this admin to receive alerts.");
         }
 
         // Keep the production message shape used since telegram-notifier-admin-alerts:
