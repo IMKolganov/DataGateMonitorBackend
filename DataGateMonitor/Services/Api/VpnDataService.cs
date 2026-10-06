@@ -24,6 +24,7 @@ public class VpnDataService(
     ICommandService<VpnServer, int> openVpnServerCommandService,
     ICommandService<VpnServerOvpnFileConfig, int> openVpnServerOvpnFileConfigCommandService,
     ICommandService<QuotaPlanAllowedServer, int> quotaPlanAllowedServerCommandService,
+    ICommandService<UserVpnServerAccessRule, int> userVpnServerAccessRuleCommandService,
     ICommandService<VpnServerTag, int> openVpnServerTagCommandService,
     IServerOpenVpnNotificationService serverOpenVpnNotificationService,
     IStatusCacheGenerationService statusCacheGenerationService,
@@ -171,14 +172,21 @@ public class VpnDataService(
         var openVpnServer = await openVpnServerQueryService.GetById(vpnServerId, ct)
                             ?? throw new InvalidOperationException("VpnServer not found");
         var now = DateTimeOffset.UtcNow;
-        // Soft-delete only hides the row; stop reporting it as Online and leave polling (GetAll
-        // excludes deleted). Stale IsOnline=true otherwise sticks forever when includeDeleted is on.
-        await openVpnServerCommandService.UpdateWhere(
-            x => x.Id == vpnServerId,
-            u => u.SetProperty(x => x.IsDeleted, true)
-                .SetProperty(x => x.IsOnline, false)
-                .SetProperty(x => x.LastUpdate, now),
-            ct);
+        // Soft-delete + drop allowlist/personal-rule links in one transaction so a mid-flight
+        // failure cannot leave orphan vpnServerIds after IsDeleted=true.
+        await transactionRunner.RunAsync(async token =>
+        {
+            // Soft-delete only hides the row; stop reporting it as Online and leave polling (GetAll
+            // excludes deleted). Stale IsOnline=true otherwise sticks forever when includeDeleted is on.
+            await openVpnServerCommandService.UpdateWhere(
+                x => x.Id == vpnServerId,
+                u => u.SetProperty(x => x.IsDeleted, true)
+                    .SetProperty(x => x.IsOnline, false)
+                    .SetProperty(x => x.LastUpdate, now),
+                token);
+            await quotaPlanAllowedServerCommandService.DeleteWhere(x => x.VpnServerId == vpnServerId, token);
+            await userVpnServerAccessRuleCommandService.DeleteWhere(x => x.VpnServerId == vpnServerId, token);
+        }, ct);
         await vpnServerClientPresenceService.MarkAllDisconnectedAsync(vpnServerId, ct);
         await serverOpenVpnNotificationService.NotifyDeleted(openVpnServer.Id, openVpnServer.ServerName, ct);
         statusCacheGenerationService.Bump();

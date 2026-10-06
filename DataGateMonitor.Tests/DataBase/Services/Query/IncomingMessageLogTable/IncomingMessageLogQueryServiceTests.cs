@@ -4,6 +4,7 @@ using Microsoft.EntityFrameworkCore;
 using Moq;
 using DataGateMonitor.DataBase.Services.Query.IncomingMessageLogTable;
 using DataGateMonitor.Models;
+using DataGateMonitor.SharedModels.DataGateMonitor.TelegramBotIncomingMessageLog.Requests;
 using DataGateMonitor.SharedModels.Responses;
 using DataGateMonitor.Tests.Helpers;
 
@@ -15,6 +16,7 @@ public class IncomingMessageLogQueryServiceTests
     {
         public TestDbContext(DbContextOptions<TestDbContext> options) : base(options) { }
         public DbSet<IncomingMessageLog> IncomingMessageLogs => Set<IncomingMessageLog>();
+        public DbSet<TelegramBotUser> TelegramBotUsers => Set<TelegramBotUser>();
     }
 
     private static List<IncomingMessageLog> CreateSample()
@@ -26,32 +28,46 @@ public class IncomingMessageLogQueryServiceTests
             new IncomingMessageLog { Id = 4, TelegramId = 1003, MessageText = "d" }
         };
 
-    private static (Mock<IQueryService<IncomingMessageLog, int>> q, TestDbContext ctx) CreateEfBackedQuery(IEnumerable<IncomingMessageLog> data)
+    private static (Mock<IQueryService<IncomingMessageLog, int>> q, Mock<IQueryService<TelegramBotUser, int>> users, TestDbContext ctx)
+        CreateEfBackedQuery(IEnumerable<IncomingMessageLog> data, IEnumerable<TelegramBotUser>? users = null)
     {
         var options = new DbContextOptionsBuilder<TestDbContext>()
             .UseInMemoryDatabase(databaseName: Guid.NewGuid().ToString())
             .Options;
         var ctx = new TestDbContext(options);
         ctx.IncomingMessageLogs.AddRange(data);
+        if (users != null)
+            ctx.TelegramBotUsers.AddRange(users);
         ctx.SaveChanges();
 
         var mock = new Mock<IQueryService<IncomingMessageLog, int>>();
         mock
             .Setup(q => q.Query(It.IsAny<bool>(), It.IsAny<Expression<Func<IncomingMessageLog, object>>[]>()))
             .Returns(ctx.IncomingMessageLogs);
-        return (mock, ctx);
+
+        var usersMock = new Mock<IQueryService<TelegramBotUser, int>>();
+        usersMock
+            .Setup(q => q.Query(It.IsAny<bool>(), It.IsAny<Expression<Func<TelegramBotUser, object>>[]>()))
+            .Returns(ctx.TelegramBotUsers);
+
+        return (mock, usersMock, ctx);
     }
+
+    private static IncomingMessageLogQueryService CreateSut(
+        Mock<IQueryService<IncomingMessageLog, int>> q,
+        Mock<IQueryService<TelegramBotUser, int>> users)
+        => new(q.Object, users.Object);
 
     [Fact]
     public async Task GetAllAsync_Delegates_To_IQueryService()
     {
         var data = CreateSample();
-        var (q, ctx) = CreateEfBackedQuery(data);
+        var (q, users, ctx) = CreateEfBackedQuery(data);
         q.Setup(x => x.GetAll(true, It.IsAny<CancellationToken>()))
          .ReturnsAsync(data)
          .Verifiable();
 
-        var sut = new IncomingMessageLogQueryService(q.Object);
+        var sut = CreateSut(q, users);
 
         var result = await sut.GetAll(CancellationToken.None);
 
@@ -65,12 +81,12 @@ public class IncomingMessageLogQueryServiceTests
     public async Task GetByIdAsync_Delegates_To_FindByIdAsync()
     {
         var target = new IncomingMessageLog { Id = 42, TelegramId = 999, MessageText = "hello" };
-        var (q, ctx) = CreateEfBackedQuery(new[] { target });
+        var (q, users, ctx) = CreateEfBackedQuery(new[] { target });
         q.Setup(x => x.FindById(42, true, It.IsAny<CancellationToken>(), It.IsAny<Expression<Func<IncomingMessageLog, object>>[]>()))
          .ReturnsAsync(target)
          .Verifiable();
 
-        var sut = new IncomingMessageLogQueryService(q.Object);
+        var sut = CreateSut(q, users);
         var result = await sut.GetById(42, CancellationToken.None);
 
         Assert.Same(target, result);
@@ -82,7 +98,7 @@ public class IncomingMessageLogQueryServiceTests
     public async Task GetPageByTelegramIdAsync_Calls_PageAsync_With_Correct_Predicate_And_OrderBy()
     {
         var data = CreateSample();
-        var (q, ctx) = CreateEfBackedQuery(data);
+        var (q, users, ctx) = CreateEfBackedQuery(data);
 
         // capture arguments
         Expression<Func<IncomingMessageLog, bool>>? capturedPredicate = null;
@@ -115,7 +131,7 @@ public class IncomingMessageLogQueryServiceTests
          .ReturnsAsync(paged as IPagedResult<IncomingMessageLog>)
          .Verifiable();
 
-        var sut = new IncomingMessageLogQueryService(q.Object);
+        var sut = CreateSut(q, users);
         var result = await sut.GetPageByTelegramId(1001, 1, 2, CancellationToken.None);
 
         Assert.Same(paged, result);
@@ -140,9 +156,9 @@ public class IncomingMessageLogQueryServiceTests
     public async Task GetPageAsync_Returns_Paged_Results_Ordered_By_Id_Desc()
     {
         var data = CreateSample();
-        var (q, ctx) = CreateEfBackedQuery(data);
+        var (q, users, ctx) = CreateEfBackedQuery(data);
 
-        var sut = new IncomingMessageLogQueryService(q.Object);
+        var sut = CreateSut(q, users);
         var result = await sut.GetPage(1, 2, CancellationToken.None);
 
         Assert.Equal(1, result.Page);
@@ -153,4 +169,48 @@ public class IncomingMessageLogQueryServiceTests
         Assert.Equal(3, result.Items[1].Id);
         await ctx.DisposeAsync();
     }
+
+    [Fact]
+    public async Task GetPage_WhenExcludeAdmins_HidesMessagesFromTelegramBotAdmins()
+    {
+        var data = CreateSample();
+        var botUsers = new[]
+        {
+            new TelegramBotUser { Id = 1, TelegramId = 1001, Username = "admin", IsAdmin = true },
+            new TelegramBotUser { Id = 2, TelegramId = 1002, Username = "user", IsAdmin = false },
+        };
+        var (q, users, ctx) = CreateEfBackedQuery(data, botUsers);
+        var sut = CreateSut(q, users);
+
+        var result = await sut.GetPage(
+            new GetAllMessagesRequest { Page = 1, PageSize = 10, ExcludeAdmins = true },
+            CancellationToken.None);
+
+        Assert.Equal(2, result.TotalCount);
+        Assert.All(result.Items, m => Assert.NotEqual(1001L, m.TelegramId));
+        Assert.Contains(result.Items, m => m.TelegramId == 1002);
+        Assert.Contains(result.Items, m => m.TelegramId == 1003);
+        await ctx.DisposeAsync();
+    }
+
+    [Fact]
+    public async Task GetPage_WhenExcludeAdminsFalse_IncludesAdminMessages()
+    {
+        var data = CreateSample();
+        var botUsers = new[]
+        {
+            new TelegramBotUser { Id = 1, TelegramId = 1001, Username = "admin", IsAdmin = true },
+        };
+        var (q, users, ctx) = CreateEfBackedQuery(data, botUsers);
+        var sut = CreateSut(q, users);
+
+        var result = await sut.GetPage(
+            new GetAllMessagesRequest { Page = 1, PageSize = 10, ExcludeAdmins = false },
+            CancellationToken.None);
+
+        Assert.Equal(4, result.TotalCount);
+        Assert.Contains(result.Items, m => m.TelegramId == 1001);
+        await ctx.DisposeAsync();
+    }
+
 }
