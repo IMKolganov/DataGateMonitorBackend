@@ -18,7 +18,9 @@ public static class RootPageHtml
         string databaseStatusLine,
         string databaseStatusTone,
         ApplicationRuntimeInfo runtimeInfo,
-        IReadOnlyList<ApplicationStartupRecord> startupHistory)
+        IReadOnlyList<ApplicationStartupRecord> startupHistory,
+        string? redisStatusLine = null,
+        string? redisStatusTone = null)
     {
         var startedAt = runtimeInfo.StartedAtUtc.ToString("yyyy-MM-dd HH:mm:ss 'UTC'", CultureInfo.InvariantCulture);
         var uptime = FormatUptime(runtimeInfo.Uptime);
@@ -107,7 +109,17 @@ footer { margin-top: 2rem; text-align: center; font-size: 0.85rem; color: #6e768
         sb.Append(H(databaseStatusTone));
         sb.Append("\">");
         sb.Append(H(databaseStatusLine));
-        sb.Append("</dd></dl></section>");
+        sb.Append("</dd>");
+        if (!string.IsNullOrEmpty(redisStatusLine) && !string.IsNullOrEmpty(redisStatusTone))
+        {
+            sb.Append("<dt>Redis</dt><dd class=\"status-");
+            sb.Append(H(redisStatusTone));
+            sb.Append("\">");
+            sb.Append(H(redisStatusLine));
+            sb.Append("</dd>");
+        }
+
+        sb.Append("</dl></section>");
 
         sb.Append("<section class=\"card\"><h2>Links</h2><div class=\"links\">");
         AppendLink(sb, "DataGate", ProjectSiteUrl);
