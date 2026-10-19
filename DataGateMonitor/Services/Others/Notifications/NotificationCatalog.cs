@@ -1,4 +1,5 @@
 using DataGateMonitor.Models.Helpers;
+using DataGateMonitor.Services.GeoLite;
 using DataGateMonitor.SharedModels.Notifications.Requests;
 using DataGateMonitor.SharedModels.Enums;
 
@@ -11,13 +12,17 @@ public class NotificationCatalog : INotificationCatalog
 
     public NotificationEnvelope SystemException(Exception ex)
     {
+        var diskFull = GeoLiteDiskFull.IsDiskFull(ex);
         var req = new NotifyAdminsRequest
         {
             Type = NotificationTypes.SystemException,
-            Title = "Unhandled exception occurred",
-            Message = $"{ex.GetType().Name}: {ex.Message}",
+            Title = diskFull ? "Disk full on monitor host" : "Unhandled exception occurred",
+            Message = diskFull
+                ? GeoLiteDiskFull.FormatDetail(ex)
+                : $"{ex.GetType().Name}: {ex.Message}",
             Severity = NotificationSeverity.Error,
             Source = "middleware",
+            DedupKey = diskFull ? "system.exception:no-space-left" : null,
             PreferenceKind = ApplicationNotificationKind.AppUnhandledException
         };
         return new NotificationEnvelope(req, WebAndTelegram);

@@ -14,13 +14,15 @@ public class GeoLiteUpdaterService(
     IGeoLiteAuthProvider auth,
     IGeoLiteProgressNotifier progress,
     IHttpErrorMapper httpErrorMapper,
-    IStreamCopier streamCopier)
+    IStreamCopier streamCopier,
+    IGeoLiteVersionRetentionService versionRetention)
     : IGeoLiteUpdaterService
 {
     public async Task<GeoLiteUpdateResponse> DownloadAndUpdateDatabaseAsync(CancellationToken cancellationToken)
     {
         var result = new GeoLiteUpdateResponse();
         const int totalSteps = 8;
+        string? extractDir = null;
 
         try
         {
@@ -30,9 +32,17 @@ public class GeoLiteUpdaterService(
             var dbPath = await config.GetDatabasePathAsync(cancellationToken);
             await progress.ReportStepAsync(1, totalSteps, "Load configuration", 100, cancellationToken);
 
+            // Leave a free slot for the new extract dir (keep-1), otherwise ENOSPC when already at capacity.
+            var maxKept = await versionRetention.GetMaxKeptVersionsAsync(cancellationToken);
+            await versionRetention.PruneOldVersionsAsync(
+                dbPath,
+                cancellationToken,
+                maxKept: Math.Max(0, maxKept - 1));
+
             // Step 2: Prepare directories
             await progress.ReportStepAsync(2, totalSteps, "Prepare directories", 0, cancellationToken);
-            var (_, extractDir, tempFile) = config.PreparePaths(dbPath, timestamp);
+            string tempFile;
+            (_, extractDir, tempFile) = config.PreparePaths(dbPath, timestamp);
             await progress.ReportStepAsync(2, totalSteps, "Prepare directories", 100, cancellationToken);
 
             // Step 3: Get download info
@@ -70,6 +80,17 @@ public class GeoLiteUpdaterService(
                 tempFile, extractDir,
                 percent => progress.ReportStepAsync(5, totalSteps, "Extract archive", percent, cancellationToken),
                 cancellationToken);
+            // Drop the archive ASAP — keeping tar.gz + extracted tree doubles disk use on small volumes.
+            try
+            {
+                if (File.Exists(tempFile))
+                    File.Delete(tempFile);
+            }
+            catch (Exception deleteEx)
+            {
+                logger.LogWarning(deleteEx, "GeoLite: failed to delete archive {TempFile} after extract", tempFile);
+            }
+
             await progress.ReportStepAsync(5, totalSteps, "Extract archive", 100, cancellationToken);
 
             // Step 6: Find .mmdb
@@ -105,11 +126,14 @@ public class GeoLiteUpdaterService(
             if (result.Success)
                 await progress.NotifyFinishedAsync(cancellationToken);
 
+            await versionRetention.PruneOldVersionsAsync(dbPath, cancellationToken);
+
             logger.LogInformation("GeoLite2 database update completed successfully.");
             return result;
         }
         catch (Exception ex)
         {
+            versionRetention.TryDeleteDirectory(extractDir);
             logger.LogError(ex, "Error updating GeoLite2 database.{Error}", ex.Message);
             throw;
         }
