@@ -1,7 +1,6 @@
 using Mapster;
 using Microsoft.AspNetCore.SignalR;
 using DataGateMonitor.DataBase.Services.Query.VpnServerTable;
-using DataGateMonitor.SharedModels.DataGateMonitor.VpnServers.Hubs;
 using DataGateMonitor.Services.BackgroundServices.Interfaces;
 using DataGateMonitor.Services.Cache;
 using DataGateMonitor.SharedModels.DataGateMonitor.VpnServers.Responses;
@@ -47,7 +46,7 @@ public sealed class OpenVpnStatusStreamPublisher(
                 {
                     var vpnServerId = status.ServiceStatus.VpnServerId;
 
-                    var (connectedClients, sessions) =
+                    var (connectedClients, sessions, _) =
                         await openVpnServerOverviewQuery.GetClientCountersAsync(vpnServerId, stoppingToken);
 
                     status.ServiceStatus.CountConnectedClients =
@@ -58,14 +57,21 @@ public sealed class OpenVpnStatusStreamPublisher(
                         probeFlags.GetValueOrDefault(vpnServerId, true);
                 }
 
-                var payload = new StatusStreamPayload
-                {
-                    Statuses = statuses,
-                    TimestampUtc = DateTimeOffset.UtcNow
-                };
+                // TotalDevices is not on SharedModels StatusStreamPayload yet (nuget push blocked);
+                // send an anonymous shape so the UI can show unique ExternalId devices live.
+                var totalDevices = await openVpnServerOverviewQuery.GetConnectedDevicesCountAsync(
+                    serverIds, stoppingToken);
 
                 await hubContext.Clients.Group(GroupName)
-                    .SendAsync("StatusUpdated", payload, stoppingToken);
+                    .SendAsync(
+                        "StatusUpdated",
+                        new
+                        {
+                            Statuses = statuses,
+                            TotalDevices = totalDevices,
+                            TimestampUtc = DateTimeOffset.UtcNow,
+                        },
+                        stoppingToken);
             }
             catch (OperationCanceledException)
             {
