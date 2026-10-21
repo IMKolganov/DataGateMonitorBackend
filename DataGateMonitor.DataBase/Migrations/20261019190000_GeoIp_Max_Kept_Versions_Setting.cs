@@ -14,19 +14,20 @@ namespace DataGateMonitor.DataBase.Migrations
         /// <inheritdoc />
         protected override void Up(MigrationBuilder migrationBuilder)
         {
-            // Idempotent: safe if keys already exist (manual insert / partial apply).
+            // Idempotent by Key. Do NOT hardcode Id — Settings uses identity; fixed Ids
+            // collide with rows already allocated by the sequence (23505 PK_Settings).
             migrationBuilder.Sql(
                 """
                 INSERT INTO xgb_dashopnvpn."Settings"
-                    ("Id", "BoolValue", "DateTimeValue", "DoubleValue", "IntValue", "Key", "StringValue", "ValueType", "CreateDate", "LastUpdate")
-                SELECT 212, NULL, NULL, NULL, 10, 'GeoIp_Max_Kept_Versions', NULL, 'int', TIMESTAMPTZ '-infinity', TIMESTAMPTZ '-infinity'
+                    ("BoolValue", "DateTimeValue", "DoubleValue", "IntValue", "Key", "StringValue", "ValueType", "CreateDate", "LastUpdate")
+                SELECT NULL, NULL, NULL, 10, 'GeoIp_Max_Kept_Versions', NULL, 'int', TIMESTAMPTZ '-infinity', TIMESTAMPTZ '-infinity'
                 WHERE NOT EXISTS (
                     SELECT 1 FROM xgb_dashopnvpn."Settings" WHERE "Key" = 'GeoIp_Max_Kept_Versions'
                 );
 
                 INSERT INTO xgb_dashopnvpn."Settings"
-                    ("Id", "BoolValue", "DateTimeValue", "DoubleValue", "IntValue", "Key", "StringValue", "ValueType", "CreateDate", "LastUpdate")
-                SELECT 213, NULL, NULL, NULL, NULL, 'GeoIp_Max_Kept_Versions_Type', 'int', 'string', TIMESTAMPTZ '-infinity', TIMESTAMPTZ '-infinity'
+                    ("BoolValue", "DateTimeValue", "DoubleValue", "IntValue", "Key", "StringValue", "ValueType", "CreateDate", "LastUpdate")
+                SELECT NULL, NULL, NULL, NULL, 'GeoIp_Max_Kept_Versions_Type', 'int', 'string', TIMESTAMPTZ '-infinity', TIMESTAMPTZ '-infinity'
                 WHERE NOT EXISTS (
                     SELECT 1 FROM xgb_dashopnvpn."Settings" WHERE "Key" = 'GeoIp_Max_Kept_Versions_Type'
                 );
