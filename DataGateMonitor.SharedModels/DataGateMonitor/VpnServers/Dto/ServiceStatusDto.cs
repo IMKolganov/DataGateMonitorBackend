@@ -15,6 +15,12 @@ public class ServiceStatusDto
 
 	public int CountConnectedClients { get; set; }
 
+	/// <summary>
+	/// Distinct non-empty <c>ExternalId</c> among currently connected clients on this server
+	/// (same notion as overview "Devices").
+	/// </summary>
+	public int CountDevices { get; set; }
+
 	public int CountSessions { get; set; }
 
 	public int TotalBytesIn { get; set; }
