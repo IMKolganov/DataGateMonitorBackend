@@ -9,5 +9,11 @@ public sealed class StatusStreamPayload
 {
     public List<ServiceStatusResponse> Statuses { get; set; } = new();
 
+    /// <summary>
+    /// Distinct non-empty <c>CommonName</c> among currently connected clients across all
+    /// servers in <see cref="Statuses"/> (global unique devices by CN; not a sum of per-server counts).
+    /// </summary>
+    public int TotalDevices { get; set; }
+
     public DateTimeOffset TimestampUtc { get; set; } = DateTimeOffset.UtcNow;
 }
