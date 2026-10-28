@@ -1,3 +1,4 @@
+using DataGateMonitor.SharedModels.DataGateMonitor.LocalIssuance.Dto;
 using DataGateMonitor.DataBase.Contexts;
 using DataGateMonitor.Models;
 using DataGateMonitor.Services.Api.Auth.Handlers.Interfaces;
@@ -16,7 +17,7 @@ namespace DataGateMonitor.Controllers;
 [Authorize(Roles = "Admin,VpnUser,App")]
 public class OpenVpnFileOriginsController(
     ApplicationDbContext db,
-    IVpnServerAccessQueryService vpnServerAccessQueryService) : BaseController
+    IVpnServerAccessQueryService vpnServerAccessQueryService) : ControllerBase
 {
     [HttpGet("origins/{vpnServerId:int}")]
     public async Task<ActionResult<ApiResponse<List<IssuedOvpnFileOriginDto>>>> GetOrigins(

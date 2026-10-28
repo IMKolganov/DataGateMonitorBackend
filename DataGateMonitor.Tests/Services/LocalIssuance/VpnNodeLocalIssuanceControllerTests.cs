@@ -1,3 +1,4 @@
+using DataGateMonitor.SharedModels.DataGateMonitor.LocalIssuance.Responses;
 using DataGateMonitor.Controllers;
 using DataGateMonitor.Services.LocalIssuance;
 using DataGateMonitor.SharedModels.Responses;

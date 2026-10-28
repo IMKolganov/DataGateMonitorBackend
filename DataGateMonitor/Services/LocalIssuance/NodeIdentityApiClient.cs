@@ -1,3 +1,4 @@
+using DataGateMonitor.SharedModels.DataGateOpenVpnManager.LocalIssuance.Responses;
 using System.Net.Http.Headers;
 using DataGateMonitor.Models;
 using DataGateMonitor.Services.Api.Auth.Registers.Interfaces;
@@ -40,7 +41,7 @@ public sealed class NodeIdentityApiClient(
                 return null;
             }
 
-            var data = await MicroserviceApiResponseHelper.ReadSuccessDataAsync<NodeIdentityPayload>(response, ct);
+            var data = await MicroserviceApiResponseHelper.ReadSuccessDataAsync<NodeIdentityResponse>(response, ct);
             return data.PublicKeyPem;
         }
         catch (Exception ex) when (ex is HttpRequestException or TaskCanceledException or InvalidOperationException
@@ -51,9 +52,4 @@ public sealed class NodeIdentityApiClient(
         }
     }
 
-    private sealed class NodeIdentityPayload
-    {
-        public string? Fingerprint { get; set; }
-        public string? PublicKeyPem { get; set; }
-    }
 }

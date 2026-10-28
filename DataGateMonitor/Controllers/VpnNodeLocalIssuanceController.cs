@@ -1,3 +1,5 @@
+using DataGateMonitor.SharedModels.DataGateMonitor.LocalIssuance.Requests;
+using DataGateMonitor.SharedModels.DataGateMonitor.LocalIssuance.Responses;
 using System.Text.Json;
 using DataGateMonitor.Services.Api.Auth.Handlers.Interfaces;
 using DataGateMonitor.Services.LocalIssuance;
@@ -17,7 +19,7 @@ namespace DataGateMonitor.Controllers;
 public class VpnNodeLocalIssuanceController(
     ILocalIssuanceEventService localIssuanceEventService,
     INodeKeyBindingService nodeKeyBindingService,
-    ILogger<VpnNodeLocalIssuanceController> logger) : BaseController
+    ILogger<VpnNodeLocalIssuanceController> logger) : ControllerBase
 {
     private const int MaxEventBodyBytes = 64 * 1024;
     private const string NotAuthenticated = "Node signature missing, invalid, or key not trusted.";

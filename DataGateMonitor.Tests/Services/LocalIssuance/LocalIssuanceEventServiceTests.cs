@@ -1,3 +1,4 @@
+using DataGateMonitor.SharedModels.DataGateMonitor.LocalIssuance.Requests;
 using System.Security.Cryptography;
 using System.Text;
 using DataGateMonitor.Models;

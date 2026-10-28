@@ -1,3 +1,5 @@
+using DataGateMonitor.SharedModels.DataGateMonitor.LocalIssuance;
+using DataGateMonitor.SharedModels.DataGateMonitor.LocalIssuance.Requests;
 using System.Text.RegularExpressions;
 using DataGateMonitor.DataBase.Contexts;
 using DataGateMonitor.Models;

@@ -262,7 +262,7 @@ public class VpnServersController(IVpnDataService vpnDataService,
     [AllowAnonymous]
     [HttpPost("discover")]
     public async Task<ActionResult<ApiResponse<AnnounceVpnServerResponse>>> Discover(
-        [FromBody] AnnounceVpnServerWithNodeKeyRequest request,
+        [FromBody] AnnounceVpnServerRequest request,
         [FromServices] INodeKeyBindingService nodeKeyBindingService,
         CancellationToken ct)
     {

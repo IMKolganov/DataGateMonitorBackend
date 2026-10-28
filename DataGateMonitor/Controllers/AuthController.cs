@@ -5,7 +5,6 @@ using System.Security.Claims;
 using System.Text;
 using Microsoft.AspNetCore.Authentication;
 using Microsoft.AspNetCore.Authorization;
-using DataGateMonitor.Models.Auth;
 using DataGateMonitor.Services.Api.Auth;
 using DataGateMonitor.Services.Api.Auth.ForgotPassword;
 using DataGateMonitor.Services.Api.Auth.Login;
