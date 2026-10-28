@@ -16,6 +16,7 @@ using PostSetupStatus = DataGateMonitor.Services.Api.PostSetup.VpnServerPostSetu
 using DataGateMonitor.Services.BackgroundServices.Interfaces;
 using DataGateMonitor.Services.Cache;
 using DataGateMonitor.Services.DataGateOpenVpnManager.Interfaces;
+using DataGateMonitor.Services.LocalIssuance;
 using DataGateMonitor.Services.StatusStreamLogs;
 using DataGateMonitor.Services.VpnManagerReleases;
 using DataGateMonitor.SharedModels.DataGateMonitor.VpnServers.Dto;
@@ -261,7 +262,9 @@ public class VpnServersController(IVpnDataService vpnDataService,
     [AllowAnonymous]
     [HttpPost("discover")]
     public async Task<ActionResult<ApiResponse<AnnounceVpnServerResponse>>> Discover(
-        [FromBody] AnnounceVpnServerRequest request, CancellationToken ct)
+        [FromBody] AnnounceVpnServerWithNodeKeyRequest request,
+        [FromServices] INodeKeyBindingService nodeKeyBindingService,
+        CancellationToken ct)
     {
         var clientIp = HttpContext.Connection.RemoteIpAddress?.ToString();
         if (!vpnServerDiscoveryService.TryAcquireAnnounceSlot(clientIp))
@@ -273,6 +276,7 @@ public class VpnServersController(IVpnDataService vpnDataService,
         try
         {
             var result = await vpnServerDiscoveryService.AnnounceAsync(request, ct);
+            await nodeKeyBindingService.OnAnnounceAsync(result, request.NodePublicKeyPem, ct);
             return Ok(ApiResponse<AnnounceVpnServerResponse>.SuccessResponse(result));
         }
         catch (ArgumentException ex)

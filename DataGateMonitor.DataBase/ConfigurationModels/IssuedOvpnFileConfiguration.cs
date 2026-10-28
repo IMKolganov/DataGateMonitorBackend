@@ -47,5 +47,23 @@ public class IssuedOvpnFileConfiguration : BaseEntityConfiguration<IssuedOvpnFil
             .HasDefaultValue(false);
         entity.Property(e => e.Message)
             .HasMaxLength(500);
+        entity.Property(e => e.Origin)
+            .IsRequired()
+            .HasDefaultValue(IssuedOvpnFileOrigin.Dashboard);
+        entity.Property(e => e.IsServiceProfile)
+            .IsRequired()
+            .HasDefaultValue(false);
+        entity.Property(e => e.StaticIp)
+            .HasMaxLength(45);
+        entity.Property(e => e.CertSerialNumber)
+            .HasMaxLength(128);
+        entity.Property(e => e.CertFingerprintSha256)
+            .HasMaxLength(64);
+
+        // Node events are idempotent per certificate serial.
+        entity.HasIndex(e => new { e.VpnServerId, e.CertSerialNumber })
+            .IsUnique()
+            .HasDatabaseName("IX_IssuedOvpnFiles_VpnServerId_CertSerialNumber")
+            .HasFilter("\"CertSerialNumber\" IS NOT NULL");
     }
 }

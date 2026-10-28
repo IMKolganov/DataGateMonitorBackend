@@ -58,6 +58,12 @@ public class VpnServerConfiguration : BaseEntityConfiguration<VpnServer, int>
             .IsRequired()
             .HasDefaultValue(0);
 
+        entity.Property(e => e.NodePublicKeyPem).HasMaxLength(1024);
+        entity.Property(e => e.NodeKeyFingerprint).HasMaxLength(64);
+        entity.Property(e => e.NodePendingPublicKeyPem).HasMaxLength(1024);
+        entity.Property(e => e.NodePendingKeyFingerprint).HasMaxLength(64);
+        entity.HasIndex(e => e.NodeKeyFingerprint);
+
         entity.HasOne<VpnServerGroup>()
             .WithMany()
             .HasForeignKey(e => e.VpnServerGroupId)
