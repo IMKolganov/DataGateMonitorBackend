@@ -134,12 +134,16 @@ public static class ServiceConfiguration
         if (databaseRuntime.IsConnectionConfigured)
         {
             services.AddScoped<ITrafficDailyRollupRunner, TrafficDailyRollupRunner>();
+            services.Configure<TrafficRewriteOptions>(_ => { });
+            services.AddScoped<ITrafficRewriteAdvisoryLock, PostgresTrafficRewriteAdvisoryLock>();
+            services.AddScoped<ITrafficRewriteRunner, TrafficRewriteRunner>();
             services.AddHostedService(provider => provider.GetRequiredService<OpenVpnBackgroundService>());
             services.AddHostedService<OpenVpnEventBackgroundService>();
             services.AddHostedService<XrayDnsEventBackgroundService>();
             services.AddHostedService<OpenVpnStatusStreamPublisher>();
             services.AddHostedService<OpenVpnProxyTrafficFlowBackgroundService>();
             services.AddHostedService<TrafficDailyRollupBackgroundService>();
+            services.AddHostedService<TrafficRewriteBackgroundService>();
             services.AddHostedService<FreeTierOpenVpnSessionEnforcementBackgroundService>();
             services.AddHostedService<FreeTierUnsubscribedVpnUsersDailyDigestBackgroundService>();
         }
