@@ -21,7 +21,7 @@ public interface IServerOpenVpnNotificationService
     Task NotifySyncError(int serverId, string? serverName, string? errorMessage, CancellationToken ct);
 
     /// <summary>No response from server.</summary>
-    Task NotifyNoResponseFromServer(int serverId, string? serverName, CancellationToken ct);
+    Task NotifyNoResponseFromServer(int serverId, string? serverName, string? details, CancellationToken ct);
 
     /// <summary>VPN node announced itself and awaits admin approve/deny. <paramref name="discoveryId"/> is the pending discovery row; ServerId is not set.</summary>
     Task NotifyDiscovered(int discoveryId, string? suggestedName, string apiUrl, CancellationToken ct);

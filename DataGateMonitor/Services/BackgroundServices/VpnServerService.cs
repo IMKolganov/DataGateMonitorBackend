@@ -186,8 +186,9 @@ public class VpnServerService(
             // load-stats is not used: with DCO it has no dco_get_peer_stats_multi pull.
             serverInfo.OpenVpnSummaryStats = await openVpnSummaryStatService.GetSummaryStatsAsync(openVpnServer, ct);
         }
-        catch (Exception ex)
+        catch (Exception ex) when (!NodeTransportFailure.TryDescribe(ex, out _))
         {
+            // Network failures are reported once, without a stack trace, by the polling loop.
             logger.LogError(ex, $"VpnServerId: {openVpnServer.Id}. Failed to get OpenVPN status. " +
                                 $"Error: {ex.Message}");
             throw;

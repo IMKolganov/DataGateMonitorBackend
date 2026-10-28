@@ -257,20 +257,21 @@ public class VpnServerOverviewQueryTests
 
         await ctx.VpnServerClients.AddRangeAsync(new[]
         {
-            new VpnServerClient { Id = 1, VpnServerId = 5, IsConnected = true },
-            new VpnServerClient { Id = 2, VpnServerId = 5, IsConnected = false },
-            new VpnServerClient { Id = 3, VpnServerId = 5, IsConnected = true },
-            new VpnServerClient { Id = 4, VpnServerId = 99, IsConnected = true }
+            new VpnServerClient { Id = 1, VpnServerId = 5, IsConnected = true, ExternalId = "acct-a", CommonName = "cn-a" },
+            new VpnServerClient { Id = 2, VpnServerId = 5, IsConnected = false, ExternalId = "acct-b", CommonName = "cn-b" },
+            new VpnServerClient { Id = 3, VpnServerId = 5, IsConnected = true, ExternalId = "acct-a", CommonName = "cn-a" },
+            new VpnServerClient { Id = 4, VpnServerId = 99, IsConnected = true, ExternalId = "acct-c", CommonName = "cn-c" }
         });
 
         await ctx.SaveChangesAsync();
 
         // Act
-        var (connected, sessions) = await sut.GetClientCountersAsync(5, CancellationToken.None);
+        var (connected, sessions, devices) = await sut.GetClientCountersAsync(5, CancellationToken.None);
 
         // Assert
         Assert.Equal(2, connected); // two connected for server 5
         Assert.Equal(3, sessions);  // three total for server 5
+        Assert.Equal(1, devices);   // both connected rows share CommonName "cn-a"
     }
 
     [Fact]
@@ -353,11 +354,12 @@ public class VpnServerOverviewQueryTests
         await ctx.SaveChangesAsync(); // ensure empty
 
         // Act
-        var (connected, sessions) = await sut.GetClientCountersAsync(123, CancellationToken.None);
+        var (connected, sessions, devices) = await sut.GetClientCountersAsync(123, CancellationToken.None);
 
         // Assert
         Assert.Equal(0, connected);
         Assert.Equal(0, sessions);
+        Assert.Equal(0, devices);
     }
 
     [Fact]
