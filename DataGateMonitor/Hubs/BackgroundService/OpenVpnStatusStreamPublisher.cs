@@ -1,6 +1,7 @@
 using Mapster;
 using Microsoft.AspNetCore.SignalR;
 using DataGateMonitor.DataBase.Services.Query.VpnServerTable;
+using DataGateMonitor.SharedModels.DataGateMonitor.VpnServers.Hubs;
 using DataGateMonitor.Services.BackgroundServices.Interfaces;
 using DataGateMonitor.Services.Cache;
 using DataGateMonitor.SharedModels.DataGateMonitor.VpnServers.Responses;
@@ -46,32 +47,30 @@ public sealed class OpenVpnStatusStreamPublisher(
                 {
                     var vpnServerId = status.ServiceStatus.VpnServerId;
 
-                    var (connectedClients, sessions, _) =
+                    var (connectedClients, sessions, devices) =
                         await openVpnServerOverviewQuery.GetClientCountersAsync(vpnServerId, stoppingToken);
 
                     status.ServiceStatus.CountConnectedClients =
                         connectedFromRedis.GetValueOrDefault(vpnServerId, connectedClients);
                     status.ServiceStatus.CountSessions = sessions;
+                    status.ServiceStatus.CountDevices = devices;
                     status.ServiceStatus.IsOnline = onlineFlags.GetValueOrDefault(vpnServerId, false);
                     status.ServiceStatus.IsAvailableByExternalProbe =
                         probeFlags.GetValueOrDefault(vpnServerId, true);
                 }
 
-                // TotalDevices is not on SharedModels StatusStreamPayload yet (nuget push blocked);
-                // send an anonymous shape so the UI can show unique ExternalId devices live.
                 var totalDevices = await openVpnServerOverviewQuery.GetConnectedDevicesCountAsync(
                     serverIds, stoppingToken);
 
+                var payload = new StatusStreamPayload
+                {
+                    Statuses = statuses,
+                    TotalDevices = totalDevices,
+                    TimestampUtc = DateTimeOffset.UtcNow,
+                };
+
                 await hubContext.Clients.Group(GroupName)
-                    .SendAsync(
-                        "StatusUpdated",
-                        new
-                        {
-                            Statuses = statuses,
-                            TotalDevices = totalDevices,
-                            TimestampUtc = DateTimeOffset.UtcNow,
-                        },
-                        stoppingToken);
+                    .SendAsync("StatusUpdated", payload, stoppingToken);
             }
             catch (OperationCanceledException)
             {

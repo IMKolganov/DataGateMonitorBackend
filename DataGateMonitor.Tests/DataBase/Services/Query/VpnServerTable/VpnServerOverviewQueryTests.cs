@@ -257,10 +257,10 @@ public class VpnServerOverviewQueryTests
 
         await ctx.VpnServerClients.AddRangeAsync(new[]
         {
-            new VpnServerClient { Id = 1, VpnServerId = 5, IsConnected = true, ExternalId = "dev-a" },
-            new VpnServerClient { Id = 2, VpnServerId = 5, IsConnected = false, ExternalId = "dev-b" },
-            new VpnServerClient { Id = 3, VpnServerId = 5, IsConnected = true, ExternalId = "dev-a" },
-            new VpnServerClient { Id = 4, VpnServerId = 99, IsConnected = true, ExternalId = "dev-c" }
+            new VpnServerClient { Id = 1, VpnServerId = 5, IsConnected = true, ExternalId = "acct-a", CommonName = "cn-a" },
+            new VpnServerClient { Id = 2, VpnServerId = 5, IsConnected = false, ExternalId = "acct-b", CommonName = "cn-b" },
+            new VpnServerClient { Id = 3, VpnServerId = 5, IsConnected = true, ExternalId = "acct-a", CommonName = "cn-a" },
+            new VpnServerClient { Id = 4, VpnServerId = 99, IsConnected = true, ExternalId = "acct-c", CommonName = "cn-c" }
         });
 
         await ctx.SaveChangesAsync();
@@ -271,7 +271,7 @@ public class VpnServerOverviewQueryTests
         // Assert
         Assert.Equal(2, connected); // two connected for server 5
         Assert.Equal(3, sessions);  // three total for server 5
-        Assert.Equal(1, devices);   // both connected rows share ExternalId "dev-a"
+        Assert.Equal(1, devices);   // both connected rows share CommonName "cn-a"
     }
 
     [Fact]

@@ -16,7 +16,7 @@ public interface IVpnServerOverviewQuery
         int vpnServerId, CancellationToken ct = default);
 
     /// <summary>
-    /// Distinct non-empty <c>ExternalId</c> among currently connected clients,
+    /// Distinct non-empty <c>CommonName</c> (device / installation CN) among currently connected clients,
     /// optionally limited to the given VPN server ids.
     /// </summary>
     Task<int> GetConnectedDevicesCountAsync(

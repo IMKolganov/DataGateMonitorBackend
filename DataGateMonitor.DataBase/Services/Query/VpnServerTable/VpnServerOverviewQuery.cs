@@ -73,8 +73,8 @@ public class VpnServerOverviewQuery(IUnitOfWork uow) : IVpnServerOverviewQuery
                 CountConnectedClients = g.Count(c => c.IsConnected),
                 CountSessions = g.Count(),
                 CountDevices = g
-                    .Where(c => c.IsConnected && c.ExternalId != null && c.ExternalId != "")
-                    .Select(c => c.ExternalId)
+                    .Where(c => c.IsConnected && c.CommonName != null && c.CommonName != "")
+                    .Select(c => c.CommonName)
                     .Distinct()
                     .Count()
             })
@@ -91,7 +91,7 @@ public class VpnServerOverviewQuery(IUnitOfWork uow) : IVpnServerOverviewQuery
     {
         var query = uow.GetQuery<VpnServerClient>().AsQueryable()
             .AsNoTracking()
-            .Where(c => c.IsConnected && c.ExternalId != null && c.ExternalId != "");
+            .Where(c => c.IsConnected && c.CommonName != null && c.CommonName != "");
 
         if (vpnServerIds is { Count: > 0 })
         {
@@ -100,7 +100,7 @@ public class VpnServerOverviewQuery(IUnitOfWork uow) : IVpnServerOverviewQuery
             query = query.Where(c => ids.Contains(c.VpnServerId));
         }
 
-        return await query.Select(c => c.ExternalId).Distinct().CountAsync(ct);
+        return await query.Select(c => c.CommonName).Distinct().CountAsync(ct);
     }
 
     public async Task<IReadOnlyDictionary<int, bool>> GetOnlineFlagsAsync(

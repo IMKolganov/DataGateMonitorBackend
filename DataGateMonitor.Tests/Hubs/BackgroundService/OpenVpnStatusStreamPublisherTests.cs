@@ -5,7 +5,7 @@ using DataGateMonitor.Mapping.VpnServers.Mappings;
 using DataGateMonitor.Services.BackgroundServices.Interfaces;
 using DataGateMonitor.Services.Cache;
 using DataGateMonitor.SharedModels.DataGateMonitor.VpnServers.Dto;
-using DataGateMonitor.SharedModels.DataGateMonitor.VpnServers.Responses;
+using DataGateMonitor.SharedModels.DataGateMonitor.VpnServers.Hubs;
 using DataGateMonitor.SharedModels.Enums;
 using FluentAssertions;
 using Mapster;
@@ -88,12 +88,12 @@ public class OpenVpnStatusStreamPublisherTests
             .Setup(c => c.GetManyAsync(It.IsAny<IReadOnlyCollection<int>>(), It.IsAny<CancellationToken>()))
             .ReturnsAsync(new Dictionary<int, int>());
 
-        object? payload = null;
+        StatusStreamPayload? payload = null;
         var group = new Mock<IClientProxy>();
         group
             .Setup(c => c.SendCoreAsync("StatusUpdated", It.IsAny<object?[]>(), It.IsAny<CancellationToken>()))
             .Callback<string, object?[], CancellationToken>((_, args, _) =>
-                payload = args[0])
+                payload = Assert.IsType<StatusStreamPayload>(args[0]))
             .Returns(Task.CompletedTask);
 
         var clients = new Mock<IHubClients>();
@@ -120,14 +120,8 @@ public class OpenVpnStatusStreamPublisherTests
         await sut.StopAsync(CancellationToken.None);
 
         payload.Should().NotBeNull();
-        var statusesProp = payload!.GetType().GetProperty("Statuses");
-        statusesProp.Should().NotBeNull();
-        var statuses = Assert.IsAssignableFrom<IEnumerable<ServiceStatusResponse>>(statusesProp!.GetValue(payload));
-        var byId = statuses.ToDictionary(s => s.ServiceStatus.VpnServerId);
-
-        var totalDevicesProp = payload.GetType().GetProperty("TotalDevices");
-        totalDevicesProp.Should().NotBeNull();
-        Assert.Equal(0, totalDevicesProp!.GetValue(payload));
+        payload!.TotalDevices.Should().Be(0);
+        var byId = payload.Statuses.ToDictionary(s => s.ServiceStatus.VpnServerId);
 
         byId[7].ServiceStatus.IsOnline.Should().BeFalse();
         byId[7].ServiceStatus.IsAvailableByExternalProbe.Should().BeFalse();

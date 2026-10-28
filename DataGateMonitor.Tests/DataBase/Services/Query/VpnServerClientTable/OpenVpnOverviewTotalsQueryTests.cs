@@ -41,14 +41,14 @@ public class OpenVpnOverviewTotalsQueryTests
         var from = now.AddHours(-4);
         var to = now.AddHours(1);
 
-        // Sessions (three within window, two users: e1 & e2)
+        // Sessions (three within window, two users e1/e2, two CNs cn-a/cn-b)
         ctx.Clients.AddRange(new[]
         {
-            new VpnServerClient { Id = 1, VpnServerId = 1, ExternalId = "e1", ConnectedSince = now.AddHours(-3) },
-            new VpnServerClient { Id = 2, VpnServerId = 1, ExternalId = "e1", ConnectedSince = now.AddHours(-2) },
-            new VpnServerClient { Id = 3, VpnServerId = 1, ExternalId = "e2", ConnectedSince = now.AddHours(-1) },
+            new VpnServerClient { Id = 1, VpnServerId = 1, ExternalId = "e1", CommonName = "cn-a", ConnectedSince = now.AddHours(-3) },
+            new VpnServerClient { Id = 2, VpnServerId = 1, ExternalId = "e1", CommonName = "cn-a", ConnectedSince = now.AddHours(-2) },
+            new VpnServerClient { Id = 3, VpnServerId = 1, ExternalId = "e2", CommonName = "cn-b", ConnectedSince = now.AddHours(-1) },
             // outside window
-            new VpnServerClient { Id = 4, VpnServerId = 1, ExternalId = "e3", ConnectedSince = now.AddHours(-10) }
+            new VpnServerClient { Id = 4, VpnServerId = 1, ExternalId = "e3", CommonName = "cn-c", ConnectedSince = now.AddHours(-10) }
         });
 
         var sessA = Guid.NewGuid();
@@ -69,6 +69,7 @@ public class OpenVpnOverviewTotalsQueryTests
 
         Assert.Equal(3, res.Totals.SessionsCount);
         Assert.Equal(2, res.Totals.UsersCount);
+        Assert.Equal(2, res.Totals.DevicesCount);
         Assert.Equal(0, res.Totals.AccountsCount);
         Assert.Equal(120, res.Totals.TrafficInBytes);
         Assert.Equal(50, res.Totals.TrafficOutBytes);
@@ -86,8 +87,8 @@ public class OpenVpnOverviewTotalsQueryTests
 
         ctx.Clients.AddRange(new[]
         {
-            new VpnServerClient { Id = 1, VpnServerId = 2, ExternalId = "X", ConnectedSince = now.AddHours(-3) },
-            new VpnServerClient { Id = 2, VpnServerId = 2, ExternalId = "Y", ConnectedSince = now.AddHours(-2) }
+            new VpnServerClient { Id = 1, VpnServerId = 2, ExternalId = "X", CommonName = "cn-x", ConnectedSince = now.AddHours(-3) },
+            new VpnServerClient { Id = 2, VpnServerId = 2, ExternalId = "Y", CommonName = "cn-y", ConnectedSince = now.AddHours(-2) }
         });
 
         var s = Guid.NewGuid();
@@ -104,6 +105,7 @@ public class OpenVpnOverviewTotalsQueryTests
 
         Assert.Equal(1, res.Totals.SessionsCount);
         Assert.Equal(1, res.Totals.UsersCount);
+        Assert.Equal(1, res.Totals.DevicesCount);
         Assert.Equal(0, res.Totals.AccountsCount);
         Assert.Equal(5, res.Totals.TrafficInBytes);
         Assert.Equal(3, res.Totals.TrafficOutBytes);
@@ -156,9 +158,9 @@ public class OpenVpnOverviewTotalsQueryTests
 
         ctx.Clients.AddRange(new[]
         {
-            new VpnServerClient { Id = 1, VpnServerId = 1, ExternalId = "dev-a", ConnectedSince = now.AddHours(-3) },
-            new VpnServerClient { Id = 2, VpnServerId = 1, ExternalId = "dev-b", ConnectedSince = now.AddHours(-2) },
-            new VpnServerClient { Id = 3, VpnServerId = 1, ExternalId = "dev-c", UserId = 42, ConnectedSince = now.AddHours(-1) },
+            new VpnServerClient { Id = 1, VpnServerId = 1, ExternalId = "dev-a", CommonName = "cn-1", ConnectedSince = now.AddHours(-3) },
+            new VpnServerClient { Id = 2, VpnServerId = 1, ExternalId = "dev-b", CommonName = "cn-2", ConnectedSince = now.AddHours(-2) },
+            new VpnServerClient { Id = 3, VpnServerId = 1, ExternalId = "dev-c", CommonName = "cn-1", UserId = 42, ConnectedSince = now.AddHours(-1) },
         });
         ctx.IdentityLinks.AddRange(new[]
         {
@@ -172,6 +174,7 @@ public class OpenVpnOverviewTotalsQueryTests
 
         Assert.Equal(3, res.Totals.SessionsCount);
         Assert.Equal(3, res.Totals.UsersCount);
+        Assert.Equal(2, res.Totals.DevicesCount);
         Assert.Equal(2, res.Totals.AccountsCount);
 
         await ctx.DisposeAsync();
