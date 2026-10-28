@@ -13,6 +13,7 @@ public class OpenVpnOverviewSeriesQueryTests
     private sealed class TestDbContext : DbContext
     {
         public TestDbContext(DbContextOptions<TestDbContext> options) : base(options) { }
+        public DbSet<VpnServerClient> Clients => Set<VpnServerClient>();
         public DbSet<VpnServerClientTraffic> Traffic => Set<VpnServerClientTraffic>();
         public DbSet<UserIdentityLink> UserIdentityLinks => Set<UserIdentityLink>();
         public DbSet<User> Users => Set<User>();
@@ -25,6 +26,8 @@ public class OpenVpnOverviewSeriesQueryTests
             .Options;
         var ctx = new TestDbContext(options);
         var uow = new Mock<IUnitOfWork>();
+        uow.Setup(x => x.GetQuery<VpnServerClient>())
+           .Returns(() => new TestQuery<VpnServerClient>(ctx.Clients));
         uow.Setup(x => x.GetQuery<VpnServerClientTraffic>())
            .Returns(() => new TestQuery<VpnServerClientTraffic>(ctx.Traffic));
         uow.Setup(x => x.GetQuery<UserIdentityLink>())
@@ -174,6 +177,12 @@ public class OpenVpnOverviewSeriesQueryTests
         var sA = Guid.NewGuid();
         var sB = Guid.NewGuid();
 
+        ctx.Clients.AddRange(
+        [
+            new VpnServerClient { Id = 1, VpnServerId = 1, ExternalId = "u1", SessionId = sA, CommonName = "cn-a" },
+            new VpnServerClient { Id = 2, VpnServerId = 1, ExternalId = "u2", SessionId = sB, CommonName = "cn-b" },
+        ]);
+
         // u1: one session in bucket 00:00
         ctx.Traffic.Add(
             new VpnServerClientTraffic { Id = 1, VpnServerId = 1, ExternalId = "u1", SessionId = sA, BytesReceived = 10, BytesSent = 5, MeasuredAt = baseTs.AddMinutes(15) });
@@ -195,16 +204,19 @@ public class OpenVpnOverviewSeriesQueryTests
         Assert.Equal(baseTs, b0.Ts);
         Assert.Equal(1, b0.ActiveSessions);
         Assert.Equal(1, b0.ActiveUsers);
+        Assert.Equal(1, b0.ActiveDevices);
 
         var b1 = res.Rows[1];
         Assert.Equal(baseTs.AddHours(1), b1.Ts);
         Assert.Equal(2, b1.ActiveSessions);
         Assert.Equal(2, b1.ActiveUsers);
+        Assert.Equal(2, b1.ActiveDevices);
 
         var b2 = res.Rows[2];
         Assert.Equal(baseTs.AddHours(2), b2.Ts);
         Assert.Equal(0, b2.ActiveSessions);
         Assert.Equal(0, b2.ActiveUsers);
+        Assert.Equal(0, b2.ActiveDevices);
 
         // Summary extremes ignore the zero-filled trailing bucket.
         Assert.Equal(2, res.Summary.PeakActiveSessions);
@@ -215,6 +227,10 @@ public class OpenVpnOverviewSeriesQueryTests
         Assert.Equal(baseTs.AddHours(1), res.Summary.PeakActiveUsersAt);
         Assert.Equal(1, res.Summary.LowActiveUsers);
         Assert.Equal(baseTs, res.Summary.LowActiveUsersAt);
+        Assert.Equal(2, res.Summary.PeakActiveDevices);
+        Assert.Equal(baseTs.AddHours(1), res.Summary.PeakActiveDevicesAt);
+        Assert.Equal(1, res.Summary.LowActiveDevices);
+        Assert.Equal(baseTs, res.Summary.LowActiveDevicesAt);
     }
 
     [Fact]
@@ -230,6 +246,7 @@ public class OpenVpnOverviewSeriesQueryTests
 
         Assert.True(res.Rows.Count >= 1); // zero-filled chart buckets still exist
         Assert.All(res.Rows, r => Assert.Equal(0, r.ActiveUsers));
+        Assert.All(res.Rows, r => Assert.Equal(0, r.ActiveDevices));
 
         Assert.Equal(0, res.Summary.PeakActiveSessions);
         Assert.Null(res.Summary.PeakActiveSessionsAt);
@@ -239,6 +256,10 @@ public class OpenVpnOverviewSeriesQueryTests
         Assert.Null(res.Summary.PeakActiveUsersAt);
         Assert.Equal(0, res.Summary.LowActiveUsers);
         Assert.Null(res.Summary.LowActiveUsersAt);
+        Assert.Equal(0, res.Summary.PeakActiveDevices);
+        Assert.Null(res.Summary.PeakActiveDevicesAt);
+        Assert.Equal(0, res.Summary.LowActiveDevices);
+        Assert.Null(res.Summary.LowActiveDevicesAt);
     }
 
     [Fact]
@@ -287,7 +308,7 @@ public class OpenVpnOverviewSeriesQueryTests
     }
 
     [Fact]
-    public async Task GetOverviewUsersSeries_SameDevice_TwoSessions_PeakSessions_Exceeds_PeakUsers()
+    public async Task GetOverviewUsersSeries_SameAccount_TwoDevices_PeakDevices_Exceeds_PeakUsers()
     {
         var (uow, ctx) = CreateUow();
         var baseTs = new DateTimeOffset(2025, 1, 1, 12, 0, 0, TimeSpan.Zero);
@@ -297,17 +318,22 @@ public class OpenVpnOverviewSeriesQueryTests
         var sA = Guid.NewGuid();
         var sB = Guid.NewGuid();
 
-        // One externalId, two sessions in the same hour bucket.
+        // One ExternalId (account), two CommonNames (devices), two sessions in the same hour.
+        ctx.Clients.AddRange(
+        [
+            new VpnServerClient { Id = 1, VpnServerId = 1, ExternalId = "account-1", SessionId = sA, CommonName = "cn-phone" },
+            new VpnServerClient { Id = 2, VpnServerId = 1, ExternalId = "account-1", SessionId = sB, CommonName = "cn-laptop" },
+        ]);
         ctx.Traffic.AddRange(
         [
             new VpnServerClientTraffic
             {
-                Id = 1, VpnServerId = 1, ExternalId = "device-1", SessionId = sA,
+                Id = 1, VpnServerId = 1, ExternalId = "account-1", SessionId = sA,
                 BytesReceived = 1, BytesSent = 1, MeasuredAt = baseTs.AddMinutes(5)
             },
             new VpnServerClientTraffic
             {
-                Id = 2, VpnServerId = 1, ExternalId = "device-1", SessionId = sB,
+                Id = 2, VpnServerId = 1, ExternalId = "account-1", SessionId = sB,
                 BytesReceived = 2, BytesSent = 2, MeasuredAt = baseTs.AddMinutes(25)
             },
         ]);
@@ -319,9 +345,12 @@ public class OpenVpnOverviewSeriesQueryTests
 
         Assert.Equal(2, res.Summary.PeakActiveSessions);
         Assert.Equal(1, res.Summary.PeakActiveUsers);
+        Assert.Equal(2, res.Summary.PeakActiveDevices);
         Assert.True(res.Summary.PeakActiveSessions > res.Summary.PeakActiveUsers);
+        Assert.True(res.Summary.PeakActiveDevices > res.Summary.PeakActiveUsers);
         Assert.Equal(baseTs, res.Summary.PeakActiveSessionsAt);
         Assert.Equal(baseTs, res.Summary.PeakActiveUsersAt);
+        Assert.Equal(baseTs, res.Summary.PeakActiveDevicesAt);
     }
 
     [Fact]

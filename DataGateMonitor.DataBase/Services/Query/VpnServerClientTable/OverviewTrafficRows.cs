@@ -13,6 +13,7 @@ public sealed class OverviewUsersSeriesBucketRow
     public DateTimeOffset BucketTs { get; set; }
     public int ActiveSessions { get; set; }
     public int ActiveUsers { get; set; }
+    public int ActiveDevices { get; set; }
 }
 
 public sealed class OverviewUserTrafficRow

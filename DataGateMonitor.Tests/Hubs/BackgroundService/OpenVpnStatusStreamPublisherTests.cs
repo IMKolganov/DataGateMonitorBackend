@@ -74,7 +74,10 @@ public class OpenVpnStatusStreamPublisherTests
             });
         overview
             .Setup(q => q.GetClientCountersAsync(It.IsAny<int>(), It.IsAny<CancellationToken>()))
-            .ReturnsAsync((0, 0));
+            .ReturnsAsync((0, 0, 0));
+        overview
+            .Setup(q => q.GetConnectedDevicesCountAsync(It.IsAny<IReadOnlyCollection<int>?>(), It.IsAny<CancellationToken>()))
+            .ReturnsAsync(0);
 
         var services = new ServiceCollection();
         services.AddSingleton(overview.Object);
@@ -117,7 +120,8 @@ public class OpenVpnStatusStreamPublisherTests
         await sut.StopAsync(CancellationToken.None);
 
         payload.Should().NotBeNull();
-        var byId = payload!.Statuses.ToDictionary(s => s.ServiceStatus.VpnServerId);
+        payload!.TotalDevices.Should().Be(0);
+        var byId = payload.Statuses.ToDictionary(s => s.ServiceStatus.VpnServerId);
 
         byId[7].ServiceStatus.IsOnline.Should().BeFalse();
         byId[7].ServiceStatus.IsAvailableByExternalProbe.Should().BeFalse();

@@ -22,19 +22,25 @@ public class OpenVpnServerProcessor(
         var serverCmd = scope.ServiceProvider.GetRequiredService<ICommandService<VpnServer, int>>();
         var presence = scope.ServiceProvider.GetRequiredService<IVpnServerClientPresenceService>();
 
+        var step = "status log (state/version/summary)";
         try
         {
             logger.LogInformation("Saving status log for {Url}", openVpnServer.ApiUrl);
             await openVpnServerService.SaveVpnServerStatusLogAsync(openVpnServer, ct);
 
+            step = "connected clients";
             logger.LogInformation("Saving connected clients for {Url}", openVpnServer.ApiUrl);
             await openVpnServerService.SaveConnectedClientsAsync(openVpnServer, ct);
 
+            step = "conflog";
             logger.LogInformation("Fetching and saving conflog for {Url}", openVpnServer.ApiUrl);
             await scope.ServiceProvider.GetRequiredService<IVpnServerConflogService>().FetchAndSaveIfChangedByServerIdAsync(openVpnServer.Id, ct);
 
+            step = "manager version";
             await scope.ServiceProvider.GetRequiredService<IVpnServerManagerVersionPersister>()
                 .TryPersistAsync(openVpnServer, ct);
+
+            step = "mark online";
 
             // Set IsOnline = true (server-side update, no entity tracking)
             var now = DateTimeOffset.UtcNow;
@@ -50,6 +56,8 @@ public class OpenVpnServerProcessor(
         }
         catch (Exception ex)
         {
+            VpnPollStep.Tag(ex, step);
+
             // Mark server offline and clear hanging "online" sessions — we can no longer observe the node.
             var now = DateTimeOffset.UtcNow;
             await serverCmd.UpdateWhere(
@@ -59,9 +67,18 @@ public class OpenVpnServerProcessor(
                 ct);
             await presence.MarkAllDisconnectedAsync(openVpnServer.Id, ct);
 
-            logger.LogError(ex,
-                "OpenVpnServerProcessor error. VpnServerId: {Id}. Name: {Name}. Url: {Url}",
-                openVpnServer.Id, openVpnServer.ServerName, openVpnServer.ApiUrl);
+            if (NodeTransportFailure.TryDescribe(ex, out var transportError))
+            {
+                logger.LogWarning(
+                    "OpenVpnServerProcessor: node unreachable. VpnServerId: {Id}. Name: {Name}. Url: {Url}. {Error}",
+                    openVpnServer.Id, openVpnServer.ServerName, openVpnServer.ApiUrl, transportError);
+            }
+            else
+            {
+                logger.LogError(ex,
+                    "OpenVpnServerProcessor error. VpnServerId: {Id}. Name: {Name}. Url: {Url}",
+                    openVpnServer.Id, openVpnServer.ServerName, openVpnServer.ApiUrl);
+            }
 
             throw;
         }

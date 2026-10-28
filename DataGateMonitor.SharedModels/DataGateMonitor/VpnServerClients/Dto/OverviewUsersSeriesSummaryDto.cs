@@ -14,15 +14,27 @@ public class OverviewUsersSeriesSummaryDto
     /// <summary>Bucket start (UTC) where <see cref="LowActiveSessions"/> occurred.</summary>
     public DateTimeOffset? LowActiveSessionsAt { get; set; }
 
-    /// <summary>Max concurrent devices (distinct ExternalId) in any series bucket that had samples.</summary>
+    /// <summary>Max concurrent users (distinct ExternalId) in any series bucket that had samples.</summary>
     public int PeakActiveUsers { get; set; }
 
     /// <summary>Bucket start (UTC) where <see cref="PeakActiveUsers"/> occurred.</summary>
     public DateTimeOffset? PeakActiveUsersAt { get; set; }
 
-    /// <summary>Min concurrent devices among buckets that had samples (excludes zero-filled gaps).</summary>
+    /// <summary>Min concurrent users among buckets that had samples (excludes zero-filled gaps).</summary>
     public int LowActiveUsers { get; set; }
 
     /// <summary>Bucket start (UTC) where <see cref="LowActiveUsers"/> occurred.</summary>
     public DateTimeOffset? LowActiveUsersAt { get; set; }
+
+    /// <summary>Max concurrent devices (distinct CommonName) in any series bucket that had samples.</summary>
+    public int PeakActiveDevices { get; set; }
+
+    /// <summary>Bucket start (UTC) where <see cref="PeakActiveDevices"/> occurred.</summary>
+    public DateTimeOffset? PeakActiveDevicesAt { get; set; }
+
+    /// <summary>Min concurrent devices among buckets that had samples (excludes zero-filled gaps).</summary>
+    public int LowActiveDevices { get; set; }
+
+    /// <summary>Bucket start (UTC) where <see cref="LowActiveDevices"/> occurred.</summary>
+    public DateTimeOffset? LowActiveDevicesAt { get; set; }
 }

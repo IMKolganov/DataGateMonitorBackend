@@ -117,9 +117,11 @@ public sealed class OverviewTrafficAggregator(
         if (!ctx.Database.IsNpgsql())
             throw new InvalidOperationException("PostgreSQL aggregation requires Npgsql provider.");
 
-        // Keep hash/sort aggregates in memory for multi-day windows; LOCAL scopes to this tx only.
+        // LOCAL scopes to this tx only. Keep work_mem modest: Docker Postgres often has
+        // /dev/shm = 64MB; 128MB + parallel hash aggregates → SQLSTATE 53100 (ENOSPC on DSM).
         await using var tx = await ctx.Database.BeginTransactionAsync(ct);
-        await ctx.Database.ExecuteSqlRawAsync("SET LOCAL work_mem = '128MB'", ct);
+        await ctx.Database.ExecuteSqlRawAsync("SET LOCAL work_mem = '16MB'", ct);
+        await ctx.Database.ExecuteSqlRawAsync("SET LOCAL max_parallel_workers_per_gather = 0", ct);
         var result = await query(ctx);
         await tx.CommitAsync(ct);
         return result;
@@ -131,6 +133,15 @@ public sealed class OverviewTrafficAggregator(
                      ?? throw new InvalidOperationException("VpnServerClientTraffic entity not mapped.");
         var schema = entity.GetSchema() ?? "public";
         var table = entity.GetTableName() ?? throw new InvalidOperationException("Traffic table name missing.");
+        return $"\"{schema}\".\"{table}\"";
+    }
+
+    private static string ResolveClientsTable(ApplicationDbContext ctx)
+    {
+        var entity = ctx.Model.FindEntityType(typeof(VpnServerClient))
+                     ?? throw new InvalidOperationException("VpnServerClient entity not mapped.");
+        var schema = entity.GetSchema() ?? "public";
+        var table = entity.GetTableName() ?? throw new InvalidOperationException("Clients table name missing.");
         return $"\"{schema}\".\"{table}\"";
     }
 
@@ -355,20 +366,32 @@ public sealed class OverviewTrafficAggregator(
         if (toUtc < fromUtc) (fromUtc, toUtc) = (toUtc, fromUtc);
 
         var table = ResolveTrafficTable(ctx);
+        var clientsTable = ResolveClientsTable(ctx);
         var bucketExpr = BucketStartSql(grouping);
+        // Resolve CN once per SessionId (not per traffic sample) to keep hash aggregates small.
         var sql = $"""
                    WITH {BuildFilteredTrafficCte(table, vpnServerId, externalId)},
+                   session_cn AS (
+                       SELECT
+                           c."SessionId",
+                           NULLIF(c."CommonName", '') AS common_name
+                       FROM {clientsTable} c
+                       WHERE c."SessionId" IN (SELECT DISTINCT f."SessionId" FROM filtered f)
+                   ),
                    bucketed AS (
                        SELECT
                            {bucketExpr.Replace("\"MeasuredAt\"", "f.\"MeasuredAt\"")} AS bucket_ts,
                            f."SessionId",
-                           NULLIF(f."ExternalId", '') AS external_id
+                           NULLIF(f."ExternalId", '') AS external_id,
+                           sc.common_name
                        FROM filtered f
+                       LEFT JOIN session_cn sc ON sc."SessionId" = f."SessionId"
                    )
                    SELECT
                        b.bucket_ts AS "BucketTs",
                        COUNT(DISTINCT b."SessionId")::int AS "ActiveSessions",
-                       COUNT(DISTINCT b.external_id)::int AS "ActiveUsers"
+                       COUNT(DISTINCT b.external_id)::int AS "ActiveUsers",
+                       COUNT(DISTINCT b.common_name)::int AS "ActiveDevices"
                    FROM bucketed b
                    GROUP BY b.bucket_ts
                    ORDER BY b.bucket_ts
@@ -522,12 +545,20 @@ public sealed class OverviewTrafficAggregator(
         if (!string.IsNullOrWhiteSpace(externalId))
             q = q.Where(s => s.ExternalId == externalId!);
 
+        var cnBySession = uow.GetQuery<VpnServerClient>().AsQueryable().AsNoTracking()
+            .Select(c => new { c.SessionId, c.CommonName })
+            .AsEnumerable()
+            .GroupBy(c => c.SessionId)
+            .ToDictionary(g => g.Key, g => g.First().CommonName ?? "");
+
         return q.Where(s => s.MeasuredAt >= fromUtc && s.MeasuredAt < toUtc)
+            .AsEnumerable()
             .Select(s => new OverviewTrafficSample
             {
                 VpnServerId = s.VpnServerId,
                 SessionId = s.SessionId,
                 ExternalId = s.ExternalId ?? "",
+                CommonName = cnBySession.TryGetValue(s.SessionId, out var cn) ? cn : "",
                 MeasuredAt = s.MeasuredAt,
                 BytesIn = s.BytesReceived,
                 BytesOut = s.BytesSent
@@ -638,17 +669,19 @@ public sealed class OverviewTrafficAggregator(
         var offset = fromUtc.Offset;
         var mode = ResolveAutoGrouping(fromUtc, toUtc, grouping);
         var samples = LoadSamplesInMemory(fromUtc, toUtc, vpnServerId, externalId);
-        var buckets = new Dictionary<DateTimeOffset, (HashSet<Guid> Sessions, HashSet<string> Users)>();
+        var buckets = new Dictionary<DateTimeOffset, (HashSet<Guid> Sessions, HashSet<string> Users, HashSet<string> Devices)>();
 
         foreach (var s in samples)
         {
             var bucket = OverviewBucketMath.AlignToBucketStartWithOffset(mode, s.MeasuredAt.ToOffset(TimeSpan.Zero), offset);
             if (!buckets.TryGetValue(bucket, out var acc))
-                acc = (new HashSet<Guid>(), new HashSet<string>());
+                acc = (new HashSet<Guid>(), new HashSet<string>(), new HashSet<string>());
 
             acc.Sessions.Add(s.SessionId);
             if (!string.IsNullOrWhiteSpace(s.ExternalId))
                 acc.Users.Add(s.ExternalId);
+            if (!string.IsNullOrWhiteSpace(s.CommonName))
+                acc.Devices.Add(s.CommonName);
 
             buckets[bucket] = acc;
         }
@@ -659,7 +692,8 @@ public sealed class OverviewTrafficAggregator(
             {
                 BucketTs = kv.Key,
                 ActiveSessions = kv.Value.Sessions.Count,
-                ActiveUsers = kv.Value.Users.Count
+                ActiveUsers = kv.Value.Users.Count,
+                ActiveDevices = kv.Value.Devices.Count
             })
             .ToList();
     }
