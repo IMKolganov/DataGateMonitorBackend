@@ -15,6 +15,25 @@ public class LocalIssuanceEventServiceTests
         System.Text.Json.JsonSerializer.Deserialize<LocalIssuanceEventRequest>(body,
             new System.Text.Json.JsonSerializerOptions { PropertyNameCaseInsensitive = true })!;
 
+    [Theory]
+    [InlineData("10.50.28.201")]
+    [InlineData("retired-field-is-ignored")]
+    public async Task OldSignedOutboxEvent_WithStaticIp_IsAccepted(string oldStaticIp)
+    {
+        using var node = new FakeNode();
+        await using var db = LocalIssuanceDb.Create();
+        LocalIssuanceDb.AddServer(db, 7, node);
+        var body = FakeNode.EventBody(staticIp: oldStaticIp);
+        var (timestamp, signature) = node.Sign(body, DateTimeOffset.UtcNow);
+        var sut = CreateSut(db);
+        var server = await sut.AuthenticateAsync(node.Fingerprint, timestamp, signature,
+            "POST", LocalIssuanceEventService.SignedPath, body, default);
+        Assert.NotNull(server);
+        var (outcome, _) = await sut.ApplyAsync(server!, Parse(body), default);
+        Assert.Equal(LocalIssuanceEventOutcome.Created, outcome);
+        Assert.True(Assert.Single(db.IssuedOvpnFiles).IsServiceProfile);
+    }
+
     [Fact]
     public void CanonicalBytes_MatchNodeFormat()
     {
@@ -97,8 +116,8 @@ public class LocalIssuanceEventServiceTests
         Assert.Equal((LocalIssuanceEventOutcome.Created, LocalIssuanceEventOutcome.Duplicate), (first, second));
         Assert.Equal(id, sameId);
         var row = Assert.Single(db.IssuedOvpnFiles);
-        Assert.Equal((IssuedOvpnFileOrigin.Local, true, "10.50.28.201", "5E71A1", false),
-            (row.Origin, row.IsServiceProfile, row.StaticIp, row.CertSerialNumber, row.IsRevoked));
+        Assert.Equal((IssuedOvpnFileOrigin.Local, true, "5E71A1", false),
+            (row.Origin, row.IsServiceProfile, row.CertSerialNumber, row.IsRevoked));
         Assert.Equal(("db1", "db1.ovpn", "/openvpn-udp/easy-rsa/pki/ovpn_files/db1.ovpn", LocalIssuanceEventService.LocalExternalId),
             (row.CommonName, row.FileName, row.FilePath, row.ExternalId));
     }
@@ -149,7 +168,6 @@ public class LocalIssuanceEventServiceTests
     [InlineData("deleted", "local", "01", "10.50.28.2")]
     [InlineData("issued", "dashboard", "01", "10.50.28.2")]
     [InlineData("issued", "local", "not-hex", "10.50.28.2")]
-    [InlineData("issued", "local", "01", "fe80::1")]
     public async Task Apply_InvalidEvent_Throws(string type, string origin, string serial, string ip)
     {
         await using var db = LocalIssuanceDb.Create();

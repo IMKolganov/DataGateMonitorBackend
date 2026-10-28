@@ -33,7 +33,6 @@ public class OpenVpnFileOriginsController(
                     IssuedOvpnFileId = f.Id,
                     Origin = f.Origin == IssuedOvpnFileOrigin.Local ? "local" : "dashboard",
                     IsServiceProfile = f.IsServiceProfile,
-                    StaticIp = f.StaticIp,
                     CertSerialNumber = f.CertSerialNumber,
                     CertFingerprintSha256 = f.CertFingerprintSha256
                 })

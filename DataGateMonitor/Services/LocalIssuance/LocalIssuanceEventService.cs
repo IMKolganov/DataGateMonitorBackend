@@ -1,5 +1,3 @@
-using System.Net;
-using System.Net.Sockets;
 using System.Text.RegularExpressions;
 using DataGateMonitor.DataBase.Contexts;
 using DataGateMonitor.Models;
@@ -125,7 +123,6 @@ public sealed partial class LocalIssuanceEventService(
             Message = revoked ? $"Revoked locally on the node at {evt.OccurredAt:O}" : "Issued locally on the node",
             Origin = IssuedOvpnFileOrigin.Local,
             IsServiceProfile = evt.IsServiceProfile,
-            StaticIp = string.IsNullOrWhiteSpace(evt.StaticIp) ? null : IPAddress.Parse(evt.StaticIp).ToString(),
             CertSerialNumber = serial,
             CertFingerprintSha256 = string.IsNullOrWhiteSpace(evt.CertFingerprintSha256) ? null : evt.CertFingerprintSha256,
             CreateDate = now,
@@ -166,9 +163,6 @@ public sealed partial class LocalIssuanceEventService(
             throw new ArgumentException("SerialNumber must be hex (max 128).");
         if (!string.IsNullOrWhiteSpace(evt.CertFingerprintSha256) && !FingerprintPattern().IsMatch(evt.CertFingerprintSha256))
             throw new ArgumentException("CertFingerprintSha256 must be 64 lower-case hex chars.");
-        if (!string.IsNullOrWhiteSpace(evt.StaticIp)
-            && (!IPAddress.TryParse(evt.StaticIp, out var ip) || ip.AddressFamily != AddressFamily.InterNetwork))
-            throw new ArgumentException("StaticIp must be an IPv4 address.");
         if ((evt.FileName?.Length ?? 0) > 255 || (evt.FilePath?.Length ?? 0) > 500
             || (evt.CertFilePath?.Length ?? 0) > 500 || (evt.KeyFilePath?.Length ?? 0) > 500 || (evt.IssuedTo?.Length ?? 0) > 255)
             throw new ArgumentException("A path or name field is too long.");

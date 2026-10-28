@@ -26,7 +26,6 @@ public sealed class LocalIssuanceEventRequest
     public string SerialNumber { get; set; } = string.Empty;
     public string? CertFingerprintSha256 { get; set; }
     public bool IsServiceProfile { get; set; }
-    public string? StaticIp { get; set; }
     public DateTimeOffset OccurredAt { get; set; }
     public DateTimeOffset? ExpiresAt { get; set; }
     public string? IssuedTo { get; set; }
@@ -56,7 +55,6 @@ public sealed class IssuedOvpnFileOriginDto
     public int IssuedOvpnFileId { get; set; }
     public string Origin { get; set; } = "dashboard";
     public bool IsServiceProfile { get; set; }
-    public string? StaticIp { get; set; }
     public string? CertSerialNumber { get; set; }
     public string? CertFingerprintSha256 { get; set; }
 }

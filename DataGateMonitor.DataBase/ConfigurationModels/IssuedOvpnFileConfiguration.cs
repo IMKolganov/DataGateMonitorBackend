@@ -53,8 +53,6 @@ public class IssuedOvpnFileConfiguration : BaseEntityConfiguration<IssuedOvpnFil
         entity.Property(e => e.IsServiceProfile)
             .IsRequired()
             .HasDefaultValue(false);
-        entity.Property(e => e.StaticIp)
-            .HasMaxLength(45);
         entity.Property(e => e.CertSerialNumber)
             .HasMaxLength(128);
         entity.Property(e => e.CertFingerprintSha256)

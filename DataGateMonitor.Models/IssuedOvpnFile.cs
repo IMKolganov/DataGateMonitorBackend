@@ -42,9 +42,6 @@ public class IssuedOvpnFile : BaseEntity<int>
     /// <summary>Service profile: client ignores pushed redirect-gateway / DNS, only VPN-internal traffic.</summary>
     public bool IsServiceProfile { get; set; }
 
-    /// <summary>Permanent tunnel address (node ccd ifconfig-push), when pinned.</summary>
-    public string? StaticIp { get; set; }
-
     /// <summary>easy-rsa serial; set for locally issued certificates (idempotency key for node events).</summary>
     public string? CertSerialNumber { get; set; }
 
