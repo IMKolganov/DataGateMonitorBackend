@@ -8,7 +8,7 @@ namespace DataGateMonitor.Services.CertExpiry;
 /// </summary>
 public sealed class CertExpiryBackgroundService(
     ILogger<CertExpiryBackgroundService> logger,
-    ICertExpiryScheduledCheckRunner scheduledCheckRunner) : BackgroundService
+    IServiceScopeFactory scopeFactory) : BackgroundService
 {
     private static readonly TimeSpan LoopDelay = TimeSpan.FromHours(1);
     private static readonly TimeSpan StartupDelay = TimeSpan.FromSeconds(1);
@@ -31,7 +31,13 @@ public sealed class CertExpiryBackgroundService(
         {
             while (!stoppingToken.IsCancellationRequested)
             {
-                await scheduledCheckRunner.RunAsync(stoppingToken).ConfigureAwait(false);
+                // The runner is scoped (DbContext etc.); resolve a fresh one per iteration.
+                await using (var scope = scopeFactory.CreateAsyncScope())
+                {
+                    var scheduledCheckRunner = scope.ServiceProvider.GetRequiredService<ICertExpiryScheduledCheckRunner>();
+                    await scheduledCheckRunner.RunAsync(stoppingToken).ConfigureAwait(false);
+                }
+
                 await Task.Delay(LoopDelay, stoppingToken).ConfigureAwait(false);
             }
         }
