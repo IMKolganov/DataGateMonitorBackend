@@ -2126,6 +2126,74 @@ namespace DataGateMonitor.DataBase.Migrations
                     b.ToTable("NotificationRecipients", "xgb_dashopnvpn");
                 });
 
+            modelBuilder.Entity("DataGateMonitor.Models.PendingTrafficRewrite", b =>
+                {
+                    b.Property<long>("Id")
+                        .ValueGeneratedOnAdd()
+                        .HasColumnType("bigint");
+
+                    NpgsqlPropertyBuilderExtensions.UseIdentityByDefaultColumn(b.Property<long>("Id"));
+
+                    b.Property<DateTimeOffset?>("CompletedAt")
+                        .HasColumnType("timestamp with time zone");
+
+                    b.Property<DateTimeOffset>("CreateDate")
+                        .ValueGeneratedOnAdd()
+                        .HasColumnType("timestamp with time zone")
+                        .HasDefaultValueSql("CURRENT_TIMESTAMP");
+
+                    b.Property<string>("LastError")
+                        .HasMaxLength(2048)
+                        .HasColumnType("character varying(2048)");
+
+                    b.Property<string>("LastProcessedChunkName")
+                        .HasMaxLength(256)
+                        .HasColumnType("character varying(256)");
+
+                    b.Property<DateTimeOffset>("LastUpdate")
+                        .ValueGeneratedOnAdd()
+                        .HasColumnType("timestamp with time zone")
+                        .HasDefaultValueSql("CURRENT_TIMESTAMP");
+
+                    b.Property<int>("MergedUserId")
+                        .HasColumnType("integer");
+
+                    b.Property<string>("NewExternalId")
+                        .IsRequired()
+                        .HasMaxLength(255)
+                        .HasColumnType("character varying(255)");
+
+                    b.Property<DateTimeOffset?>("NextRangeEndExclusive")
+                        .HasColumnType("timestamp with time zone");
+
+                    b.Property<string>("OldExternalId")
+                        .IsRequired()
+                        .HasMaxLength(255)
+                        .HasColumnType("character varying(255)");
+
+                    b.Property<long>("RowsUpdated")
+                        .HasColumnType("bigint");
+
+                    b.Property<DateTimeOffset?>("StartedAt")
+                        .HasColumnType("timestamp with time zone");
+
+                    b.Property<int>("Status")
+                        .HasColumnType("integer");
+
+                    b.Property<int>("SurvivorUserId")
+                        .HasColumnType("integer");
+
+                    b.HasKey("Id");
+
+                    b.HasIndex("Status")
+                        .HasDatabaseName("IX_PendingTrafficRewrites_Status");
+
+                    b.HasIndex("Status", "Id")
+                        .HasDatabaseName("IX_PendingTrafficRewrites_Status_Id");
+
+                    b.ToTable("PendingTrafficRewrites", "xgb_dashopnvpn");
+                });
+
             modelBuilder.Entity("DataGateMonitor.Models.QuotaPlan", b =>
                 {
                     b.Property<int>("Id")
@@ -4078,9 +4146,6 @@ namespace DataGateMonitor.DataBase.Migrations
                         .HasDatabaseName("IX_ClientTraffic_At_Covering");
 
                     NpgsqlIndexBuilderExtensions.IncludeProperties(b.HasIndex("MeasuredAt", "SessionId"), new[] { "ExternalId", "VpnServerId", "BytesReceived", "BytesSent" });
-
-                    b.HasIndex("VpnServerId", "MeasuredAt")
-                        .HasDatabaseName("IX_ClientTraffic_Server_At");
 
                     b.HasIndex("MeasuredAt", "ExternalId", "SessionId")
                         .HasDatabaseName("IX_ClientTraffic_At_External_Session");

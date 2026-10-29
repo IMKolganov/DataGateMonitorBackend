@@ -137,11 +137,16 @@ public sealed class UserMergeService(
                     telegramExternalId, googleExternalId, ct);
                 stats.VpnServerClientsExternalIdUpdated += await UpdateExternalIdAsync<VpnServerClient>(
                     telegramExternalId, googleExternalId, ct);
-                stats.VpnServerClientTrafficsExternalIdUpdated += await UpdateExternalIdAsync<VpnServerClientTraffic>(
-                    telegramExternalId, googleExternalId, ct);
+                // Raw Traffics ExternalId is rewritten asynchronously (PendingTrafficRewrites).
+                // Count rows that will be rewritten so the merge response still surfaces volume.
+                stats.VpnServerClientTrafficsExternalIdUpdated =
+                    await CountExternalIdAsync<VpnServerClientTraffic>(telegramExternalId, ct);
                 stats.VpnServerClientTrafficDailiesExternalIdUpdated +=
                     await UpdateExternalIdAsync<VpnServerClientTrafficDaily>(
                         telegramExternalId, googleExternalId, ct);
+
+                await EnqueueTrafficRewriteAsync(
+                    telegramExternalId, googleExternalId, telegramUserId, googleUserId, warnings, ct);
             }
 
             await MergeCredentialsAsync(telegramUserId, googleUserId, stats, warnings, ct);
@@ -572,7 +577,35 @@ public sealed class UserMergeService(
         {
             warnings.Add(
                 $"VPN ExternalId will be rewritten from Telegram id ({telegramExternalId}) to Google sub ({googleExternalId}).");
+            warnings.Add(
+                "VpnServerClientTraffics ExternalId rewrite would be queued for TrafficRewriteBackgroundService.");
         }
+    }
+
+    private async Task EnqueueTrafficRewriteAsync(
+        string oldExternalId,
+        string newExternalId,
+        int survivorUserId,
+        int mergedUserId,
+        List<string> warnings,
+        CancellationToken ct)
+    {
+        if (string.Equals(oldExternalId, newExternalId, StringComparison.Ordinal))
+            return;
+
+        var job = new PendingTrafficRewrite
+        {
+            OldExternalId = oldExternalId,
+            NewExternalId = newExternalId,
+            SurvivorUserId = survivorUserId,
+            MergedUserId = mergedUserId,
+            Status = PendingTrafficRewriteStatus.Pending,
+        };
+
+        await uow.GetRepository<PendingTrafficRewrite>().AddAsync(job, ct);
+        warnings.Add(
+            $"VpnServerClientTraffics ExternalId rewrite queued ({oldExternalId} → {newExternalId}); " +
+            "processed asynchronously by TrafficRewriteBackgroundService.");
     }
 
     private Task<int> UpdateUserIdAsync<TEntity>(int fromUserId, int toUserId, CancellationToken ct)

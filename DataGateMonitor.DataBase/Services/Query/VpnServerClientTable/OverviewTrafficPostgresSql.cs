@@ -119,7 +119,7 @@ public static class OverviewTrafficPostgresSql
         string measuredToExclusiveParam)
     {
         // Equality first when present so the planner prefers IX_ClientTraffic_External_At /
-        // server+time indexes instead of a wide MeasuredAt scan + filter.
+        // or IX_ClientTraffic_At_Covering (+ VpnServerId from INCLUDE) over a wide heap scan.
         var parts = new List<string>(4);
         if (!string.IsNullOrWhiteSpace(externalId))
             parts.Add("""t."ExternalId" = @externalId""");
