@@ -31,7 +31,9 @@ public static class NodeRequestSignature
         DateTimeOffset now,
         out string error)
     {
-        if (!long.TryParse(timestampHeader, NumberStyles.None, CultureInfo.InvariantCulture, out var unixSeconds))
+        // DateTimeOffset.FromUnixTimeSeconds throws outside years 0001-9999; such values are just invalid here.
+        if (!long.TryParse(timestampHeader, NumberStyles.None, CultureInfo.InvariantCulture, out var unixSeconds)
+            || unixSeconds > DateTimeOffset.MaxValue.ToUnixTimeSeconds())
         {
             error = "missing or invalid timestamp";
             return false;

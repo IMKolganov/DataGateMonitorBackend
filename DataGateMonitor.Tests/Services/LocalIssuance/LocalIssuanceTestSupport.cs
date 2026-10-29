@@ -49,10 +49,11 @@ internal sealed class FakeNode : IDisposable
 
 internal static class LocalIssuanceDb
 {
-    public static ApplicationDbContext Create()
+    public static ApplicationDbContext Create(params Microsoft.EntityFrameworkCore.Diagnostics.IInterceptor[] interceptors)
     {
         var options = new DbContextOptionsBuilder<ApplicationDbContext>()
             .UseInMemoryDatabase(Guid.NewGuid().ToString())
+            .AddInterceptors(interceptors)
             .Options;
         var configuration = new ConfigurationBuilder()
             .AddInMemoryCollection(new Dictionary<string, string?> { ["DataBaseSettings:DefaultSchema"] = "test_schema" })

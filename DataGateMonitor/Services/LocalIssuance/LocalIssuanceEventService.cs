@@ -4,6 +4,7 @@ using System.Text.RegularExpressions;
 using DataGateMonitor.DataBase.Contexts;
 using DataGateMonitor.Models;
 using Microsoft.EntityFrameworkCore;
+using Npgsql;
 
 namespace DataGateMonitor.Services.LocalIssuance;
 
@@ -132,7 +133,10 @@ public sealed partial class LocalIssuanceEventService(
         };
     }
 
-    /// <summary>False when a concurrent delivery already inserted the same serial (unique index).</summary>
+    /// <summary>
+    /// False when a concurrent delivery already inserted the same serial (unique index). Any other write failure
+    /// propagates: answering "duplicate" would make the node drop an event that was never stored.
+    /// </summary>
     private async Task<bool> TryInsertAsync(IssuedOvpnFile row, CancellationToken ct)
     {
         db.IssuedOvpnFiles.Add(row);
@@ -141,7 +145,7 @@ public sealed partial class LocalIssuanceEventService(
             await db.SaveChangesAsync(ct);
             return true;
         }
-        catch (DbUpdateException ex)
+        catch (DbUpdateException ex) when (ex.InnerException is PostgresException { SqlState: PostgresErrorCodes.UniqueViolation })
         {
             db.Entry(row).State = EntityState.Detached;
             logger.LogInformation(ex, "Concurrent insert for serial {Serial}; treating as duplicate.", row.CertSerialNumber);
