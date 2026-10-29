@@ -36,6 +36,7 @@ public sealed class VpnServerDiscoveryService(
     private static readonly TimeSpan DnsLookupTimeout = TimeSpan.FromSeconds(2);
     private static readonly TimeSpan DnsCacheTtl = TimeSpan.FromMinutes(10);
     private const int AnnounceRateLimitMax = 30;
+    private const int ServerNameMaxLength = 128;
     private const int AnnounceRateLimitWindowMinutes = 10;
 
     public bool TryAcquireAnnounceSlot(string? clientIp)
@@ -114,7 +115,7 @@ public sealed class VpnServerDiscoveryService(
             {
                 ServerType = request.ServerType,
                 ApiUrl = apiUrl,
-                SuggestedName = Truncate(request.SuggestedName?.Trim(), 128),
+                SuggestedName = await BuildUniqueServerNameAsync(apiUrl, request.PublicIp, discoveryId: null, ct),
                 PublicIp = Truncate(request.PublicIp?.Trim(), 64),
                 Version = Truncate(request.Version?.Trim(), 64),
                 IsEnableWss = request.IsEnableWss,
@@ -133,8 +134,10 @@ public sealed class VpnServerDiscoveryService(
         pending.ServerType = request.ServerType;
         // Announce is source of truth — upgrade IP fallbacks when the node later sends a domain URL.
         pending.ApiUrl = apiUrl;
-        pending.SuggestedName = Truncate(request.SuggestedName?.Trim(), 128) ?? pending.SuggestedName;
         pending.PublicIp = Truncate(request.PublicIp?.Trim(), 64) ?? pending.PublicIp;
+        // Name comes from the URL host (or the IP), not the node's container hostname.
+        pending.SuggestedName = await BuildUniqueServerNameAsync(apiUrl, pending.PublicIp, pending.Id, ct)
+            ?? pending.SuggestedName;
         pending.Version = Truncate(request.Version?.Trim(), 64) ?? pending.Version;
         pending.IsEnableWss = request.IsEnableWss;
         pending.LastSeenUtc = now;
@@ -209,9 +212,8 @@ public sealed class VpnServerDiscoveryService(
 
         var serverName = !string.IsNullOrWhiteSpace(request.ServerName)
             ? request.ServerName.Trim()
-            : (!string.IsNullOrWhiteSpace(discovery.SuggestedName)
-                ? discovery.SuggestedName.Trim()
-                : DeriveNameFromApiUrl(apiUrl));
+            : await BuildUniqueServerNameAsync(apiUrl, discovery.PublicIp, discovery.Id, ct)
+                ?? "discovered-server";
 
         // Keep discovery row aligned with the URL that was actually approved.
         discovery.ApiUrl = apiUrl;
@@ -645,11 +647,33 @@ public sealed class VpnServerDiscoveryService(
         ResolvedVpnServerId = d.ResolvedVpnServerId
     };
 
-    private static string DeriveNameFromApiUrl(string apiUrl)
+    /// <summary>
+    /// Name from the URL host / IP that no active server and no other pending discovery already uses.
+    /// </summary>
+    private async Task<string?> BuildUniqueServerNameAsync(
+        string apiUrl,
+        string? publicIp,
+        int? discoveryId,
+        CancellationToken ct)
     {
-        if (Uri.TryCreate(apiUrl, UriKind.Absolute, out var uri) && !string.IsNullOrWhiteSpace(uri.Host))
-            return Truncate(uri.Host, 128) ?? "discovered-server";
-        return "discovered-server";
+        var baseName = VpnServerApiUrlHelper.BuildServerName(apiUrl, publicIp);
+        if (string.IsNullOrWhiteSpace(baseName))
+            return null;
+
+        var serverNames = await vpnServerQuery.Query()
+            .Where(s => !s.IsDeleted)
+            .Select(s => s.ServerName)
+            .ToListAsync(ct);
+        var pendingNames = await discoveryQuery.Query()
+            .Where(d => d.Status == VpnServerDiscoveryStatus.Pending && d.Id != discoveryId)
+            .Select(d => d.SuggestedName)
+            .ToListAsync(ct);
+
+        return VpnServerApiUrlHelper.PickUniqueServerName(
+            baseName,
+            apiUrl,
+            serverNames.Concat(pendingNames),
+            ServerNameMaxLength);
     }
 
     private static string? Truncate(string? value, int max)

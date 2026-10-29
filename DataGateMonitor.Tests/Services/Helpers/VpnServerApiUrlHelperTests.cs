@@ -174,4 +174,61 @@ public class VpnServerApiUrlHelperTests
 
         Assert.Equal("xs1-hel.datagateapp.com", result);
     }
+
+    [Theory]
+    [InlineData("https://xs1-mad2.datagateapp.com:9443/", "87.58.157.136", "xs1-mad2.datagateapp.com")]
+    [InlineData("https://s1-mad2.datagateapp.com/", "87.58.157.136", "s1-mad2.datagateapp.com")]
+    [InlineData("http://172.18.0.5:5013/", "164.215.15.224", "164.215.15.224")]
+    [InlineData("http://164.215.15.224:5013/", null, "164.215.15.224")]
+    [InlineData("http://164.215.15.224:5013/", "127.0.0.1", "164.215.15.224")]
+    [InlineData(null, "164.215.15.224", "164.215.15.224")]
+    [InlineData(null, null, null)]
+    [InlineData("http://10.0.0.7:5013/", "0.0.0.0", "10.0.0.7")]
+    [InlineData("http://10.0.0.7:5013/", "not-an-ip", "10.0.0.7")]
+    [InlineData("http://10.0.0.7:5013/", " 164.215.15.224 ", "164.215.15.224")]
+    [InlineData("http://10.0.0.7:5013/", "::ffff:164.215.15.224", "164.215.15.224")]
+    [InlineData("http://[2001:db8::1]:5013/", "164.215.15.224", "164.215.15.224")]
+    [InlineData("http://[2001:db8::1]:5013/", null, "2001:db8::1")]
+    [InlineData("HTTPS://VPN.Example.COM/", null, "vpn.example.com")]
+    [InlineData("not a url", "164.215.15.224", "164.215.15.224")]
+    public void BuildServerName_PrefersDomainHost_ThenPublicIp(string? apiUrl, string? publicIp, string? expected)
+    {
+        Assert.Equal(expected, VpnServerApiUrlHelper.BuildServerName(apiUrl, publicIp));
+    }
+
+    [Fact]
+    public void PickUniqueServerName_ReturnsBase_WhenFree()
+    {
+        Assert.Equal("a.example.com",
+            VpnServerApiUrlHelper.PickUniqueServerName("a.example.com", "https://a.example.com/", ["b.example.com", null, " "], 128));
+    }
+
+    [Fact]
+    public void PickUniqueServerName_AddsPort_ThenNumbers()
+    {
+        const string url = "https://xs1-mad2.datagateapp.com:9443/";
+        Assert.Equal("xs1-mad2.datagateapp.com:9443",
+            VpnServerApiUrlHelper.PickUniqueServerName("xs1-mad2.datagateapp.com", url, ["XS1-MAD2.datagateapp.com"], 128));
+        Assert.Equal("xs1-mad2.datagateapp.com-2",
+            VpnServerApiUrlHelper.PickUniqueServerName("xs1-mad2.datagateapp.com", url,
+                ["xs1-mad2.datagateapp.com", "xs1-mad2.datagateapp.com:9443"], 128));
+        Assert.Equal("xs1-mad2.datagateapp.com-3",
+            VpnServerApiUrlHelper.PickUniqueServerName("xs1-mad2.datagateapp.com", url,
+                ["xs1-mad2.datagateapp.com", "xs1-mad2.datagateapp.com:9443", "xs1-mad2.datagateapp.com-2"], 128));
+    }
+
+    [Fact]
+    public void PickUniqueServerName_SkipsPort_WhenSchemeDefault()
+    {
+        Assert.Equal("s1-mad2.datagateapp.com-2",
+            VpnServerApiUrlHelper.PickUniqueServerName("s1-mad2.datagateapp.com", "https://s1-mad2.datagateapp.com/",
+                ["s1-mad2.datagateapp.com"], 128));
+    }
+
+    [Fact]
+    public void PickUniqueServerName_TrimsBase_SoSuffixFitsMaxLength()
+    {
+        var name = VpnServerApiUrlHelper.PickUniqueServerName("abcdefghij", "https://x/", ["abcdefghij"], 10);
+        Assert.Equal("abcdefgh-2", name);
+    }
 }

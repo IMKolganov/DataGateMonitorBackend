@@ -170,6 +170,55 @@ internal static class VpnServerApiUrlHelper
         return string.IsNullOrWhiteSpace(uri.Host) ? null : uri.Host;
     }
 
+    /// <summary>
+    /// Server display name: the ApiUrl host when it is a domain, otherwise the node's public IP,
+    /// otherwise the IP from the ApiUrl.
+    /// </summary>
+    public static string? BuildServerName(string? apiUrl, string? publicIp)
+    {
+        var host = TryHostFromApiUrl(apiUrl);
+        if (!string.IsNullOrWhiteSpace(host) && TryParseHostIp(host) is null)
+            return host;
+
+        var ip = TryParsePublicIp(publicIp);
+        if (ip is not null && IsUsableEndpoint(ip))
+            return ip;
+
+        return string.IsNullOrWhiteSpace(host) ? null : TryParseHostIp(host) ?? host;
+    }
+
+    /// <summary>
+    /// First free variant of <paramref name="baseName"/>: as is, then with the ApiUrl port
+    /// (when it is not the scheme default), then <c>-2</c>, <c>-3</c>, ... Comparison ignores case.
+    /// </summary>
+    public static string PickUniqueServerName(string baseName, string? apiUrl, IEnumerable<string?> takenNames, int maxLength)
+    {
+        var taken = new HashSet<string>(
+            takenNames.Where(n => !string.IsNullOrWhiteSpace(n)).Select(n => n!.Trim()),
+            StringComparer.OrdinalIgnoreCase);
+
+        foreach (var suffix in UniqueNameSuffixes(apiUrl))
+        {
+            var head = baseName.Length + suffix.Length > maxLength
+                ? baseName[..Math.Max(0, maxLength - suffix.Length)]
+                : baseName;
+            var candidate = head + suffix;
+            if (!taken.Contains(candidate))
+                return candidate;
+        }
+
+        return baseName.Length > maxLength ? baseName[..maxLength] : baseName;
+    }
+
+    private static IEnumerable<string> UniqueNameSuffixes(string? apiUrl)
+    {
+        yield return string.Empty;
+        if (!UsesSchemeDefaultPort(apiUrl) && TryGetEndpointHostPort(apiUrl, out _, out var port))
+            yield return ":" + port;
+        for (var i = 2; i <= 1000; i++)
+            yield return "-" + i;
+    }
+
     private static bool IsUsableEndpoint(string? value)
     {
         if (string.IsNullOrWhiteSpace(value))
