@@ -228,6 +228,9 @@ public sealed class VpnServerDiscoveryService(
             Longitude = request.Longitude,
             IsDisable = request.IsDisabled,
             IsOnline = false,
+            // Approving the discovery is the trust step for the node's event-signing key as well.
+            NodePublicKeyPem = discovery.NodePublicKeyPem,
+            NodeKeyFingerprint = discovery.NodeKeyFingerprint,
         };
 
         var created = await vpnDataService.AddVpnServer(

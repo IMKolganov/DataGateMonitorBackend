@@ -1,3 +1,5 @@
+using DataGateMonitor.Services.LocalIssuance;
+using Microsoft.Extensions.DependencyInjection.Extensions;
 using DataGateMonitor.DataBase.Services.Query.UserCredentialTable;
 using DataGateMonitor.Hubs.BackgroundService;
 using DataGateMonitor.Services.Api;
@@ -105,6 +107,11 @@ public static class ServiceConfiguration
         
         services.AddScoped<IVpnDataService, VpnDataService>();
         services.AddScoped<IVpnServerDiscoveryService, VpnServerDiscoveryService>();
+        // Node-local ("reverse") issuance: signed node events + node key binding.
+        services.TryAddSingleton(TimeProvider.System);
+        services.AddScoped<ILocalIssuanceEventService, LocalIssuanceEventService>();
+        services.AddScoped<INodeIdentityApiClient, NodeIdentityApiClient>();
+        services.AddScoped<INodeKeyBindingService, NodeKeyBindingService>();
         services.AddSingleton<IVpnServerPostSetupService, VpnServerPostSetupService>();
         services.AddScoped<IVpnServerStatisticsService, VpnServerStatisticsService>();
 

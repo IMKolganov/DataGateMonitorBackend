@@ -36,4 +36,10 @@ public class VpnServerDiscovery : BaseEntity<int>
 
     [MaxLength(512)]
     public string? RejectReason { get; set; }
+
+    /// <summary>Node event-signing key from the first announce; copied to the server on approve.</summary>
+    public string? NodePublicKeyPem { get; set; }
+
+    [MaxLength(64)]
+    public string? NodeKeyFingerprint { get; set; }
 }

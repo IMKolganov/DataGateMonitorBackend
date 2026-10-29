@@ -35,4 +35,21 @@ public class IssuedOvpnFile : BaseEntity<int>
     [Required]
     public bool IsRevoked { get; set; } = false;
     public string Message { get; set; } = string.Empty;
+
+    /// <summary>Who issued the certificate: the dashboard (via node API) or the node itself (local admin channel).</summary>
+    public IssuedOvpnFileOrigin Origin { get; set; } = IssuedOvpnFileOrigin.Dashboard;
+
+    /// <summary>Service profile: client ignores pushed redirect-gateway / DNS, only VPN-internal traffic.</summary>
+    public bool IsServiceProfile { get; set; }
+
+    /// <summary>easy-rsa serial; set for locally issued certificates (idempotency key for node events).</summary>
+    public string? CertSerialNumber { get; set; }
+
+    public string? CertFingerprintSha256 { get; set; }
+}
+
+public enum IssuedOvpnFileOrigin
+{
+    Dashboard = 0,
+    Local = 1
 }

@@ -1,8 +1,7 @@
-namespace DataGateMonitor.Models.Auth;
+namespace DataGateMonitor.SharedModels.DataGateMonitor.Auth.Requests;
 
 /// <summary>
 /// Body for Development-only <c>POST /api/auth/dev/token</c>.
-/// Not part of SharedModels — local tooling and load tests only.
 /// </summary>
 public sealed class DevTokenRequest
 {

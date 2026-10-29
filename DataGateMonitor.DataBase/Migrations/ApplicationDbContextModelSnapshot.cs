@@ -311,9 +311,17 @@ namespace DataGateMonitor.DataBase.Migrations
                         .HasMaxLength(500)
                         .HasColumnType("character varying(500)");
 
+                    b.Property<string>("CertFingerprintSha256")
+                        .HasMaxLength(64)
+                        .HasColumnType("character varying(64)");
+
                     b.Property<string>("CertId")
                         .HasMaxLength(255)
                         .HasColumnType("character varying(255)");
+
+                    b.Property<string>("CertSerialNumber")
+                        .HasMaxLength(128)
+                        .HasColumnType("character varying(128)");
 
                     b.Property<string>("CommonName")
                         .IsRequired()
@@ -345,6 +353,11 @@ namespace DataGateMonitor.DataBase.Migrations
                         .HasColumnType("boolean")
                         .HasDefaultValue(false);
 
+                    b.Property<bool>("IsServiceProfile")
+                        .ValueGeneratedOnAdd()
+                        .HasColumnType("boolean")
+                        .HasDefaultValue(false);
+
                     b.Property<DateTimeOffset>("IssuedAt")
                         .HasColumnType("timestamp with time zone");
 
@@ -368,6 +381,11 @@ namespace DataGateMonitor.DataBase.Migrations
                         .HasMaxLength(500)
                         .HasColumnType("character varying(500)");
 
+                    b.Property<int>("Origin")
+                        .ValueGeneratedOnAdd()
+                        .HasColumnType("integer")
+                        .HasDefaultValue(0);
+
                     b.Property<string>("PemFilePath")
                         .IsRequired()
                         .HasMaxLength(500)
@@ -382,6 +400,11 @@ namespace DataGateMonitor.DataBase.Migrations
                         .HasColumnType("integer");
 
                     b.HasKey("Id");
+
+                    b.HasIndex("VpnServerId", "CertSerialNumber")
+                        .IsUnique()
+                        .HasDatabaseName("IX_IssuedOvpnFiles_VpnServerId_CertSerialNumber")
+                        .HasFilter("\"CertSerialNumber\" IS NOT NULL");
 
                     b.ToTable("IssuedOvpnFiles", "xgb_dashopnvpn");
                 });
@@ -3827,6 +3850,22 @@ namespace DataGateMonitor.DataBase.Migrations
                         .HasMaxLength(64)
                         .HasColumnType("character varying(64)");
 
+                    b.Property<string>("NodeKeyFingerprint")
+                        .HasMaxLength(64)
+                        .HasColumnType("character varying(64)");
+
+                    b.Property<string>("NodePendingKeyFingerprint")
+                        .HasMaxLength(64)
+                        .HasColumnType("character varying(64)");
+
+                    b.Property<string>("NodePendingPublicKeyPem")
+                        .HasMaxLength(1024)
+                        .HasColumnType("character varying(1024)");
+
+                    b.Property<string>("NodePublicKeyPem")
+                        .HasMaxLength(1024)
+                        .HasColumnType("character varying(1024)");
+
                     b.Property<string>("ServerName")
                         .IsRequired()
                         .HasColumnType("text");
@@ -3864,6 +3903,8 @@ namespace DataGateMonitor.DataBase.Migrations
                     b.HasIndex("IsEnableWss");
 
                     b.HasIndex("IsOnline");
+
+                    b.HasIndex("NodeKeyFingerprint");
 
                     b.HasIndex("ServerName")
                         .IsUnique()
@@ -4247,6 +4288,14 @@ namespace DataGateMonitor.DataBase.Migrations
                         .ValueGeneratedOnAdd()
                         .HasColumnType("timestamp with time zone")
                         .HasDefaultValueSql("CURRENT_TIMESTAMP");
+
+                    b.Property<string>("NodeKeyFingerprint")
+                        .HasMaxLength(64)
+                        .HasColumnType("character varying(64)");
+
+                    b.Property<string>("NodePublicKeyPem")
+                        .HasMaxLength(1024)
+                        .HasColumnType("character varying(1024)");
 
                     b.Property<string>("PublicIp")
                         .HasMaxLength(64)

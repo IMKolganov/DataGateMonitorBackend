@@ -1090,6 +1090,38 @@ public class VpnServerDiscoveryServiceTests
     }
 
     [Fact]
+    public async Task ApproveAsync_CopiesAnnouncedNodeKeyToServer()
+    {
+        await using var ctx = CreateContext();
+        ctx.VpnServerDiscoveries.Add(new VpnServerDiscovery
+        {
+            Id = 12,
+            ServerType = VpnServerType.OpenVpn,
+            ApiUrl = "http://10.0.0.51:5010/",
+            Status = VpnServerDiscoveryStatus.Pending,
+            NodePublicKeyPem = "-----BEGIN PUBLIC KEY-----\nnode\n-----END PUBLIC KEY-----",
+            NodeKeyFingerprint = new string('c', 64),
+            LastSeenUtc = DateTimeOffset.UtcNow,
+            CreateDate = DateTimeOffset.UtcNow,
+            LastUpdate = DateTimeOffset.UtcNow
+        });
+        await ctx.SaveChangesAsync();
+
+        var sut = CreateSut(ctx, out var discoveryCmd, out _, out var vpnData);
+        WireCommandToContext(ctx, discoveryCmd);
+        VpnServer? created = null;
+        vpnData
+            .Setup(v => v.AddVpnServer(It.IsAny<VpnServer>(), It.IsAny<List<int>>(), It.IsAny<List<int>>(), It.IsAny<CancellationToken>()))
+            .ReturnsAsync((VpnServer s, List<int> _, List<int> _, CancellationToken _) => { s.Id = 98; created = s; return s; });
+
+        await sut.ApproveAsync(12, new ApproveVpnServerDiscoveryRequest(), CancellationToken.None);
+
+        Assert.NotNull(created);
+        Assert.Equal(new string('c', 64), created!.NodeKeyFingerprint);
+        Assert.StartsWith("-----BEGIN PUBLIC KEY-----", created.NodePublicKeyPem);
+    }
+
+    [Fact]
     public async Task ApproveAsync_ThenAnnounceSameUrl_ReturnsAlreadyRegistered()
     {
         await using var ctx = CreateContext();
