@@ -3,7 +3,10 @@ using System.Security.Cryptography;
 using System.Text;
 using DataGateMonitor.Models;
 using DataGateMonitor.Services.LocalIssuance;
+using Microsoft.EntityFrameworkCore;
+using Microsoft.EntityFrameworkCore.Diagnostics;
 using Microsoft.Extensions.Logging.Abstractions;
+using Npgsql;
 
 namespace DataGateMonitor.Tests.Services.LocalIssuance;
 
@@ -178,5 +181,52 @@ public class LocalIssuanceEventServiceTests
 
         await Assert.ThrowsAsync<ArgumentException>(() => CreateSut(db).ApplyAsync(server, evt, default));
         Assert.Empty(db.IssuedOvpnFiles);
+    }
+
+    /// <summary>Fails every async save (the service's writes); the sync seed in AddServer still goes through.</summary>
+    private sealed class FailingAsyncSaves(Func<Exception> failure) : SaveChangesInterceptor
+    {
+        public override ValueTask<InterceptionResult<int>> SavingChangesAsync(DbContextEventData eventData,
+            InterceptionResult<int> result, CancellationToken cancellationToken = default) => throw failure();
+    }
+
+    [Fact]
+    public async Task Apply_NonUniqueWriteFailure_Propagates_SoTheNodeRetries()
+    {
+        await using var db = LocalIssuanceDb.Create(new FailingAsyncSaves(() => new DbUpdateException("disk full")));
+        var server = LocalIssuanceDb.AddServer(db, 7);
+
+        // A "Duplicate" answer here would be a 200 and the node would drop an event that was never stored.
+        await Assert.ThrowsAsync<DbUpdateException>(() => CreateSut(db).ApplyAsync(server, Parse(FakeNode.EventBody()), default));
+    }
+
+    [Fact]
+    public async Task Apply_UniqueViolationOnInsert_IsDuplicate()
+    {
+        await using var db = LocalIssuanceDb.Create(new FailingAsyncSaves(() => new DbUpdateException("race",
+            new PostgresException("duplicate key", "ERROR", "ERROR", PostgresErrorCodes.UniqueViolation))));
+        var server = LocalIssuanceDb.AddServer(db, 7);
+
+        var (outcome, _) = await CreateSut(db).ApplyAsync(server, Parse(FakeNode.EventBody()), default);
+
+        Assert.Equal(LocalIssuanceEventOutcome.Duplicate, outcome);
+    }
+
+    [Theory]
+    [InlineData("9223372036854775807")]
+    [InlineData("253402300800")] // first second after 9999-12-31
+    public async Task Authenticate_TimestampOutsideDateRange_IsRejectedNotThrown(string timestamp)
+    {
+        using var node = new FakeNode();
+        await using var db = LocalIssuanceDb.Create();
+        LocalIssuanceDb.AddServer(db, 7, node);
+        var body = FakeNode.EventBody();
+        var (_, signature) = node.Sign(body, DateTimeOffset.UtcNow);
+
+        Assert.False(NodeRequestSignature.Verify(node.PublicKeyPem, timestamp, signature, "POST",
+            LocalIssuanceEventService.SignedPath, body, DateTimeOffset.UtcNow, out var error));
+        Assert.Equal("missing or invalid timestamp", error);
+        Assert.Null(await CreateSut(db).AuthenticateAsync(node.Fingerprint, timestamp, signature,
+            "POST", LocalIssuanceEventService.SignedPath, body, default));
     }
 }
