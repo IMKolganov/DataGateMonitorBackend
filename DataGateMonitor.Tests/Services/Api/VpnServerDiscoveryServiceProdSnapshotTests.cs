@@ -162,7 +162,7 @@ public class VpnServerDiscoveryServiceProdSnapshotTests
 
         Assert.Equal(AnnounceVpnServerResultStatus.Pending, result.Status);
         notifications.Verify(
-            n => n.NotifyDiscovered(It.IsAny<int>(), "norway-new-stack", It.IsAny<string>(), It.IsAny<CancellationToken>()),
+            n => n.NotifyDiscovered(It.IsAny<int>(), "212.147.232.154", It.IsAny<string>(), It.IsAny<CancellationToken>()),
             Times.Once);
     }
 
@@ -255,7 +255,7 @@ public class VpnServerDiscoveryServiceProdSnapshotTests
 
         Assert.Equal(AnnounceVpnServerResultStatus.Pending, result.Status);
         notifications.Verify(
-            n => n.NotifyDiscovered(It.IsAny<int>(), "norway-xray-restart", It.IsAny<string>(), It.IsAny<CancellationToken>()),
+            n => n.NotifyDiscovered(It.IsAny<int>(), "212.147.232.154", It.IsAny<string>(), It.IsAny<CancellationToken>()),
             Times.Once);
     }
 
@@ -369,7 +369,7 @@ public class VpnServerDiscoveryServiceProdSnapshotTests
         }, CancellationToken.None);
         Assert.Equal(AnnounceVpnServerResultStatus.Pending, tcpPort.Status);
         notifications.Verify(
-            n => n.NotifyDiscovered(It.IsAny<int>(), "cyprus-tcp-reborn", It.IsAny<string>(), It.IsAny<CancellationToken>()),
+            n => n.NotifyDiscovered(It.IsAny<int>(), "164.215.15.224", It.IsAny<string>(), It.IsAny<CancellationToken>()),
             Times.Once);
     }
 

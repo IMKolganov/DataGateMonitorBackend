@@ -381,7 +381,7 @@ public class VpnServerDiscoveryServiceTests
         var row = await ctx.VpnServerDiscoveries.FindAsync(first.DiscoveryId);
         Assert.Equal("https://s1-nor.datagateapp.com/", row!.ApiUrl);
         Assert.Equal("81.27.109.193", row.PublicIp);
-        Assert.Equal("nor-udp-2", row.SuggestedName);
+        Assert.Equal("s1-nor.datagateapp.com", row.SuggestedName);
         Assert.Equal("1.2.3", row.Version);
         Assert.Single((await sut.ListPendingAsync(CancellationToken.None)).Discoveries);
         notifications.Verify(
@@ -779,7 +779,7 @@ public class VpnServerDiscoveryServiceTests
         Assert.Equal(AnnounceVpnServerResultStatus.Pending, result.Status);
         Assert.NotNull(result.DiscoveryId);
         notifications.Verify(
-            n => n.NotifyDiscovered(It.IsAny<int>(), "rejoined", "http://10.0.0.1:5010/", It.IsAny<CancellationToken>()),
+            n => n.NotifyDiscovered(It.IsAny<int>(), "10.0.0.1", "http://10.0.0.1:5010/", It.IsAny<CancellationToken>()),
             Times.Once);
         Assert.True(await ctx.VpnServers.AnyAsync(s => s.Id == 6 && !s.IsDeleted));
     }
@@ -812,14 +812,14 @@ public class VpnServerDiscoveryServiceTests
         Assert.Equal(VpnServerDiscoveryStatus.Pending, added.Status);
         Assert.Equal(VpnServerType.Xray, added.ServerType);
         Assert.Equal("http://203.0.113.10:5011/", added.ApiUrl);
-        Assert.Equal("xray-1", added.SuggestedName);
+        Assert.Equal("203.0.113.10", added.SuggestedName);
         Assert.Equal("203.0.113.10", added.PublicIp);
         Assert.Equal("1.2.3", added.Version);
         Assert.True(added.IsEnableWss);
         Assert.NotNull(added.LastNotifiedUtc);
 
         notifications.Verify(
-            n => n.NotifyDiscovered(added.Id, "xray-1", "http://203.0.113.10:5011/", It.IsAny<CancellationToken>()),
+            n => n.NotifyDiscovered(added.Id, "203.0.113.10", "http://203.0.113.10:5011/", It.IsAny<CancellationToken>()),
             Times.Once);
 
         // Fleet unchanged until admin approves.
@@ -899,7 +899,7 @@ public class VpnServerDiscoveryServiceTests
         Assert.Equal(AnnounceVpnServerResultStatus.Pending, result.Status);
         Assert.Equal(7, result.DiscoveryId);
         var row = await ctx.VpnServerDiscoveries.FindAsync(7);
-        Assert.Equal("new-name", row!.SuggestedName);
+        Assert.Equal("10.0.0.2", row!.SuggestedName);
         Assert.Equal("9.9.9", row.Version);
         Assert.Equal("http://10.0.0.2:5010/", row.ApiUrl);
         Assert.True(row.LastSeenUtc > now.AddMinutes(-1));
@@ -945,7 +945,7 @@ public class VpnServerDiscoveryServiceTests
         Assert.Equal(17, result.DiscoveryId);
         var row = await ctx.VpnServerDiscoveries.FindAsync(17);
         Assert.Equal("http://203.0.113.50:5010/", row!.ApiUrl);
-        Assert.Equal("dg-vpn-sto-4", row.SuggestedName);
+        Assert.Equal("203.0.113.50", row.SuggestedName);
     }
 
     [Fact]
@@ -979,7 +979,7 @@ public class VpnServerDiscoveryServiceTests
 
         Assert.Equal(AnnounceVpnServerResultStatus.Pending, result.Status);
         notifications.Verify(
-            n => n.NotifyDiscovered(8, "stale", "http://10.0.0.3:5010/", It.IsAny<CancellationToken>()),
+            n => n.NotifyDiscovered(8, "10.0.0.3", "http://10.0.0.3:5010/", It.IsAny<CancellationToken>()),
             Times.Once);
         var row = await ctx.VpnServerDiscoveries.FindAsync(8);
         Assert.NotNull(row!.LastNotifiedUtc);
@@ -1074,7 +1074,7 @@ public class VpnServerDiscoveryServiceTests
         Assert.Equal(99, result.Discovery.ResolvedVpnServerId);
         vpnData.Verify(v => v.AddVpnServer(
             It.Is<VpnServer>(s =>
-                s.ServerName == "node-b"
+                s.ServerName == "10.0.0.50"
                 && s.ApiUrl == "http://10.0.0.50:5010/"
                 && s.IsEnableWss
                 && s.ServerType == VpnServerType.OpenVpn),
@@ -1211,6 +1211,333 @@ public class VpnServerDiscoveryServiceTests
     }
 
     [Fact]
+    public async Task AnnounceAsync_NamesPendingAfterDomainHost_IgnoringNodeHostname()
+    {
+        await using var ctx = CreateContext();
+        var sut = CreateSut(ctx, out var discoveryCmd, out var notifications, out _);
+        WireCommandToContext(ctx, discoveryCmd);
+
+        var result = await sut.AnnounceAsync(new AnnounceVpnServerRequest
+        {
+            ServerType = VpnServerType.Xray,
+            ApiUrl = "https://xs1-mad2.datagateapp.com:9443/",
+            PublicIp = "87.58.157.136",
+            SuggestedName = "45585d703079"
+        }, CancellationToken.None);
+
+        var row = await ctx.VpnServerDiscoveries.FindAsync(result.DiscoveryId);
+        Assert.Equal("xs1-mad2.datagateapp.com", row!.SuggestedName);
+        notifications.Verify(
+            n => n.NotifyDiscovered(row.Id, "xs1-mad2.datagateapp.com", "https://xs1-mad2.datagateapp.com:9443/", It.IsAny<CancellationToken>()),
+            Times.Once);
+    }
+
+    [Fact]
+    public async Task AnnounceAsync_NamesPendingAfterPublicIp_WhenApiUrlHostIsIp()
+    {
+        await using var ctx = CreateContext();
+        var sut = CreateSut(ctx, out var discoveryCmd, out _, out _);
+        WireCommandToContext(ctx, discoveryCmd);
+
+        var result = await sut.AnnounceAsync(new AnnounceVpnServerRequest
+        {
+            ServerType = VpnServerType.OpenVpn,
+            ApiUrl = "http://172.18.0.5:5013/",
+            PublicIp = "164.215.15.224",
+            SuggestedName = "c3264dcdacf3"
+        }, CancellationToken.None);
+
+        var row = await ctx.VpnServerDiscoveries.FindAsync(result.DiscoveryId);
+        Assert.Equal("164.215.15.224", row!.SuggestedName);
+    }
+
+    [Fact]
+    public async Task AnnounceAsync_NamesPendingAfterApiUrlIp_WhenPublicIpMissing()
+    {
+        await using var ctx = CreateContext();
+        var sut = CreateSut(ctx, out var discoveryCmd, out _, out _);
+        WireCommandToContext(ctx, discoveryCmd);
+
+        var result = await sut.AnnounceAsync(new AnnounceVpnServerRequest
+        {
+            ServerType = VpnServerType.OpenVpn,
+            ApiUrl = "http://164.215.15.224:5013/",
+            PublicIp = null,
+            SuggestedName = "c3264dcdacf3"
+        }, CancellationToken.None);
+
+        var row = await ctx.VpnServerDiscoveries.FindAsync(result.DiscoveryId);
+        Assert.Equal("164.215.15.224", row!.SuggestedName);
+    }
+
+    [Fact]
+    public async Task AnnounceAsync_RenamesLegacyPendingName_OnNextAnnounce()
+    {
+        await using var ctx = CreateContext();
+        var now = DateTimeOffset.UtcNow;
+        ctx.VpnServerDiscoveries.Add(new VpnServerDiscovery
+        {
+            Id = 31,
+            ServerType = VpnServerType.OpenVpn,
+            ApiUrl = "https://s1-mad2.datagateapp.com/",
+            SuggestedName = "dg-vpn-mad-2",
+            PublicIp = "87.58.157.136",
+            Status = VpnServerDiscoveryStatus.Pending,
+            LastSeenUtc = now.AddMinutes(-10),
+            LastNotifiedUtc = now.AddMinutes(-10),
+            CreateDate = now.AddHours(-1),
+            LastUpdate = now.AddMinutes(-10)
+        });
+        await ctx.SaveChangesAsync();
+
+        var sut = CreateSut(ctx, out var discoveryCmd, out _, out _);
+        WireCommandToContext(ctx, discoveryCmd);
+
+        var result = await sut.AnnounceAsync(new AnnounceVpnServerRequest
+        {
+            ServerType = VpnServerType.OpenVpn,
+            ApiUrl = "https://s1-mad2.datagateapp.com/",
+            PublicIp = "87.58.157.136",
+            SuggestedName = "dg-vpn-mad-2"
+        }, CancellationToken.None);
+
+        Assert.Equal(31, result.DiscoveryId);
+        var row = await ctx.VpnServerDiscoveries.FindAsync(31);
+        Assert.Equal("s1-mad2.datagateapp.com", row!.SuggestedName);
+    }
+
+    [Fact]
+    public async Task AnnounceAsync_KeepsPublicIpName_WhenLaterAnnounceOmitsPublicIp()
+    {
+        await using var ctx = CreateContext();
+        var sut = CreateSut(ctx, out var discoveryCmd, out _, out _);
+        WireCommandToContext(ctx, discoveryCmd);
+
+        var first = await sut.AnnounceAsync(new AnnounceVpnServerRequest
+        {
+            ServerType = VpnServerType.OpenVpn,
+            ApiUrl = "http://172.18.0.5:5013/",
+            PublicIp = "164.215.15.224"
+        }, CancellationToken.None);
+        await sut.AnnounceAsync(new AnnounceVpnServerRequest
+        {
+            ServerType = VpnServerType.OpenVpn,
+            ApiUrl = "http://172.18.0.5:5013/",
+            PublicIp = null
+        }, CancellationToken.None);
+
+        var row = await ctx.VpnServerDiscoveries.FindAsync(first.DiscoveryId);
+        Assert.Equal("164.215.15.224", row!.SuggestedName);
+    }
+
+    [Fact]
+    public async Task ApproveAsync_FallsBackToPublicIp_IgnoringStoredNodeHostname()
+    {
+        await using var ctx = CreateContext();
+        ctx.VpnServerDiscoveries.Add(new VpnServerDiscovery
+        {
+            Id = 32,
+            ServerType = VpnServerType.OpenVpn,
+            ApiUrl = "http://172.18.0.5:5013/",
+            SuggestedName = "c3264dcdacf3",
+            PublicIp = "164.215.15.224",
+            Status = VpnServerDiscoveryStatus.Pending,
+            LastSeenUtc = DateTimeOffset.UtcNow,
+            CreateDate = DateTimeOffset.UtcNow,
+            LastUpdate = DateTimeOffset.UtcNow
+        });
+        await ctx.SaveChangesAsync();
+
+        var sut = CreateSut(ctx, out var discoveryCmd, out _, out var vpnData);
+        WireCommandToContext(ctx, discoveryCmd);
+
+        VpnServer? captured = null;
+        vpnData
+            .Setup(v => v.AddVpnServer(It.IsAny<VpnServer>(), It.IsAny<List<int>>(), It.IsAny<List<int>>(), It.IsAny<CancellationToken>()))
+            .ReturnsAsync((VpnServer s, List<int> _, List<int> _, CancellationToken _) =>
+            {
+                captured = s;
+                s.Id = 6;
+                return s;
+            });
+
+        await sut.ApproveAsync(32, new ApproveVpnServerDiscoveryRequest(), CancellationToken.None);
+
+        Assert.Equal("164.215.15.224", captured!.ServerName);
+    }
+
+    [Fact]
+    public async Task AnnounceAsync_AddsPort_WhenActiveServerAlreadyHasIpName()
+    {
+        await using var ctx = CreateContext();
+        SeedServer(ctx, id: 40, name: "164.215.15.224", apiUrl: "http://164.215.15.224:5010/", deleted: false);
+        await ctx.SaveChangesAsync();
+
+        var sut = CreateSut(ctx, out var discoveryCmd, out _, out _);
+        WireCommandToContext(ctx, discoveryCmd);
+
+        var result = await sut.AnnounceAsync(new AnnounceVpnServerRequest
+        {
+            ServerType = VpnServerType.OpenVpn,
+            ApiUrl = "http://164.215.15.224:5013/",
+            PublicIp = "164.215.15.224"
+        }, CancellationToken.None);
+
+        var row = await ctx.VpnServerDiscoveries.FindAsync(result.DiscoveryId);
+        Assert.Equal("164.215.15.224:5013", row!.SuggestedName);
+    }
+
+    [Fact]
+    public async Task AnnounceAsync_AddsNumber_WhenDomainNameTakenAndPortIsDefault()
+    {
+        await using var ctx = CreateContext();
+        SeedServer(ctx, id: 41, name: "S1-MAD2.datagateapp.com", apiUrl: "http://10.9.9.9:5010/", deleted: false);
+        await ctx.SaveChangesAsync();
+
+        var sut = CreateSut(ctx, out var discoveryCmd, out _, out _);
+        WireCommandToContext(ctx, discoveryCmd);
+
+        var result = await sut.AnnounceAsync(new AnnounceVpnServerRequest
+        {
+            ServerType = VpnServerType.OpenVpn,
+            ApiUrl = "https://s1-mad2.datagateapp.com/",
+            PublicIp = "87.58.157.136"
+        }, CancellationToken.None);
+
+        var row = await ctx.VpnServerDiscoveries.FindAsync(result.DiscoveryId);
+        Assert.Equal("s1-mad2.datagateapp.com-2", row!.SuggestedName);
+    }
+
+    [Fact]
+    public async Task AnnounceAsync_ReusesName_OfSoftDeletedServer()
+    {
+        await using var ctx = CreateContext();
+        SeedServer(ctx, id: 42, name: "s1-mad2.datagateapp.com", apiUrl: "http://10.9.9.9:5010/", deleted: true);
+        await ctx.SaveChangesAsync();
+
+        var sut = CreateSut(ctx, out var discoveryCmd, out _, out _);
+        WireCommandToContext(ctx, discoveryCmd);
+
+        var result = await sut.AnnounceAsync(new AnnounceVpnServerRequest
+        {
+            ServerType = VpnServerType.OpenVpn,
+            ApiUrl = "https://s1-mad2.datagateapp.com/",
+            PublicIp = "87.58.157.136"
+        }, CancellationToken.None);
+
+        var row = await ctx.VpnServerDiscoveries.FindAsync(result.DiscoveryId);
+        Assert.Equal("s1-mad2.datagateapp.com", row!.SuggestedName);
+    }
+
+    [Fact]
+    public async Task AnnounceAsync_GivesDistinctNames_ToPendingNodesOnSamePublicIp()
+    {
+        await using var ctx = CreateContext();
+        var sut = CreateSut(ctx, out var discoveryCmd, out _, out _);
+        WireCommandToContext(ctx, discoveryCmd);
+
+        var udp = await sut.AnnounceAsync(new AnnounceVpnServerRequest
+        {
+            ServerType = VpnServerType.OpenVpn,
+            ApiUrl = "http://172.18.0.5:5010/",
+            PublicIp = "164.215.15.224"
+        }, CancellationToken.None);
+        var tcp = await sut.AnnounceAsync(new AnnounceVpnServerRequest
+        {
+            ServerType = VpnServerType.OpenVpn,
+            ApiUrl = "http://172.18.0.6:5011/",
+            PublicIp = "164.215.15.224"
+        }, CancellationToken.None);
+
+        Assert.NotEqual(udp.DiscoveryId, tcp.DiscoveryId);
+        Assert.Equal("164.215.15.224", (await ctx.VpnServerDiscoveries.FindAsync(udp.DiscoveryId))!.SuggestedName);
+        Assert.Equal("164.215.15.224:5011", (await ctx.VpnServerDiscoveries.FindAsync(tcp.DiscoveryId))!.SuggestedName);
+
+        // Re-announcing the first node must not steal or flip the names.
+        await sut.AnnounceAsync(new AnnounceVpnServerRequest
+        {
+            ServerType = VpnServerType.OpenVpn,
+            ApiUrl = "http://172.18.0.5:5010/",
+            PublicIp = "164.215.15.224"
+        }, CancellationToken.None);
+        Assert.Equal("164.215.15.224", (await ctx.VpnServerDiscoveries.FindAsync(udp.DiscoveryId))!.SuggestedName);
+        Assert.Equal("164.215.15.224:5011", (await ctx.VpnServerDiscoveries.FindAsync(tcp.DiscoveryId))!.SuggestedName);
+    }
+
+    [Fact]
+    public async Task ApproveAsync_PicksFreeName_WhenDerivedNameAlreadyRegistered()
+    {
+        await using var ctx = CreateContext();
+        SeedServer(ctx, id: 43, name: "xs1-mad2.datagateapp.com", apiUrl: "http://10.9.9.9:5010/", deleted: false);
+        ctx.VpnServerDiscoveries.Add(new VpnServerDiscovery
+        {
+            Id = 44,
+            ServerType = VpnServerType.Xray,
+            ApiUrl = "https://xs1-mad2.datagateapp.com:9443/",
+            SuggestedName = "45585d703079",
+            PublicIp = "87.58.157.136",
+            Status = VpnServerDiscoveryStatus.Pending,
+            LastSeenUtc = DateTimeOffset.UtcNow,
+            CreateDate = DateTimeOffset.UtcNow,
+            LastUpdate = DateTimeOffset.UtcNow
+        });
+        await ctx.SaveChangesAsync();
+
+        var sut = CreateSut(ctx, out var discoveryCmd, out _, out var vpnData);
+        WireCommandToContext(ctx, discoveryCmd);
+
+        VpnServer? captured = null;
+        vpnData
+            .Setup(v => v.AddVpnServer(It.IsAny<VpnServer>(), It.IsAny<List<int>>(), It.IsAny<List<int>>(), It.IsAny<CancellationToken>()))
+            .ReturnsAsync((VpnServer s, List<int> _, List<int> _, CancellationToken _) =>
+            {
+                captured = s;
+                s.Id = 45;
+                return s;
+            });
+
+        await sut.ApproveAsync(44, new ApproveVpnServerDiscoveryRequest(), CancellationToken.None);
+
+        Assert.Equal("xs1-mad2.datagateapp.com:9443", captured!.ServerName);
+    }
+
+    [Fact]
+    public async Task ApproveAsync_KeepsExplicitServerName_EvenWhenTaken()
+    {
+        await using var ctx = CreateContext();
+        SeedServer(ctx, id: 46, name: "taken", apiUrl: "http://10.9.9.9:5010/", deleted: false);
+        ctx.VpnServerDiscoveries.Add(new VpnServerDiscovery
+        {
+            Id = 47,
+            ServerType = VpnServerType.OpenVpn,
+            ApiUrl = "https://s2-mad2.datagateapp.com/",
+            Status = VpnServerDiscoveryStatus.Pending,
+            LastSeenUtc = DateTimeOffset.UtcNow,
+            CreateDate = DateTimeOffset.UtcNow,
+            LastUpdate = DateTimeOffset.UtcNow
+        });
+        await ctx.SaveChangesAsync();
+
+        var sut = CreateSut(ctx, out var discoveryCmd, out _, out var vpnData);
+        WireCommandToContext(ctx, discoveryCmd);
+
+        VpnServer? captured = null;
+        vpnData
+            .Setup(v => v.AddVpnServer(It.IsAny<VpnServer>(), It.IsAny<List<int>>(), It.IsAny<List<int>>(), It.IsAny<CancellationToken>()))
+            .ReturnsAsync((VpnServer s, List<int> _, List<int> _, CancellationToken _) =>
+            {
+                captured = s;
+                s.Id = 48;
+                return s;
+            });
+
+        // Admin-typed names are not rewritten; AddVpnServer rejects real duplicates.
+        await sut.ApproveAsync(47, new ApproveVpnServerDiscoveryRequest { ServerName = "taken" }, CancellationToken.None);
+
+        Assert.Equal("taken", captured!.ServerName);
+    }
+
+    [Fact]
     public async Task ApproveAsync_UsesApiUrlOverride_WhenProvided()
     {
         await using var ctx = CreateContext();
@@ -1246,6 +1573,7 @@ public class VpnServerDiscoveryServiceTests
         }, CancellationToken.None);
 
         Assert.Equal("https://xray.example.com:9443/", captured!.ApiUrl);
+        Assert.Equal("xray.example.com", captured.ServerName);
         var discovery = await ctx.VpnServerDiscoveries.FindAsync(22);
         Assert.Equal("https://xray.example.com:9443/", discovery!.ApiUrl);
     }
