@@ -18,6 +18,8 @@ public class VpnServerDiscoveryDto
 
     public bool IsEnableWss { get; set; }
 
+    public bool HasPiHole { get; set; }
+
     public VpnServerDiscoveryStatus Status { get; set; }
 
     public DateTimeOffset CreatedAt { get; set; }
