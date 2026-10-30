@@ -24,6 +24,11 @@ public class VpnServerDiscovery : BaseEntity<int>
 
     public bool IsEnableWss { get; set; }
 
+    public bool HasPiHole { get; set; }
+
+    /// <summary>Staged credentials; never exposed by discovery DTOs. Cleared after import or rejection.</summary>
+    public string? PiHoleConfigJson { get; set; }
+
     public VpnServerDiscoveryStatus Status { get; set; } = VpnServerDiscoveryStatus.Pending;
 
     public DateTimeOffset LastSeenUtc { get; set; }

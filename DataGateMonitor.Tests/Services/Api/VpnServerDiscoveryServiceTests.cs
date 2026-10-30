@@ -1804,11 +1804,119 @@ public class VpnServerDiscoveryServiceTests
             });
     }
 
+    [Fact]
+    public async Task AnnounceAsync_StagesPiHoleCredentials_WithoutExposingThemInDiscoveryResponses()
+    {
+        await using var ctx = CreateContext();
+        var sut = CreateSut(ctx, out var command, out _, out _);
+        WireCommandToContext(ctx, command);
+        var request = PiHoleAnnouncement();
+
+        var announced = await sut.AnnounceAsync(request, CancellationToken.None);
+        var row = await ctx.VpnServerDiscoveries.FindAsync(announced.DiscoveryId);
+        Assert.True(row!.HasPiHole);
+        Assert.Equal(request.PiHole!.AppPassword,
+            ProjectJson.Deserialize<AnnouncePiHoleConfig>(row.PiHoleConfigJson!)!.AppPassword);
+
+        var pending = await sut.ListPendingAsync(CancellationToken.None);
+        Assert.True(Assert.Single(pending.Discoveries).HasPiHole);
+        Assert.DoesNotContain(request.PiHole.AppPassword, ProjectJson.Serialize(pending));
+    }
+
+    [Fact]
+    public async Task AnnounceAsync_LegacyRefreshPreservesPiHole_ExplicitAbsenceClearsCredentials()
+    {
+        await using var ctx = CreateContext();
+        var sut = CreateSut(ctx, out var command, out _, out _);
+        WireCommandToContext(ctx, command);
+        var request = PiHoleAnnouncement();
+        var announced = await sut.AnnounceAsync(request, CancellationToken.None);
+        await sut.AnnounceAsync(new AnnounceVpnServerRequest { ApiUrl = request.ApiUrl }, CancellationToken.None);
+        var row = await ctx.VpnServerDiscoveries.FindAsync(announced.DiscoveryId);
+        Assert.True(row!.HasPiHole);
+        Assert.NotNull(row.PiHoleConfigJson);
+
+        await sut.AnnounceAsync(new AnnounceVpnServerRequest { ApiUrl = request.ApiUrl, HasPiHole = false }, CancellationToken.None);
+        Assert.False(row.HasPiHole);
+        Assert.Null(row.PiHoleConfigJson);
+    }
+
+    [Theory]
+    [InlineData(null, true)]
+    [InlineData(false, false)]
+    [InlineData(true, true)]
+    public async Task ApproveAsync_UsesAnnouncedPiHoleByDefault_AndStartsPostSetup(bool? enabled, bool expected)
+    {
+        await using var ctx = CreateContext();
+        var postSetup = new Mock<IVpnServerPostSetupService>();
+        var sut = CreateSut(ctx, out var command, out _, out var vpnData, postSetup.Object);
+        WireCommandToContext(ctx, command);
+        var announced = await sut.AnnounceAsync(PiHoleAnnouncement(), CancellationToken.None);
+        vpnData.Setup(v => v.AddVpnServer(It.IsAny<VpnServer>(), It.IsAny<List<int>>(), It.IsAny<List<int>>(), It.IsAny<CancellationToken>()))
+            .ReturnsAsync((VpnServer server, List<int> _, List<int> _, CancellationToken _) =>
+            {
+                Assert.Equal(expected, server.IsPiHoleEnabled);
+                server.Id = 90;
+                return server;
+            });
+
+        var result = await sut.ApproveAsync(announced.DiscoveryId!.Value,
+            new ApproveVpnServerDiscoveryRequest { IsPiHoleEnabled = enabled }, CancellationToken.None);
+
+        postSetup.Verify(p => p.StartAsync(90, It.IsAny<CancellationToken>()), Times.Once);
+        Assert.DoesNotContain(PiHoleTestFixtures.AppCredential, ProjectJson.Serialize(result));
+    }
+
+    [Fact]
+    public async Task AnnounceAsync_RegisteredNodeDoesNotAcceptAnonymousCredentialChanges()
+    {
+        await using var ctx = CreateContext();
+        var request = PiHoleAnnouncement();
+        SeedServer(ctx, 20, "registered", request.ApiUrl, false);
+        await ctx.SaveChangesAsync();
+        var sut = CreateSut(ctx, out var command, out _, out _);
+        WireCommandToContext(ctx, command);
+
+        var result = await sut.AnnounceAsync(request, CancellationToken.None);
+
+        Assert.Equal(AnnounceVpnServerResultStatus.AlreadyRegistered, result.Status);
+        Assert.Empty(await ctx.VpnServerDiscoveries.ToListAsync());
+    }
+
+    [Theory]
+    [InlineData("file:///etc/pihole", "password")]
+    [InlineData("http://10.51.40.1:8080", "")]
+    [InlineData("http://10.51.40.1:8080", "********")]
+    public async Task AnnounceAsync_RejectsIncompletePiHoleCredentials(string baseUrl, string password)
+    {
+        await using var ctx = CreateContext();
+        var sut = CreateSut(ctx, out var command, out _, out _);
+        WireCommandToContext(ctx, command);
+        var request = PiHoleAnnouncement();
+        request.PiHole!.BaseUrl = baseUrl;
+        request.PiHole.AppPassword = password;
+        await Assert.ThrowsAsync<ArgumentException>(() => sut.AnnounceAsync(request, CancellationToken.None));
+        Assert.Empty(await ctx.VpnServerDiscoveries.ToListAsync());
+    }
+
+    private static AnnounceVpnServerRequest PiHoleAnnouncement() => new()
+    {
+        ApiUrl = "https://vpn.example.com/",
+        HasPiHole = true,
+        PiHole = new AnnouncePiHoleConfig
+        {
+            BaseUrl = "http://10.51.40.1:8080",
+            AppPassword = PiHoleTestFixtures.AppCredential,
+            ClientSubnetPrefix = "10.51.40."
+        }
+    };
+
     private static VpnServerDiscoveryService CreateSut(
         ApplicationDbContext ctx,
         out Mock<ICommandService<VpnServerDiscovery, int>> discoveryCmd,
         out Mock<IServerOpenVpnNotificationService> notifications,
-        out Mock<IVpnDataService> vpnData)
+        out Mock<IVpnDataService> vpnData,
+        IVpnServerPostSetupService? postSetup = null)
     {
         var uow = new DbContextUnitOfWork(ctx);
         var discoveryQuery = new EfQueryService<VpnServerDiscovery, int>(uow);
@@ -1827,6 +1935,7 @@ public class VpnServerDiscoveryServiceTests
             new VpnServerOvpnFileConfigQueryService(ovpnConfigQuery),
             new VpnServerConflogQueryService(conflogQuery),
             vpnData.Object,
+            postSetup ?? Mock.Of<IVpnServerPostSetupService>(),
             notifications.Object,
             cache,
             NullLogger<VpnServerDiscoveryService>.Instance);

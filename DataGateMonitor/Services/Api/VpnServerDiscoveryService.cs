@@ -7,6 +7,7 @@ using DataGateMonitor.DataBase.Services.Query;
 using DataGateMonitor.DataBase.Services.Query.VpnServerConflogTable;
 using DataGateMonitor.DataBase.Services.Query.VpnServerOvpnFileConfigTable;
 using DataGateMonitor.Models;
+using DataGateMonitor.Serialization;
 using DataGateMonitor.Services.Api.Interfaces;
 using DataGateMonitor.Services.Helpers;
 using DataGateMonitor.Services.Others.Notifications.ServerOpenVpnApiClient;
@@ -24,6 +25,7 @@ public sealed class VpnServerDiscoveryService(
     IVpnServerOvpnFileConfigQueryService ovpnFileConfigQuery,
     IVpnServerConflogQueryService conflogQuery,
     IVpnDataService vpnDataService,
+    IVpnServerPostSetupService postSetupService,
     IServerOpenVpnNotificationService serverOpenVpnNotificationService,
     IMemoryCache cache,
     ILogger<VpnServerDiscoveryService> logger) : IVpnServerDiscoveryService
@@ -122,6 +124,7 @@ public sealed class VpnServerDiscoveryService(
                 Status = VpnServerDiscoveryStatus.Pending,
                 LastSeenUtc = now,
             };
+            ApplyPiHoleAnnouncement(pending, request);
             await discoveryCommand.Add(pending, ct: ct);
             await NotifyDiscoveredAsync(pending, now, ct);
             return new AnnounceVpnServerResponse
@@ -140,6 +143,7 @@ public sealed class VpnServerDiscoveryService(
             ?? pending.SuggestedName;
         pending.Version = Truncate(request.Version?.Trim(), 64) ?? pending.Version;
         pending.IsEnableWss = request.IsEnableWss;
+        ApplyPiHoleAnnouncement(pending, request);
         pending.LastSeenUtc = now;
         await discoveryCommand.Update(pending, ct: ct);
 
@@ -225,7 +229,7 @@ public sealed class VpnServerDiscoveryService(
             ApiUrl = apiUrl,
             IsDefault = request.IsDefault,
             IsEnableWss = request.IsEnableWss || discovery.IsEnableWss,
-            IsPiHoleEnabled = request.IsPiHoleEnabled,
+            IsPiHoleEnabled = request.IsPiHoleEnabled ?? discovery.HasPiHole,
             Latitude = request.Latitude,
             Longitude = request.Longitude,
             IsDisable = request.IsDisabled,
@@ -249,6 +253,8 @@ public sealed class VpnServerDiscoveryService(
             "Approved VPN server discovery {DiscoveryId} as VpnServer {VpnServerId} ({ApiUrl})",
             discovery.Id, created.Id, discovery.ApiUrl);
 
+        await postSetupService.StartAsync(created.Id, ct);
+
         return new VpnServerDiscoveryResponse
         {
             Discovery = ToDto(discovery),
@@ -268,6 +274,7 @@ public sealed class VpnServerDiscoveryService(
             throw new InvalidOperationException(NotPendingMessage);
 
         discovery.Status = VpnServerDiscoveryStatus.Rejected;
+        discovery.PiHoleConfigJson = null;
         discovery.RejectedAt = DateTimeOffset.UtcNow;
         discovery.RejectReason = Truncate(request?.Reason?.Trim(), 512);
         await discoveryCommand.Update(discovery, ct: ct);
@@ -632,6 +639,36 @@ public sealed class VpnServerDiscoveryService(
         await discoveryCommand.Update(discovery, ct: ct);
     }
 
+    private static void ApplyPiHoleAnnouncement(VpnServerDiscovery discovery, AnnounceVpnServerRequest request)
+    {
+        // Legacy nodes must not erase credentials staged by a newer announcement.
+        if (!request.HasPiHole.HasValue)
+            return;
+
+        if (request.HasPiHole.Value)
+        {
+            var config = request.PiHole;
+            if (config is null || string.IsNullOrWhiteSpace(config.AppPassword) ||
+                config.AppPassword == "********" ||
+                !Uri.TryCreate(config.BaseUrl, UriKind.Absolute, out var uri) ||
+                (uri.Scheme != Uri.UriSchemeHttp && uri.Scheme != Uri.UriSchemeHttps) ||
+                !string.IsNullOrEmpty(uri.UserInfo) ||
+                config.PollIntervalSeconds < 10 || config.PollIntervalSeconds > 86400 ||
+                config.BatchSize < 1 || config.BatchSize > 10000 ||
+                config.LookbackSeconds < 0 || config.LookbackSeconds > 86400 ||
+                (request.ServerType == VpnServerType.Xray && string.IsNullOrWhiteSpace(config.ClientSubnetPrefix)))
+                throw new ArgumentException("A Pi-hole announcement requires a valid HTTP(S) BaseUrl, password, polling settings and client subnet for Xray.");
+
+            discovery.PiHoleConfigJson = ProjectJson.Serialize(config);
+        }
+        else
+        {
+            discovery.PiHoleConfigJson = null;
+        }
+
+        discovery.HasPiHole = request.HasPiHole.Value;
+    }
+
     private static VpnServerDiscoveryDto ToDto(VpnServerDiscovery d) => new()
     {
         Id = d.Id,
@@ -641,6 +678,7 @@ public sealed class VpnServerDiscoveryService(
         PublicIp = d.PublicIp,
         Version = d.Version,
         IsEnableWss = d.IsEnableWss,
+        HasPiHole = d.HasPiHole,
         Status = d.Status,
         CreatedAt = d.CreateDate,
         LastSeenUtc = d.LastSeenUtc,
