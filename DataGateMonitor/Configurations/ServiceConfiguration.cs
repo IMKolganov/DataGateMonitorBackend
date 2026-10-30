@@ -162,6 +162,7 @@ public static class ServiceConfiguration
 
         services.AddScoped<IVpnServerOvpnFileConfigService, VpnServerOvpnFileConfigService>();
         services.AddScoped<IVpnServerPiHoleConfigService, VpnServerPiHoleConfigService>();
+        services.AddScoped<IVpnServerPiHoleProvisioningService, VpnServerPiHoleProvisioningService>();
         services.AddScoped<IVpnServerOpenVpnProcessService, VpnServerOpenVpnProcessService>();
         services.AddScoped<ISettingsService, SettingsService>();
         

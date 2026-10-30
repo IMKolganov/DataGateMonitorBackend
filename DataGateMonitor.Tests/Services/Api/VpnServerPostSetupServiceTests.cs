@@ -17,6 +17,7 @@ public class VpnServerPostSetupServiceTests
     {
         var services = new ServiceCollection();
         services.AddSingleton(vpnData.Object);
+        services.AddSingleton(Mock.Of<IVpnServerPiHoleProvisioningService>());
         services.AddSingleton<ILogger<VpnServerPostSetupService>>(_ => Mock.Of<ILogger<VpnServerPostSetupService>>());
         provider = services.BuildServiceProvider();
         return new VpnServerPostSetupService(provider.GetRequiredService<IServiceScopeFactory>(), provider.GetRequiredService<ILogger<VpnServerPostSetupService>>());

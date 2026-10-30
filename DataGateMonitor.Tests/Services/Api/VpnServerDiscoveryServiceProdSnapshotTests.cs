@@ -550,6 +550,7 @@ public class VpnServerDiscoveryServiceProdSnapshotTests
             new VpnServerOvpnFileConfigQueryService(ovpnConfigQuery),
             new VpnServerConflogQueryService(conflogQuery),
             vpnData.Object,
+            Mock.Of<IVpnServerPostSetupService>(),
             notifications.Object,
             cache,
             NullLogger<VpnServerDiscoveryService>.Instance);
