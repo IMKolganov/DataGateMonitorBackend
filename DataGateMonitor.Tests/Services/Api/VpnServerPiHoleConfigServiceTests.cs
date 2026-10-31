@@ -51,6 +51,17 @@ public class VpnServerPiHoleConfigServiceTests
     }
 
     [Fact]
+    public async Task GetForAdminAsync_ReturnsEmptyBaseUrl_WhenNothingIsSaved()
+    {
+        await using var harness = await CreateHarnessAsync();
+
+        var read = await harness.Sut.GetForAdminAsync(harness.ServerId, CancellationToken.None);
+
+        Assert.Equal(string.Empty, read.Config.BaseUrl);
+        Assert.False(read.Config.HasAppPassword);
+    }
+
+    [Fact]
     public async Task UpsertAsync_NormalizesUndottedClientSubnetPrefix()
     {
         await using var harness = await CreateHarnessAsync();
