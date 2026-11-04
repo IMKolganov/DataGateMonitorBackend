@@ -5,7 +5,9 @@ using DataGateMonitor.SharedModels.Responses;
 
 namespace DataGateMonitor.DataBase.Services.Query.IncomingMessageLogTable;
 
-public class IncomingMessageLogQueryService(IQueryService<IncomingMessageLog, int> q) : IIncomingMessageLogQueryService
+public class IncomingMessageLogQueryService(
+    IQueryService<IncomingMessageLog, int> q,
+    IQueryService<TelegramBotUser, int> telegramBotUsers) : IIncomingMessageLogQueryService
 {
     public Task<List<IncomingMessageLog>> GetAll(CancellationToken ct)
         => q.GetAll(ct: ct);
@@ -52,6 +54,15 @@ public class IncomingMessageLogQueryService(IQueryService<IncomingMessageLog, in
                 (x.Username != null && EF.Functions.ILike(x.Username, searchPattern)) ||
                 (x.FirstName != null && EF.Functions.ILike(x.FirstName, searchPattern)) ||
                 (x.LastName != null && EF.Functions.ILike(x.LastName, searchPattern)));
+        }
+
+        if (request.ExcludeAdmins)
+        {
+            var adminTelegramIds = telegramBotUsers.Query()
+                .Where(u => u.IsAdmin)
+                .Select(u => u.TelegramId);
+
+            query = query.Where(x => !adminTelegramIds.Contains(x.TelegramId));
         }
 
         var total = await query.CountAsync(ct);

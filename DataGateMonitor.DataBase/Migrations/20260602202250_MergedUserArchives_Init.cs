@@ -45,15 +45,15 @@ namespace DataGateMonitor.DataBase.Migrations
                     table.PrimaryKey("PK_MergedUserArchives", x => x.Id);
                 });
 
-            migrationBuilder.InsertData(
-                schema: "xgb_dashopnvpn",
-                table: "VpnProfileNotificationPreferences",
-                columns: new[] { "Id", "Enabled", "Kind" },
-                values: new object[,]
-                {
-                    { 30, true, 29 },
-                    { 31, true, 30 }
-                });
+            // Rows 30/31 are also seeded by 20260531120000_TrafficDailyRollupNotificationKinds, which runs
+            // first on a fresh database. Prod applied this migration and baselined that one, so keep the
+            // seed here but make it idempotent.
+            migrationBuilder.Sql(
+                """
+                INSERT INTO "xgb_dashopnvpn"."VpnProfileNotificationPreferences" ("Id", "Enabled", "Kind")
+                VALUES (30, TRUE, 29), (31, TRUE, 30)
+                ON CONFLICT ("Id") DO NOTHING;
+                """);
 
             migrationBuilder.CreateIndex(
                 name: "IX_MergedUserArchives_MergedAt",

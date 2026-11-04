@@ -30,4 +30,18 @@ public sealed class GeoLiteNotificationService(INotificationService notification
             Source = Source,
             PreferenceKind = ApplicationNotificationKind.GeoLiteAutoUpdateFailed
         }, Channels, ct);
+
+    public Task NotifyDiskFullAsync(string phase, string detail, CancellationToken ct)
+        => notifications.NotifyAdmins(new NotifyAdminsRequest
+        {
+            Type = NotificationTypes.GeoLiteAutoUpdateFailed,
+            Title = "GeoLite update failed: disk full",
+            Message =
+                $"Phase: {phase}. No space left on device while updating GeoLite2. " +
+                $"Prune old GeoLite2_* folders under the GeoIP DB path (setting GeoIp_Max_Kept_Versions) or free disk on the monitor host. {detail}",
+            Severity = NotificationSeverity.Error,
+            Source = Source,
+            DedupKey = "geolite.auto-update.failed:disk-full",
+            PreferenceKind = ApplicationNotificationKind.GeoLiteAutoUpdateFailed
+        }, Channels, ct);
 }

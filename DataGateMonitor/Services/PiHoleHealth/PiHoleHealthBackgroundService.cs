@@ -4,7 +4,7 @@ namespace DataGateMonitor.Services.PiHoleHealth;
 
 public sealed class PiHoleHealthBackgroundService(
     ILogger<PiHoleHealthBackgroundService> logger,
-    IPiHoleHealthCheckRunner checkRunner) : BackgroundService
+    IServiceScopeFactory scopeFactory) : BackgroundService
 {
     private static readonly TimeSpan LoopDelay = TimeSpan.FromMinutes(5);
     private static readonly TimeSpan StartupDelay = TimeSpan.FromSeconds(30);
@@ -27,7 +27,13 @@ public sealed class PiHoleHealthBackgroundService(
         {
             while (!stoppingToken.IsCancellationRequested)
             {
-                await checkRunner.RunAsync(stoppingToken).ConfigureAwait(false);
+                // The runner is scoped (DbContext etc.); resolve a fresh one per iteration.
+                await using (var scope = scopeFactory.CreateAsyncScope())
+                {
+                    var checkRunner = scope.ServiceProvider.GetRequiredService<IPiHoleHealthCheckRunner>();
+                    await checkRunner.RunAsync(stoppingToken).ConfigureAwait(false);
+                }
+
                 await Task.Delay(LoopDelay, stoppingToken).ConfigureAwait(false);
             }
         }

@@ -47,21 +47,26 @@ public sealed class OpenVpnStatusStreamPublisher(
                 {
                     var vpnServerId = status.ServiceStatus.VpnServerId;
 
-                    var (connectedClients, sessions) =
+                    var (connectedClients, sessions, devices) =
                         await openVpnServerOverviewQuery.GetClientCountersAsync(vpnServerId, stoppingToken);
 
                     status.ServiceStatus.CountConnectedClients =
                         connectedFromRedis.GetValueOrDefault(vpnServerId, connectedClients);
                     status.ServiceStatus.CountSessions = sessions;
+                    status.ServiceStatus.CountDevices = devices;
                     status.ServiceStatus.IsOnline = onlineFlags.GetValueOrDefault(vpnServerId, false);
                     status.ServiceStatus.IsAvailableByExternalProbe =
                         probeFlags.GetValueOrDefault(vpnServerId, true);
                 }
 
+                var totalDevices = await openVpnServerOverviewQuery.GetConnectedDevicesCountAsync(
+                    serverIds, stoppingToken);
+
                 var payload = new StatusStreamPayload
                 {
                     Statuses = statuses,
-                    TimestampUtc = DateTimeOffset.UtcNow
+                    TotalDevices = totalDevices,
+                    TimestampUtc = DateTimeOffset.UtcNow,
                 };
 
                 await hubContext.Clients.Group(GroupName)

@@ -1,3 +1,5 @@
+using DataGateMonitor.SharedModels.DataGateMonitor.Auth.Requests;
+using DataGateMonitor.SharedModels.DataGateMonitor.Auth.Responses;
 using System.IdentityModel.Tokens.Jwt;
 using System.Security.Claims;
 using Microsoft.AspNetCore.Hosting;
@@ -7,7 +9,6 @@ using Microsoft.Extensions.Hosting;
 using Moq;
 using DataGateMonitor.Controllers;
 using DataGateMonitor.DataBase.Services.Query.UserTable;
-using DataGateMonitor.Models.Auth;
 using DataGateMonitor.Services.Api.Auth;
 using DataGateMonitor.Services.Api.Auth.EmailConfirmation;
 using DataGateMonitor.Services.Api.Auth.ForgotPassword;

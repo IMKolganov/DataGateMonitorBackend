@@ -1,3 +1,4 @@
+using Microsoft.Extensions.DependencyInjection;
 using Microsoft.Extensions.Logging.Abstractions;
 using Moq;
 using DataGateMonitor.Services.CertExpiry;
@@ -19,7 +20,7 @@ public class CertExpiryBackgroundServiceTests
 
             var sut = new CertExpiryBackgroundService(
                 NullLogger<CertExpiryBackgroundService>.Instance,
-                runner.Object);
+                ScopeFactoryFor(runner.Object));
 
             using var cts = new CancellationTokenSource();
             await sut.StartAsync(cts.Token);
@@ -54,7 +55,7 @@ public class CertExpiryBackgroundServiceTests
             Environment.SetEnvironmentVariable(key, "true");
             var sut = new CertExpiryBackgroundService(
                 NullLogger<CertExpiryBackgroundService>.Instance,
-                runner.Object);
+                ScopeFactoryFor(runner.Object));
 
             using var cts = new CancellationTokenSource(TimeSpan.FromMilliseconds(50));
             await sut.StartAsync(cts.Token);
@@ -68,4 +69,10 @@ public class CertExpiryBackgroundServiceTests
 
         runner.Verify(r => r.RunAsync(It.IsAny<CancellationToken>()), Times.Never);
     }
+
+    private static IServiceScopeFactory ScopeFactoryFor(ICertExpiryScheduledCheckRunner runner) =>
+        new ServiceCollection()
+            .AddScoped(_ => runner)
+            .BuildServiceProvider()
+            .GetRequiredService<IServiceScopeFactory>();
 }

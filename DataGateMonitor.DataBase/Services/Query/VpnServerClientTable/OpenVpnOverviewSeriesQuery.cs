@@ -178,7 +178,8 @@ public sealed class OpenVpnOverviewSeriesQuery(
             {
                 Ts = b.BucketTs,
                 ActiveSessions = b.ActiveSessions,
-                ActiveUsers = b.ActiveUsers
+                ActiveUsers = b.ActiveUsers,
+                ActiveDevices = b.ActiveDevices
             })
             .ToList();
 
@@ -187,6 +188,8 @@ public sealed class OpenVpnOverviewSeriesQuery(
             series.Select(r => (r.Ts, r.ActiveSessions)));
         var userExtremes = OverviewSeriesExtremes.Compute(
             series.Select(r => (r.Ts, r.ActiveUsers)));
+        var deviceExtremes = OverviewSeriesExtremes.Compute(
+            series.Select(r => (r.Ts, r.ActiveDevices)));
 
         series = FillMissingBucketsForUsersSeries(series, fromUtc, toUtc, mode, offset);
 
@@ -210,7 +213,11 @@ public sealed class OpenVpnOverviewSeriesQuery(
                 PeakActiveUsers = userExtremes.Peak?.Count ?? 0,
                 PeakActiveUsersAt = userExtremes.Peak?.At,
                 LowActiveUsers = userExtremes.Low?.Count ?? 0,
-                LowActiveUsersAt = userExtremes.Low?.At
+                LowActiveUsersAt = userExtremes.Low?.At,
+                PeakActiveDevices = deviceExtremes.Peak?.Count ?? 0,
+                PeakActiveDevicesAt = deviceExtremes.Peak?.At,
+                LowActiveDevices = deviceExtremes.Low?.Count ?? 0,
+                LowActiveDevicesAt = deviceExtremes.Low?.At
             },
             Rows = series
         };
@@ -275,6 +282,7 @@ public sealed class OpenVpnOverviewSeriesQuery(
                     Ts = key,
                     ActiveSessions = existing.ActiveSessions + row.ActiveSessions,
                     ActiveUsers = existing.ActiveUsers + row.ActiveUsers,
+                    ActiveDevices = existing.ActiveDevices + row.ActiveDevices,
                 };
             }
             else
@@ -284,6 +292,7 @@ public sealed class OpenVpnOverviewSeriesQuery(
                     Ts = key,
                     ActiveSessions = row.ActiveSessions,
                     ActiveUsers = row.ActiveUsers,
+                    ActiveDevices = row.ActiveDevices,
                 };
             }
         }

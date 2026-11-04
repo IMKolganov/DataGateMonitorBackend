@@ -12,8 +12,15 @@ public interface IVpnServerOverviewQuery
         bool requireQuotaPlanAssignment = false, int? restrictToQuotaPlanId = null,
         UserVpnServerAccessOverrides? personalOverrides = null, CancellationToken ct = default);
     Task<VpnServerWithStatusDto> GetVpnServerWithStatusAsync(int vpnServerId, CancellationToken ct = default);
-    Task<(int CountConnectedClients, int CountSessions)> GetClientCountersAsync(
+    Task<(int CountConnectedClients, int CountSessions, int CountDevices)> GetClientCountersAsync(
         int vpnServerId, CancellationToken ct = default);
+
+    /// <summary>
+    /// Distinct non-empty <c>CommonName</c> (device / installation CN) among currently connected clients,
+    /// optionally limited to the given VPN server ids.
+    /// </summary>
+    Task<int> GetConnectedDevicesCountAsync(
+        IReadOnlyCollection<int>? vpnServerIds = null, CancellationToken ct = default);
 
     /// <summary>
     /// Batch Online flags for SignalR status stream (one query, no overview compose).

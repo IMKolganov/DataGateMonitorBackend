@@ -63,11 +63,18 @@ public class VpnServerPostSetupService(
             var vpnDataService = scope.ServiceProvider.GetRequiredService<IVpnDataService>();
             var result = await vpnDataService.RunPostAddSetupAsync(status.VpnServerId, CancellationToken.None);
 
+            UpdateStatus(status, VpnServerPostSetupState.Running, "pi-hole", "Configuring Pi-hole integration.");
+            var piHoleProvisioning = scope.ServiceProvider.GetRequiredService<IVpnServerPiHoleProvisioningService>();
+            var piHoleApplied = await piHoleProvisioning.ProvisionAsync(status.VpnServerId, CancellationToken.None);
+
             status.Details["serverType"] = result.ServerType.ToString();
             status.Details["createdDefaultConfig"] = result.CreatedDefaultConfig.ToString();
+            status.Details["piHoleApplied"] = piHoleApplied.ToString();
             var message = result.CreatedDefaultConfig
                 ? "Post-create setup completed: default config created."
                 : "Post-create setup completed: default config already existed.";
+            if (piHoleApplied)
+                message += " Pi-hole settings applied.";
 
             UpdateStatus(status, VpnServerPostSetupState.Succeeded, "completed", message);
         }

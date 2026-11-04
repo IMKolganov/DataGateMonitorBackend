@@ -36,9 +36,10 @@ public class ServerOpenVpnNotificationService(INotificationService notifications
             Detail(serverId, serverName) + (string.IsNullOrEmpty(errorMessage) ? "" : $"; Error={errorMessage}"),
             serverId, NotificationSeverity.Error, ErrorChannels, ct);
 
-    public Task NotifyNoResponseFromServer(int serverId, string? serverName, CancellationToken ct)
+    public Task NotifyNoResponseFromServer(int serverId, string? serverName, string? details, CancellationToken ct)
         => Notify(ApplicationNotificationKind.OpenVpnServerNoResponse, "server.no-response", "No response from VPN server",
-            Detail(serverId, serverName), serverId, NotificationSeverity.Warning, ErrorChannels, ct);
+            Detail(serverId, serverName) + (string.IsNullOrEmpty(details) ? "" : $"; {details}"),
+            serverId, NotificationSeverity.Warning, ErrorChannels, ct);
 
     public Task NotifyDiscovered(int discoveryId, string? suggestedName, string apiUrl, CancellationToken ct)
     {

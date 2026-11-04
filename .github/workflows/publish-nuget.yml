@@ -12,6 +12,7 @@ concurrency:
 
 permissions:
   contents: read
+  id-token: write
 
 env:
   DOTNET_NOLOGO: true
@@ -71,10 +72,17 @@ jobs:
             /p:IncludeSymbols=true \
             /p:SymbolPackageFormat=snupkg
 
+      # OIDC → short-lived API key (Trusted Publishing). Username = nuget.org profile name, not email.
+      - name: NuGet login (OIDC)
+        uses: NuGet/login@v1
+        id: nuget_login
+        with:
+          user: imkolganov
+
       - name: Publish to nuget.org
         shell: bash
         env:
-          NUGET_API_KEY: ${{ secrets.NUGET_API_KEY }}
+          NUGET_API_KEY: ${{ steps.nuget_login.outputs.NUGET_API_KEY }}
         run: |
           dotnet nuget push artifacts/*.nupkg \
             --skip-duplicate \

@@ -27,6 +27,7 @@ public static class GeoLiteServiceConfiguration
         services.AddSingleton<IGeoLiteProgressNotifier, GeoLiteProgressNotifier>();
         services.AddSingleton<IHttpErrorMapper, HttpErrorMapper>();
         services.AddSingleton<IStreamCopier, StreamCopier>();
+        services.AddSingleton<IGeoLiteVersionRetentionService, GeoLiteVersionRetentionService>();
 
         services.AddSingleton<IGeoLiteScheduledUpdateRunner, GeoLiteScheduledUpdateRunner>();
         if (databaseRuntime.IsConnectionConfigured)

@@ -2,6 +2,7 @@ using System.Net;
 using Microsoft.EntityFrameworkCore;
 using Newtonsoft.Json;
 using Npgsql;
+using DataGateMonitor.Services.GeoLite;
 using DataGateMonitor.Services.Others.Notifications;
 
 namespace DataGateMonitor.Middlewares;
@@ -11,6 +12,10 @@ public class GlobalExceptionMiddleware(
     IServiceProvider serviceProvider,
     ILogger<GlobalExceptionMiddleware> logger)
 {
+    private static readonly object DiskFullNotifyLock = new();
+    private static DateTimeOffset _lastDiskFullAdminNotifyUtc = DateTimeOffset.MinValue;
+    private static readonly TimeSpan DiskFullNotifyCooldown = TimeSpan.FromMinutes(15);
+
     public async Task InvokeAsync(HttpContext context)
     {
         try
@@ -29,7 +34,25 @@ public class GlobalExceptionMiddleware(
         catch (Exception ex)
         {
             logger.LogError(ex, "Unhandled exception occurred.");
-            await HandleExceptionAsync(context, ex, notifyAdmins: true);
+            await HandleExceptionAsync(context, ex, notifyAdmins: ShouldNotifyAdmins(ex));
+        }
+    }
+
+    /// <summary>
+    /// Disk-full floods (hundreds of ASP.NET /tmp writes) — notify admins at most once per cooldown window.
+    /// </summary>
+    private static bool ShouldNotifyAdmins(Exception ex)
+    {
+        if (!GeoLiteDiskFull.IsDiskFull(ex))
+            return true;
+
+        lock (DiskFullNotifyLock)
+        {
+            var now = DateTimeOffset.UtcNow;
+            if (now - _lastDiskFullAdminNotifyUtc < DiskFullNotifyCooldown)
+                return false;
+            _lastDiskFullAdminNotifyUtc = now;
+            return true;
         }
     }
 

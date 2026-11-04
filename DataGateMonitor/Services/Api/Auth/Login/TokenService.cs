@@ -47,6 +47,17 @@ public sealed class TokenService(
         var now = DateTimeOffset.UtcNow;
         var refreshExpiresAt = now.AddDays(refreshLifetimeDays);
 
+        // Re-login on the same device replaces the previous refresh token instead of stacking.
+        if (!string.IsNullOrWhiteSpace(deviceId))
+        {
+            await refreshTokenCommandService.UpdateWhere(
+                t => t.UserId == user.Id
+                     && t.DeviceId == deviceId
+                     && t.RevokedAt == null,
+                u => u.SetProperty(x => x.RevokedAt, now),
+                ct);
+        }
+
         var refreshToken = GenerateRefreshToken();
         var refreshHash = HashRefreshToken(refreshToken);
 

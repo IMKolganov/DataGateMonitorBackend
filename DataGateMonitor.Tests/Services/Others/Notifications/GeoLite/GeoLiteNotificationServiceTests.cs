@@ -74,4 +74,24 @@ public class GeoLiteNotificationServiceTests
         captured.Source.Should().Be("geolite-auto-update");
         capturedChannels.Should().BeEquivalentTo("web", "telegram");
     }
+
+    [Fact]
+    public async Task NotifyDiskFullAsync_CallsNotifyAdmins_WithDiskFullTitleAndDedupKey()
+    {
+        var ct = CancellationToken.None;
+
+        NotifyAdminsRequest? captured = null;
+        _notificationService
+            .Setup(s => s.NotifyAdmins(It.IsAny<NotifyAdminsRequest>(), It.IsAny<IEnumerable<string>?>(), ct))
+            .Callback<NotifyAdminsRequest, IEnumerable<string>?, CancellationToken>((req, _, _) => captured = req)
+            .ReturnsAsync(1);
+
+        await _sut.NotifyDiskFullAsync("version check or download", "IOException: No space left", ct);
+
+        captured.Should().NotBeNull();
+        captured!.Title.Should().Be("GeoLite update failed: disk full");
+        captured.DedupKey.Should().Be("geolite.auto-update.failed:disk-full");
+        captured.Message.Should().Contain("No space left");
+        captured.PreferenceKind.Should().Be(ApplicationNotificationKind.GeoLiteAutoUpdateFailed);
+    }
 }

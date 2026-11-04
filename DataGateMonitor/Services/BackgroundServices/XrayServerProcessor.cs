@@ -29,6 +29,7 @@ public sealed class XrayServerProcessor(
         var presence = scope.ServiceProvider.GetRequiredService<IVpnServerClientPresenceService>();
 
         var now = DateTimeOffset.UtcNow;
+        var step = "active clients";
         try
         {
             if (string.IsNullOrWhiteSpace(server.ApiUrl))
@@ -41,13 +42,18 @@ public sealed class XrayServerProcessor(
                     "Xray node did not return a successful clients response (see logs for status).");
             }
 
+            step = "client sync";
             await sync.SyncConnectedClientsAsync(server, clientsPayload.Clients, ct);
 
+            step = "status log";
             var statusLog = scope.ServiceProvider.GetRequiredService<IXrayVpnServerStatusLogService>();
             await statusLog.TryAppendOrUpdateAsync(server, clientsPayload, ct);
 
+            step = "manager version";
             await scope.ServiceProvider.GetRequiredService<IVpnServerManagerVersionPersister>()
                 .TryPersistAsync(server, ct);
+
+            step = "mark online";
 
             var pollNote = TruncatePollMessage(clientsPayload.PollError);
             await serverCmd.UpdateWhere(
@@ -64,6 +70,7 @@ public sealed class XrayServerProcessor(
         }
         catch (Exception ex)
         {
+            VpnPollStep.Tag(ex, step);
             var err = TruncatePollMessage(ex.Message);
             await serverCmd.UpdateWhere(
                 s => s.Id == server.Id,
@@ -74,9 +81,18 @@ public sealed class XrayServerProcessor(
                 ct);
             await presence.MarkAllDisconnectedAsync(server.Id, ct);
 
-            logger.LogError(ex,
-                "XrayServerProcessor error. VpnServerId: {Id}. Name: {Name}. Url: {Url}",
-                server.Id, server.ServerName, server.ApiUrl);
+            if (NodeTransportFailure.TryDescribe(ex, out var transportError))
+            {
+                logger.LogWarning(
+                    "XrayServerProcessor: node unreachable. VpnServerId: {Id}. Name: {Name}. Url: {Url}. {Error}",
+                    server.Id, server.ServerName, server.ApiUrl, transportError);
+            }
+            else
+            {
+                logger.LogError(ex,
+                    "XrayServerProcessor error. VpnServerId: {Id}. Name: {Name}. Url: {Url}",
+                    server.Id, server.ServerName, server.ApiUrl);
+            }
 
             throw;
         }

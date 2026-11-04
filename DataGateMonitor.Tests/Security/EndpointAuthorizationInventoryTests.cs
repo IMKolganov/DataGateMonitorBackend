@@ -38,6 +38,8 @@ public class EndpointAuthorizationInventoryTests
         "AuthController.PollTvLoginSession",
         "MobileCrashIngestController.Ingest",
         "WindowsCrashIngestController.Ingest",
+        // Node → backend local issuance events: authenticated by the node's ECDSA signature, not a user JWT.
+        "VpnNodeLocalIssuanceController.PostLocalIssuanceEvent",
     };
 
     [Fact]
@@ -121,6 +123,7 @@ public class EndpointAuthorizationInventoryTests
     [InlineData(typeof(PerformanceController), "Admin")]
     [InlineData(typeof(OpenVpnFilesController), "Admin,VpnUser,App")]
     [InlineData(typeof(ApplicationsController), "Admin,App")]
+    [InlineData(typeof(OpenVpnFileOriginsController), "Admin,VpnUser,App")]
     public void ProtectedControllers_DeclareExpectedRoles(Type controllerType, string expectedRoles)
     {
         var attrs = controllerType.GetCustomAttributes<AuthorizeAttribute>(inherit: true).ToList();

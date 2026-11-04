@@ -27,6 +27,7 @@ public class GeoLiteServiceConfigurationTests
         AssertRegistered(services, typeof(IGeoLiteQueryService));
         AssertRegistered(services, typeof(IGeoLiteUpdaterService));
         AssertRegistered(services, typeof(IGeoLiteConfigProvider));
+        AssertRegistered(services, typeof(IGeoLiteVersionRetentionService));
         AssertRegistered(services, typeof(IGeoLiteScheduledUpdateRunner));
         AssertRegistered(services, typeof(GeoLiteDatabaseFactory));
     }

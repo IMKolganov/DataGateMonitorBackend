@@ -1,3 +1,5 @@
+using DataGateMonitor.Services.LocalIssuance;
+using Microsoft.Extensions.DependencyInjection.Extensions;
 using DataGateMonitor.DataBase.Services.Query.UserCredentialTable;
 using DataGateMonitor.Hubs.BackgroundService;
 using DataGateMonitor.Services.Api;
@@ -105,6 +107,11 @@ public static class ServiceConfiguration
         
         services.AddScoped<IVpnDataService, VpnDataService>();
         services.AddScoped<IVpnServerDiscoveryService, VpnServerDiscoveryService>();
+        // Node-local ("reverse") issuance: signed node events + node key binding.
+        services.TryAddSingleton(TimeProvider.System);
+        services.AddScoped<ILocalIssuanceEventService, LocalIssuanceEventService>();
+        services.AddScoped<INodeIdentityApiClient, NodeIdentityApiClient>();
+        services.AddScoped<INodeKeyBindingService, NodeKeyBindingService>();
         services.AddSingleton<IVpnServerPostSetupService, VpnServerPostSetupService>();
         services.AddScoped<IVpnServerStatisticsService, VpnServerStatisticsService>();
 
@@ -134,12 +141,16 @@ public static class ServiceConfiguration
         if (databaseRuntime.IsConnectionConfigured)
         {
             services.AddScoped<ITrafficDailyRollupRunner, TrafficDailyRollupRunner>();
+            services.Configure<TrafficRewriteOptions>(_ => { });
+            services.AddScoped<ITrafficRewriteAdvisoryLock, PostgresTrafficRewriteAdvisoryLock>();
+            services.AddScoped<ITrafficRewriteRunner, TrafficRewriteRunner>();
             services.AddHostedService(provider => provider.GetRequiredService<OpenVpnBackgroundService>());
             services.AddHostedService<OpenVpnEventBackgroundService>();
             services.AddHostedService<XrayDnsEventBackgroundService>();
             services.AddHostedService<OpenVpnStatusStreamPublisher>();
             services.AddHostedService<OpenVpnProxyTrafficFlowBackgroundService>();
             services.AddHostedService<TrafficDailyRollupBackgroundService>();
+            services.AddHostedService<TrafficRewriteBackgroundService>();
             services.AddHostedService<FreeTierOpenVpnSessionEnforcementBackgroundService>();
             services.AddHostedService<FreeTierUnsubscribedVpnUsersDailyDigestBackgroundService>();
         }
@@ -151,6 +162,7 @@ public static class ServiceConfiguration
 
         services.AddScoped<IVpnServerOvpnFileConfigService, VpnServerOvpnFileConfigService>();
         services.AddScoped<IVpnServerPiHoleConfigService, VpnServerPiHoleConfigService>();
+        services.AddScoped<IVpnServerPiHoleProvisioningService, VpnServerPiHoleProvisioningService>();
         services.AddScoped<IVpnServerOpenVpnProcessService, VpnServerOpenVpnProcessService>();
         services.AddScoped<ISettingsService, SettingsService>();
         

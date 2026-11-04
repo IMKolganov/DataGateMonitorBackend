@@ -32,6 +32,7 @@ public class OpenVpnBackgroundService : BackgroundService, IOpenVpnBackgroundSer
     private readonly int _maxPollingDegreeOfParallelism;
     private CancellationTokenSource _delayTokenSource = new();
     private readonly ConcurrentDictionary<int, ServiceStatus> _previousStatusByServer = new();
+    private readonly ConcurrentDictionary<int, int> _consecutiveFailuresByServer = new();
     private DateTimeOffset _lastStatusCacheBumpUtc = DateTimeOffset.MinValue;
     private static readonly TimeSpan StatusCacheBumpMaxInterval = TimeSpan.FromMinutes(2);
     public OpenVpnBackgroundService(
@@ -182,6 +183,7 @@ public class OpenVpnBackgroundService : BackgroundService, IOpenVpnBackgroundSer
 
                     _statusManager.UpdateStatus(server.Id, ServiceStatus.Idle, nextRunSeconds);
                     Interlocked.Increment(ref successServers);
+                    _consecutiveFailuresByServer.TryRemove(server.Id, out _);
                     if (_previousStatusByServer.TryGetValue(server.Id, out var prevStatus)
                         && prevStatus == ServiceStatus.Error)
                     {
@@ -212,6 +214,10 @@ public class OpenVpnBackgroundService : BackgroundService, IOpenVpnBackgroundSer
                 {
                     _statusManager.UpdateStatus(server.Id, ServiceStatus.Error, nextRunSeconds, "Timeout");
                     Interlocked.Increment(ref timeoutServers);
+                    var timeoutAttempt = _consecutiveFailuresByServer.AddOrUpdate(server.Id, 1, (_, n) => n + 1);
+                    var timeoutDetails = BuildFailureNotificationDetails(
+                        timeoutAttempt, VpnPollStep.Get(ex), server.ApiUrl,
+                        $"Timeout after {serverStopwatch.ElapsedMilliseconds} ms");
 
                     _logger.LogError(
                         ex,
@@ -232,7 +238,7 @@ public class OpenVpnBackgroundService : BackgroundService, IOpenVpnBackgroundSer
 
                     await SafeNotifyAsync(
                         async notifySvc => 
-                            await notifySvc.NotifyNoResponseFromServer(server.Id, server.ServerName, ct),
+                            await notifySvc.NotifyNoResponseFromServer(server.Id, server.ServerName, timeoutDetails, ct),
                         server.Id,
                         server.ServerName);
                 }
@@ -242,12 +248,29 @@ public class OpenVpnBackgroundService : BackgroundService, IOpenVpnBackgroundSer
 
                     _statusManager.UpdateStatus(server.Id, ServiceStatus.Error, nextRunSeconds, errorDetails);
                     Interlocked.Increment(ref failedServers);
+                    var attempt = _consecutiveFailuresByServer.AddOrUpdate(server.Id, 1, (_, n) => n + 1);
+                    var notificationDetails = BuildFailureNotificationDetails(
+                        attempt, VpnPollStep.Get(ex), server.ApiUrl, errorDetails);
 
-                    _logger.LogError(
-                        ex,
-                        $"VpnServerId: {server.Id}. VpnServerName: {server.ServerName} " +
-                        $"Error processing VPN server {server.ApiUrl}. Details: {errorDetails}. " +
-                        $"Duration before failure: {serverStopwatch.ElapsedMilliseconds} ms");
+                    if (NodeTransportFailure.TryDescribe(ex, out _))
+                    {
+                        // Lower layers skip logging transport failures, so this is the only stack trace for them;
+                        // the header line carries server, attempt, step, URL and reason on its own.
+                        _logger.LogWarning(
+                            ex,
+                            "VPN node unreachable. VpnServerId: {Id}. Name: {Name}. Attempt: {Attempt}. Step: {Step}. " +
+                            "Url: {Url}. Reason: {Reason}. Duration before failure: {DurationMs} ms",
+                            server.Id, server.ServerName, attempt, VpnPollStep.Get(ex) ?? "unknown", server.ApiUrl,
+                            errorDetails, serverStopwatch.ElapsedMilliseconds);
+                    }
+                    else
+                    {
+                        _logger.LogError(
+                            ex,
+                            $"VpnServerId: {server.Id}. VpnServerName: {server.ServerName} " +
+                            $"Error processing VPN server {server.ApiUrl}. Details: {errorDetails}. " +
+                            $"Duration before failure: {serverStopwatch.ElapsedMilliseconds} ms");
+                    }
                     await AppendOperationalLogAsync(
                         eventType: "server-error",
                         level: "error",
@@ -264,7 +287,7 @@ public class OpenVpnBackgroundService : BackgroundService, IOpenVpnBackgroundSer
                         async notifySvc => await notifySvc.NotifyBecameUnavailableDueToError(
                             server.Id,
                             server.ServerName,
-                            errorDetails,
+                            notificationDetails,
                             ct),
                         server.Id,
                         server.ServerName);
@@ -558,8 +581,27 @@ public class OpenVpnBackgroundService : BackgroundService, IOpenVpnBackgroundSer
         }
     }
 
+    /// <summary>
+    /// Admin-facing failure text: which consecutive attempt failed, at which polling step, against which URL, and why.
+    /// </summary>
+    internal static string BuildFailureNotificationDetails(int attempt, string? step, string? apiUrl, string errorDetails)
+    {
+        var parts = new List<string> { $"Attempt={attempt}" };
+        if (!string.IsNullOrEmpty(step))
+            parts.Add($"Step={step}");
+        if (!string.IsNullOrEmpty(apiUrl))
+            parts.Add($"Url={apiUrl}");
+        parts.Add(errorDetails);
+        return string.Join("; ", parts);
+    }
+
     private static string GetExceptionDetails(Exception ex)
     {
+        if (NodeTransportFailure.TryDescribe(ex, out var transportError))
+        {
+            return transportError;
+        }
+
         if (ex is DbUpdateException dbEx)
         {
             if (dbEx.InnerException is PostgresException pg)

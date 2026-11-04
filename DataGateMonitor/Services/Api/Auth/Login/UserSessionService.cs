@@ -27,7 +27,6 @@ public sealed class UserSessionService(
             ct);
 
         var sessions = rows
-            .OrderByDescending(t => t.CreatedAt)
             .Select(t => new UserSessionDto
             {
                 Id = t.Id,
@@ -37,6 +36,8 @@ public sealed class UserSessionService(
                 ExpiresAt = t.ExpiresAt,
                 IsCurrent = currentHash != null && t.TokenHash == currentHash,
             })
+            .OrderByDescending(t => t.IsCurrent)
+            .ThenByDescending(t => t.CreatedAt)
             .ToList();
 
         return new GetUserSessionsResponse { Sessions = sessions };

@@ -19,4 +19,10 @@ public class GetAllMessagesRequest
 
     /// <summary>Case-insensitive contains on message text, username, or first/last name.</summary>
     public string? Search { get; set; }
+
+    /// <summary>
+    /// When true (default), messages from Telegram bot admins are excluded.
+    /// Pass false to include admin messages.
+    /// </summary>
+    public bool ExcludeAdmins { get; set; } = true;
 }

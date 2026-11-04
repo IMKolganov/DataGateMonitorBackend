@@ -18,7 +18,7 @@ namespace DataGateMonitor.DataBase.Migrations
 #pragma warning disable 612, 618
             modelBuilder
                 .HasDefaultSchema("xgb_dashopnvpn")
-                .HasAnnotation("ProductVersion", "10.0.12")
+                .HasAnnotation("ProductVersion", "10.0.13")
                 .HasAnnotation("Relational:MaxIdentifierLength", 63);
 
             NpgsqlModelBuilderExtensions.UseIdentityByDefaultColumns(modelBuilder);
@@ -311,9 +311,17 @@ namespace DataGateMonitor.DataBase.Migrations
                         .HasMaxLength(500)
                         .HasColumnType("character varying(500)");
 
+                    b.Property<string>("CertFingerprintSha256")
+                        .HasMaxLength(64)
+                        .HasColumnType("character varying(64)");
+
                     b.Property<string>("CertId")
                         .HasMaxLength(255)
                         .HasColumnType("character varying(255)");
+
+                    b.Property<string>("CertSerialNumber")
+                        .HasMaxLength(128)
+                        .HasColumnType("character varying(128)");
 
                     b.Property<string>("CommonName")
                         .IsRequired()
@@ -345,6 +353,11 @@ namespace DataGateMonitor.DataBase.Migrations
                         .HasColumnType("boolean")
                         .HasDefaultValue(false);
 
+                    b.Property<bool>("IsServiceProfile")
+                        .ValueGeneratedOnAdd()
+                        .HasColumnType("boolean")
+                        .HasDefaultValue(false);
+
                     b.Property<DateTimeOffset>("IssuedAt")
                         .HasColumnType("timestamp with time zone");
 
@@ -368,6 +381,11 @@ namespace DataGateMonitor.DataBase.Migrations
                         .HasMaxLength(500)
                         .HasColumnType("character varying(500)");
 
+                    b.Property<int>("Origin")
+                        .ValueGeneratedOnAdd()
+                        .HasColumnType("integer")
+                        .HasDefaultValue(0);
+
                     b.Property<string>("PemFilePath")
                         .IsRequired()
                         .HasMaxLength(500)
@@ -382,6 +400,11 @@ namespace DataGateMonitor.DataBase.Migrations
                         .HasColumnType("integer");
 
                     b.HasKey("Id");
+
+                    b.HasIndex("VpnServerId", "CertSerialNumber")
+                        .IsUnique()
+                        .HasDatabaseName("IX_IssuedOvpnFiles_VpnServerId_CertSerialNumber")
+                        .HasFilter("\"CertSerialNumber\" IS NOT NULL");
 
                     b.ToTable("IssuedOvpnFiles", "xgb_dashopnvpn");
                 });
@@ -2103,6 +2126,74 @@ namespace DataGateMonitor.DataBase.Migrations
                     b.ToTable("NotificationRecipients", "xgb_dashopnvpn");
                 });
 
+            modelBuilder.Entity("DataGateMonitor.Models.PendingTrafficRewrite", b =>
+                {
+                    b.Property<long>("Id")
+                        .ValueGeneratedOnAdd()
+                        .HasColumnType("bigint");
+
+                    NpgsqlPropertyBuilderExtensions.UseIdentityByDefaultColumn(b.Property<long>("Id"));
+
+                    b.Property<DateTimeOffset?>("CompletedAt")
+                        .HasColumnType("timestamp with time zone");
+
+                    b.Property<DateTimeOffset>("CreateDate")
+                        .ValueGeneratedOnAdd()
+                        .HasColumnType("timestamp with time zone")
+                        .HasDefaultValueSql("CURRENT_TIMESTAMP");
+
+                    b.Property<string>("LastError")
+                        .HasMaxLength(2048)
+                        .HasColumnType("character varying(2048)");
+
+                    b.Property<string>("LastProcessedChunkName")
+                        .HasMaxLength(256)
+                        .HasColumnType("character varying(256)");
+
+                    b.Property<DateTimeOffset>("LastUpdate")
+                        .ValueGeneratedOnAdd()
+                        .HasColumnType("timestamp with time zone")
+                        .HasDefaultValueSql("CURRENT_TIMESTAMP");
+
+                    b.Property<int>("MergedUserId")
+                        .HasColumnType("integer");
+
+                    b.Property<string>("NewExternalId")
+                        .IsRequired()
+                        .HasMaxLength(255)
+                        .HasColumnType("character varying(255)");
+
+                    b.Property<DateTimeOffset?>("NextRangeEndExclusive")
+                        .HasColumnType("timestamp with time zone");
+
+                    b.Property<string>("OldExternalId")
+                        .IsRequired()
+                        .HasMaxLength(255)
+                        .HasColumnType("character varying(255)");
+
+                    b.Property<long>("RowsUpdated")
+                        .HasColumnType("bigint");
+
+                    b.Property<DateTimeOffset?>("StartedAt")
+                        .HasColumnType("timestamp with time zone");
+
+                    b.Property<int>("Status")
+                        .HasColumnType("integer");
+
+                    b.Property<int>("SurvivorUserId")
+                        .HasColumnType("integer");
+
+                    b.HasKey("Id");
+
+                    b.HasIndex("Status")
+                        .HasDatabaseName("IX_PendingTrafficRewrites_Status");
+
+                    b.HasIndex("Status", "Id")
+                        .HasDatabaseName("IX_PendingTrafficRewrites_Status_Id");
+
+                    b.ToTable("PendingTrafficRewrites", "xgb_dashopnvpn");
+                });
+
             modelBuilder.Entity("DataGateMonitor.Models.QuotaPlan", b =>
                 {
                     b.Property<int>("Id")
@@ -3759,6 +3850,22 @@ namespace DataGateMonitor.DataBase.Migrations
                         .HasMaxLength(64)
                         .HasColumnType("character varying(64)");
 
+                    b.Property<string>("NodeKeyFingerprint")
+                        .HasMaxLength(64)
+                        .HasColumnType("character varying(64)");
+
+                    b.Property<string>("NodePendingKeyFingerprint")
+                        .HasMaxLength(64)
+                        .HasColumnType("character varying(64)");
+
+                    b.Property<string>("NodePendingPublicKeyPem")
+                        .HasMaxLength(1024)
+                        .HasColumnType("character varying(1024)");
+
+                    b.Property<string>("NodePublicKeyPem")
+                        .HasMaxLength(1024)
+                        .HasColumnType("character varying(1024)");
+
                     b.Property<string>("ServerName")
                         .IsRequired()
                         .HasColumnType("text");
@@ -3796,6 +3903,8 @@ namespace DataGateMonitor.DataBase.Migrations
                     b.HasIndex("IsEnableWss");
 
                     b.HasIndex("IsOnline");
+
+                    b.HasIndex("NodeKeyFingerprint");
 
                     b.HasIndex("ServerName")
                         .IsUnique()
@@ -4038,9 +4147,6 @@ namespace DataGateMonitor.DataBase.Migrations
 
                     NpgsqlIndexBuilderExtensions.IncludeProperties(b.HasIndex("MeasuredAt", "SessionId"), new[] { "ExternalId", "VpnServerId", "BytesReceived", "BytesSent" });
 
-                    b.HasIndex("VpnServerId", "MeasuredAt")
-                        .HasDatabaseName("IX_ClientTraffic_Server_At");
-
                     b.HasIndex("MeasuredAt", "ExternalId", "SessionId")
                         .HasDatabaseName("IX_ClientTraffic_At_External_Session");
 
@@ -4169,6 +4275,9 @@ namespace DataGateMonitor.DataBase.Migrations
                         .HasColumnType("timestamp with time zone")
                         .HasDefaultValueSql("CURRENT_TIMESTAMP");
 
+                    b.Property<bool>("HasPiHole")
+                        .HasColumnType("boolean");
+
                     b.Property<bool>("IsEnableWss")
                         .HasColumnType("boolean");
 
@@ -4182,6 +4291,17 @@ namespace DataGateMonitor.DataBase.Migrations
                         .ValueGeneratedOnAdd()
                         .HasColumnType("timestamp with time zone")
                         .HasDefaultValueSql("CURRENT_TIMESTAMP");
+
+                    b.Property<string>("NodeKeyFingerprint")
+                        .HasMaxLength(64)
+                        .HasColumnType("character varying(64)");
+
+                    b.Property<string>("NodePublicKeyPem")
+                        .HasMaxLength(1024)
+                        .HasColumnType("character varying(1024)");
+
+                    b.Property<string>("PiHoleConfigJson")
+                        .HasColumnType("text");
 
                     b.Property<string>("PublicIp")
                         .HasMaxLength(64)

@@ -60,7 +60,7 @@ public class VpnServerOverviewQuery(IUnitOfWork uow) : IVpnServerOverviewQuery
         return list[0];
     }
 
-    public async Task<(int CountConnectedClients, int CountSessions)> GetClientCountersAsync(
+    public async Task<(int CountConnectedClients, int CountSessions, int CountDevices)> GetClientCountersAsync(
         int vpnServerId, CancellationToken ct)
     {
         var clients = uow.GetQuery<VpnServerClient>().AsQueryable();
@@ -71,14 +71,36 @@ public class VpnServerOverviewQuery(IUnitOfWork uow) : IVpnServerOverviewQuery
             .Select(g => new
             {
                 CountConnectedClients = g.Count(c => c.IsConnected),
-                CountSessions = g.Count()
+                CountSessions = g.Count(),
+                CountDevices = g
+                    .Where(c => c.IsConnected && c.CommonName != null && c.CommonName != "")
+                    .Select(c => c.CommonName)
+                    .Distinct()
+                    .Count()
             })
             .AsNoTracking()
             .FirstOrDefaultAsync(ct);
 
         return counters is null
-            ? (0, 0)
-            : (counters.CountConnectedClients, counters.CountSessions);
+            ? (0, 0, 0)
+            : (counters.CountConnectedClients, counters.CountSessions, counters.CountDevices);
+    }
+
+    public async Task<int> GetConnectedDevicesCountAsync(
+        IReadOnlyCollection<int>? vpnServerIds = null, CancellationToken ct = default)
+    {
+        var query = uow.GetQuery<VpnServerClient>().AsQueryable()
+            .AsNoTracking()
+            .Where(c => c.IsConnected && c.CommonName != null && c.CommonName != "");
+
+        if (vpnServerIds is { Count: > 0 })
+        {
+            var ids = vpnServerIds.Where(id => id > 0).Distinct().ToArray();
+            if (ids.Length == 0) return 0;
+            query = query.Where(c => ids.Contains(c.VpnServerId));
+        }
+
+        return await query.Select(c => c.CommonName).Distinct().CountAsync(ct);
     }
 
     public async Task<IReadOnlyDictionary<int, bool>> GetOnlineFlagsAsync(

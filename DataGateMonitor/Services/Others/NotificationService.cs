@@ -13,6 +13,7 @@ namespace DataGateMonitor.Services.Others;
 
 public class NotificationService(
     ICommandService<Notification, int> notificationCommandServices,
+    IQueryService<Notification, int> notificationQueryServices,
     IUserRoleQueryService userRoleQueryService,
     ICommandService<NotificationRecipient, int> notificationRecipientCommandServices,
     INotificationRecipientQueryService notificationRecipientQueryService,
@@ -22,6 +23,7 @@ public class NotificationService(
 ) : INotificationService
 {
     private const int MaxDeliveryErrorLength = 1024;
+    private static readonly TimeSpan DedupWindow = TimeSpan.FromMinutes(15);
 
     public async Task<int> NotifyAdmins(
         NotifyAdminsRequest request,
@@ -33,6 +35,24 @@ public class NotificationService(
             if (!await vpnProfileNotificationPreferences.IsApplicationNotificationAllowedAsync(kind, ct))
             {
                 logger.LogDebug("Skipping admin notification (preference disabled): {Kind} {Type}", kind, request.Type);
+                return 0;
+            }
+        }
+
+        if (!string.IsNullOrWhiteSpace(request.DedupKey))
+        {
+            var since = DateTimeOffset.UtcNow - DedupWindow;
+            var dedupKey = request.DedupKey;
+            var duplicate = await notificationQueryServices.Any(
+                n => n.DedupKey == dedupKey && n.CreateDate >= since,
+                ct);
+            if (duplicate)
+            {
+                logger.LogDebug(
+                    "Skipping duplicate admin notification within {WindowMinutes}m: DedupKey={DedupKey} Type={Type}",
+                    DedupWindow.TotalMinutes,
+                    dedupKey,
+                    request.Type);
                 return 0;
             }
         }

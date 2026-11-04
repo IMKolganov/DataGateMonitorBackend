@@ -164,6 +164,7 @@ internal sealed class VpnServerLifecycleEnvironment
         var serverCmd = new Mock<ICommandService<VpnServer, int>>(MockBehavior.Strict);
         var cfgCmd = new Mock<ICommandService<VpnServerOvpnFileConfig, int>>(MockBehavior.Strict);
         var quotaPlanCmd = new Mock<ICommandService<QuotaPlanAllowedServer, int>>(MockBehavior.Strict);
+        var accessRuleCmd = new Mock<ICommandService<UserVpnServerAccessRule, int>>(MockBehavior.Strict);
         var tagCmd = new Mock<ICommandService<VpnServerTag, int>>(MockBehavior.Strict);
         var trx = new Mock<ITransactionRunner>(MockBehavior.Strict);
 
@@ -222,6 +223,9 @@ internal sealed class VpnServerLifecycleEnvironment
                 return Task.FromResult(xs.Count());
             });
 
+        accessRuleCmd.Setup(c => c.DeleteWhere(It.IsAny<Expression<Func<UserVpnServerAccessRule, bool>>>(), It.IsAny<CancellationToken>()))
+            .Returns(Task.FromResult(0));
+
         tagCmd.Setup(c => c.DeleteWhere(It.IsAny<Expression<Func<VpnServerTag, bool>>>(), It.IsAny<CancellationToken>()))
             .Returns((Expression<Func<VpnServerTag, bool>> pred, CancellationToken _) =>
             {
@@ -255,6 +259,7 @@ internal sealed class VpnServerLifecycleEnvironment
             serverCmd.Object,
             cfgCmd.Object,
             quotaPlanCmd.Object,
+            accessRuleCmd.Object,
             tagCmd.Object,
             Mock.Of<IServerOpenVpnNotificationService>(),
             Mock.Of<IStatusCacheGenerationService>(),

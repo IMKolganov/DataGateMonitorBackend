@@ -6,6 +6,7 @@ using Microsoft.Extensions.Diagnostics.HealthChecks;
 using Microsoft.OpenApi;
 using DataGateMonitor.Hubs;
 using DataGateMonitor.Middlewares;
+using DataGateMonitor.Services.Cache;
 using Swashbuckle.AspNetCore.Swagger;
 
 namespace DataGateMonitor.Configurations;
@@ -119,18 +120,28 @@ public static class PipelineConfiguration
         var environmentName = app.Environment.EnvironmentName;
 
         app.MapGet("/",
-            (IApplicationDatabaseState databaseState,
+            async (IApplicationDatabaseState databaseState,
                 ApplicationRuntimeInfo runtimeInfo,
                 IApplicationStartupHistory startupHistory,
+                IRedisDatabaseProvider redisDatabaseProvider,
+                IConfiguration configuration,
                 HttpContext context) =>
             {
                 var db = databaseState.GetDatabaseStatusLine();
+                var redis = await ApplicationRedisStatus.ResolveAsync(
+                    configuration,
+                    redisDatabaseProvider,
+                    context.RequestAborted);
                 var accept = context.Request.Headers.Accept.ToString();
                 if (accept.Contains("text/plain", StringComparison.OrdinalIgnoreCase)
                     && !accept.Contains("text/html", StringComparison.OrdinalIgnoreCase))
                 {
                     var plain =
-                        $"DataGateMonitor Application version: {version}; Environment: {environmentName};\nDatabase: {db}\nStarted: {runtimeInfo.StartedAtUtc:yyyy-MM-dd HH:mm:ss} UTC\nUptime: {RootPageHtml.FormatUptime(runtimeInfo.Uptime)}";
+                        $"DataGateMonitor Application version: {version}; Environment: {environmentName};\nDatabase: {db}\n";
+                    if (redis.IsConfigured)
+                        plain += $"Redis: {redis.Line}\n";
+                    plain +=
+                        $"Started: {runtimeInfo.StartedAtUtc:yyyy-MM-dd HH:mm:ss} UTC\nUptime: {RootPageHtml.FormatUptime(runtimeInfo.Uptime)}";
                     return Results.Text(plain, "text/plain; charset=utf-8", statusCode: 200);
                 }
 
@@ -140,7 +151,9 @@ public static class PipelineConfiguration
                     db,
                     databaseState.GetDatabaseStatusTone(),
                     runtimeInfo,
-                    startupHistory.GetRecords());
+                    startupHistory.GetRecords(),
+                    redis.IsConfigured ? redis.Line : null,
+                    redis.IsConfigured ? redis.Tone : null);
                 return Results.Content(html, "text/html; charset=utf-8", statusCode: 200);
             })
             .ExcludeFromDescription();

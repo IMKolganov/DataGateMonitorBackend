@@ -109,16 +109,23 @@ public sealed class GeoLiteScheduledUpdateRunner(
 
     private async Task NotifyFailedAsync(string phase, Exception ex, CancellationToken ct)
     {
-        await NotifyFailedAsync(phase, $"{ex.GetType().Name}: {ex.Message}", ct).ConfigureAwait(false);
+        await NotifyFailedAsync(phase, GeoLiteDiskFull.FormatDetail(ex), diskFull: GeoLiteDiskFull.IsDiskFull(ex), ct)
+            .ConfigureAwait(false);
     }
 
     private async Task NotifyFailedAsync(string phase, string detail, CancellationToken ct)
+        => await NotifyFailedAsync(phase, detail, diskFull: false, ct).ConfigureAwait(false);
+
+    private async Task NotifyFailedAsync(string phase, string detail, bool diskFull, CancellationToken ct)
     {
         try
         {
             using var scope = scopeFactory.CreateScope();
             var notifier = scope.ServiceProvider.GetRequiredService<IGeoLiteNotificationService>();
-            await notifier.NotifyAutoUpdateFailedAsync(phase, detail, ct).ConfigureAwait(false);
+            if (diskFull)
+                await notifier.NotifyDiskFullAsync(phase, detail, ct).ConfigureAwait(false);
+            else
+                await notifier.NotifyAutoUpdateFailedAsync(phase, detail, ct).ConfigureAwait(false);
         }
         catch (Exception ex)
         {

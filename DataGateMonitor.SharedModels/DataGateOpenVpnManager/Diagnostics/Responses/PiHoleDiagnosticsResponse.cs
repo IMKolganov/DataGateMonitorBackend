@@ -54,4 +54,11 @@ public sealed class PiHoleDiagnosticsResponse
     public string Health { get; set; } = "Unknown";
 
     public string? HealthMessage { get; set; }
+
+    /// <summary>Origin of the node's app password: None, Bootstrap, Env, or Dashboard. Null on older nodes.</summary>
+    public string? CredentialSource { get; set; }
+
+    /// <summary>What the startup announce does with the credentials: Included, NoCredentials,
+    /// OmittedInsecureBackend, or BackendNotConfigured. Null on older nodes.</summary>
+    public string? AnnounceState { get; set; }
 }

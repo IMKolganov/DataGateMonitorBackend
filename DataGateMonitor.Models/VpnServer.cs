@@ -52,4 +52,18 @@ public class VpnServer : BaseEntity<int>
 
     /// <summary>Order within the group (or among ungrouped servers when <see cref="VpnServerGroupId"/> is null).</summary>
     public int SortOrder { get; set; }
+
+    /// <summary>
+    /// Trusted node event-signing key (SPKI PEM, ECDSA P-256). Bound on discovery approve, fetched from the node
+    /// with the backend JWT, or trusted by an admin; authenticates node → backend local issuance events.
+    /// </summary>
+    public string? NodePublicKeyPem { get; set; }
+
+    /// <summary>Hex SHA-256 of the key's SPKI DER — the key id nodes send in <c>X-DataGate-Node-Key</c>.</summary>
+    public string? NodeKeyFingerprint { get; set; }
+
+    /// <summary>Key announced by the node but not yet trusted (node unreachable for verification).</summary>
+    public string? NodePendingPublicKeyPem { get; set; }
+
+    public string? NodePendingKeyFingerprint { get; set; }
 }

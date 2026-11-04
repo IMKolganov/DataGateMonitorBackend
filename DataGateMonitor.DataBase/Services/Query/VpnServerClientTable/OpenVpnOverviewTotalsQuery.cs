@@ -54,7 +54,7 @@ public sealed class OpenVpnOverviewTotalsQuery(
             .Where(x => x.ConnectedSince >= fromUtc && x.ConnectedSince < toUtc)
             .AsNoTracking();
 
-        // One round-trip: sessions + distinct users (same filters as before).
+        // One round-trip: sessions + distinct ExternalId + distinct CommonName.
         var sessionAgg = await sessionsQ
             .GroupBy(_ => 1)
             .Select(g => new
@@ -64,12 +64,18 @@ public sealed class OpenVpnOverviewTotalsQuery(
                     .Where(x => x.ExternalId != null && x.ExternalId != "")
                     .Select(x => x.ExternalId)
                     .Distinct()
+                    .LongCount(),
+                DevicesCount = g
+                    .Where(x => x.CommonName != null && x.CommonName != "")
+                    .Select(x => x.CommonName)
+                    .Distinct()
                     .LongCount()
             })
             .FirstOrDefaultAsync(ct);
 
         var sessionsCount = sessionAgg?.SessionsCount ?? 0L;
         var usersCount = sessionAgg?.UsersCount ?? 0L;
+        var devicesCount = sessionAgg?.DevicesCount ?? 0L;
         var accountsCount = await CountDistinctAccountsAsync(sessionsQ, ct);
 
         var trafficTotals = await trafficAggregator.GetTrafficTotalsAsync(
@@ -90,6 +96,7 @@ public sealed class OpenVpnOverviewTotalsQuery(
             {
                 SessionsCount = sessionsCount,
                 UsersCount = usersCount,
+                DevicesCount = devicesCount,
                 AccountsCount = accountsCount,
                 TrafficInBytes = trafficTotals.TrafficInBytes,
                 TrafficOutBytes = trafficTotals.TrafficOutBytes

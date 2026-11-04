@@ -252,7 +252,9 @@ public class VpnServerPiHoleConfigService(
         {
             return new VpnServerPiHoleConfigDto
             {
-                VpnServerId = vpnServerId
+                VpnServerId = vpnServerId,
+                // No row: the DTO's default URL would read as a saved setting.
+                BaseUrl = string.Empty
             };
         }
 

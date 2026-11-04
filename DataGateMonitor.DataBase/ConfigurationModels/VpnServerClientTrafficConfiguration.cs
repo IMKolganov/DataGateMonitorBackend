@@ -23,14 +23,11 @@ public class VpnServerClientTrafficConfiguration : BaseEntityConfiguration<VpnSe
             .IsUnique()
             .HasDatabaseName("UX_ClientTraffic_Server_Session_At");
 
-        // Existing read helpers
-        entity.HasIndex(e => new { e.VpnServerId, e.MeasuredAt })
-            .HasDatabaseName("IX_ClientTraffic_Server_At");
-
+        // Per-user time range (overview / ExternalId filter). VpnServerId+time uses Covering + filter.
         entity.HasIndex(e => new { e.ExternalId, e.MeasuredAt })
             .HasDatabaseName("IX_ClientTraffic_External_At");
-        
-        // WHERE MeasuredAt BETWEEN ...
+
+        // WHERE MeasuredAt BETWEEN ... (also used by poll UpdateWhere MeasuredAt equality probes)
         entity.HasIndex(e => e.MeasuredAt)
             .HasDatabaseName("IX_ClientTraffic_At");
 

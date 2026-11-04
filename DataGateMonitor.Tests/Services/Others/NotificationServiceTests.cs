@@ -18,6 +18,7 @@ namespace DataGateMonitor.Tests.Services.Others;
 public class NotificationServiceTests
 {
     private readonly Mock<ICommandService<Notification, int>> _notificationCmd = new(MockBehavior.Strict);
+    private readonly Mock<IQueryService<Notification, int>> _notificationQuery = new(MockBehavior.Strict);
     private readonly Mock<IUserRoleQueryService> _userRoles = new(MockBehavior.Strict);
     private readonly Mock<ICommandService<NotificationRecipient, int>> _recipientCmd = new(MockBehavior.Strict);
     private readonly Mock<INotificationRecipientQueryService> _recipientQuery = new(MockBehavior.Strict);
@@ -28,8 +29,12 @@ public class NotificationServiceTests
         var dict = new Dictionary<string, INotifier>(StringComparer.OrdinalIgnoreCase);
         foreach (var n in notifiers)
             dict[n.Channel] = n;
+        _notificationQuery
+            .Setup(q => q.Any(It.IsAny<Expression<Func<Notification, bool>>>(), It.IsAny<CancellationToken>()))
+            .ReturnsAsync(false);
         return new NotificationService(
             _notificationCmd.Object,
+            _notificationQuery.Object,
             _userRoles.Object,
             _recipientCmd.Object,
             _recipientQuery.Object,
@@ -278,5 +283,27 @@ public class NotificationServiceTests
         }, ["web"], CancellationToken.None);
 
         Assert.Equal(0, id);
+    }
+
+    [Fact]
+    public async Task NotifyAdmins_WhenDedupKeyRecentlySeen_ReturnsZero_AndDoesNotPersist()
+    {
+        var sut = CreateSut(CreateNotifier("web").Object);
+        _notificationQuery
+            .Setup(q => q.Any(It.IsAny<Expression<Func<Notification, bool>>>(), It.IsAny<CancellationToken>()))
+            .ReturnsAsync(true);
+
+        var id = await sut.NotifyAdmins(new NotifyAdminsRequest
+        {
+            Type = "system.exception",
+            Title = "Disk full on monitor host",
+            Message = "No space left",
+            Severity = NotificationSeverity.Error,
+            DedupKey = "system.exception:no-space-left"
+        }, ["web"], CancellationToken.None);
+
+        Assert.Equal(0, id);
+        _notificationCmd.Verify(c => c.Add(It.IsAny<Notification>(), It.IsAny<bool>(), It.IsAny<CancellationToken>()), Times.Never);
+        _userRoles.Verify(u => u.GetUserIdsByRoleIdAsync(It.IsAny<int>(), It.IsAny<CancellationToken>()), Times.Never);
     }
 }

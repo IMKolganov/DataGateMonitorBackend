@@ -20,6 +20,8 @@ public class VpnServerDiscoveryConfiguration : BaseEntityConfiguration<VpnServer
         entity.Property(e => e.Status).IsRequired();
         entity.Property(e => e.LastSeenUtc).IsRequired();
         entity.Property(e => e.RejectReason).HasMaxLength(512);
+        entity.Property(e => e.NodePublicKeyPem).HasMaxLength(1024);
+        entity.Property(e => e.NodeKeyFingerprint).HasMaxLength(64);
 
         entity.HasIndex(e => e.Status);
         entity.HasIndex(e => e.ApiUrl);

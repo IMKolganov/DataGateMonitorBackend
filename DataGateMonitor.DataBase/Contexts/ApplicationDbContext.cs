@@ -65,6 +65,7 @@ public class ApplicationDbContext(DbContextOptions<ApplicationDbContext> options
     public DbSet<MobileCrashReport> MobileCrashReports { get; set; } = null!;
     public DbSet<WindowsCrashReport> WindowsCrashReports { get; set; } = null!;
     public DbSet<FreeTierDisconnectLog> FreeTierDisconnectLogs { get; set; } = null!;
+    public DbSet<PendingTrafficRewrite> PendingTrafficRewrites { get; set; } = null!;
     public DbSet<TvLoginSession> TvLoginSessions { get; set; } = null!;
     public DbSet<VpnServerDiscovery> VpnServerDiscoveries { get; set; } = null!;
 
@@ -118,6 +119,7 @@ public class ApplicationDbContext(DbContextOptions<ApplicationDbContext> options
         modelBuilder.ApplyConfiguration(new UserRefreshTokenConfiguration());
         modelBuilder.ApplyConfiguration(new UserPasswordHistoryConfiguration());
         modelBuilder.ApplyConfiguration(new FreeTierDisconnectLogConfiguration());
+        modelBuilder.ApplyConfiguration(new PendingTrafficRewriteConfiguration());
         modelBuilder.ApplyConfiguration(new TvLoginSessionConfiguration());
         modelBuilder.ApplyConfiguration(new VpnServerDiscoveryConfiguration());
     }

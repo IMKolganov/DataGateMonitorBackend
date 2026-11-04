@@ -37,4 +37,9 @@ public class UpdateServerRequest
 
     /// <summary>When true, background polling is disabled for this server.</summary>
     public bool IsDisabled { get; set; }
+
+    /// <summary>
+    /// Soft-delete flag. Set to hide the server from the default list; clear to restore it.
+    /// </summary>
+    public bool IsDeleted { get; set; }
 }

@@ -97,6 +97,7 @@ public static class AuthServiceConfiguration
 
                 // Short schema ids: namespace tail strips; ApiResponse&lt;T&gt;/PagedResponse&lt;T&gt; → Api.{id(T)} / Paged.{id(T)} (avoids id collision with bare T).
                 options.CustomSchemaIds(ToOpenApiComponentSchemaId);
+                options.OperationFilter<LocalIssuanceEventOperationFilter>();
 
                 options.AddSecurityDefinition("Bearer", new OpenApiSecurityScheme
                 {

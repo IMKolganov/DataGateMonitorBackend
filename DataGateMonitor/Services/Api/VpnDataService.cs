@@ -24,6 +24,7 @@ public class VpnDataService(
     ICommandService<VpnServer, int> openVpnServerCommandService,
     ICommandService<VpnServerOvpnFileConfig, int> openVpnServerOvpnFileConfigCommandService,
     ICommandService<QuotaPlanAllowedServer, int> quotaPlanAllowedServerCommandService,
+    ICommandService<UserVpnServerAccessRule, int> userVpnServerAccessRuleCommandService,
     ICommandService<VpnServerTag, int> openVpnServerTagCommandService,
     IServerOpenVpnNotificationService serverOpenVpnNotificationService,
     IStatusCacheGenerationService statusCacheGenerationService,
@@ -92,6 +93,7 @@ public class VpnDataService(
                        ?? throw new InvalidOperationException("OpenVPN server not found");
         server.ApiUrl = VpnServerApiUrlHelper.NormalizeApiUrl(server.ApiUrl);
         var becameDisabled = server.IsDisable && !previous.IsDisable;
+        var becameDeleted = server.IsDeleted && !previous.IsDeleted;
         var apiUrlChanged = !VpnServerApiUrlHelper.ApiUrlsEquivalent(previous.ApiUrl, server.ApiUrl);
 
         if (server.Latitude is null && server.Longitude is null)
@@ -107,13 +109,15 @@ public class VpnDataService(
         {
             var now = DateTimeOffset.UtcNow;
 
-            if (await openVpnServerQueryService.AnyByServerNameExceptId(server.ServerName, server.Id, ct))
+            // Deleted rows may share a name with a live server. Enforce uniqueness only when the row stays visible.
+            if (!server.IsDeleted &&
+                await openVpnServerQueryService.AnyByServerNameExceptId(server.ServerName, server.Id, ct))
             {
                 logger.LogWarning("VPN server with name '{ServerName}' already exists", server.ServerName);
                 throw new InvalidOperationException("A VPN server with the same name already exists.");
             }
 
-            if (server.IsDefault)
+            if (server.IsDefault && !server.IsDeleted)
             {
                 // Unset all other defaults in a single SQL statement
                 await openVpnServerCommandService.UpdateWhere(
@@ -123,17 +127,20 @@ public class VpnDataService(
                     ct);
             }
 
+            if (server.IsDeleted)
+                server.IsDefault = false;
+
             // UpdateServerRequest must not overwrite poller/probe-owned or list-layout fields.
             server.VpnServerGroupId = previous.VpnServerGroupId;
             server.SortOrder = previous.SortOrder;
             server.CreateDate = previous.CreateDate;
-            server.IsDeleted = previous.IsDeleted;
             server.DcoIsEnabled = previous.DcoIsEnabled;
             server.XrayClientsPolledAt = previous.XrayClientsPolledAt;
             server.XrayClientsPollError = previous.XrayClientsPollError;
             server.ManagerVersion = previous.ManagerVersion;
             // Manager poll flag — never take composed DTO IsOnline from the form.
-            server.IsOnline = previous.IsOnline;
+            // A newly soft-deleted row must not stay Online: pollers skip deleted servers.
+            server.IsOnline = becameDeleted ? false : previous.IsOnline;
             // AvailabilityCheck-owned — never reset from Adapt defaults.
             server.IsAvailableByExternalProbe = previous.IsAvailableByExternalProbe;
             server.ExternalProbeCheckedAtUtc = previous.ExternalProbeCheckedAtUtc;
@@ -160,7 +167,7 @@ public class VpnDataService(
         eventClientFactory.Remove(result.Id);
         if (apiUrlChanged)
             vpnNodePublicIpLookup.Invalidate(result.Id);
-        if (becameDisabled)
+        if (becameDisabled || becameDeleted)
             await vpnServerClientPresenceService.MarkAllDisconnectedAsync(result.Id, ct);
         return result;
     }
@@ -171,14 +178,21 @@ public class VpnDataService(
         var openVpnServer = await openVpnServerQueryService.GetById(vpnServerId, ct)
                             ?? throw new InvalidOperationException("VpnServer not found");
         var now = DateTimeOffset.UtcNow;
-        // Soft-delete only hides the row; stop reporting it as Online and leave polling (GetAll
-        // excludes deleted). Stale IsOnline=true otherwise sticks forever when includeDeleted is on.
-        await openVpnServerCommandService.UpdateWhere(
-            x => x.Id == vpnServerId,
-            u => u.SetProperty(x => x.IsDeleted, true)
-                .SetProperty(x => x.IsOnline, false)
-                .SetProperty(x => x.LastUpdate, now),
-            ct);
+        // Soft-delete + drop allowlist/personal-rule links in one transaction so a mid-flight
+        // failure cannot leave orphan vpnServerIds after IsDeleted=true.
+        await transactionRunner.RunAsync(async token =>
+        {
+            // Soft-delete only hides the row; stop reporting it as Online and leave polling (GetAll
+            // excludes deleted). Stale IsOnline=true otherwise sticks forever when includeDeleted is on.
+            await openVpnServerCommandService.UpdateWhere(
+                x => x.Id == vpnServerId,
+                u => u.SetProperty(x => x.IsDeleted, true)
+                    .SetProperty(x => x.IsOnline, false)
+                    .SetProperty(x => x.LastUpdate, now),
+                token);
+            await quotaPlanAllowedServerCommandService.DeleteWhere(x => x.VpnServerId == vpnServerId, token);
+            await userVpnServerAccessRuleCommandService.DeleteWhere(x => x.VpnServerId == vpnServerId, token);
+        }, ct);
         await vpnServerClientPresenceService.MarkAllDisconnectedAsync(vpnServerId, ct);
         await serverOpenVpnNotificationService.NotifyDeleted(openVpnServer.Id, openVpnServer.ServerName, ct);
         statusCacheGenerationService.Bump();

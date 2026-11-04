@@ -104,21 +104,32 @@ public static class OverviewTrafficDailyQueries
         CancellationToken ct)
     {
         var dailyTable = ResolveDailyTable(ctx);
+        var clientsTable = ResolveClientsTable(ctx);
         var trunc = OverviewTrafficDailyPostgresSql.ResolveTruncUnit(grouping);
         var bucketExpr = OverviewTrafficDailyPostgresSql.BucketStartSql(trunc, "f.\"DayUtc\"");
         var sql = $"""
                    WITH {OverviewTrafficDailyPostgresSql.BuildFilteredDailyCte(dailyTable)},
+                   session_cn AS (
+                       SELECT
+                           c."SessionId",
+                           NULLIF(c."CommonName", '') AS common_name
+                       FROM {clientsTable} c
+                       WHERE c."SessionId" IN (SELECT DISTINCT f."SessionId" FROM filtered f)
+                   ),
                    bucketed AS (
                        SELECT
                            {bucketExpr} AS bucket_ts,
                            f."SessionId",
-                           NULLIF(f."ExternalId", '') AS external_id
+                           NULLIF(f."ExternalId", '') AS external_id,
+                           sc.common_name
                        FROM filtered f
+                       LEFT JOIN session_cn sc ON sc."SessionId" = f."SessionId"
                    )
                    SELECT
                        b.bucket_ts AS "BucketTs",
                        COUNT(DISTINCT b."SessionId")::int AS "ActiveSessions",
-                       COUNT(DISTINCT b.external_id)::int AS "ActiveUsers"
+                       COUNT(DISTINCT b.external_id)::int AS "ActiveUsers",
+                       COUNT(DISTINCT b.common_name)::int AS "ActiveDevices"
                    FROM bucketed b
                    GROUP BY b.bucket_ts
                    ORDER BY b.bucket_ts
@@ -258,6 +269,7 @@ public static class OverviewTrafficDailyQueries
                     BucketTs = key,
                     ActiveSessions = existing.ActiveSessions + row.ActiveSessions,
                     ActiveUsers = existing.ActiveUsers + row.ActiveUsers,
+                    ActiveDevices = existing.ActiveDevices + row.ActiveDevices,
                 };
             }
             else
@@ -267,6 +279,7 @@ public static class OverviewTrafficDailyQueries
                     BucketTs = key,
                     ActiveSessions = row.ActiveSessions,
                     ActiveUsers = row.ActiveUsers,
+                    ActiveDevices = row.ActiveDevices,
                 };
             }
         }
@@ -329,6 +342,15 @@ public static class OverviewTrafficDailyQueries
                      ?? throw new InvalidOperationException("VpnServerClientTrafficDaily entity not mapped.");
         var schema = entity.GetSchema() ?? "public";
         var table = entity.GetTableName() ?? throw new InvalidOperationException("Daily table name missing.");
+        return $"\"{schema}\".\"{table}\"";
+    }
+
+    private static string ResolveClientsTable(ApplicationDbContext ctx)
+    {
+        var entity = ctx.Model.FindEntityType(typeof(VpnServerClient))
+                     ?? throw new InvalidOperationException("VpnServerClient entity not mapped.");
+        var schema = entity.GetSchema() ?? "public";
+        var table = entity.GetTableName() ?? throw new InvalidOperationException("Clients table name missing.");
         return $"\"{schema}\".\"{table}\"";
     }
 }

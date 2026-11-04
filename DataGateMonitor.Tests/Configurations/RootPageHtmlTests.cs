@@ -38,6 +38,26 @@ public class RootPageHtmlTests
         html.Should().NotContain("Ended");
         html.Should().NotContain("Duration");
         html.Should().Contain("1.0.3.51");
+        html.Should().NotContain("<dt>Redis</dt>");
+    }
+
+    [Fact]
+    public void Render_IncludesRedisRow_WhenProvided()
+    {
+        var runtimeInfo = new ApplicationRuntimeInfo();
+        var html = RootPageHtml.Render(
+            "1.0.3.52",
+            "Production",
+            "Connected and migrations are up to date.",
+            "ok",
+            runtimeInfo,
+            [],
+            redisStatusLine: "Connected (ping 2 ms).",
+            redisStatusTone: "ok");
+
+        html.Should().Contain("<dt>Redis</dt>");
+        html.Should().Contain("Connected (ping 2 ms).");
+        html.Should().Contain("status-ok");
     }
 
     [Fact]

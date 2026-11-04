@@ -1,4 +1,4 @@
-namespace DataGateMonitor.Models.Auth;
+namespace DataGateMonitor.SharedModels.DataGateMonitor.Auth.Responses;
 
 /// <summary>
 /// Development-only token payload. For <c>OpenVpn</c> also returns material needed to understand / mint calls.

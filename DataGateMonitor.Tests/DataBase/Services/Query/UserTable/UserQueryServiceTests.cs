@@ -105,8 +105,8 @@ public partial class UserQueryServiceTests
         Assert.Equal(10, page.PageSize);
         Assert.Equal(15, page.TotalCount);
         Assert.Equal(5, page.Items.Count);
-        // При сортировке DESC: 15, 14, 13, 12, 11, 10, 9, 8, 7, 6 (страница 1)
-        // 5, 4, 3, 2, 1 (страница 2)
+        // Descending order: 15, 14, 13, 12, 11, 10, 9, 8, 7, 6 (page 1)
+        // 5, 4, 3, 2, 1 (page 2)
         Assert.Equal(5, page.Items.First().Id);
     }
 

@@ -108,6 +108,11 @@ public class GeoLiteUpdaterServiceTests
             ? new StreamCopier(progress.Object)
             : new Mock<IStreamCopier>().Object;
 
+        var retention = new Mock<IGeoLiteVersionRetentionService>();
+        retention.Setup(r => r.GetMaxKeptVersionsAsync(It.IsAny<CancellationToken>())).ReturnsAsync(10);
+        retention.Setup(r => r.PruneOldVersionsAsync(It.IsAny<string>(), It.IsAny<CancellationToken>(), It.IsAny<int?>()))
+            .ReturnsAsync(0);
+
         var sut = new GeoLiteUpdaterService(
             NullLogger<GeoLiteUpdaterService>.Instance,
             httpClient,
@@ -116,7 +121,8 @@ public class GeoLiteUpdaterServiceTests
             auth.Object,
             progress.Object,
             new HttpErrorMapper(NullLogger<HttpErrorMapper>.Instance),
-            streamCopier);
+            streamCopier,
+            retention.Object);
 
         return new UpdaterTestContext
         {
@@ -272,6 +278,11 @@ public class GeoLiteUpdaterServiceTests
         auth.Setup(a => a.GetDownloadUrlAsync(It.IsAny<CancellationToken>())).ReturnsAsync("https://example.com/geolite.tar.gz");
         auth.Setup(a => a.GetBasicAuthHeaderAsync(It.IsAny<CancellationToken>())).ReturnsAsync("base64");
 
+        var retention = new Mock<IGeoLiteVersionRetentionService>();
+        retention.Setup(r => r.GetMaxKeptVersionsAsync(It.IsAny<CancellationToken>())).ReturnsAsync(10);
+        retention.Setup(r => r.PruneOldVersionsAsync(It.IsAny<string>(), It.IsAny<CancellationToken>(), It.IsAny<int?>()))
+            .ReturnsAsync(0);
+
         var sut = new GeoLiteUpdaterService(
             NullLogger<GeoLiteUpdaterService>.Instance,
             httpClient,
@@ -280,7 +291,8 @@ public class GeoLiteUpdaterServiceTests
             auth.Object,
             progress.Object,
             new HttpErrorMapper(NullLogger<HttpErrorMapper>.Instance),
-            new StreamCopier(progress.Object));
+            new StreamCopier(progress.Object),
+            retention.Object);
 
         try
         {

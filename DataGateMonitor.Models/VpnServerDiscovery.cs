@@ -24,6 +24,11 @@ public class VpnServerDiscovery : BaseEntity<int>
 
     public bool IsEnableWss { get; set; }
 
+    public bool HasPiHole { get; set; }
+
+    /// <summary>Staged credentials; never exposed by discovery DTOs. Cleared after import or rejection.</summary>
+    public string? PiHoleConfigJson { get; set; }
+
     public VpnServerDiscoveryStatus Status { get; set; } = VpnServerDiscoveryStatus.Pending;
 
     public DateTimeOffset LastSeenUtc { get; set; }
@@ -36,4 +41,10 @@ public class VpnServerDiscovery : BaseEntity<int>
 
     [MaxLength(512)]
     public string? RejectReason { get; set; }
+
+    /// <summary>Node event-signing key from the first announce; copied to the server on approve.</summary>
+    public string? NodePublicKeyPem { get; set; }
+
+    [MaxLength(64)]
+    public string? NodeKeyFingerprint { get; set; }
 }
