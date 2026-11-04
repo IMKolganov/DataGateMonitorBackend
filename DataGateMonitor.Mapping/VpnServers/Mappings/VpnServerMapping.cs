@@ -38,13 +38,13 @@ public class VpnServerMapping : IRegister
 
         config.NewConfig<UpdateServerRequest, VpnServer>()
             .Map(dest => dest.IsDisable, src => src.IsDisabled)
+            .Map(dest => dest.IsDeleted, src => src.IsDeleted)
             // IsOnline on the request is the composed dashboard badge — never write it to the entity.
             .Ignore(dest => dest.IsOnline)
             .Ignore(dest => dest.IsAvailableByExternalProbe)
             .Ignore(dest => dest.ExternalProbeCheckedAtUtc)
             .Ignore(dest => dest.ExternalProbeSummary)
             .Ignore(dest => dest.ManagerVersion)
-            .Ignore(dest => dest.IsDeleted)
             .Ignore(dest => dest.DcoIsEnabled)
             .Ignore(dest => dest.XrayClientsPolledAt)
             .Ignore(dest => dest.XrayClientsPollError)

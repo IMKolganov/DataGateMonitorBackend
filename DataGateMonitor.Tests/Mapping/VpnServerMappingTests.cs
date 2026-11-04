@@ -25,11 +25,13 @@ public class VpnServerMappingTests
             ServerName = "🇨🇾 Cyprus",
             IsOnline = false,
             IsDisabled = true,
+            IsDeleted = true,
         };
 
         var entity = request.Adapt<VpnServer>(config);
 
         Assert.True(entity.IsDisable);
+        Assert.True(entity.IsDeleted);
         Assert.False(entity.IsOnline); // Mapster leaves default false when ignored — UpdateVpnServer restores from DB
         Assert.True(entity.IsAvailableByExternalProbe); // model default; UpdateVpnServer restores from DB
     }
