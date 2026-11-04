@@ -36,6 +36,79 @@ public class VpnDataServicePresenceAndPublicIpCacheTests
     }
 
     [Fact]
+    public async Task UpdateVpnServer_WhenBecomesDeleted_ClearsOnline_AndMarksClientsDisconnected()
+    {
+        var h = new VpnDataServiceTestHarness();
+        h.ServerQ.Setup(q => q.AnyByServerNameExceptId("srv9", 9, It.IsAny<CancellationToken>())).ReturnsAsync(false);
+        h.CfgQ.Setup(q => q.AnyByVpnServerId(9, It.IsAny<CancellationToken>())).ReturnsAsync(true);
+        h.ServerQ.SetupSequence(q => q.GetById(9, It.IsAny<CancellationToken>()))
+            .ReturnsAsync(new VpnServer { Id = 9, ServerName = "srv9", IsOnline = true, IsDeleted = false })
+            .ReturnsAsync(new VpnServer { Id = 9, ServerName = "srv9", IsOnline = false, IsDeleted = true });
+        VpnServer? saved = null;
+        h.ServerCmd.Setup(c => c.Update(It.IsAny<VpnServer>(), true, It.IsAny<CancellationToken>()))
+            .Callback<VpnServer, bool, CancellationToken>((s, _, _) => saved = s)
+            .Returns(Task.FromResult(1));
+        h.Presence.Setup(p => p.MarkAllDisconnectedAsync(9, It.IsAny<CancellationToken>()))
+            .Returns(Task.CompletedTask);
+
+        await h.Create().UpdateVpnServer(
+            new VpnServer { Id = 9, ServerName = "srv9", IsDeleted = true, IsOnline = true, IsDefault = true },
+            [],
+            [],
+            CancellationToken.None);
+
+        Assert.NotNull(saved);
+        Assert.True(saved!.IsDeleted);
+        Assert.False(saved.IsOnline);
+        Assert.False(saved.IsDefault);
+        h.Presence.Verify(p => p.MarkAllDisconnectedAsync(9, It.IsAny<CancellationToken>()), Times.Once);
+    }
+
+    [Fact]
+    public async Task UpdateVpnServer_WhenRestored_ClearsDeleted_WithoutDisconnect()
+    {
+        var h = new VpnDataServiceTestHarness();
+        h.ServerQ.Setup(q => q.AnyByServerNameExceptId("srv10", 10, It.IsAny<CancellationToken>())).ReturnsAsync(false);
+        h.CfgQ.Setup(q => q.AnyByVpnServerId(10, It.IsAny<CancellationToken>())).ReturnsAsync(true);
+        h.ServerQ.SetupSequence(q => q.GetById(10, It.IsAny<CancellationToken>()))
+            .ReturnsAsync(new VpnServer { Id = 10, ServerName = "srv10", IsOnline = false, IsDeleted = true })
+            .ReturnsAsync(new VpnServer { Id = 10, ServerName = "srv10", IsOnline = false, IsDeleted = false });
+        VpnServer? saved = null;
+        h.ServerCmd.Setup(c => c.Update(It.IsAny<VpnServer>(), true, It.IsAny<CancellationToken>()))
+            .Callback<VpnServer, bool, CancellationToken>((s, _, _) => saved = s)
+            .Returns(Task.FromResult(1));
+
+        await h.Create().UpdateVpnServer(
+            new VpnServer { Id = 10, ServerName = "srv10", IsDeleted = false },
+            [],
+            [],
+            CancellationToken.None);
+
+        Assert.NotNull(saved);
+        Assert.False(saved!.IsDeleted);
+        Assert.False(saved.IsOnline);
+        h.Presence.Verify(p => p.MarkAllDisconnectedAsync(It.IsAny<int>(), It.IsAny<CancellationToken>()), Times.Never);
+    }
+
+    [Fact]
+    public async Task UpdateVpnServer_WhenRestoredNameTaken_Throws()
+    {
+        var h = new VpnDataServiceTestHarness();
+        h.ServerQ.Setup(q => q.GetById(11, It.IsAny<CancellationToken>()))
+            .ReturnsAsync(new VpnServer { Id = 11, ServerName = "taken", IsDeleted = true });
+        h.ServerQ.Setup(q => q.AnyByServerNameExceptId("taken", 11, It.IsAny<CancellationToken>())).ReturnsAsync(true);
+
+        var ex = await Assert.ThrowsAsync<InvalidOperationException>(() =>
+            h.Create().UpdateVpnServer(
+                new VpnServer { Id = 11, ServerName = "taken", IsDeleted = false },
+                [],
+                [],
+                CancellationToken.None));
+
+        Assert.Contains("same name", ex.Message);
+    }
+
+    [Fact]
     public async Task UpdateVpnServer_WhenBecomesDisabled_MarksClientsDisconnected()
     {
         var h = new VpnDataServiceTestHarness();
