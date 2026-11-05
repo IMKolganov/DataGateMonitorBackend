@@ -32,7 +32,7 @@ public class VpnServer : BaseEntity<int>
     public string ApiUrl { get; set; } = string.Empty;
     public double? Latitude { get; set; }
     public double? Longitude { get; set; }
-    public bool IsEnableWss { get; set; } = false;
+    public bool IsEnableWss { get; set; } = true;
     public bool IsPiHoleEnabled { get; set; } = false;
     public bool IsDeleted { get; set; } = false;
     /// <summary>DCO (Data Channel Offload) enabled; from OpenVPN "status 3" GLOBAL_STATS dco_enabled. Not required in DB.</summary>
