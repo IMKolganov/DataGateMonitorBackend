@@ -47,6 +47,9 @@
     "RecentMaxLimit": 200,
     "AuthToken": ""
   },
+  "ClientIdentity": {
+    "Enforce": false
+  },
   "WindowsCrashIngest": {
     "MaxPayloadBytes": 1048576,
     "RateLimitMaxRequests": 20,

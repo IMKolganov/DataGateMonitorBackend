@@ -63,6 +63,7 @@ builder.Services.Configure<CrashIngestOptions>(builder.Configuration.GetSection(
 builder.Services.PostConfigure<CrashIngestOptions>(options => options.ApplyDefaults());
 builder.Services.Configure<WindowsCrashIngestOptions>(builder.Configuration.GetSection(WindowsCrashIngestOptions.SectionName));
 builder.Services.PostConfigure<WindowsCrashIngestOptions>(options => options.ApplyDefaults());
+builder.Services.Configure<ClientIdentityOptions>(builder.Configuration.GetSection(ClientIdentityOptions.SectionName));
 
 builder.ConfigureWebHost();
 builder.ConfigureExternalIpServices();
