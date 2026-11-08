@@ -29,6 +29,7 @@ public static class ClientIdentityRules
         ClientNames.Mac,
         ClientNames.Android,
         ClientNames.Windows,
+        ClientNames.Ios,
         ClientNames.OpenVpnNode,
         ClientNames.XrayNode
     ];
@@ -91,6 +92,7 @@ public static class ClientNames
     public const string Mac = "mac";
     public const string Android = "android";
     public const string Windows = "windows";
+    public const string Ios = "ios";
     public const string OpenVpnNode = "openvpn-node";
     public const string XrayNode = "xray-node";
 }
