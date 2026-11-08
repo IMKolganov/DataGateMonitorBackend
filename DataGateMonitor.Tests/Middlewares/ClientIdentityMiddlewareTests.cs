@@ -56,6 +56,7 @@ public class ClientIdentityMiddlewareTests
     [InlineData(ClientNames.Mac)]
     [InlineData(ClientNames.Android)]
     [InlineData(ClientNames.Windows)]
+    [InlineData(ClientNames.Ios)]
     [InlineData(ClientNames.OpenVpnNode)]
     [InlineData(ClientNames.XrayNode)]
     public async Task KnownClientWithVersion_PassesAndStoresIdentity(string name)
@@ -81,7 +82,7 @@ public class ClientIdentityMiddlewareTests
 
     [Theory]
     [InlineData("Frontend")]
-    [InlineData("ios")]
+    [InlineData("iOS")]
     [InlineData("curl")]
     public async Task UnknownName_Returns400(string name)
     {
