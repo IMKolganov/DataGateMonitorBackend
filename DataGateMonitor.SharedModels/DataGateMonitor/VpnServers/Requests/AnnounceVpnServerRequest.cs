@@ -16,7 +16,7 @@ public class AnnounceVpnServerRequest
 
     public string? Version { get; set; }
 
-    public bool IsEnableWss { get; set; }
+    public bool IsEnableWss { get; set; } = true;
 
     /// <summary>Null when an older node does not report Pi-hole capabilities.</summary>
     public bool? HasPiHole { get; set; }

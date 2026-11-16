@@ -20,7 +20,7 @@ public class AddServerRequest
 
     public double? Longitude { get; set; }
 
-    public bool IsEnableWss { get; set; }
+    public bool IsEnableWss { get; set; } = true;
 
     public bool IsPiHoleEnabled { get; set; }
 
