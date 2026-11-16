@@ -10,7 +10,7 @@ public class ApproveVpnServerDiscoveryRequest
 
     public bool IsDefault { get; set; }
 
-    public bool IsEnableWss { get; set; }
+    public bool IsEnableWss { get; set; } = true;
 
     /// <summary>Defaults to the node's announced Pi-hole capability when omitted.</summary>
     public bool? IsPiHoleEnabled { get; set; }
