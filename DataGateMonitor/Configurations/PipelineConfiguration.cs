@@ -42,6 +42,8 @@ public static class PipelineConfiguration
         app.UseWebSockets();
         app.UseCors("AllowAllOriginsWithCredentials");
         app.UseStaticFiles();
+        // After CORS so the 400 still carries CORS headers for the SPA.
+        app.UseMiddleware<ClientIdentityMiddleware>();
 
         if (app.Environment.IsDevelopment())
         {
