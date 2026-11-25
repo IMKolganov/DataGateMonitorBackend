@@ -166,6 +166,55 @@ public class AvailabilityCheckRunnerTests
         reloaded.ExternalProbeSummary.Should().Be("reachable");
     }
 
+    [Theory]
+    [InlineData(null, false, "No HTTP response — The handshake operation timed out")]
+    [InlineData(401, true, "HTTP 401 — authorization required")]
+    [InlineData(503, true, "HTTP 503")]
+    public async Task RunAsync_WhenHttpWasProbed_UsesHttpResponseForAvailability(
+        int? statusCode,
+        bool expectedAvailable,
+        string expectedSummary)
+    {
+        await using var db = CreateContext();
+        var server = SeedServer(db, id: 20, apiUrl: "https://server.example/", isOnline: true,
+            probeOk: !expectedAvailable);
+        var probeResult = new AvailabilityProbeResultDto
+        {
+            Reachable = true,
+            Summary = "reachable",
+            Http = new AvailabilityHttpDto
+            {
+                Ok = statusCode.HasValue,
+                StatusCode = statusCode,
+                Error = statusCode is null ? "The handshake operation timed out" : null,
+            },
+        };
+        var probe = new Mock<IAvailabilityCheckProbeClient>();
+        probe.Setup(p => p.ProbeAsync(ProbeUrl, server.ApiUrl, It.IsAny<CancellationToken>()))
+            .ReturnsAsync((probeResult, (string?)null, 42L));
+        var notifications = new Mock<IAvailabilityCheckNotificationService>();
+        notifications
+            .Setup(n => n.NotifyUnreachableAsync(It.IsAny<string>(), It.IsAny<string>(), It.IsAny<CancellationToken>()))
+            .Returns(Task.CompletedTask);
+        var sut = CreateRunner(db, settings: EnabledSettings(), probe.Object,
+            new AvailabilityCheckStatusStore(), notifications.Object);
+
+        var result = await sut.RunAsync(CancellationToken.None);
+
+        var reloaded = await db.VpnServers.AsNoTracking().SingleAsync(s => s.Id == server.Id);
+        reloaded.IsAvailableByExternalProbe.Should().Be(expectedAvailable);
+        reloaded.IsOnline.Should().BeTrue();
+        reloaded.ExternalProbeSummary.Should().Be(expectedSummary);
+        var snapshot = result.Servers.Should().ContainSingle().Which;
+        snapshot.IsAvailableByExternalProbe.Should().Be(expectedAvailable);
+        snapshot.Reachable.Should().Be(expectedAvailable);
+        snapshot.Summary.Should().Be(expectedSummary);
+        snapshot.Result!.Reachable.Should().BeTrue();
+        notifications.Verify(
+            n => n.NotifyUnreachableAsync(It.IsAny<string>(), expectedSummary, It.IsAny<CancellationToken>()),
+            expectedAvailable ? Times.Never() : Times.Once());
+    }
+
     [Fact]
     public async Task RunAsync_WhenProbeReturnsNull_KeepsPriorProbeFlag_DoesNotChangeIsOnline()
     {

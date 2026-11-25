@@ -158,12 +158,19 @@ public sealed class AvailabilityCheckRunner(
                 continue;
             }
 
-            var reachable = result.Reachable;
+            var http = result.Http;
+            var reachable = http is null ? result.Reachable : http.StatusCode.HasValue;
+            var summary = http switch
+            {
+                { StatusCode: 401 } => "HTTP 401 — authorization required",
+                { StatusCode: int statusCode } => $"HTTP {statusCode}",
+                { Error: { Length: > 0 } httpError } => $"No HTTP response — {httpError}",
+                not null => "No HTTP response",
+                null => result.Summary ?? (reachable ? "reachable" : "unreachable"),
+            };
             server.IsAvailableByExternalProbe = reachable;
             server.ExternalProbeCheckedAtUtc = checkedAt;
-            server.ExternalProbeSummary = Truncate(
-                result.Summary ?? (reachable ? "reachable" : "unreachable"),
-                500);
+            server.ExternalProbeSummary = Truncate(summary, 500);
 
             snapshot.Servers.Add(new AvailabilityCheckServerResultDto
             {
